@@ -1,0 +1,300 @@
+@page "/tinglash"
+@page "/tinglash/{Id:guid}"
+@using Lugat.Contracts
+@implements IDisposable
+@inject SessionService Api
+@inject BrowserInterop Audio
+@inject NavigationManager Nav
+
+<PageTitle>Tinglash — Lug‘at</PageTitle>
+
+@* TOPIK II listening (D-53): hear the passage, choose the answer, then see the text, its meaning and why. *@
+@if (Id is null)
+{
+    <a class="back" href="mashq">← Mashq</a>
+    <header class="page-head">
+        <div>
+            <h1>Tinglash <span lang="ko">(듣기)</span></h1>
+            <span class="muted small-text">TOPIK II uslubidagi 5 ta savol: dialog yoki e’lon, 4 ta javob</span>
+        </div>
+    </header>
+
+    <ol class="ladder-steps">
+        <li>Audioni tinglang. Matn javob berguningizcha ko‘rinmaydi, xuddi imtihondagidek.</li>
+        <li>To‘rt javobdan birini tanlang. Kerak bo‘lsa yana yoki sekinroq tinglang.</li>
+        <li>Javobdan keyin matn, o‘zbekcha tarjima, nega shu javob to‘g‘riligi va foydali so‘zlar chiqadi.</li>
+    </ol>
+    <p class="muted small-text">Savollarni AI tuzadi (TOPIK uslubida, rasmiy savol emas) va o‘rganayotgan so‘zlaringizdan ba’zilarini qo‘shadi. Ovoz sun’iy: ayol va erkak ovozi. Bir mashq: savollar uchun 1 ta AI so‘rovi, har audio bir marta yaratiladi.</p>
+
+    @if (_error is not null)
+    {
+        <div class="notice" role="alert">@_error</div>
+    }
+    <button class="button primary block" disabled="@_busy" @onclick="CreateAsync">@(_busy ? "AI savollar tuzmoqda… (20–60 soniya)" : "Yangi tinglash mashqi")</button>
+
+    @if (_list is { Count: > 0 })
+    {
+        <h2 class="kicker section-title">Oldingilari</h2>
+        <nav class="menu" aria-label="Oldingi tinglash mashqlari">
+            @foreach (var (l, i) in _list.Select((l, i) => (l, i)))
+            {
+                <a href="tinglash/@l.Id">
+                    <span class="no">@((i + 1).ToString("00"))</span>
+                    <span><span class="t">@l.Title</span><span class="s">@Format.DayTime(l.CreatedAt) · @(l.Done == l.Total ? $"{l.Correct}/{l.Total} to‘g‘ri" : $"{l.Done}/{l.Total} bajarildi — davom etish")</span></span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                </a>
+            }
+        </nav>
+    }
+    return;
+}
+
+<a class="back" href="tinglash">← Tinglash</a>
+
+@if (_set is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="@_set.Items.Count" aria-valuenow="@_set.Done">
+    <div style="width:@(_set.Items.Count == 0 ? 0 : _set.Done * 100 / _set.Items.Count)%"></div>
+</div>
+
+@if (Current is { } item)
+{
+    <section class="test-question" aria-live="polite">
+        <span class="kicker">@(item.Index + 1)/@_set.Items.Count</span>
+        <p lang="ko">@item.QuestionKo</p>
+
+        <div class="listen-controls">
+            <button type="button" class="button primary" disabled="@(_audio != AudioState.Ready)" @onclick="() => PlayAsync(1.0)">
+                @(_audio switch { AudioState.Loading => "Audio tayyorlanmoqda…", AudioState.Failed => "Audio yo‘q", _ => _plays == 0 ? "▶ Tinglash" : "▶ Yana tinglash" })
+            </button>
+            <button type="button" class="button" disabled="@(_audio != AudioState.Ready)" @onclick="() => PlayAsync(0.8)">0.8×</button>
+        </div>
+        @if (_plays > 0)
+        {
+            <p class="muted small-text">@_plays marta tinglandi. Imtihonda ko‘p savollar bir marta eshittiriladi.</p>
+        }
+        @if (_audio == AudioState.Failed)
+        {
+            <p class="notice">@(_audioError ?? "Audio tayyorlanmadi.") <button class="button small" @onclick="() => LoadAudioAsync(item.Index)">Qayta urinish</button></p>
+        }
+
+        @if (item.Reveal is { } r)
+        {
+            <ol class="listen-options">
+                @for (var i = 0; i < item.Options.Count; i++)
+                {
+                    <li class="@(i == r.Answer ? "right" : i == r.Choice ? "wrong" : "")"><span class="no">@Circled(i)</span> <span lang="ko">@item.Options[i]</span></li>
+                }
+            </ol>
+            <section class="card ladder-feedback @(r.IsCorrect ? "ok" : "bad")">
+                <strong>@(r.IsCorrect ? "To‘g‘ri" : $"Xato. To‘g‘ri javob: {Circled(r.Answer)}")</strong>
+                <p>@r.ExplanationUz</p>
+                <h3 class="kicker">Eshitilgan matn</h3>
+                <div class="listen-script" lang="ko">
+                    @foreach (var line in r.Lines)
+                    {
+                        <p><span class="pill">@(line.Male ? "남" : "여")</span> @line.Text</p>
+                    }
+                </div>
+                <details>
+                    <summary>O‘zbekcha tarjima</summary>
+                    <p class="pre-line">@r.TranslationUz</p>
+                </details>
+                @if (r.Words.Count > 0)
+                {
+                    <h3 class="kicker">Foydali so‘zlar</h3>
+                    <ul class="listen-words">
+                        @foreach (var w in r.Words)
+                        {
+                            <li><span lang="ko">@w.Korean</span> — @w.Uzbek</li>
+                        }
+                    </ul>
+                }
+            </section>
+            <button class="button primary block" @onclick="Next">@(NextIndex(item.Index) is null ? "Natijani ko‘rish" : "Keyingi savol")</button>
+        }
+        else
+        {
+            <div class="options">
+                @for (var i = 0; i < item.Options.Count; i++)
+                {
+                    var choice = i;
+                    <button class="button option" lang="ko" disabled="@_busy" @onclick="() => AnswerAsync(item, choice)">@Circled(i) @item.Options[i]</button>
+                }
+            </div>
+        }
+        @if (_error is not null)
+        {
+            <div class="notice" role="alert">@_error</div>
+        }
+    </section>
+    return;
+}
+
+<header class="page-head">
+    <div>
+        <h1>Natija: @_set.Correct / @_set.Items.Count</h1>
+        <span class="muted small-text">@_set.Title</span>
+    </div>
+</header>
+<ol class="mistakes">
+    @foreach (var i in _set.Items)
+    {
+        <li>
+            <button class="link-btn" @onclick="() => Open(i.Index)">@(i.Reveal?.IsCorrect == true ? "✓" : "✗") <span lang="ko">@i.QuestionKo</span></button>
+        </li>
+    }
+</ol>
+<a class="button primary block" href="tinglash">Yangi mashq</a>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private enum AudioState { Loading, Ready, Failed }
+
+    private List<ListeningSummaryDto>? _list;
+    private ListeningDto? _set;
+    private int? _index;
+    private bool _finished;
+    private AudioState _audio;
+    private string? _audioError;
+    private int _plays;
+    private bool _busy;
+    private string? _error;
+    private Guid? _pendingId;
+    private readonly CancellationTokenSource _gone = new();
+
+    private ListeningItemDto? Current => _set is null || _finished || _index is null ? null : _set.Items[_index.Value];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = null;
+        if (Id is { } id)
+        {
+            var result = await Api.GetAsync<ListeningDto>($"api/listening/{id}");
+            _set = result.Value;
+            _error = result.Ok ? null : result.Error;
+            if (_set is not null)
+            {
+                _finished = false;
+                await ShowAsync(_set.Items.FirstOrDefault(i => i.Reveal is null)?.Index);
+            }
+        }
+        else
+        {
+            _set = null;
+            _list = (await Api.GetAsync<List<ListeningSummaryDto>>("api/listening")).Value ?? [];
+        }
+    }
+
+    private static string Circled(int i) => i switch { 0 => "①", 1 => "②", 2 => "③", _ => "④" };
+
+    private static string Key(Guid id, int index) => $"listening:{id}:{index}";
+
+    private int? NextIndex(int from) => _set!.Items.Where(i => i.Index > from && i.Reveal is null).Select(i => (int?)i.Index).FirstOrDefault()
+        ?? _set.Items.Where(i => i.Reveal is null).Select(i => (int?)i.Index).FirstOrDefault();
+
+    private async Task ShowAsync(int? index)
+    {
+        _index = index;
+        _finished = index is null;
+        _plays = 0;
+        if (index is { } i)
+        {
+            await LoadAudioAsync(i);
+        }
+    }
+
+    /// <summary>Fetched ahead, so a tap plays at once (iOS only allows audio started directly by a tap).</summary>
+    private async Task LoadAudioAsync(int index)
+    {
+        var key = Key(_set!.Id, index);
+        _audioError = null;
+        if (await Audio.HasSpeechAsync(key))
+        {
+            _audio = AudioState.Ready;
+            return;
+        }
+
+        _audio = AudioState.Loading;
+        StateHasChanged();
+        var result = await Api.GetBytesAsync($"api/listening/{_set.Id}/items/{index}/audio");
+        if (_gone.IsCancellationRequested || _index != index)
+        {
+            return;
+        }
+
+        if (result.Value is { Length: > 0 } mp3)
+        {
+            await Audio.LoadSpeechAsync(key, mp3);
+            _audio = AudioState.Ready;
+        }
+        else
+        {
+            _audio = AudioState.Failed;
+            _audioError = result.Error;
+        }
+    }
+
+    private async Task PlayAsync(double rate)
+    {
+        var played = await Audio.PlaySpeechAsync(Key(_set!.Id, _index!.Value), rate);
+        if (played.Ok)
+        {
+            _plays++;
+        }
+        else
+        {
+            _error = "Audio ijro etilmadi. Yana bir bor bosing.";
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _error = null;
+        var id = _pendingId ??= Guid.NewGuid();
+        var result = await Api.SendJsonAsync<ListeningDto>(HttpMethod.Post, "api/listening", new CreateListeningRequest(id), SessionService.AiTimeout);
+        _busy = false;
+        if (result.Value is { } set)
+        {
+            _pendingId = null;
+            Nav.NavigateTo($"tinglash/{set.Id}");
+            return;
+        }
+
+        _pendingId = result.Status == 0 ? id : null; // a network error: the same id finds the set if it was made
+        _error = result.Error;
+    }
+
+    private async Task AnswerAsync(ListeningItemDto item, int choice)
+    {
+        _busy = true;
+        _error = null;
+        var result = await Api.SendJsonAsync<ListeningDto>(HttpMethod.Post, $"api/listening/{_set!.Id}/answers", new ListeningAnswerRequest(item.Index, choice));
+        _busy = false;
+        if (result.Value is { } set)
+        {
+            _set = set;
+            return;
+        }
+
+        _error = result.Error;
+    }
+
+    private async Task Next() => await ShowAsync(NextIndex(_index!.Value));
+
+    private async Task Open(int index)
+    {
+        _finished = false;
+        _index = index;
+        _plays = 0;
+        await LoadAudioAsync(index);
+    }
+
+    public void Dispose() => _gone.Cancel();
+}

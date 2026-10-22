@@ -1,0 +1,86 @@
+@implements IDisposable
+@inject SessionService Api
+@inject BrowserInterop Audio
+
+@* Listen to Korean text: normal and slower (spec AU01). The recording is loaded when the text appears, so a tap plays at once. *@
+<span class="speak" role="group" aria-label="Tinglash">
+    <button type="button" class="speak-btn" title="Tinglash" aria-label="@($"Tinglash: {Text}")" @onclick="() => PlayAsync(1.0)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
+    </button>
+    <button type="button" class="speak-btn slow" title="Sekinroq" aria-label="Sekinroq tinglash" @onclick="() => PlayAsync(0.7)">0.7×</button>
+    @if (_note is not null)
+    {
+        <span class="speak-note">@_note</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+
+    private string? _loadedFor;
+    private bool _serverFailed;
+    private string? _note;
+    private readonly CancellationTokenSource _gone = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedFor == Text)
+        {
+            return;
+        }
+
+        _loadedFor = Text;
+        _serverFailed = false;
+        _note = null;
+        await LoadAsync(Text);
+    }
+
+    private async Task LoadAsync(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || await Audio.HasSpeechAsync(text))
+        {
+            return;
+        }
+
+        var result = await Api.GetBytesAsync($"api/tts?text={Uri.EscapeDataString(text)}");
+        if (_gone.IsCancellationRequested || text != Text)
+        {
+            return;
+        }
+
+        if (result.Value is { Length: > 0 } mp3)
+        {
+            await Audio.LoadSpeechAsync(text, mp3);
+        }
+        else
+        {
+            _serverFailed = true;
+        }
+    }
+
+    private async Task PlayAsync(double rate)
+    {
+        _note = null;
+        if (!_serverFailed && await Audio.HasSpeechAsync(Text))
+        {
+            var played = await Audio.PlaySpeechAsync(Text, rate);
+            if (played.Ok)
+            {
+                return;
+            }
+        }
+
+        // Not loaded yet or the server has no voice: the phone's own Korean voice.
+        var device = await Audio.SpeakWithDeviceAsync(Text, rate);
+        if (!device.Ok)
+        {
+            _note = "Ovoz yuklanmoqda, birozdan keyin qayta bosing.";
+            if (!_serverFailed)
+            {
+                await LoadAsync(Text);
+            }
+        }
+    }
+
+    public void Dispose() => _gone.Cancel();
+}

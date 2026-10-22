@@ -1,0 +1,111 @@
+@page "/mashq"
+@using Lugat.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Mashqlar — Lug‘at</PageTitle>
+
+<header class="page-head">
+    <div>
+        <h1>Mashq</h1>
+        <span class="muted small-text">Har bir mashq alohida hisoblanadi</span>
+    </div>
+</header>
+
+<nav class="menu" aria-label="Mashqlar">
+    <a href="lugatlar#jadvallar">
+        <span class="no">01</span>
+        <span><span class="t">Jadvalni yodlash</span><span class="s">Jadvalni ko‘rib 10 daqiqa yodlash, keyin kartochka</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    @if (_today?.ActiveSession is { Current: not null } active)
+    {
+        <a href="mashq/kartochka">
+            <span class="no">02</span>
+            <span><span class="t">Tez kartochka</span><span class="s">Ikki yo‘nalish aralash · o‘zini baholash</span><span class="aside">Tugallanmagan: @active.Position / @active.Total — davom etish</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </a>
+    }
+    else
+    {
+        <a href="mashq" @onclick="StartCardsAsync" @onclick:preventDefault>
+            <span class="no">02</span>
+            <span><span class="t">Tez kartochka</span><span class="s">Ikki yo‘nalish aralash · o‘zini baholash · 20 daq</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </a>
+    }
+    <a href="mashq/qollanish">
+        <span class="no">03</span>
+        <span><span class="t">So‘z qo‘llanishi</span><span class="s">Qaysi so‘z to‘g‘ri? 데려오다 yoki 가져오다 · o‘zbekcha tuzoqlar</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    <a href="gap/zinapoya">
+        <span class="no">04</span>
+        <span><span class="t">Gap zinapoyasi</span><span class="s">To‘ldirish → yig‘ish → tarjima · qo‘shimcha va fe’l shakllari</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    <a href="tuzoqlar">
+        <span class="no">05</span>
+        <span><span class="t">Tuzoqlar daftari</span><span class="s">So‘zma-so‘z tarjima xatolari va to‘g‘risi</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    <a href="zaif-joylar">
+        <span class="no">06</span>
+        <span><span class="t">Zaif joylar</span><span class="s">Nimada ko‘p adashyapsiz · shu xatolardan zinapoya</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    <a href="gap">
+        <span class="no">07</span>
+        <span><span class="t">Gap tuzish</span><span class="s">So‘z bilan gap yozing — AI avval ishora beradi</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    <a href="mashq/yozish">
+        <span class="no">08</span>
+        <span><span class="t">Yozma javob</span><span class="s">Koreyscha yoki o‘zbekcha yozish · kartochka jadvaliga ta’sir qilmaydi</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+    <a href="xatolar">
+        <span class="no">09</span>
+        <span><span class="t">Xatolar daftari</span><span class="s">Xato qilingan so‘zlarni kartochkada takrorlash</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
+</nav>
+
+<p class="muted small-text" style="margin-top:16px">Og‘zaki tayyorlik <a href="sinov">Sinov</a> bo‘limida. Mashg‘ulot vaqtini <a href="">Bugun</a> sahifasida ham tanlash mumkin.</p>
+
+@if (_message is not null)
+{
+    <p class="notice" role="status">@_message</p>
+}
+
+@code {
+    private TodayDto? _today;
+    private string? _message;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = await Api.GetAsync<TodayDto>("api/today");
+        _today = today.Value;
+        _message = today.Ok ? null : today.Error;
+    }
+
+    private async Task StartCardsAsync()
+    {
+        if (_busy)
+        {
+            return; // a double tap must not start two sessions
+        }
+
+        _busy = true;
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(20, false));
+        _busy = false;
+        if (result.Value?.Session is not null)
+        {
+            Nav.NavigateTo("mashq/kartochka");
+            return;
+        }
+
+        _message = result.Value?.Message ?? result.Error;
+    }
+}

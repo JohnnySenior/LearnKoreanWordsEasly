@@ -1,0 +1,118 @@
+@using Lugat.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+@* One kind of test (D-39): words or oral readiness. Used by the separate pages under Sinov. *@
+@if (_options is null)
+{
+    <p class="muted" style="margin-top:16px">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<section class="card">
+    <span class="kicker">Lug‘at jadvallari</span>
+    @if (_options.Tables.Count == 0)
+    {
+        <p class="muted small-text">Hali so‘z yo‘q.</p>
+    }
+    else
+    {
+        <div class="chips" role="group" aria-label="Jadvallar">
+            @foreach (var t in _options.Tables)
+            {
+                var n = t.TableNumber;
+                <button class="chip @(_tables.Contains(n) ? "selected" : "")" aria-pressed="@_tables.Contains(n)" title="@($"{t.Words} ta so‘z")" @onclick="() => Toggle(n)">@n</button>
+            }
+        </div>
+        <p class="muted small-text">@(_tables.Count == 0 ? "Jadval tanlanmagan" : $"{_options.Tables.Where(t => _tables.Contains(t.TableNumber)).Sum(t => t.Words)} ta so‘z")</p>
+    }
+    <span class="kicker" style="margin-top:14px">Savollar soni</span>
+    <div class="seg" role="radiogroup" aria-label="Savollar soni">
+        @foreach (var (value, label) in CountOptions)
+        {
+            var v = value;
+            <button class="@(_count == v ? "selected" : "")" role="radio" aria-checked="@(_count == v)" @onclick="() => _count = v">@label</button>
+        }
+    </div>
+    <p class="muted small-text">@Explanation</p>
+
+    <button class="button primary block" disabled="@(_busy || !Ready)" @onclick="CreateAsync">
+        @(_busy ? (Mode == TestCategory.Oral ? "Tayyorlanmoqda…" : "Savollar tuzilmoqda…") : "Sinovni boshlash")
+    </button>
+    @if (_busy && Mode != TestCategory.Oral)
+    {
+        <p class="muted small-text" role="status">AI gapli savollarni yozmoqda, 20–60 soniya ketishi mumkin.</p>
+    }
+    @if (_error is not null)
+    {
+        <div class="notice" role="alert" style="margin-top:10px">@_error</div>
+    }
+</section>
+
+@code {
+    /// <summary>Vocabulary or Oral.</summary>
+    [Parameter, EditorRequired] public TestCategory Mode { get; set; }
+
+    private TestOptionsDto? _options;
+    private readonly HashSet<int> _tables = [];
+    private int _count;
+    private bool _busy;
+    private string? _error;
+    /// <summary>Kept only after a network error, so pressing again cannot make two tests (API01).</summary>
+    private Guid? _pendingId;
+
+    private (int Value, string Label)[] CountOptions => Mode == TestCategory.Oral
+        ? [(20, "Qisqa: 20"), (0, "Barcha so‘zlar")]
+        : [(10, "10"), (20, "20"), (30, "30")];
+
+    private bool Ready => _tables.Count > 0;
+
+    private string Explanation => Mode switch
+    {
+        TestCategory.Oral => "Og‘zaki tayyorlik: har so‘z bir marta so‘raladi. Yarmida o‘zbekcha ma’no chiqadi, siz koreyschasini aytasiz va Azure tekshiradi. Qolganida koreyscha so‘z chiqadi, ma’nosini ovoz chiqarib aytasiz va o‘zingiz tekshirasiz. Javoblar oxirida ko‘rsatiladi.",
+        _ => "Savollar aralash: ma’nosini topish, koreyschasini topish, gapdagi bo‘sh joyni to‘ldirish (tanlash va yozish). Javoblar sinov oxirida ko‘rsatiladi. Sinov kartochkalarning takrorlash jadvaliga ta’sir qilmaydi.",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _count = Mode == TestCategory.Oral ? 20 : 10;
+        var options = await Api.GetAsync<TestOptionsDto>("api/tests/options");
+        _options = options.Value;
+        _error = options.Ok ? null : options.Error;
+        if (_options?.Tables.FirstOrDefault() is { } first)
+        {
+            _tables.Add(first.TableNumber);
+        }
+    }
+
+    private void Toggle(int table)
+    {
+        _pendingId = null;
+        if (!_tables.Remove(table))
+        {
+            _tables.Add(table);
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _error = null;
+        var id = _pendingId ??= Guid.NewGuid();
+        var request = Mode switch
+        {
+            TestCategory.Oral => new CreateTestRequest(id, _tables.Order().ToList(), _count, Oral: true),
+            _ => new CreateTestRequest(id, _tables.Order().ToList(), _count),
+        };
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", request, SessionService.AiTimeout);
+        _busy = false;
+        if (result.Value is { } test)
+        {
+            Nav.NavigateTo($"sinov/{test.Id}");
+            return;
+        }
+
+        _pendingId = result.Status == 0 ? id : null;
+        _error = result.Error;
+    }
+}

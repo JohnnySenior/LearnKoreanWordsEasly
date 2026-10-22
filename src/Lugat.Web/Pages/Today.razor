@@ -1,0 +1,129 @@
+@page "/"
+@using Lugat.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Bugun — Lug‘at</PageTitle>
+
+@* Today shows only what to do now (D-42): today's practice. Tables live in Lug‘atlar, results in Sinov,
+   settings behind the avatar. The home page of units (spec §4.1) replaces this in stage 3. *@
+<header class="page-head">
+    <div>
+        <span class="kicker accent">@Format.DayMonth(DateTimeOffset.UtcNow)</span>
+        <h1>Bugun</h1>
+    </div>
+    <a class="avatar" href="sozlamalar" title="Profil va sozlamalar" aria-label="Profil va sozlamalar">@Initial</a>
+</header>
+
+@if (_signIn is null)
+{
+    <p class="muted" style="margin-top:16px">Kirilmoqda…</p>
+}
+else if (_signIn.Status != SessionStatus.SignedIn)
+{
+    <div class="notice" role="alert">@(_signIn.Message ?? "Kirish tasdiqlanmadi.")</div>
+}
+else if (_error is not null)
+{
+    <div class="notice" role="alert">@_error <button class="button small" @onclick="LoadAsync">Qayta urinish</button></div>
+}
+else if (_today is null)
+{
+    <p class="muted" style="margin-top:16px">Yuklanmoqda…</p>
+}
+else
+{
+    <section class="card" style="border-top:0">
+        <span class="kicker">Bugungi mashq</span>
+        <div class="today-stats">
+            <div><b>@_today.DueNow</b><span>takrorlash</span></div>
+            <div><b>@_today.NewAvailable</b><span>yangi so‘z</span></div>
+        </div>
+        @if (_today.ActiveSession is { Current: not null } active)
+        {
+            <a class="button primary block" href="mashq/kartochka">
+                <span>Davom etish</span><span class="aside">@active.Position / @active.Total</span>
+            </a>
+            <button class="button small" style="margin-top:8px" disabled="@_busy" @onclick="() => StartAsync(restart: true)">Yangidan boshlash</button>
+        }
+        else if (_today.DueNow == 0 && _today.NewAvailable == 0)
+        {
+            <p class="muted">Hozircha takrorlanadigan so‘z yo‘q.</p>
+            <p class="small-text"><a href="lugatlar">Lug‘atlar</a> bo‘limida jadvalni yodlang.</p>
+        }
+        else
+        {
+            <div class="seg" role="radiogroup" aria-label="Mashg‘ulot vaqti">
+                @foreach (var option in MinuteOptions)
+                {
+                    <button class="@(_minutes == option ? "selected" : "")" role="radio" aria-checked="@(_minutes == option)" @onclick="() => _minutes = option">
+                        @(option is null ? "Cheklovsiz" : $"{option} daq")
+                    </button>
+                }
+            </div>
+            <p class="muted small-text">≈ @(_minutes is { } m ? $"{m * 60 / _today.SecondsPerCard} karta sig‘adi" : "barcha kartalar")</p>
+            <button class="button primary block" disabled="@_busy" @onclick="() => StartAsync(restart: false)">
+                <span>Boshlash</span>
+                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+            </button>
+        }
+        @if (_startMessage is not null)
+        {
+            <p role="status" style="margin-top:8px">@_startMessage</p>
+        }
+    </section>
+
+    @if (_today.DueNow + _today.NewAvailable > 0)
+    {
+        <p class="muted small-text" style="margin:12px 0"><a href="lugatlar">Lug‘atlar</a>: jadvalni ko‘rib yodlash, keyin kartochkada tekshirish.</p>
+    }
+}
+
+@code {
+    private static readonly int?[] MinuteOptions = [10, 20, 30, null];
+
+    private string Initial => _signIn?.Me?.FirstName is { Length: > 0 } name ? name[..1].ToUpperInvariant() : "•";
+
+    private SessionState? _signIn;
+    private TodayDto? _today;
+    private int? _minutes = 20;
+    private string? _error;
+    private string? _startMessage;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _signIn = await Api.EnsureSignedInAsync();
+        if (_signIn.Status == SessionStatus.SignedIn)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        var today = await Api.GetAsync<TodayDto>("api/today");
+        _error = today.Ok ? null : today.Error;
+        _today = today.Value;
+    }
+
+    private async Task StartAsync(bool restart)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(_minutes, restart));
+        _busy = false;
+        if (!result.Ok)
+        {
+            _startMessage = result.Error;
+            return;
+        }
+
+        if (result.Value?.Session is null)
+        {
+            _startMessage = result.Value?.Message;
+            return;
+        }
+
+        Nav.NavigateTo("mashq/kartochka");
+    }
+}

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lugat.Infrastructure\Lugat.Infrastructure.csproj" />
+    <ProjectReference Include="..\Lugat.Web\Lugat.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lugat.Api.Tests" />
+  </ItemGroup>
+
+</Project>

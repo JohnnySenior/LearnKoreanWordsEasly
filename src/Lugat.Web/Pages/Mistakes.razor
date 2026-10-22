@@ -1,0 +1,128 @@
+@page "/xatolar"
+@using Lugat.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Xatolar daftari — Lug‘at</PageTitle>
+
+<a class="back" href="sinov">← Sinov</a>
+<header class="page-head">
+    <div>
+        <h1>Xatolar daftari</h1>
+        <span class="muted small-text">Oxirgi @(_data?.Days ?? 60) kunda xato qilingan so‘zlar: kartochka, sinov, og‘zaki, yozma, qo‘llanish va zinapoyadan</span>
+    </div>
+</header>
+<a class="button block" href="zaif-joylar">Zaif joylar: nimada ko‘p adashyapman?</a>
+
+@if (_data is null)
+{
+    <p class="muted" style="margin-top:16px">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<div class="seg" role="tablist" aria-label="Xatolar" style="margin-top:4px">
+    <button class="@(_tab == Tab.Words ? "selected" : "")" role="tab" aria-selected="@(_tab == Tab.Words)" @onclick="() => _tab = Tab.Words">So‘zlar (@_data.Words.Count)</button>
+    @* Listening is hidden in v1 (spec §3.1); its tab shows only when there are listening results. *@
+    @if (_data.Listening is { Count: > 0 } heard)
+    {
+        <button class="@(_tab == Tab.Listening ? "selected" : "")" role="tab" aria-selected="@(_tab == Tab.Listening)" @onclick="() => _tab = Tab.Listening">Tinglash (@heard.Count)</button>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert" style="margin-top:10px">@_error</div>
+}
+
+@if (_tab == Tab.Listening)
+{
+    var listening = _data.Listening ?? [];
+    @if (listening.Count == 0)
+    {
+        <p class="muted" style="margin-top:16px">Tinglashda xato yo‘q.</p>
+    }
+    else
+    {
+        <ul class="mistake-list">
+            @foreach (var m in listening)
+            {
+                <li>
+                    <a href="@($"tinglash/{m.SetId}")"><span lang="ko">@m.QuestionKo</span></a>
+                    <span class="small-text">To‘g‘ri javob: <span lang="ko">@m.RightOption</span></span>
+                    <span class="muted small-text">@(m.Index + 1)-savol · @Ago(m.At)</span>
+                </li>
+            }
+        </ul>
+        <p class="muted small-text">Savolni bosing: audioni qayta tinglab, matn va izohni ko‘ring.</p>
+    }
+}
+else
+{
+    var open = _data.Words.Where(w => !w.Improving).ToList();
+    @if (_data.Words.Count == 0)
+    {
+        <p class="muted" style="margin-top:16px">Hozircha xato qilingan so‘z yo‘q. Zo‘r!</p>
+    }
+    else
+    {
+        @if (open.Count > 0)
+        {
+            <button class="button primary block" style="margin-top:12px" disabled="@_busy" @onclick="() => DrillAsync(open)">
+                <span>Kartochkada takrorlash</span><span class="aside">@Math.Min(open.Count, MaxDrill) so‘z</span>
+            </button>
+            <p class="muted small-text">Hali tuzalmagan so‘zlar, eng ko‘p xato qilinganlari birinchi. Javoblar odatdagidek kartochka jadvaliga yoziladi.</p>
+        }
+        <ul class="mistake-list">
+            @foreach (var w in _data.Words)
+            {
+                <li class="@(w.Improving ? "improving" : "")">
+                    <div class="row-between">
+                        <span><strong class="ko" lang="ko">@w.Korean</strong> — @w.Uzbek</span>
+                        <span class="count" title="Xatolar soni">@w.Mistakes×</span>
+                    </div>
+                    <span class="muted small-text">@w.TableNumber-jadval · @string.Join(", ", w.Sources) · @Ago(w.LastMistakeAt)@(w.Improving ? " · ✓ oxirgisi to‘g‘ri" : "")</span>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private const int MaxDrill = 60;
+
+    private MistakesDto? _data;
+    private string? _error;
+    private enum Tab { Words, Listening }
+
+    private Tab _tab;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetAsync<MistakesDto>("api/mistakes");
+        _data = result.Value;
+        _error = result.Ok ? null : result.Error;
+    }
+
+    private async Task DrillAsync(List<MistakeWordDto> words)
+    {
+        _busy = true;
+        var ids = words.Take(MaxDrill).Select(w => w.WordSenseId).ToList();
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(null, true, WordSenseIds: ids));
+        _busy = false;
+        if (result.Value?.Session is not null)
+        {
+            Nav.NavigateTo("mashq/kartochka");
+            return;
+        }
+
+        _error = result.Value?.Message ?? result.Error;
+    }
+
+    private static string Ago(DateTimeOffset at)
+    {
+        var days = (DateOnly.FromDateTime(Format.ToKorea(DateTimeOffset.UtcNow).DateTime).DayNumber
+            - DateOnly.FromDateTime(Format.ToKorea(at).DateTime).DayNumber);
+        return days switch { <= 0 => "bugun", 1 => "kecha", _ => $"{days} kun oldin" };
+    }
+}

@@ -1,0 +1,279 @@
+@page "/gap/zinapoya"
+@page "/gap/zinapoya/{Id:guid}"
+@using Lugat.Contracts
+@using Lugat.Domain.Ladder
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Gap zinapoyasi — Lug‘at</PageTitle>
+
+@* Sentence building in three rungs (D-47): fill the particle or ending, put the words in order, translate a twin. *@
+@if (Id is null)
+{
+    <a class="back" href="mashq">← Mashq</a>
+    <header class="page-head">
+        <div>
+            <h1>Gap zinapoyasi</h1>
+            <span class="muted small-text">Boshlangan so‘zlaringizdan 6 ta gap, har biri uch bosqichda</span>
+        </div>
+    </header>
+
+    <ol class="ladder-steps">
+        <li><strong>To‘ldirish.</strong> Gapdagi qo‘shimcha yoki fe’l shaklini tanlaysiz: <span lang="ko">을/를, 에/에서, -아서/-고</span>.</li>
+        <li><strong>Yig‘ish.</strong> Gap bo‘laklarini to‘g‘ri tartibda bosasiz: fe’l oxirida.</li>
+        <li><strong>Tarjima.</strong> Xuddi shu tuzilishdagi yangi o‘zbekcha gapni koreyschaga o‘girasiz, AI tekshiradi va xatoni tushuntiradi.</li>
+    </ol>
+    <p class="muted small-text">So‘zma-so‘z tarjima xatolari (masalan, “biznes ochdim” → <span lang="ko">사업을 열었어요</span>) <a href="tuzoqlar">Tuzoqlar daftari</a>ga yoziladi. Bir zinapoya: gaplar uchun 1 ta, har tarjima uchun 1 ta AI so‘rovi.</p>
+
+    @if (_error is not null)
+    {
+        <div class="notice" role="alert">@_error</div>
+    }
+    <button class="button primary block" disabled="@_busy" @onclick="CreateAsync">@(_busy ? "AI gaplar tuzmoqda… (20–60 soniya)" : "Yangi zinapoya")</button>
+
+    @if (_list is { Count: > 0 })
+    {
+        <h2 class="kicker section-title">Oldingilari</h2>
+        <nav class="menu" aria-label="Oldingi zinapoyalar">
+            @foreach (var (l, i) in _list.Select((l, i) => (l, i)))
+            {
+                <a href="gap/zinapoya/@l.Id">
+                    <span class="no">@((i + 1).ToString("00"))</span>
+                    <span><span class="t" lang="ko">@l.Title</span><span class="s">@Format.DayTime(l.CreatedAt) · @(l.Finished ? $"{l.Correct}/{l.Total} to‘g‘ri" : $"{l.Done}/{l.Total} bajarildi — davom etish")</span></span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                </a>
+            }
+        </nav>
+    }
+    return;
+}
+
+<a class="back" href="gap/zinapoya">← Gap zinapoyasi</a>
+
+@if (_ladder is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="@_ladder.Total" aria-valuenow="@_ladder.Done">
+    <div style="width:@(_ladder.Total == 0 ? 0 : _ladder.Done * 100 / _ladder.Total)%"></div>
+</div>
+
+@if (_feedback is { } fb)
+{
+    <section class="card ladder-feedback @(fb.IsCorrect ? "ok" : "bad")" aria-live="polite">
+        <strong>@(fb.IsCorrect ? "To‘g‘ri" : "Xato")</strong>
+        @if (!fb.IsCorrect && _lastStep != LadderStep.Translate)
+        {
+            <p class="muted small-text">Sizning javobingiz: <span lang="ko">@_lastGiven</span></p>
+        }
+        <p class="sentence" lang="ko">@fb.Correct</p>
+        @if (fb.Corrected is not null && fb.Corrected != fb.Correct)
+        {
+            <p class="muted small-text">Sizning gapingiz tuzatilgani:</p>
+            <p class="sentence" lang="ko">@fb.Corrected</p>
+        }
+        @if (fb.ErrorTypes.Count > 0)
+        {
+            <div class="tags">
+                @foreach (var e in fb.ErrorTypes)
+                {
+                    <span class="pill">@e</span>
+                }
+            </div>
+        }
+        @if (fb.ExplanationUz is not null)
+        {
+            <p>@fb.ExplanationUz</p>
+        }
+        @if (fb.Trap is { } trap)
+        {
+            <p class="usage-trap small-text"><strong>Tuzoqlar daftariga yozildi.</strong> <span lang="ko">@trap.Wrong</span> → <span lang="ko">@trap.Right</span>. @trap.ExplanationUz</p>
+        }
+        <button class="button primary block" @onclick="Continue">@(_ladder.Current is null ? "Natijani ko‘rish" : "Keyingi")</button>
+    </section>
+    return;
+}
+
+@if (_ladder.Current is { } task)
+{
+    <section class="test-question" aria-live="polite">
+        <span class="kicker">@StepTitle(task.Step) · @task.Number/@task.OfStep</span>
+        @switch (task.Step)
+        {
+            case LadderStep.Fill:
+                <p class="muted">@task.Uzbek</p>
+                <p class="sentence big" lang="ko">@Blanked(task.SentenceWithGap!)</p>
+                <span class="pill">@task.FocusKind</span>
+                <div class="options">
+                    @foreach (var o in task.Options)
+                    {
+                        var option = o;
+                        <button class="button option" lang="ko" disabled="@_busy" @onclick="() => AnswerAsync(task, option)">@o</button>
+                    }
+                </div>
+                break;
+            case LadderStep.Order:
+                <p class="usage-uz">@task.Uzbek</p>
+                <div class="order-built" lang="ko" aria-label="Siz tuzgan gap">
+                    @if (_picked.Count == 0)
+                    {
+                        <span class="muted small-text">Bo‘laklarni tartib bilan bosing</span>
+                    }
+                    @foreach (var i in _picked.ToList())
+                    {
+                        var at = i;
+                        <button class="chip selected" @onclick="() => _picked.Remove(at)">@task.Chunks[at]</button>
+                    }
+                </div>
+                <div class="chips" lang="ko">
+                    @for (var i = 0; i < task.Chunks.Count; i++)
+                    {
+                        var at = i;
+                        @if (!_picked.Contains(at))
+                        {
+                            <button class="chip" @onclick="() => _picked.Add(at)">@task.Chunks[at]</button>
+                        }
+                    }
+                </div>
+                <button class="button primary block" disabled="@(_busy || _picked.Count != task.Chunks.Count)" @onclick="() => AnswerAsync(task, string.Join(' ', _picked.Select(p => task.Chunks[p])))">Tekshirish</button>
+                break;
+            default:
+                <p class="usage-uz">@task.Uzbek</p>
+                <label class="field">
+                    Koreyschasi
+                    <textarea class="input sentence" lang="ko" maxlength="300" rows="3" @bind="_typed" @bind:event="oninput" disabled="@_busy"></textarea>
+                </label>
+                <button class="button primary block" disabled="@(_busy || string.IsNullOrWhiteSpace(_typed))" @onclick="() => AnswerAsync(task, _typed)">@(_busy ? "AI tekshirmoqda…" : "Tekshirish")</button>
+                break;
+        }
+        @if (_error is not null)
+        {
+            <div class="notice" role="alert">@_error</div>
+        }
+    </section>
+    return;
+}
+
+<header class="page-head">
+    <div>
+        <h1>Natija</h1>
+        <span class="muted small-text">@_ladder.Title</span>
+    </div>
+</header>
+<ul class="ladder-scores">
+    @foreach (var s in _ladder.Scores)
+    {
+        <li><span>@StepTitle(s.Step)</span><strong>@s.Correct / @s.Total</strong></li>
+    }
+</ul>
+
+<h2 class="kicker section-title">Tarjimalar</h2>
+<ol class="mistakes">
+    @foreach (var r in _ladder.Results.Where(r => r.Step == LadderStep.Translate))
+    {
+        <li>
+            <p>@r.Uzbek</p>
+            <p class="sentence" lang="ko">@(r.IsCorrect ? "✓" : "✗") @r.Given</p>
+            @if (r.Corrected is not null && r.Corrected != r.Given)
+            {
+                <p class="sentence" lang="ko">→ @r.Corrected</p>
+            }
+            @if (r.ExplanationUz is not null)
+            {
+                <p class="muted small-text">@r.ExplanationUz</p>
+            }
+        </li>
+    }
+</ol>
+<a class="button primary block" href="gap/zinapoya">Yangi zinapoya</a>
+<a class="button block" href="tuzoqlar" style="margin-top:8px">Tuzoqlar daftari</a>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private List<LadderSummaryDto>? _list;
+    private LadderDto? _ladder;
+    private LadderFeedbackDto? _feedback;
+    private LadderDto? _next;
+    private LadderStep _lastStep;
+    private string _lastGiven = "";
+    private readonly List<int> _picked = [];
+    private string _typed = "";
+    private bool _busy;
+    private string? _error;
+    private Guid? _pendingId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = null;
+        _feedback = null;
+        if (Id is { } id)
+        {
+            var result = await Api.GetAsync<LadderDto>($"api/ladders/{id}");
+            _ladder = result.Value;
+            _error = result.Ok ? null : result.Error;
+        }
+        else
+        {
+            _list = (await Api.GetAsync<List<LadderSummaryDto>>("api/ladders")).Value ?? [];
+        }
+    }
+
+    private static string StepTitle(LadderStep step) => step switch
+    {
+        LadderStep.Fill => "1. To‘ldirish",
+        LadderStep.Order => "2. Yig‘ish",
+        _ => "3. Tarjima",
+    };
+
+    private static MarkupString Blanked(string sentence) =>
+        new(System.Net.WebUtility.HtmlEncode(sentence).Replace("___", "<span class=\"blank\">&nbsp;</span>"));
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _error = null;
+        var id = _pendingId ??= Guid.NewGuid();
+        var result = await Api.SendJsonAsync<LadderDto>(HttpMethod.Post, "api/ladders", new CreateLadderRequest(id), SessionService.AiTimeout);
+        _busy = false;
+        if (result.Value is { } ladder)
+        {
+            _pendingId = null;
+            Nav.NavigateTo($"gap/zinapoya/{ladder.Id}");
+            return;
+        }
+
+        _pendingId = result.Status == 0 ? id : null; // a network error: the same id finds the ladder if it was made
+        _error = result.Error;
+    }
+
+    private async Task AnswerAsync(LadderTaskDto task, string answer)
+    {
+        _busy = true;
+        _error = null;
+        var result = await Api.SendJsonAsync<LadderAnswerResultDto>(HttpMethod.Post, $"api/ladders/{_ladder!.Id}/answers",
+            new LadderAnswerRequest(task.Index, task.Step, answer), task.Step == LadderStep.Translate ? SessionService.AiTimeout : null);
+        _busy = false;
+        if (result.Value is { } r)
+        {
+            _feedback = r.Feedback;
+            _next = r.Ladder;
+            _lastStep = task.Step;
+            _lastGiven = answer;
+            _ladder = _ladder with { Done = r.Ladder.Done, Current = r.Ladder.Current };
+            return;
+        }
+
+        _error = result.Error; // the typed sentence stays, so it can be sent again
+    }
+
+    private void Continue()
+    {
+        _ladder = _next ?? _ladder;
+        _feedback = null;
+        _picked.Clear();
+        _typed = "";
+    }
+}

@@ -1,0 +1,52 @@
+name: CI
+
+# Every push is built and tested. Railway deploys only `main`, and only after this workflow
+# has passed on the commit ("Wait for CI"), see docs/HOSTING.md.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: lugat
+          POSTGRES_PASSWORD: lugat
+          POSTGRES_DB: lugat
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U lugat"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      LUGAT_TEST_POSTGRES: Host=localhost;Username=lugat;Password=lugat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: node --test tests/web/*.test.mjs
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet tool restore
+      - run: dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project src/Lugat.Infrastructure
+      - run: dotnet test --no-build -c Release
+
+  # Railway builds this Dockerfile; building it here first means a broken image never reaches "Wait for CI".
+  docker-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t lugat:ci .
+      - run: docker run --rm --entrypoint pg_dump lugat:ci --version

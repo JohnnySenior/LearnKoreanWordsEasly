@@ -1,0 +1,59 @@
+@using System.Globalization
+
+@* Score over time on a 0–100 scale (D-35, D-40): one ink series, recessive 0/50/100 grid, the last value labelled,
+   a tooltip on every point. The list next to the chart is its table view. *@
+@if (Points.Count >= 2)
+{
+    var last = Points[^1];
+    <figure class="score-chart" aria-label="@Label">
+        <svg viewBox="0 0 @W @H" role="img">
+            @foreach (var y in new[] { 0, 50, 100 })
+            {
+                <line class="grid" x1="@Pad" x2="@(W - Pad)" y1="@Y(y)" y2="@Y(y)" />
+                @SvgText("axis", "0", F(Yv(y) + 4), y.ToString(CultureInfo.InvariantCulture))
+            }
+            <polyline class="line" points="@Line()" />
+            @for (var i = 0; i < Points.Count; i++)
+            {
+                var p = Points[i];
+                <g class="pt">
+                    <title>@p.Tooltip</title>
+                    <circle class="hit" cx="@X(i)" cy="@Y(p.Percent)" r="14" />
+                    <circle class="dot" cx="@X(i)" cy="@Y(p.Percent)" r="4" />
+                </g>
+            }
+            @SvgText("label", X(Points.Count - 1), F(Yv(last.Percent) - 10), last.Percent.ToString(CultureInfo.InvariantCulture), "end")
+        </svg>
+        <figcaption class="chart-x">
+            <span>@Format.DayMonth(Points[0].At)</span>
+            <span>@Format.DayMonth(last.At)</span>
+        </figcaption>
+    </figure>
+}
+
+@code {
+    public sealed record ScorePoint(DateTimeOffset At, int Percent, string Tooltip);
+
+    /// <summary>Oldest first. Fewer than two points draw nothing.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<ScorePoint> Points { get; set; } = [];
+
+    [Parameter] public string Label { get; set; } = "Natijalar grafigi";
+
+    private const int W = 320;
+    private const int H = 150;
+    private const int Pad = 24;
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+
+    private string X(int i) => F(Pad + (Points.Count == 1 ? 0 : i * (W - 2.0 * Pad) / (Points.Count - 1)));
+
+    private static double Yv(int percent) => 10 + (100 - Math.Clamp(percent, 0, 100)) * (H - 20) / 100.0;
+
+    private static string Y(int percent) => F(Yv(percent));
+
+    private string Line() => string.Join(' ', Points.Select((p, i) => $"{X(i)},{Y(p.Percent)}"));
+
+    /// <summary>SVG &lt;text&gt; clashes with Razor's &lt;text&gt; tag, so it is written as markup (numbers only, no user text).</summary>
+    private static MarkupString SvgText(string cls, string x, string y, string value, string anchor = "start") =>
+        new($"<text class=\"{cls}\" x=\"{x}\" y=\"{y}\" text-anchor=\"{anchor}\">{System.Net.WebUtility.HtmlEncode(value)}</text>");
+}

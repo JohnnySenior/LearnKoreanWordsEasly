@@ -1,0 +1,281 @@
+@page "/sozlamalar"
+@using Lugat.Contracts
+@using Lugat.Domain.Ai
+@inject SessionService Api
+
+<PageTitle>Sozlamalar — Lug‘at</PageTitle>
+
+<a class="back" href="">← Bugun</a>
+<h1>Profil va sozlamalar</h1>
+<a class="button block" href="natijalar"><span>Natijalar</span><span class="aside">o‘rganilgan so‘zlar va xatolar →</span></a>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_prefs is null)
+{
+    <p class="muted">Yuklanmoqda…</p>
+}
+else
+{
+    <section class="card">
+        <h2>Eslatmalar</h2>
+        @if (!_prefs.RemindersAvailable)
+        {
+            <p class="muted">Eslatmalar hozircha serverda yoqilmagan.</p>
+        }
+        else
+        {
+            @if (_prefs.BotBlocked)
+            {
+                <div class="notice" role="alert">
+                    Bot sizga xabar yubora olmadi. Telegram'da botni oching va «Start» (/start) tugmasini bosing.
+                </div>
+            }
+
+            <label class="toggle">
+                <input type="checkbox" @bind="_enabled" /> Telegram orqali eslatib turish
+            </label>
+
+            <div class="field">
+                Dushanba–juma (Koreya vaqti)
+                <TimeSelect @bind-Value="_weekday" Disabled="@(!_enabled)" Label="Dushanba–juma" />
+            </div>
+            <p class="muted small-text">Dam olish kunlari eslatma yuborilmaydi. Mashq qilinadigan so‘z bo‘lmasa, xabar ham kelmaydi.</p>
+
+            <button class="button primary" disabled="@_busy" @onclick="SaveAsync">Saqlash</button>
+            <button class="button" disabled="@_busy" @onclick="TestAsync">Sinov xabari</button>
+            @if (_status is not null)
+            {
+                <p role="status">@_status</p>
+            }
+        }
+    </section>
+
+    <section class="card">
+        <h2>AI xizmati</h2>
+        @if (_ai is null)
+        {
+            <p class="muted">Yuklanmoqda…</p>
+        }
+        else
+        {
+            <p class="muted small-text">Gap tekshirish va izohlar shu xizmat orqali ishlaydi. Tanlangan xizmat javob bermasa, ikkinchisi avtomatik ishlatiladi.</p>
+            <div class="chips" role="radiogroup" aria-label="AI xizmati">
+                <button class="chip wide @(_ai.Chosen is null ? "selected" : "")" role="radio" aria-checked="@(_ai.Chosen is null)" disabled="@_busy" @onclick="() => ChooseAsync(null)">
+                    Standart (@Label(_ai.Default))
+                </button>
+                @foreach (var p in _ai.Providers)
+                {
+                    <button class="chip wide @(_ai.Chosen == p.Kind ? "selected" : "")" role="radio" aria-checked="@(_ai.Chosen == p.Kind)" disabled="@(_busy || !p.Configured)" @onclick="() => ChooseAsync(p.Kind)">
+                        @p.Label
+                    </button>
+                }
+            </div>
+            <ul class="plain-list">
+                @foreach (var p in _ai.Providers)
+                {
+                    <li>
+                        <strong>@p.Label</strong>:
+                        @if (p.Configured)
+                        {
+                            <span>ulangan <span class="muted">(@p.Model)</span></span>
+                            <button class="button small" disabled="@_busy" @onclick="() => PingAsync(p.Kind)">Ulanishni tekshirish</button>
+                        }
+                        else
+                        {
+                            <span class="muted">API kaliti qo‘shilmagan</span>
+                        }
+                    </li>
+                }
+            </ul>
+            @if (_ai.Effective is null)
+            {
+                <p class="notice">AI hali ulanmagan. Railway'da <code>Ai__Anthropic__ApiKey</code> yoki <code>Ai__OpenAi__ApiKey</code> o‘zgaruvchisini qo‘shing.</p>
+            }
+            @if (_budget is { } budget)
+            {
+                <p class="@(budget.Warning ? "notice" : "muted small-text")">Bu oy hisoblangan sarf: @budget.EstimatedUsd.ToString("0.00") USD / @budget.LimitUsd.ToString("0.00") USD.</p>
+                @if (budget.UnknownPriceCalls > 0)
+                {
+                    <p class="notice">@budget.UnknownPriceCalls ta so‘rov narxi noma’lum. Ko‘rsatilgan summa to‘liq hisob emas; provayder billingini tekshiring.</p>
+                }
+                <p class="muted small-text">Taxminiy hisob. Narxlar va hosting sarfi sozlanmasa, ular summaga kirmaydi.</p>
+            }
+            <p class="muted small-text">Oxirgi 24 soatda @_ai.CallsToday / @_ai.DailyLimit ta AI so‘rovi.</p>
+            @if (_aiStatus is not null)
+            {
+                <p role="status">@_aiStatus</p>
+            }
+        }
+    </section>
+
+    <section class="card">
+        <h2>Zaxira nusxa</h2>
+        @if (_backup is null)
+        {
+            <p class="muted">Yuklanmoqda…</p>
+        }
+        else if (!_backup.Enabled)
+        {
+            <p class="muted">Bu serverda zaxiralash yoqilmagan.</p>
+        }
+        else
+        {
+            <p class="muted small-text">Har kecha 04:00 da (Koreya vaqti) ma’lumotlar bazasi nusxalanadi va nusxa sinov bazasiga tiklab tekshiriladi. 7 kunlik va 4 haftalik nusxalar saqlanadi.</p>
+            @if (_backup.LastVerifiedAt is { } ok)
+            {
+                <p>Oxirgi tekshirilgan nusxa: <strong>@Format.DayTime(ok)</strong></p>
+            }
+            else
+            {
+                <p class="notice">Hali tekshirilgan nusxa yo‘q.</p>
+            }
+            @if (_backup.Last is { Verified: false, Error: { } error })
+            {
+                <p class="notice">Oxirgi urinish muvaffaqiyatsiz: @error</p>
+            }
+            <p class="muted small-text">Saqlangan nusxalar: @_backup.FilesKept ta@(_backup.Last is { SizeBytes: > 0 } l ? $", har biri ≈ {l.SizeBytes / 1024.0 / 1024.0:0.##} MB" : "")</p>
+            <button class="button small" disabled="@_busy" @onclick="BackupNowAsync">Hozir zaxiralash</button>
+
+            <h3 style="margin-top:16px">Railway'dan tashqarida: Telegram</h3>
+            @if (!_backup.TelegramReady)
+            {
+                <p class="muted small-text">Telegram'ga yuborish sozlanmagan: bot yoki qabul qiluvchi yo‘q (Railway'da <code>Backup__TelegramChatId</code>).</p>
+            }
+            else
+            {
+                <p class="muted small-text">Har hafta tekshirilgan nusxa bot orqali Telegram ID @_backup.TelegramRecipient ga fayl bo‘lib boradi. Faylni o‘chirmang: Railway'ga nimadir bo‘lsa, baza shu fayldan tiklanadi.</p>
+                @if (_backup.LastSentToTelegramAt is { } sent)
+                {
+                    <p>Oxirgi yuborilgan: <strong>@Format.DayTime(sent)</strong></p>
+                }
+                else
+                {
+                    <p class="notice">Hali Telegram'ga nusxa yuborilmagan.</p>
+                }
+                @if (_backup.TelegramError is { } sendError)
+                {
+                    <p class="notice">Oxirgi yuborish muvaffaqiyatsiz: @sendError</p>
+                }
+                <button class="button small" disabled="@_busy" @onclick="SendToTelegramAsync">Hozir Telegram'ga yuborish</button>
+            }
+            @if (_backupStatus is not null)
+            {
+                <p role="status">@_backupStatus</p>
+            }
+        }
+    </section>
+
+    <a class="button block" href="diagnostika" style="margin-top:12px"><span>Qurilmani tekshirish</span><span class="aside">ovoz va mikrofon →</span></a>
+
+    <section class="card">
+        <h2>Vaqt zonasi</h2>
+        <p>@_prefs.TimeZone <span class="muted">(eslatmalar shu vaqt bo‘yicha)</span></p>
+    </section>
+}
+
+@code {
+    private PreferencesDto? _prefs;
+    private bool _enabled;
+    private TimeOnly _weekday;
+    private bool _busy;
+    private string? _error;
+    private string? _status;
+    private AiStatusDto? _ai;
+    private AiBudgetDto? _budget;
+    private BackupStatusDto? _backup;
+    private string? _backupStatus;
+    private string? _aiStatus;
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetAsync<PreferencesDto>("api/me/preferences");
+        _error = result.Ok ? null : result.Error;
+        Apply(result.Value);
+        _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value;
+        _budget = (await Api.GetAsync<AiBudgetDto>("api/ai/budget")).Value;
+        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value;
+    }
+
+    private async Task SendToTelegramAsync()
+    {
+        _busy = true;
+        _backupStatus = "Yuborilmoqda…";
+        var result = await Api.SendJsonAsync<BackupSendResult>(HttpMethod.Post, "api/backups/send", null, SessionService.UploadTimeout);
+        _busy = false;
+        _backupStatus = result.Value?.Message ?? result.Error;
+        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
+    }
+
+    private async Task BackupNowAsync()
+    {
+        _busy = true;
+        _backupStatus = "Nusxa olinmoqda va tekshirilmoqda…";
+        var result = await Api.SendJsonAsync<BackupRunDto>(HttpMethod.Post, "api/backups/run", null, SessionService.UploadTimeout);
+        _busy = false;
+        _backupStatus = result.Value is { } r
+            ? r.Verified ? "Nusxa olindi va tiklab tekshirildi." : $"Nusxa olinmadi: {r.Error}"
+            : result.Error;
+        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
+    }
+
+    private string Label(AiProviderKind kind) => _ai?.Providers.FirstOrDefault(p => p.Kind == kind)?.Label ?? kind.ToString();
+
+    private async Task ChooseAsync(AiProviderKind? provider)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<AiStatusDto>(HttpMethod.Put, "api/ai/provider", new ChooseAiProviderRequest(provider));
+        _busy = false;
+        _ai = result.Value ?? _ai;
+        _aiStatus = result.Ok ? "Saqlandi." : result.Error;
+    }
+
+    private async Task PingAsync(AiProviderKind provider)
+    {
+        _busy = true;
+        _aiStatus = "Tekshirilmoqda…";
+        var result = await Api.SendJsonAsync<AiPingResult>(HttpMethod.Post, $"api/ai/ping/{provider}", null, SessionService.AiTimeout);
+        _busy = false;
+        _aiStatus = result.Value is { } r
+            ? r.Ok ? $"{Label(provider)}: {r.Message} ({r.LatencyMs} ms, {r.Model})" : $"{Label(provider)}: {r.Message}"
+            : result.Error;
+        _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value ?? _ai;
+    }
+
+    private void Apply(PreferencesDto? prefs)
+    {
+        if (prefs is null)
+        {
+            return;
+        }
+
+        _prefs = prefs;
+        _enabled = prefs.RemindersEnabled;
+        _weekday = prefs.WeekdayReminderTime;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<PreferencesDto>(HttpMethod.Patch, "api/me/preferences", new UpdatePreferencesRequest(_enabled, _weekday));
+        _busy = false;
+        _status = result.Ok ? "Saqlandi." : result.Error;
+        Apply(result.Value);
+    }
+
+    private async Task TestAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TestReminderResult>(HttpMethod.Post, "api/me/reminders/test");
+        _busy = false;
+        _status = result.Value?.Message ?? result.Error;
+        var prefs = await Api.GetAsync<PreferencesDto>("api/me/preferences");
+        if (prefs.Value is { } p)
+        {
+            _prefs = p;
+        }
+    }
+}
+
