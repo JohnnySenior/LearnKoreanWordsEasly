@@ -1,0 +1,180 @@
+@page "/zaif-joylar"
+@using Lugat.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Zaif joylar — TOPIK yordamchi</PageTitle>
+
+@* Weak points (D-54): what went wrong most in every exercise, and a ladder built from it. *@
+<a class="back" href="mashq">← Mashq</a>
+<header class="page-head">
+    <div>
+        <h1>Zaif joylar</h1>
+        <span class="muted small-text">Barcha mashqlardagi xatolaringizdan: nimada ko‘p adashayotganingiz va uni qanday mashq qilish</span>
+    </div>
+</header>
+
+<div class="seg" role="tablist" aria-label="Davr">
+    @foreach (var d in new[] { 7, 30 })
+    {
+        var days = d;
+        <button class="@(_days == days ? "selected" : "")" role="tab" aria-selected="@(_days == days)" @onclick="() => LoadAsync(days)">Oxirgi @days kun</button>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert" style="margin-top:10px">@_error</div>
+}
+
+@if (_data is null)
+{
+    <p class="muted" style="margin-top:16px">@(_error is null ? "Yuklanmoqda…" : "")</p>
+    return;
+}
+
+@if (Empty(_data))
+{
+    <p class="muted" style="margin-top:16px">Oxirgi @_data.Days kunda xato topilmadi. Zo‘r! Yangi mashq qilsangiz, xatolar shu yerda yig‘iladi.</p>
+    return;
+}
+
+<section class="card weak-cta">
+    <strong>Zaif joylar zinapoyasi</strong>
+    <p class="small-text">AI oxirgi 30 kundagi xatolaringizdan 6 ta gap tuzadi: bo‘shliqlar aynan adashgan qo‘shimcha va fe’l shakllaringizda, tarjimalar xato turlaringiz va tuzoqlaringiz bo‘yicha.</p>
+    <button class="button primary block" disabled="@_busy" @onclick="CreateLadderAsync">@(_busy ? "AI gaplar tuzmoqda… (20–60 soniya)" : "Zinapoyani boshlash")</button>
+</section>
+
+@if (_data.Grammar.Count > 0)
+{
+    <h2 class="kicker section-title">Grammatika</h2>
+    <nav class="menu compact">
+        @foreach (var g in _data.Grammar)
+        {
+            <a href="@($"grammatika/band/{g.GrammarItemId}")">
+                <span>
+                    <span class="t" lang="ko">@g.Form <small class="muted">· @g.Mistakes marta xato</small></span>
+                    <span class="s clamp">@g.MeaningUz</span>
+                    <span class="aside">@string.Join(", ", g.Sources)</span>
+                </span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </a>
+        }
+    </nav>
+}
+
+@if (_data.Forms.Count > 0)
+{
+    <h2 class="kicker section-title">Qo‘shimcha va fe’l shakllari</h2>
+    <ul class="mistake-list">
+        @foreach (var f in _data.Forms)
+        {
+            <li>
+                <div class="row-between">
+                    <span><strong class="ko" lang="ko">@f.Form</strong> <span class="muted small-text">@f.Kind</span></span>
+                    <span class="count" title="Xato / jami">@f.Mistakes / @f.Total</span>
+                </div>
+                <span class="small-text" lang="ko">@f.Example</span>
+                <span class="muted small-text"> — siz tanlagan: <span lang="ko">@f.Given</span></span>
+            </li>
+        }
+    </ul>
+}
+
+@if (_data.ErrorTypes.Count > 0)
+{
+    <h2 class="kicker section-title">O‘z gaplaringizdagi xatolar</h2>
+    <ul class="mistake-list">
+        @foreach (var e in _data.ErrorTypes)
+        {
+            <li>
+                <div class="row-between">
+                    <strong>@e.Label</strong>
+                    <span class="count" title="Necha marta">@e.Count×</span>
+                </div>
+                @if (e.ExampleQuote is not null || e.ExampleHintUz is not null)
+                {
+                    <span class="muted small-text">
+                        @if (e.ExampleQuote is not null)
+                        {
+                            <span lang="ko">@e.ExampleQuote</span>
+                            @(e.ExampleHintUz is null ? "" : " — ")
+                        }
+                        @e.ExampleHintUz
+                    </span>
+                }
+            </li>
+        }
+    </ul>
+    <p class="muted small-text">Gap tuzish, grammatika gaplari va zinapoya tarjimalaridan.</p>
+}
+
+@if (_data.Traps.Count > 0)
+{
+    <h2 class="kicker section-title">So‘zma-so‘z tuzoqlar</h2>
+    <ul class="mistake-list">
+        @foreach (var t in _data.Traps)
+        {
+            <li><span lang="ko">@t.Wrong</span> → <strong lang="ko">@t.Right</strong><br /><span class="muted small-text">@t.ExplanationUz</span></li>
+        }
+    </ul>
+    <a class="small-text" href="tuzoqlar">Tuzoqlar daftari →</a>
+}
+
+@if (_data.Words.Count > 0)
+{
+    <h2 class="kicker section-title">So‘zlar</h2>
+    <ul class="mistake-list">
+        @foreach (var w in _data.Words)
+        {
+            <li class="row-between"><span><strong class="ko" lang="ko">@w.Korean</strong> — @w.Uzbek</span><span class="count">@w.Mistakes×</span></li>
+        }
+    </ul>
+    <a class="button block" href="xatolar">Xatolar daftarida kartochkada takrorlash</a>
+}
+
+@if (_data.ListeningTotal > 0)
+{
+    <h2 class="kicker section-title">Tinglash</h2>
+    <p>@(_data.ListeningTotal - _data.ListeningWrong) / @_data.ListeningTotal to‘g‘ri @(_data.ListeningWrong > 0 ? $"· {_data.ListeningWrong} ta xato Xatolar daftarida" : "")</p>
+    <a class="button block" href="tinglash">Yangi tinglash mashqi</a>
+}
+
+@code {
+    private WeakPointsDto? _data;
+    private int _days = 7;
+    private bool _busy;
+    private string? _error;
+    private Guid? _pendingId;
+
+    protected override Task OnInitializedAsync() => LoadAsync(7);
+
+    private static bool Empty(WeakPointsDto d) =>
+        d.Grammar.Count + d.Forms.Count + d.ErrorTypes.Count + d.Traps.Count + d.Words.Count + d.ListeningWrong == 0;
+
+    private async Task LoadAsync(int days)
+    {
+        _days = days;
+        var result = await Api.GetAsync<WeakPointsDto>($"api/weak-points?days={days}");
+        _data = result.Value ?? _data;
+        _error = result.Ok ? null : result.Error;
+    }
+
+    private async Task CreateLadderAsync()
+    {
+        _busy = true;
+        _error = null;
+        var id = _pendingId ??= Guid.NewGuid();
+        var result = await Api.SendJsonAsync<LadderDto>(HttpMethod.Post, "api/ladders", new CreateLadderRequest(id, WeakPoints: true), SessionService.AiTimeout);
+        _busy = false;
+        if (result.Value is { } ladder)
+        {
+            _pendingId = null;
+            Nav.NavigateTo($"gap/zinapoya/{ladder.Id}");
+            return;
+        }
+
+        _pendingId = result.Status == 0 ? id : null; // a network error: the same id finds the ladder if it was made
+        _error = result.Error;
+    }
+}

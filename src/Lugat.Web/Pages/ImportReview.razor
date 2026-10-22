@@ -1,0 +1,318 @@
+@page "/lugatlar/import/{JobId:guid}"
+@using Lugat.Contracts
+@using Lugat.Domain.Imports
+@inject SessionService Api
+
+<PageTitle>Tekshirish — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="lugatlar">← Lug‘atlar</a>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error <button class="button small" @onclick="LoadAsync">Qayta urinish</button></div>
+}
+
+@if (_job is null)
+{
+    <h1>Tekshirish</h1>
+    <p class="muted">Yuklanmoqda…</p>
+    return;
+}
+
+<h1>@_job.FileName</h1>
+<p class="muted">
+    @Labels.Of(_job.Status) · @_job.TotalEntries ta so‘z · @_job.Approved tasdiqlangan · @_job.Excluded chiqarilgan
+</p>
+
+@if (_tables is { Count: > 0 })
+{
+    <section aria-label="Darslar">
+        <p class="muted small-text">@(_perLesson == 1 ? "Har dars — 1 jadval." : $"Har dars — {_perLesson} jadval ({_perLesson * 30} so‘z), ular birga tekshirib tasdiqlanadi.") Sonini Sozlamalar → Lug‘at rejasi’da o‘zgartirasiz.</p>
+        <div class="chips">
+            @foreach (var group in Lessons)
+            {
+                var first = group[0].TableNumber;
+                var groupFlagged = group.Sum(t => t.Flagged);
+                <button class="chip wide @(first == _table ? "selected" : "") @(group.All(t => t.NeedsReview == 0) ? "done" : "")"
+                        aria-pressed="@(first == _table)"
+                        @onclick="() => SelectTableAsync(first)">
+                    @RangeText(group)
+                    @if (groupFlagged > 0)
+                    {
+                        <span class="dot" aria-label="@($"{groupFlagged} ta belgilangan")"></span>
+                    }
+                </button>
+            }
+        </div>
+    </section>
+
+    @if (CurrentLesson is { } lesson)
+    {
+        var total = lesson.Sum(t => t.Total);
+        var needsReview = lesson.Sum(t => t.NeedsReview);
+        var flagged = lesson.Sum(t => t.Flagged);
+        <section class="card">
+            <div class="row-between">
+                <h2>@RangeText(lesson)-jadval@(lesson.Length > 1 ? "lar" : "")</h2>
+                <span class="muted">PDF @string.Join(", ", lesson.Select(t => t.PdfPage))-bet</span>
+            </div>
+            <p class="muted">
+                @total ta qator · @lesson.Sum(t => t.Approved) tasdiqlangan · @needsReview tekshirilmagan
+                @if (flagged > 0)
+                {
+                    <text> · <strong>@flagged ta qo‘lda ko‘rish kerak</strong></text>
+                }
+            </p>
+            @foreach (var t in lesson.Where(t => t.Total != 30))
+            {
+                <p class="muted">@t.TableNumber-jadvalda 30 emas, @t.Total ta so‘z bor. Kitobning o‘zida shunday bo‘lishi mumkin; shubha bo‘lsa, asl sahifa bilan solishtiring.</p>
+            }
+            @if (needsReview - flagged > 0)
+            {
+                <button class="button primary" disabled="@_busy" @onclick="ApproveLessonAsync">
+                    Belgilanmagan @(needsReview - flagged) ta so‘zni tasdiqlash
+                </button>
+            }
+            <label class="toggle">
+                <input type="checkbox" @bind="_flaggedOnly" @bind:after="LoadEntriesAsync" /> Faqat belgilanganlar
+            </label>
+        </section>
+    }
+
+    @if (_entries is not null)
+    {
+        int? shownTable = null;
+        @foreach (var e in _entries)
+        {
+            @if (e.TableNumber != shownTable && CurrentLesson is { Length: > 1 })
+            {
+                shownTable = e.TableNumber;
+                <h3>@e.TableNumber-jadval</h3>
+            }
+            <article class="card entry @(e.Status == EntryStatus.Excluded ? "excluded" : "")">
+                @if (_editing == e.Id)
+                {
+                    <label>Koreyscha <input class="input ko" @bind="_editKorean" lang="ko" /></label>
+                    <label>Izoh (ixtiyoriy) <input class="input" @bind="_editNote" /></label>
+                    <label>O‘zbekcha <textarea class="input" rows="3" @bind="_editUzbek"></textarea></label>
+                    <div>
+                        <button class="button primary" disabled="@_busy" @onclick="() => SaveAsync(e, EntryStatus.Approved)">Saqlash va tasdiqlash</button>
+                        <button class="button" disabled="@_busy" @onclick="() => SaveAsync(e, null)">Saqlash</button>
+                        <button class="button" @onclick="() => _editing = null">Bekor qilish</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="row-between">
+                        <div>
+                            <span class="ko big" lang="ko">@e.Korean</span>
+                            @if (e.KoreanNote is not null)
+                            {
+                                <span class="muted" lang="ko"> (@e.KoreanNote)</span>
+                            }
+                        </div>
+                        <span class="pill @(e.Status == EntryStatus.Approved ? "pill-ok" : "")">@Labels.Of(e.Status)</span>
+                    </div>
+                    <p>@e.Uzbek</p>
+                    @if (e.Warnings != EntryWarnings.None)
+                    {
+                        <ul class="warnings">
+                            @foreach (var w in Labels.Of(e.Warnings))
+                            {
+                                <li>@w</li>
+                            }
+                        </ul>
+                    }
+                    @if (e.Blocking || e.Uzbek != e.OriginalUzbek || e.Korean != e.OriginalKorean)
+                    {
+                        <details>
+                            <summary>Kitobdagi matn (@e.PdfPage-bet)</summary>
+                            <pre class="raw">@e.RawText</pre>
+                        </details>
+                    }
+                    <div>
+                        @if (e.Status != EntryStatus.Approved)
+                        {
+                            <button class="button small" disabled="@_busy" @onclick="() => SetStatusAsync(e, EntryStatus.Approved)">Tasdiqlash</button>
+                        }
+                        <button class="button small" @onclick="() => StartEdit(e)">Tahrirlash</button>
+                        @if (e.Status != EntryStatus.Excluded)
+                        {
+                            <button class="button small" disabled="@_busy" @onclick="() => SetStatusAsync(e, EntryStatus.Excluded)">Chiqarish</button>
+                        }
+                        else
+                        {
+                            <button class="button small" disabled="@_busy" @onclick="() => SetStatusAsync(e, EntryStatus.NeedsReview)">Qaytarish</button>
+                        }
+                    </div>
+                }
+            </article>
+        }
+    }
+}
+else if (_job.Status is ImportStatus.Uploaded or ImportStatus.Extracting)
+{
+    <p>So‘zlar ajratilmoqda. Sahifani birozdan keyin yangilang.</p>
+}
+else if (_job.Status == ImportStatus.Failed)
+{
+    <div class="notice">@_job.Error</div>
+}
+
+@code {
+    [Parameter] public Guid JobId { get; set; }
+
+    private ImportJobDto? _job;
+    private List<ImportTableDto>? _tables;
+    /// <summary>Tables shown together, as in one lesson (D-43).</summary>
+    private int _perLesson = 2;
+    private List<SourceEntryDto>? _entries;
+    private int _table = 1;
+    private bool _flaggedOnly;
+    private bool _busy;
+    private string? _error;
+
+    private Guid? _editing;
+    private string _editKorean = "";
+    private string _editNote = "";
+    private string _editUzbek = "";
+
+    /// <summary>Tables grouped two by two, as the teacher gives them per lesson (60 words).</summary>
+    private List<ImportTableDto[]> Lessons => _tables?.OrderBy(t => t.TableNumber).Chunk(_perLesson).ToList() ?? [];
+
+    private ImportTableDto[]? CurrentLesson => Lessons.FirstOrDefault(l => l.Any(t => t.TableNumber == _table));
+
+    private static string RangeText(ImportTableDto[] lesson) =>
+        lesson.Length == 1 ? $"{lesson[0].TableNumber}" : $"{lesson[0].TableNumber}–{lesson[^1].TableNumber}";
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var job = await Api.GetAsync<ImportJobDto>($"api/imports/{JobId}");
+        if (!job.Ok)
+        {
+            _error = job.Error;
+            return;
+        }
+
+        _job = job.Value;
+        _perLesson = Math.Max(1, (await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value?.TablesPerLesson ?? _perLesson);
+        var tables = await Api.GetAsync<List<ImportTableDto>>($"api/imports/{JobId}/tables");
+        _tables = tables.Value;
+        _error = tables.Ok ? null : tables.Error;
+
+        if (_tables is { Count: > 0 } && _entries is null)
+        {
+            // Start at the first table that still has undecided rows.
+            var start = _tables.FirstOrDefault(t => t.NeedsReview > 0)?.TableNumber ?? _tables[0].TableNumber;
+            _table = Lessons.First(l => l.Any(t => t.TableNumber == start))[0].TableNumber;
+        }
+
+        await LoadEntriesAsync();
+    }
+
+    private async Task LoadEntriesAsync()
+    {
+        if (_tables is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var entries = new List<SourceEntryDto>();
+        foreach (var t in CurrentLesson ?? [])
+        {
+            var result = await Api.GetAsync<List<SourceEntryDto>>($"api/imports/{JobId}/entries?table={t.TableNumber}&flagged={_flaggedOnly}");
+            if (!result.Ok)
+            {
+                _error = result.Error;
+                return;
+            }
+
+            entries.AddRange(result.Value ?? []);
+        }
+
+        _entries = entries;
+    }
+
+    private async Task RefreshSummaryAsync()
+    {
+        var job = await Api.GetAsync<ImportJobDto>($"api/imports/{JobId}");
+        var tables = await Api.GetAsync<List<ImportTableDto>>($"api/imports/{JobId}/tables");
+        _job = job.Value ?? _job;
+        _tables = tables.Value ?? _tables;
+    }
+
+    private async Task SelectTableAsync(int table)
+    {
+        _table = table;
+        _editing = null;
+        await LoadEntriesAsync();
+    }
+
+    private async Task ApproveLessonAsync()
+    {
+        _busy = true;
+        _error = null;
+        foreach (var t in CurrentLesson ?? [])
+        {
+            if (t.NeedsReview - t.Flagged <= 0)
+            {
+                continue;
+            }
+
+            var result = await Api.SendJsonAsync<ApproveTableResult>(HttpMethod.Post, $"api/imports/{JobId}/tables/{t.TableNumber}/approve");
+            if (!result.Ok)
+            {
+                _error = result.Error;
+                break;
+            }
+        }
+
+        await RefreshSummaryAsync();
+        await LoadEntriesAsync();
+        _busy = false;
+    }
+
+    private Task SetStatusAsync(SourceEntryDto e, EntryStatus status) =>
+        PatchAsync(e, new UpdateEntryRequest(null, null, null, status, e.Version));
+
+    private void StartEdit(SourceEntryDto e)
+    {
+        _editing = e.Id;
+        _editKorean = e.Korean;
+        _editNote = e.KoreanNote ?? "";
+        _editUzbek = e.Uzbek;
+    }
+
+    private async Task SaveAsync(SourceEntryDto e, EntryStatus? status)
+    {
+        if (await PatchAsync(e, new UpdateEntryRequest(_editKorean, _editNote, _editUzbek, status, e.Version)))
+        {
+            _editing = null;
+        }
+    }
+
+    private async Task<bool> PatchAsync(SourceEntryDto e, UpdateEntryRequest body)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<SourceEntryDto>(HttpMethod.Patch, $"api/entries/{e.Id}", body);
+        _busy = false;
+        if (!result.Ok)
+        {
+            _error = result.Error;
+            if (result.Status == 409)
+            {
+                await LoadEntriesAsync();
+            }
+
+            return false;
+        }
+
+        _error = null;
+        var index = _entries!.FindIndex(x => x.Id == e.Id);
+        _entries[index] = result.Value!;
+        await RefreshSummaryAsync();
+        return true;
+    }
+}

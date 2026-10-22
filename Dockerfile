@@ -1,9 +1,9 @@
 # Single deployable: ASP.NET Core API that also serves the Blazor WebAssembly client.
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY global.json Directory.Build.props Directory.Packages.props KoreanAiTeacher.slnx ./
+COPY global.json Directory.Build.props Directory.Packages.props Lugat.slnx ./
 COPY src/ src/
-RUN dotnet publish src/KoreanAiTeacher.Api/KoreanAiTeacher.Api.csproj -c Release -o /app
+RUN dotnet publish src/Lugat.Api/Lugat.Api.csproj -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 # pg_dump/pg_restore for the nightly backup (D-22). The client must be at least the server's major version
@@ -23,4 +23,4 @@ COPY --from=build /app .
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 USER $APP_UID
-ENTRYPOINT ["dotnet", "KoreanAiTeacher.Api.dll"]
+ENTRYPOINT ["dotnet", "Lugat.Api.dll"]

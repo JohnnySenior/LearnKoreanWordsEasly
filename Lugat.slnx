@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lugat.Api/Lugat.Api.csproj" />
+    <Project Path="src/Lugat.Application/Lugat.Application.csproj" />
+    <Project Path="src/Lugat.Contracts/Lugat.Contracts.csproj" />
+    <Project Path="src/Lugat.Domain/Lugat.Domain.csproj" />
+    <Project Path="src/Lugat.Infrastructure/Lugat.Infrastructure.csproj" />
+    <Project Path="src/Lugat.Web/Lugat.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lugat.Api.Tests/Lugat.Api.Tests.csproj" />
+    <Project Path="tests/Lugat.Application.Tests/Lugat.Application.Tests.csproj" />
+    <Project Path="tests/Lugat.Domain.Tests/Lugat.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

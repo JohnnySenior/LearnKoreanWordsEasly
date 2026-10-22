@@ -1,0 +1,90 @@
+@page "/natijalar"
+@using Lugat.Contracts
+@inject SessionService Api
+
+<PageTitle>Natijalar — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="sinov">← Sinov</a>
+<h1>Natijalar</h1>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+else if (_p is null)
+{
+    <p class="muted">Yuklanmoqda…</p>
+}
+else if (_p.Words == 0)
+{
+    <p class="muted">Hali tasdiqlangan so‘z yo‘q. <a href="lugatlar">Lug‘atlar</a> bo‘limidan boshlang.</p>
+}
+else
+{
+    <p class="big-number">@_p.Learned <small>/ @_p.Words o‘rganildi</small></p>
+    <section class="card">
+        <dl class="facts stats">
+            <dt>So‘zlar</dt><dd>@_p.Words</dd>
+            <dt>Ko‘rilgan</dt><dd>@_p.Seen</dd>
+            <dt>Mustaqil eslangan: koreyscha → o‘zbekcha</dt><dd>@_p.RecalledKoreanToUzbek</dd>
+            <dt>Mustaqil eslangan: o‘zbekcha → koreyscha</dt><dd>@_p.RecalledUzbekToKorean</dd>
+            <dt>O‘rganilgan</dt><dd>@_p.Learned</dd>
+            <dt>Hozir takrorlash kerak</dt><dd>@_p.DueNow kartochka</dd>
+            <dt>Oxirgi 7 kunda</dt><dd>@_p.ReviewsLast7Days ta javob</dd>
+        </dl>
+        <details>
+            <summary>Bu raqamlar qanday hisoblanadi?</summary>
+            <ul class="small-text">
+                <li><strong>Ko‘rilgan</strong>: kamida bir marta mashqda chiqqan so‘z.</li>
+                <li><strong>Mustaqil eslangan</strong>: shu yo‘nalishda ishorasiz, muddati kelganda to‘g‘ri eslangan kartochka. Ikki yo‘nalish alohida sanaladi.</li>
+                <li><strong>O‘rganilgan</strong>: ikkala yo‘nalishda ham kamida 3 xil kunda mustaqil eslangan, keyingi takrorlash kamida 7 kundan keyin va oxirgi 7 kunda unutilmagan so‘z.</li>
+                <li>Muddati kelmasdan qilingan qo‘shimcha takrorlash "o‘rganildi"ni tezlashtirmaydi.</li>
+            </ul>
+        </details>
+    </section>
+
+    @if (_w is { } ws && ws.TypingKorean.Attempts + ws.TypingUzbek.Attempts > 0)
+    {
+        <section class="card">
+            <h2>Yozma mashq</h2>
+            <p class="muted small-text">Kartochka natijalaridan alohida hisoblanadi.</p>
+            <dl class="facts stats">
+                <dt>Koreyscha yozish: to‘g‘ri</dt><dd>@ws.TypingKorean.Correct / @ws.TypingKorean.Attempts</dd>
+                <dt>Koreyscha yozish: imlo xatosi</dt><dd>@ws.TypingKorean.Spelling</dd>
+                <dt>O‘zbekcha yozish: to‘g‘ri</dt><dd>@ws.TypingUzbek.Correct / @ws.TypingUzbek.Attempts</dd>
+                <dt>O‘zbekcha yozish: ma’nosi to‘g‘ri, boshqa so‘z</dt><dd>@ws.TypingUzbek.SameMeaning</dd>
+                <dt>Oxirgi 7 kunda</dt><dd>@ws.Last7Days ta javob</dd>
+            </dl>
+        </section>
+    }
+
+    @if (_p.Hardest.Count > 0)
+    {
+        <section class="card">
+            <h2>Ko‘proq unutilgan so‘zlar</h2>
+            <ul class="plain">
+                @foreach (var w in _p.Hardest)
+                {
+                    <li class="row-between hard-word">
+                        <span><span class="ko" lang="ko">@w.Korean</span> — @w.Uzbek</span>
+                        <span class="muted small-text">K→O‘ @w.ForgotKoreanToUzbek · O‘→K @w.ForgotUzbekToKorean</span>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+}
+
+@code {
+    private ProgressDto? _p;
+    private WritingStatsDto? _w;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetAsync<ProgressDto>("api/progress");
+        _error = result.Ok ? null : result.Error;
+        _p = result.Value;
+        _w = (await Api.GetAsync<WritingStatsDto>("api/writing/stats")).Value;
+    }
+}

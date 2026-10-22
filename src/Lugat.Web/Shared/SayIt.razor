@@ -1,0 +1,200 @@
+@implements IAsyncDisposable
+@using Lugat.Contracts
+@inject SessionService Api
+@inject TelegramInterop Audio
+
+@* Speaking practice (spec AU02–AU04, D-32). With Reference: say it and get Azure's pronunciation scores.
+   Without: say a sentence and get the transcript (OnTranscript), which the learner can correct before checking. *@
+<div class="sayit @(Compact ? "compact" : "")">
+    @if (_state == State.Recording)
+    {
+        <button type="button" class="speak-btn rec" @onclick="StopAsync" aria-label="To‘xtatish">
+            <span class="rec-dot" aria-hidden="true"></span> To‘xtatish
+        </button>
+        <span class="speak-note">Gapiring… (@MaxSeconds soniyagacha)</span>
+    }
+    else
+    {
+        <button type="button" class="speak-btn mic" disabled="@(_state == State.Sending)" @onclick="StartAsync"
+                title="@(Reference is null ? "Aytib yozish" : "Aytib ko‘ring")" aria-label="@(Reference is null ? "Aytib yozish" : $"Aytib ko‘ring: {Reference}")">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><path d="M12 18v3" /></svg>
+            @if (!Compact)
+            {
+                <span>@(Reference is null ? "Aytib yozish" : "Aytib ko‘ring")</span>
+            }
+        </button>
+        @if (_state == State.Sending)
+        {
+            <span class="speak-note">Tekshirilmoqda…</span>
+        }
+    }
+
+    @if (_error is not null)
+    {
+        <p class="speak-note warn">@_error</p>
+    }
+
+    @if (_result is { Recognized: true } r && Reference is not null)
+    {
+        <div class="pron" aria-live="polite">
+            <div class="pron-head">
+                <span class="pron-score">@Math.Round(r.PronScore ?? r.Accuracy ?? 0)</span>
+                <span>
+                    <strong>@Verdict(r.PronScore ?? r.Accuracy ?? 0)</strong><br />
+                    <span class="muted small-text">Aniqlik @Fmt(r.Accuracy) · Ravonlik @Fmt(r.Fluency) · To‘liqlik @Fmt(r.Completeness)</span>
+                </span>
+            </div>
+            @if (r.Words.Count > 0)
+            {
+                <div class="pron-words" lang="ko">
+                    @foreach (var w in r.Words)
+                    {
+                        <span class="pron-word @WordClass(w)" title="@WordTitle(w)">@w.Word<small>@WordNote(w)</small></span>
+                    }
+                </div>
+            }
+            <p class="muted small-text">Eshitildi: <span lang="ko">@r.RecognizedText</span></p>
+            <button type="button" class="button small" @onclick="PlayMineAsync">▶ Yozuvimni eshitish</button>
+            <span class="muted small-text">Baho Azure Speech’dan. Qisqa so‘zda baho kamroq ishonchli.</span>
+        </div>
+    }
+    else if (_result is { Recognized: false } nr)
+    {
+        <p class="speak-note warn">@nr.Message</p>
+    }
+</div>
+
+@code {
+    private enum State { Idle, Recording, Sending }
+
+    /// <summary>The Korean text to say; null for free speech (transcript only).</summary>
+    [Parameter] public string? Reference { get; set; }
+
+    [Parameter] public EventCallback<string> OnTranscript { get; set; }
+
+    /// <summary>Only the microphone icon (next to the listen buttons).</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public int MaxSeconds { get; set; } = 10;
+
+    private State _state;
+    private SpeakingResultDto? _result;
+    private string? _error;
+    private string? _for;
+    private CancellationTokenSource? _watch;
+
+    protected override void OnParametersSet()
+    {
+        if (_for != Reference)
+        {
+            _for = Reference;
+            _result = null;
+            _error = null;
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        _error = null;
+        _result = null;
+        var started = await Audio.StartSpeakingAsync(MaxSeconds * 1000);
+        if (!started.Ok)
+        {
+            _error = started.Error + " Yozma mashq qilishingiz mumkin.";
+            return;
+        }
+
+        _state = State.Recording;
+        _watch = new CancellationTokenSource();
+        _ = WatchTimeoutAsync(_watch.Token);
+    }
+
+    private async Task WatchTimeoutAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(400, ct);
+                if (await Audio.IsSpeakingTimedOutAsync())
+                {
+                    await InvokeAsync(StopAsync);
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task StopAsync()
+    {
+        if (_state != State.Recording)
+        {
+            return;
+        }
+
+        _watch?.Cancel();
+        _state = State.Sending;
+        StateHasChanged();
+        var rec = await Audio.StopSpeakingAsync();
+        if (!rec.Ok || rec.WavBytes is not { } wav)
+        {
+            _state = State.Idle;
+            _error = rec.Error ?? "Yozuv bo‘lmadi.";
+            return;
+        }
+
+        var result = await Api.PostSpeechAsync<SpeakingResultDto>("api/speech/assess", wav, Reference);
+        _state = State.Idle;
+        if (result.Value is not { } value)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        _result = value;
+        if (Reference is null && value.Recognized)
+        {
+            await OnTranscript.InvokeAsync(value.RecognizedText);
+        }
+    }
+
+    private async Task PlayMineAsync() => await Audio.PlayLastRecordingAsync();
+
+    private static string Fmt(double? v) => v is { } x ? Math.Round(x).ToString() : "—";
+
+    private static string Verdict(double score) => score switch
+    {
+        >= 85 => "Zo‘r talaffuz",
+        >= 70 => "Yaxshi, ozgina ishlang",
+        >= 50 => "Yana mashq qiling",
+        _ => "Qayta tinglab, sekin ayting",
+    };
+
+    private static string WordClass(PronunciationWordDto w) => w.ErrorType switch
+    {
+        "Omission" => "bad",
+        "Insertion" => "extra",
+        _ => w.Accuracy switch { >= 80 => "good", >= 60 => "mid", _ => "bad" },
+    };
+
+    private static string WordNote(PronunciationWordDto w) => w.ErrorType switch
+    {
+        "Omission" => " aytilmadi",
+        "Insertion" => " ortiqcha",
+        _ => w.Accuracy is { } a ? $" {Math.Round(a)}" : "",
+    };
+
+    private static string WordTitle(PronunciationWordDto w) => w.ErrorType == "Mispronunciation" ? "Noto‘g‘ri talaffuz" : "";
+
+    public async ValueTask DisposeAsync()
+    {
+        _watch?.Cancel();
+        if (_state == State.Recording)
+        {
+            await Audio.StopSpeakingAsync(discard: true);
+        }
+    }
+}

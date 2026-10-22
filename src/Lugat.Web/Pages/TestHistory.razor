@@ -1,0 +1,139 @@
+@page "/sinov/oldingi"
+@using Lugat.Contracts
+@using Lugat.Domain.Testing
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Oldingi sinovlar — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="sinov">← Sinov</a>
+<header class="page-head">
+    <div>
+        <h1>Oldingi sinovlar</h1>
+        @if (_all is not null)
+        {
+            <span class="muted small-text">@_all.Count ta sinov · @_all.Count(r => r.Status == TestRunStatus.InProgress) tasi tugallanmagan</span>
+        }
+    </div>
+</header>
+
+@if (_all is null)
+{
+    <p class="muted" style="margin-top:16px">@(_error ?? "Yuklanmoqda…")</p>
+}
+else
+{
+    <div class="chips filter-row" role="group" aria-label="Sinov turi">
+        @foreach (var (value, label) in Filters)
+        {
+            var v = value;
+            var count = _all.Count(r => Matches(r, v));
+            @if (v is null || count > 0)
+            {
+                <button class="chip wide @(_filter == v ? "selected" : "")" aria-pressed="@(_filter == v)" @onclick="() => Filter(v)">@label (@count)</button>
+            }
+        }
+    </div>
+
+    @if (_filter is { } only)
+    {
+        @if (Points(only) is { Count: >= 2 } points)
+        {
+            <section class="card" style="border-top:0">
+                <span class="kicker">@Label(only) · foizda</span>
+                <ScoreChart Points="points" Label="@($"{Label(only)} natijalari grafigi")" />
+            </section>
+        }
+    }
+    else if (Filters.Select(f => f.Value).OfType<TestCategory>().Where(c => Points(c).Count >= 2).ToList() is { Count: > 0 } charted)
+    {
+        @* Small multiples: one single-series chart per kind, so no colours are needed to tell them apart. *@
+        @foreach (var c in charted)
+        {
+            <section class="card" style="border-top:0">
+                <span class="kicker">@Label(c) · foizda</span>
+                <ScoreChart Points="Points(c)" Label="@($"{Label(c)} natijalari grafigi")" />
+            </section>
+        }
+    }
+
+    @if (Shown().ToList() is { Count: > 0 } shown)
+    {
+        @foreach (var day in shown.GroupBy(r => Format.DayMonth(r.CreatedAt)))
+        {
+            <h2 class="kicker section-title">@day.Key</h2>
+            <nav class="menu compact">
+                @foreach (var r in day)
+                {
+                    <a href="@($"sinov/{r.Id}")">
+                        <span>
+                            <span class="t">@(r.Title.Length > 0 ? r.Title : "Sinov")</span>
+                            <span class="s">@Label(r.Category) · @r.Total ta savol</span>
+                            <span class="aside @(r.Status == TestRunStatus.Finished ? "done" : "")">
+                                @(r.Score is { } score ? $"Natija: {score} / {r.Total}" : $"Davom etish: {r.Answered} / {r.Total}")
+                            </span>
+                        </span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                    </a>
+                }
+            </nav>
+        }
+    }
+    else
+    {
+        <p class="muted" style="margin-top:16px">Bu turdagi sinov hali yo‘q.</p>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "tur")] public string? Tur { get; set; }
+
+    private static readonly (TestCategory? Value, string Label)[] Filters =
+    [
+        (null, "Hammasi"),
+        (TestCategory.Vocabulary, "Lug‘at"),
+        (TestCategory.Grammar, "Grammatika"),
+        (TestCategory.Oral, "Og‘zaki"),
+        (TestCategory.Book, "Kitob"),
+        (TestCategory.Mixed, "Aralash"),
+    ];
+
+    private List<TestSummaryDto>? _all;
+    private TestCategory? _filter;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _filter = Enum.TryParse<TestCategory>(Tur, out var t) ? t : null;
+        var result = await Api.GetAsync<List<TestSummaryDto>>("api/tests");
+        _all = result.Value;
+        _error = result.Ok ? null : result.Error;
+    }
+
+    private static bool Matches(TestSummaryDto r, TestCategory? filter) => filter is null || r.Category == filter;
+
+    /// <summary>Finished tests of one kind, oldest first, as a percentage of the questions that count (D-40).</summary>
+    private List<ScoreChart.ScorePoint> Points(TestCategory category) => _all!
+        .Where(r => r.Category == category && r.Score is not null && r.Counted > 0)
+        .OrderBy(r => r.CreatedAt)
+        .Select(r => new ScoreChart.ScorePoint(r.CreatedAt, r.Score!.Value * 100 / r.Counted,
+            $"{Format.DayMonth(r.CreatedAt)} · {r.Title}: {r.Score} / {r.Counted}"))
+        .ToList();
+
+    private IEnumerable<TestSummaryDto> Shown() => _all!.Where(r => Matches(r, _filter));
+
+    private void Filter(TestCategory? value)
+    {
+        _filter = value;
+        Nav.NavigateTo(value is null ? "sinov/oldingi" : $"sinov/oldingi?tur={value}", replace: true);
+    }
+
+    public static string Label(TestCategory c) => c switch
+    {
+        TestCategory.Grammar => "Grammatika",
+        TestCategory.Oral => "Og‘zaki",
+        TestCategory.Book => "Kitob testi",
+        TestCategory.Mixed => "Lug‘at va grammatika",
+        _ => "Lug‘at",
+    };
+}

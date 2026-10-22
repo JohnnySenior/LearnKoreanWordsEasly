@@ -1,0 +1,72 @@
+@page "/tuzoqlar"
+@using Lugat.Contracts
+@inject SessionService Api
+
+<PageTitle>Tuzoqlar daftari — TOPIK yordamchi</PageTitle>
+
+@* Word-for-word mistakes found in ladder translations (D-47), kept until the learner marks them learned. *@
+<a class="back" href="mashq">← Mashq</a>
+<header class="page-head">
+    <div>
+        <h1>Tuzoqlar daftari</h1>
+        <span class="muted small-text">O‘zbekchadan so‘zma-so‘z o‘girilgan, koreyschada boshqacha aytiladigan so‘zlar</span>
+    </div>
+</header>
+
+@if (_traps is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_traps.Count == 0)
+{
+    <p class="muted">Hozircha yozuv yo‘q. <a href="gap/zinapoya">Gap zinapoyasi</a>da tarjima qilganingizda AI so‘zma-so‘z xatolarni shu yerga yozadi.</p>
+    return;
+}
+
+<ul class="mistake-list">
+    @foreach (var t in _traps)
+    {
+        var trap = t;
+        <li>
+            <p style="margin:0 0 4px">@t.Uzbek</p>
+            <p class="sentence" lang="ko" style="margin:0"><s>@t.Wrong</s> → <strong>@t.Right</strong></p>
+            <p class="muted small-text">@t.ExplanationUz</p>
+            <button class="button small" disabled="@_busy" @onclick="() => LearnedAsync(trap)">O‘rgandim</button>
+        </li>
+    }
+</ul>
+
+@code {
+    private List<TrapNoteDto>? _traps;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetAsync<List<TrapNoteDto>>("api/traps");
+        _traps = result.Value ?? [];
+        _error = result.Ok ? null : result.Error;
+    }
+
+    private async Task LearnedAsync(TrapNoteDto trap)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/traps/{trap.Id}");
+        _busy = false;
+        if (result.Ok)
+        {
+            _traps!.Remove(trap);
+        }
+        else
+        {
+            _error = result.Error;
+        }
+    }
+}

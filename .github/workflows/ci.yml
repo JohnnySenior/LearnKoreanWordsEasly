@@ -19,17 +19,17 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: kat
-          POSTGRES_PASSWORD: kat
-          POSTGRES_DB: kat
+          POSTGRES_USER: lugat
+          POSTGRES_PASSWORD: lugat
+          POSTGRES_DB: lugat
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U kat"
+          --health-cmd "pg_isready -U lugat"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      KAT_TEST_POSTGRES: Host=localhost;Username=kat;Password=kat
+      LUGAT_TEST_POSTGRES: Host=localhost;Username=lugat;Password=lugat
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -39,7 +39,7 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - run: dotnet tool restore
-      - run: dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project src/KoreanAiTeacher.Infrastructure
+      - run: dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project src/Lugat.Infrastructure
       - run: dotnet test --no-build -c Release
 
   # Railway builds this Dockerfile; building it here first means a broken image never reaches "Wait for CI".
@@ -48,5 +48,5 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t kat:ci .
-      - run: docker run --rm --entrypoint pg_dump kat:ci --version
+      - run: docker build -t lugat:ci .
+      - run: docker run --rm --entrypoint pg_dump lugat:ci --version

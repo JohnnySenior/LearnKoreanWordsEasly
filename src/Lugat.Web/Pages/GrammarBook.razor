@@ -1,0 +1,157 @@
+@page "/grammatika/kitob"
+@using Lugat.Contracts
+@using Lugat.Domain.Grammar
+@implements IDisposable
+@inject SessionService Api
+
+<PageTitle>Grammatika kitobi — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="grammatika">← Grammatika</a>
+<h1>Kitob va betlar</h1>
+
+<section class="card">
+    <h2>Kitobni yuklash</h2>
+    <p class="muted">Grammatika kitobini PDF ko‘rinishida butunligicha yuklang (100 MB gacha). Keyin kerakli betlarni tanlaysiz: AI har bir betdan grammatika bandlarini o‘qib, o‘zbekcha sodda izoh yozadi. Siz tekshirib tasdiqlaysiz.</p>
+    <label class="button" for="grammar-pdf">
+        @(_uploading ? "Yuklanmoqda…" : "PDF tanlash")
+    </label>
+    <InputFile id="grammar-pdf" accept="application/pdf,.pdf" OnChange="UploadAsync" disabled="@_uploading" class="visually-hidden" />
+    @if (_message is not null)
+    {
+        <p role="status">@_message</p>
+    }
+</section>
+
+@if (_books is { Count: > 0 })
+{
+    @foreach (var b in _books)
+    {
+        <section class="card">
+            <strong>@b.FileName</strong>
+            <p class="muted">@(b.PageCount) bet · @(b.SizeBytes / 1024 / 1024) MB · @Format.LessonDate(b.UploadedAt) da yuklangan</p>
+            <p class="muted small-text">PDF bet raqamlarini kiriting (kitobdagi bosma raqam emas). Bir martada ko‘pi bilan 30 bet.</p>
+            <div class="row-between">
+                <label class="field">Dan <input class="input" type="number" min="1" max="@b.PageCount" @bind="_from" /></label>
+                <label class="field">Gacha <input class="input" type="number" min="1" max="@b.PageCount" @bind="_to" /></label>
+            </div>
+            <button class="button primary" disabled="@_busy" @onclick="() => ExtractAsync(b)">Betlarni ajratish</button>
+        </section>
+    }
+}
+else if (_books is not null)
+{
+    <p class="muted">Hali grammatika kitobi yuklanmagan.</p>
+}
+
+@if (_imports is { Count: > 0 })
+{
+    <h2>Ajratilgan betlar</h2>
+    @foreach (var j in _imports)
+    {
+        <a class="card link-card" href="@($"grammatika/{j.Id}")">
+            <div class="row-between">
+                <strong>@j.FromPage–@j.ToPage-betlar</strong>
+                <span class="pill @(j.Status == GrammarImportStatus.Failed ? "pill-warn" : j.Status == GrammarImportStatus.NeedsReview ? "pill-ok" : "")">@StatusText(j)</span>
+            </div>
+            <p class="muted">
+                @j.Items ta band · @j.Approved tasdiqlangan
+                @if (j.Flagged > 0)
+                {
+                    <text> · @j.Flagged ta qo‘lda ko‘rish kerak</text>
+                }
+            </p>
+            @if (j.Status == GrammarImportStatus.Failed)
+            {
+                <p>@j.Error</p>
+                <button class="button small" disabled="@_busy" @onclick="() => RetryAsync(j)" @onclick:preventDefault @onclick:stopPropagation>Davom ettirish</button>
+            }
+        </a>
+    }
+}
+
+@code {
+    private const long MaxBytes = 100 * 1024 * 1024;
+
+    private List<SourceDocumentDto>? _books;
+    private List<GrammarImportDto>? _imports;
+    private int _from = 15;
+    private int _to = 17;
+    private bool _busy;
+    private Timer? _poll;
+    private string? _message;
+    private bool _uploading;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<List<SourceDocumentDto>>("api/grammar/books");
+        _books = result.Value ?? _books;
+        _message = result.Ok ? _message : result.Error;
+        _imports = (await Api.GetAsync<List<GrammarImportDto>>("api/grammar/imports")).Value ?? _imports;
+
+        // While pages are being read, refresh every 3 seconds.
+        _poll?.Dispose();
+        _poll = _imports?.Any(j => j.Status is GrammarImportStatus.Queued or GrammarImportStatus.Extracting) == true
+            ? new Timer(_ => InvokeAsync(async () => { await LoadAsync(); StateHasChanged(); }), null, 3000, Timeout.Infinite)
+            : null;
+    }
+
+    private async Task ExtractAsync(SourceDocumentDto book)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<GrammarImportDto>(HttpMethod.Post, $"api/grammar/books/{book.Id}/imports", new CreateGrammarImportRequest(_from, _to));
+        _busy = false;
+        _message = result.Ok ? $"{_from}–{_to}-betlar navbatga qo‘yildi. Har bir bet taxminan bir daqiqa o‘qiladi." : result.Error;
+        await LoadAsync();
+    }
+
+    private async Task RetryAsync(GrammarImportDto job)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<GrammarImportDto>(HttpMethod.Post, $"api/grammar/imports/{job.Id}/retry");
+        _busy = false;
+        _message = result.Ok ? null : result.Error;
+        await LoadAsync();
+    }
+
+    private static string StatusText(GrammarImportDto j) => j.Status switch
+    {
+        GrammarImportStatus.Queued => "Navbatda",
+        GrammarImportStatus.Extracting => $"O‘qilmoqda: {(j.DonePage ?? j.FromPage - 1) - j.FromPage + 1}/{j.ToPage - j.FromPage + 1}",
+        GrammarImportStatus.NeedsReview => "Tekshirish kerak",
+        _ => "To‘xtadi",
+    };
+
+    public void Dispose() => _poll?.Dispose();
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        _message = null;
+        if (e.File.Size > MaxBytes)
+        {
+            _message = "Fayl 100 MB dan katta.";
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            using var ms = new MemoryStream();
+            await e.File.OpenReadStream(MaxBytes).CopyToAsync(ms);
+            var result = await Api.UploadAsync<SourceDocumentDto>("api/grammar/books", ms.ToArray(), e.File.Name, "application/pdf");
+            _message = result switch
+            {
+                { Ok: true, Status: 201 } => "Kitob yuklandi.",
+                { Ok: true } => "Bu kitob avval yuklangan.",
+                _ => result.Error,
+            };
+        }
+        finally
+        {
+            _uploading = false;
+        }
+
+        await LoadAsync();
+    }
+}

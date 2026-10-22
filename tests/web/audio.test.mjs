@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('../../src/KoreanAiTeacher.Web/wwwroot/js/audio.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../src/Lugat.Web/wwwroot/js/audio.js', import.meta.url), 'utf8');
 const audio = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 
 test('microphone tracks close when constructing AudioContext fails', async () => {

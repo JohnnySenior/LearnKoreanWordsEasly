@@ -1,4 +1,4 @@
-# KoreanAiTeacher — TOPIK yordamchi
+# Lugat — TOPIK yordamchi
 
 O‘qituvchi bergan koreyscha so‘zlar va grammatikani eslab qolish, og‘zaki qaytarish va gaplarda ishlatishga yordam beradigan **Telegram Mini App**. Maqsad — TOPIK II (3–4 daraja) imtihoniga tayyorgarlikni daftar va o‘qituvchi bilan ishlashga qo‘shimcha sifatida qo‘llab-quvvatlash.
 
@@ -17,7 +17,7 @@ Spetsifikatsiya yagona manba hisoblanadi. Talab o‘zgarsa, shu faylda sana va s
 
 ```bash
 dotnet test
-dotnet run --project src/KoreanAiTeacher.Api   # http://localhost:5248
+dotnet run --project src/Lugat.Api   # http://localhost:5248
 ```
 
 Agentlar va dasturchilar uchun qoidalar: [AGENTS.md](AGENTS.md). Texnik qarorlar: [docs/DECISIONS.md](docs/DECISIONS.md). Sozlamalar namunasi: [.env.example](.env.example).

@@ -1,0 +1,218 @@
+@page "/mashq/yozish"
+@using Lugat.Contracts
+@using Lugat.Domain.Learning
+@using Lugat.Domain.Writing
+@inject SessionService Api
+
+<PageTitle>Yozma mashq — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="mashq">← Mashqlar</a>
+<h1>Yozma mashq</h1>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_queue is null)
+{
+    <section class="card">
+        <h2>Nimani yozasiz?</h2>
+        <div class="chips" role="radiogroup" aria-label="Yo‘nalish">
+            @foreach (var (value, label) in Directions)
+            {
+                <button class="chip wide @(_direction == value ? "selected" : "")" role="radio" aria-checked="@(_direction == value)" @onclick="() => _direction = value">@label</button>
+            }
+        </div>
+        <p class="muted small-text">Nechta so‘z?</p>
+        <div class="chips" role="radiogroup" aria-label="So‘zlar soni">
+            @foreach (var n in Counts)
+            {
+                <button class="chip wide @(_count == n ? "selected" : "")" role="radio" aria-checked="@(_count == n)" @onclick="() => _count = n">@n</button>
+            }
+        </div>
+        @if (_lessons.Count > 0)
+        {
+            <p class="muted small-text">Qaysi so‘zlar?</p>
+            <div class="chips" role="radiogroup" aria-label="So‘zlar">
+                <button class="chip wide @(_lessonId is null ? "selected" : "")" role="radio" aria-checked="@(_lessonId is null)" @onclick="() => _lessonId = null">Boshlangan so‘zlar</button>
+                @foreach (var l in _lessons)
+                {
+                    <button class="chip wide @(_lessonId == l.Id ? "selected" : "")" role="radio" aria-checked="@(_lessonId == l.Id)" @onclick="() => _lessonId = l.Id">@l.Title</button>
+                }
+            </div>
+        }
+        <button class="button primary" disabled="@_busy" @onclick="StartAsync">Boshlash</button>
+    </section>
+}
+else if (_index >= _queue.Count)
+{
+    <section class="card">
+        <h2>Tugadi</h2>
+        <dl class="facts stats">
+            <dt>To‘g‘ri</dt><dd>@Count(WritingVerdict.Correct)</dd>
+            <dt>Ma’nosi to‘g‘ri, boshqa so‘z</dt><dd>@Count(WritingVerdict.SameMeaning)</dd>
+            <dt>Imlo xatosi</dt><dd>@Count(WritingVerdict.Spelling)</dd>
+            <dt>Xato</dt><dd>@Count(WritingVerdict.Wrong)</dd>
+        </dl>
+        <button class="button primary" @onclick="Reset">Yana</button>
+    </section>
+}
+else
+{
+    var prompt = _queue[_index];
+    var typingKorean = prompt.Direction == ReviewDirection.UzbekToKorean;
+    <p class="muted small-text">@(_index + 1) / @_queue.Count · @prompt.TableNumber-jadval</p>
+    <section class="card">
+        <p class="muted small-text">@(typingKorean ? "Koreyschasini yozing" : "O‘zbekcha tarjimasini yozing")</p>
+        @if (typingKorean)
+        {
+            <p class="prompt">@prompt.Prompt</p>
+        }
+        else
+        {
+            <p class="prompt ko" lang="ko">@prompt.Prompt</p>
+            @if (prompt.PromptNote is not null)
+            {
+                <p class="muted" lang="ko">(@prompt.PromptNote)</p>
+            }
+        }
+
+        <input class="input @(typingKorean ? "ko" : "")" lang="@(typingKorean ? "ko" : "uz")" autocomplete="off" autocapitalize="off" spellcheck="false"
+               maxlength="200" @bind="_answer" @bind:event="oninput" @onkeydown="OnKeyDownAsync" disabled="@(_busy || _result is not null)"
+               aria-label="Javob" />
+
+        @if (_result is null)
+        {
+            <button class="button primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_answer))" @onclick="CheckAsync">Tekshirish</button>
+            <button class="button" disabled="@_busy" @onclick="DontKnowAsync">Bilmayman</button>
+        }
+        else
+        {
+            <p class="verdict @(_result.Verdict is WritingVerdict.Correct or WritingVerdict.SameMeaning ? "verdict-ok" : "verdict-warn")">@VerdictText(_result.Verdict)</p>
+            @if (_result.Verdict != WritingVerdict.Correct)
+            {
+                <p class="muted small-text">Kitobda:</p>
+                <p class="@(typingKorean ? "answer ko" : "answer")" lang="@(typingKorean ? "ko" : "uz")">@_result.Expected</p>
+            }
+            @if (_result.Note is not null)
+            {
+                <p class="small-text">@_result.Note</p>
+            }
+            <button class="button primary" @onclick="Next">Keyingi</button>
+        }
+    </section>
+}
+
+@code {
+    private static readonly (ReviewDirection? Value, string Label)[] Directions =
+    [
+        (null, "Aralash"),
+        (ReviewDirection.UzbekToKorean, "Koreyscha yozish"),
+        (ReviewDirection.KoreanToUzbek, "O‘zbekcha yozish"),
+    ];
+
+    private static readonly int[] Counts = [10, 20, 30];
+
+    private ReviewDirection? _direction;
+    private int _count = 10;
+    private Guid? _lessonId;
+    private List<AssignmentDto> _lessons = [];
+    private List<WritingPromptDto>? _queue;
+    private readonly List<WritingVerdict> _verdicts = [];
+    private int _index;
+    private string _answer = "";
+    private Guid _attemptId = Guid.NewGuid();
+    private WritingResultDto? _result;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var lessons = await Api.GetAsync<List<AssignmentDto>>("api/assignments");
+        _lessons = lessons.Value?.Where(a => a.Status == Domain.Lessons.AssignmentStatus.Planned).OrderBy(a => a.DueAt).ToList() ?? [];
+    }
+
+    private async Task StartAsync()
+    {
+        _busy = true;
+        var query = $"api/writing/queue?count={_count}" + (_direction is { } d ? $"&direction={d}" : "") + (_lessonId is { } l ? $"&assignmentId={l}" : "");
+        var result = await Api.GetAsync<List<WritingPromptDto>>(query);
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        if (result.Value is { Count: > 0 } queue)
+        {
+            _queue = queue;
+            _index = 0;
+            _verdicts.Clear();
+            NewAttempt();
+        }
+    }
+
+    /// <summary>Enter sends the answer only after the Korean IME has finished composing the syllable (spec PR02).</summary>
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.IsComposing && _result is null && !string.IsNullOrWhiteSpace(_answer))
+        {
+            await CheckAsync();
+        }
+    }
+
+    private Task DontKnowAsync()
+    {
+        _answer = "—";
+        return CheckAsync();
+    }
+
+    private async Task CheckAsync()
+    {
+        if (_queue is null || _busy)
+        {
+            return;
+        }
+
+        var prompt = _queue[_index];
+        _busy = true;
+        try
+        {
+            // The same id on a retry after a network error, so the answer is stored once (spec API01).
+            var result = await Api.SendJsonAsync<WritingResultDto>(HttpMethod.Post, "api/writing/answers",
+                new WritingCheckRequest(_attemptId, prompt.WordSenseId, prompt.Direction, _answer), SessionService.AiTimeout);
+            _error = result.Ok ? null : result.Error;
+            if (result.Value is { } r)
+            {
+                _result = r;
+                _verdicts.Add(r.Verdict);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Next()
+    {
+        _index++;
+        NewAttempt();
+    }
+
+    private void NewAttempt()
+    {
+        _answer = "";
+        _result = null;
+        _attemptId = Guid.NewGuid();
+    }
+
+    private void Reset() => _queue = null;
+
+    private int Count(WritingVerdict v) => _verdicts.Count(x => x == v);
+
+    private static string VerdictText(WritingVerdict v) => v switch
+    {
+        WritingVerdict.Correct => "To‘g‘ri",
+        WritingVerdict.SameMeaning => "Ma’nosi to‘g‘ri, lekin kitobda boshqa so‘z",
+        WritingVerdict.Spelling => "Deyarli: imlo xatosi",
+        _ => "Xato",
+    };
+}

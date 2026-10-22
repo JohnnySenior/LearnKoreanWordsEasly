@@ -1,0 +1,144 @@
+@page "/lugatlar"
+@using Lugat.Contracts
+@using Lugat.Domain.Imports
+@implements IDisposable
+@inject SessionService Api
+
+<PageTitle>Lug‘atlar — TOPIK yordamchi</PageTitle>
+
+<h1>Lug‘atlar</h1>
+
+@if (_tables is { Count: > 0 })
+{
+    <LessonPlanner />
+
+    <section class="card" id="jadvallar">
+        <h2>Jadvalni yodlash</h2>
+        <p class="muted small-text">Jadvalni kitobdagidek ko‘ring va 10 daqiqa yodlang, keyin kartochkada eslab ko‘ring. Yangi so‘zni birdan kartochkada uchratishdan ko‘ra osonroq.</p>
+        <nav class="menu compact table-list">
+            @foreach (var t in _tables)
+            {
+                <a href="@($"lugatlar/jadval/{t.SourceDocumentId}/{t.TableNumber}")">
+                    <span>
+                        <span class="t">@t.TableNumber-jadval</span>
+                        <span class="s">@t.Words ta so‘z · @(t.Started == 0 ? "hali boshlanmagan" : $"{t.Started} tasi boshlangan")@(_tables.Select(x => x.SourceDocumentId).Distinct().Count() > 1 ? $" · {t.FileName}" : "")</span>
+                    </span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                </a>
+            }
+        </nav>
+    </section>
+}
+
+<section class="card">
+    <h2>Kitobni yuklash</h2>
+    <p class="muted">Lug‘at PDF faylini tanlang (100 MB gacha). So‘zlar ajratilgach, har bir jadvalni tekshirib tasdiqlaysiz. Tasdiqlanmagan so‘zlar mashqqa kirmaydi.</p>
+    <label class="button" for="pdf">
+        @(_uploading ? "Yuklanmoqda…" : "PDF tanlash")
+    </label>
+    <InputFile id="pdf" accept="application/pdf,.pdf" OnChange="UploadAsync" disabled="@_uploading" class="visually-hidden" />
+    @if (_uploadMessage is not null)
+    {
+        <p role="status">@_uploadMessage</p>
+    }
+</section>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error <button class="button small" @onclick="LoadAsync">Qayta urinish</button></div>
+}
+else if (_jobs is null)
+{
+    <p class="muted">Yuklanmoqda…</p>
+}
+else if (_jobs.Count == 0)
+{
+    <p class="muted">Hali kitob yuklanmagan.</p>
+}
+else
+{
+    @foreach (var job in _jobs)
+    {
+        <a class="card link-card" href="@($"lugatlar/import/{job.Id}")">
+            <div class="row-between">
+                <strong>@job.FileName</strong>
+                <span class="pill @(job.Status == ImportStatus.Failed ? "pill-warn" : "")">@Labels.Of(job.Status)</span>
+            </div>
+            @if (job.Status == ImportStatus.Failed)
+            {
+                <p>@job.Error</p>
+            }
+            else if (job.TotalEntries > 0)
+            {
+                <p class="muted">
+                    @job.TotalEntries ta so‘z · @job.Approved tasdiqlangan
+                    @if (job.Flagged > 0)
+                    {
+                        <text> · @job.Flagged ta qo‘lda tekshirish kerak</text>
+                    }
+                </p>
+            }
+        </a>
+    }
+}
+
+@code {
+    private List<ImportJobDto>? _jobs;
+    private List<VocabTableDto>? _tables;
+    private string? _error;
+    private string? _uploadMessage;
+    private bool _uploading;
+    private Timer? _poll;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<List<ImportJobDto>>("api/imports");
+        _error = result.Ok ? null : result.Error;
+        _jobs = result.Value ?? _jobs;
+        _tables = (await Api.GetAsync<List<VocabTableDto>>("api/vocabulary/tables")).Value ?? _tables;
+        SchedulePoll();
+    }
+
+    /// <summary>While an import is queued or running, refresh every 2 seconds.</summary>
+    private void SchedulePoll()
+    {
+        var busy = _jobs?.Any(j => j.Status is ImportStatus.Uploaded or ImportStatus.Extracting) == true;
+        _poll?.Dispose();
+        _poll = busy ? new Timer(_ => InvokeAsync(async () => { await LoadAsync(); StateHasChanged(); }), null, 2000, Timeout.Infinite) : null;
+    }
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        const long maxBytes = 100 * 1024 * 1024;
+        _uploadMessage = null;
+        if (e.File.Size > maxBytes)
+        {
+            _uploadMessage = "Fayl 100 MB dan katta. Kichikroq PDF tanlang.";
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            using var ms = new MemoryStream();
+            await e.File.OpenReadStream(maxBytes).CopyToAsync(ms);
+            var result = await Api.UploadAsync<ImportJobDto>("api/imports", ms.ToArray(), e.File.Name, "application/pdf");
+            _uploadMessage = result switch
+            {
+                { Ok: true, Status: 201 } => "Yuklandi. So‘zlar ajratilmoqda, bu bir necha soniya oladi.",
+                { Ok: true } => "Bu fayl avval yuklangan. Mavjud import ochildi.",
+                _ => result.Error,
+            };
+        }
+        finally
+        {
+            _uploading = false;
+        }
+
+        await LoadAsync();
+    }
+
+    public void Dispose() => _poll?.Dispose();
+}

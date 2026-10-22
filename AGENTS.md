@@ -19,16 +19,16 @@ Ishni boshlashdan oldin o‘qing:
 
 ```
 src/
-  KoreanAiTeacher.Domain          domen modeli va qoidalari (takrorlash, import yozuvlari), tashqi bog‘liqliksiz
-  KoreanAiTeacher.Contracts       API va klient uchun umumiy DTO'lar
-  KoreanAiTeacher.Application     xizmatlar (import, foydalanuvchi), parser, interfeyslar
-  KoreanAiTeacher.Infrastructure  EF Core/PostgreSQL, fayl ombori, PdfPig
-  KoreanAiTeacher.Api             ASP.NET Core: endpoint'lar, auth, fon worker, Blazor klientni tarqatadi
-  KoreanAiTeacher.Web             Blazor WebAssembly klient + kichik JS interop (Telegram, audio)
+  Lugat.Domain          domen modeli va qoidalari (takrorlash, import yozuvlari), tashqi bog‘liqliksiz
+  Lugat.Contracts       API va klient uchun umumiy DTO'lar
+  Lugat.Application     xizmatlar (import, foydalanuvchi), parser, interfeyslar
+  Lugat.Infrastructure  EF Core/PostgreSQL, fayl ombori, PdfPig
+  Lugat.Api             ASP.NET Core: endpoint'lar, auth, fon worker, Blazor klientni tarqatadi
+  Lugat.Web             Blazor WebAssembly klient + kichik JS interop (Telegram, audio)
 tests/
-  KoreanAiTeacher.Domain.Tests
-  KoreanAiTeacher.Application.Tests  parser (sintetik sahifalar + ixtiyoriy real kitob)
-  KoreanAiTeacher.Api.Tests          WebApplicationFactory + real PostgreSQL
+  Lugat.Domain.Tests
+  Lugat.Application.Tests  parser (sintetik sahifalar + ixtiyoriy real kitob)
+  Lugat.Api.Tests          WebApplicationFactory + real PostgreSQL
 ```
 
 ## Buyruqlar
@@ -36,11 +36,11 @@ tests/
 ```bash
 dotnet build                     # butun solution
 dotnet test                      # barcha testlar (PostgreSQL kerak, pastga qarang)
-dotnet run --project src/KoreanAiTeacher.Api   # http://localhost:5248, Development
-dotnet tool restore && dotnet ef migrations add <Nomi> --project src/KoreanAiTeacher.Infrastructure --output-dir Persistence/Migrations
+dotnet run --project src/Lugat.Api   # http://localhost:5248, Development
+dotnet tool restore && dotnet ef migrations add <Nomi> --project src/Lugat.Infrastructure --output-dir Persistence/Migrations
 ```
 
-PostgreSQL: Development va testlar standart holatda `kat`/`kat` foydalanuvchisi bilan `localhost` ga ulanadi (`CREATEDB` huquqi kerak). Boshqa server uchun `KAT_TEST_POSTGRES` ni o‘rnating. Real lug‘at kitobi testi uchun `KAT_DICT_PDF=/yo‘l/kitob.pdf`.
+PostgreSQL: Development va testlar standart holatda `lugat`/`lugat` foydalanuvchisi bilan `localhost` ga ulanadi (`CREATEDB` huquqi kerak). Boshqa server uchun `LUGAT_TEST_POSTGRES` ni o‘rnating. Real lug‘at kitobi testi uchun `LUGAT_DICT_PDF=/yo‘l/kitob.pdf`.
 
 Development muhitida Telegram tashqarisida brauzer orqali `POST /api/auth/dev` bilan kirish mumkin (`appsettings.Development.json`). Bu endpoint boshqa muhitlarda umuman ro‘yxatdan o‘tmaydi va buni test tekshiradi.
 
