@@ -16,8 +16,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] `dotnet test`: 199 test yashil (Domain 82, Application 6, Api 111), real PostgreSQL 16 bilan. `node --test tests/web/*.test.mjs` yashil.
 - [x] Ilova lokal ishga tushdi (Development): `/health` → ready, `POST /api/auth/dev` → token, `/api/me`, `/api/today` ishlaydi; `/api/auth/telegram` va `/api/listening` → 404.
 - [x] Chromium 360 px: Bugun, Lug‘atlar, Mashq, Sinov, Sozlamalar, Qurilma tekshiruvi sahifalari ochiladi, konsolda xato yo‘q, yonlama scroll yo‘q.
-- [ ] CI GitHub’da yashil — branch push qilingach tekshiriladi.
-- [ ] Docker image build — lokal muhitda Docker daemon yo‘q; CI’dagi `docker-image` job tekshiradi.
+- [x] CI GitHub’da yashil (run #1, `bosqich-0`): build, migratsiya tekshiruvi, barcha testlar.
+- [x] Docker image CI’da build qilindi, `pg_dump` image ichida ishlaydi (`docker-image` job).
 
 ### Olib tashlangan modullar (spec §3.1 "Yo‘q")
 
