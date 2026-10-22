@@ -1,0 +1,204 @@
+@page "/sinov/kitob/{Id:guid}"
+@using KoreanAiTeacher.Contracts
+@using KoreanAiTeacher.Domain.Testing
+@implements IDisposable
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Kitob testi — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="sinov/kitob">← Kitob testlari</a>
+
+@if (_test is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<header class="page-head">
+    <div>
+        <span class="kicker">@_test.FileName · @_test.FromPage–@_test.ToPage-betlar</span>
+        <h1>@_test.Title</h1>
+        <span class="muted small-text">@_test.Usable ta savol · @(_test.WithKey == _test.Questions ? "javoblar kitob kalitidan" : $"{_test.WithKey} tasi kitob kalitidan")</span>
+    </div>
+</header>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@switch (_test.Status)
+{
+    case BookTestStatus.Queued or BookTestStatus.Extracting:
+        <section class="card" role="status">
+            <strong>@StatusText(_test)</strong>
+            <p class="muted small-text">Har bir bet taxminan bir daqiqa o‘qiladi. Sahifani yopsangiz ham ish davom etadi.</p>
+        </section>
+        break;
+    case BookTestStatus.Failed:
+        <section class="card">
+            <strong>To‘xtadi</strong>
+            <p>@_test.Error</p>
+            <button class="button" disabled="@_busy" @onclick="RetryAsync">Davom ettirish</button>
+        </section>
+        break;
+}
+
+@if (_test.Usable > 0 && _test.Status == BookTestStatus.Ready)
+{
+    <section class="card exam-start">
+        <span class="kicker" lang="ko">TOPIK II · 읽기</span>
+        <p><strong>Imtihon rejimi:</strong> @_test.Usable ta savol, @ExamMinutes daqiqa. Vaqt tugaganda javoblar varaqasi yig‘iladi.</p>
+        <button class="button primary block" disabled="@_busy" @onclick="() => StartAsync(0, true)">Imtihon rejimida boshlash</button>
+        @if (_test.Usable > 10)
+        {
+            <button class="button block" style="margin-top:8px" disabled="@_busy" @onclick="() => StartAsync(10, false)">Qisqa mashq: 10 ta savol, vaqtsiz</button>
+        }
+        else
+        {
+            <button class="button block" style="margin-top:8px" disabled="@_busy" @onclick="() => StartAsync(0, false)">Vaqtsiz mashq</button>
+        }
+    </section>
+}
+
+@if (_questions is { Count: > 0 })
+{
+    <h2 class="kicker section-title">Savollar (@_questions.Count)</h2>
+    <p class="muted small-text">Noto‘g‘ri o‘qilgan savolni testdan chiqarib qo‘ying. “Kalit” — javob kitobdan, “AI” — javobni AI yechgan.</p>
+    <ol class="mistakes book-questions">
+        @foreach (var q in _questions)
+        {
+            var item = q;
+            <li class="@(q.Excluded ? "excluded" : "")">
+                <div class="row-between">
+                    <span class="kicker">@q.Number-savol · @q.PdfPage-bet</span>
+                    <span class="pill @(q.OfficialAnswer is null ? "" : "pill-dark")">@(q.OfficialAnswer is null ? "AI" : "Kalit")</span>
+                </div>
+                <p class="q-stem" lang="ko">@q.Stem</p>
+                @if (q.Warning is not null)
+                {
+                    <p class="muted small-text">@q.Warning</p>
+                }
+                <button class="button small" disabled="@_busy" @onclick="() => ToggleAsync(item)">
+                    @(q.Excluded ? "Testga qaytarish" : "Testdan chiqarish")
+                </button>
+            </li>
+        }
+    </ol>
+}
+else if (_test.Status == BookTestStatus.Ready)
+{
+    <p class="muted">Bu betlarda variantli o‘qish savoli topilmadi. Betlarni tekshirib, yangi test qo‘shing.</p>
+}
+
+@if (_confirmDelete)
+{
+    <button class="button block" style="margin-top:20px" disabled="@_busy" @onclick="DeleteAsync">Ha, testni o‘chirish</button>
+}
+else
+{
+    <button class="button small" style="margin-top:20px" @onclick="() => _confirmDelete = true">Testni o‘chirish</button>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private BookTestDto? _test;
+    private List<BookQuestionDto>? _questions;
+    private bool _busy;
+    private bool _confirmDelete;
+    private string? _error;
+    private Timer? _poll;
+    /// <summary>Kept only after a network error, so pressing again cannot make two tests (API01).</summary>
+    private Guid? _pendingId;
+
+    /// <summary>Same pace as the real TOPIK II reading paper: 70 minutes for 50 questions.</summary>
+    private int ExamMinutes => (int)Math.Ceiling(_test!.Usable * 84 / 60.0);
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<BookTestDto>($"api/book-tests/{Id}");
+        _test = result.Value ?? _test;
+        _error = result.Ok ? null : result.Error;
+        if (_test is not null)
+        {
+            _questions = (await Api.GetAsync<List<BookQuestionDto>>($"api/book-tests/{Id}/questions")).Value ?? _questions;
+        }
+
+        _poll?.Dispose();
+        _poll = _test?.Status is BookTestStatus.Queued or BookTestStatus.Extracting
+            ? new Timer(_ => InvokeAsync(async () => { await LoadAsync(); StateHasChanged(); }), null, 3000, Timeout.Infinite)
+            : null;
+    }
+
+    private static string StatusText(BookTestDto t)
+    {
+        if (t.Status == BookTestStatus.Queued)
+        {
+            return "Navbatda";
+        }
+
+        if (t.DonePage is null || t.DonePage < t.ToPage)
+        {
+            return $"Savol betlari o‘qilmoqda: {(t.DonePage ?? t.FromPage - 1) - t.FromPage + 1}/{t.ToPage - t.FromPage + 1}";
+        }
+
+        return t.AnswerFromPage is { } af && t.AnswerToPage is { } at
+            ? $"Javoblar beti o‘qilmoqda: {(t.AnswerDonePage ?? af - 1) - af + 1}/{at - af + 1}"
+            : "Yakunlanmoqda";
+    }
+
+    private async Task StartAsync(int count, bool exam)
+    {
+        _busy = true;
+        _error = null;
+        var id = _pendingId ??= Guid.NewGuid();
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", new CreateTestRequest(id, null, null, false, count, null, Id, exam));
+        _busy = false;
+        if (result.Value is { } test)
+        {
+            Nav.NavigateTo($"sinov/{test.Id}");
+            return;
+        }
+
+        _pendingId = result.Status == 0 ? id : null;
+        _error = result.Error;
+    }
+
+    private async Task ToggleAsync(BookQuestionDto q)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<BookQuestionDto>(HttpMethod.Patch, $"api/book-tests/questions/{q.Id}", new UpdateBookQuestionRequest(!q.Excluded, q.Version));
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        await LoadAsync();
+    }
+
+    private async Task RetryAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<BookTestDto>(HttpMethod.Post, $"api/book-tests/{Id}/retry");
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/book-tests/{Id}");
+        _busy = false;
+        if (result.Ok)
+        {
+            Nav.NavigateTo("sinov/kitob");
+            return;
+        }
+
+        _error = result.Error;
+    }
+
+    public void Dispose() => _poll?.Dispose();
+}

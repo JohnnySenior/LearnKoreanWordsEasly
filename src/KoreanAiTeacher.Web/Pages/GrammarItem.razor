@@ -1,0 +1,455 @@
+@page "/grammatika/band/{Id:guid}"
+@using KoreanAiTeacher.Contracts
+@using KoreanAiTeacher.Domain.Grammar
+@inject SessionService Api
+
+<PageTitle>@(_detail?.Item.Form ?? "Grammatika") — TOPIK yordamchi</PageTitle>
+
+@if (SetId is { } backSet)
+{
+    <a class="back" href="@($"grammatika/toplam/{backSet}")">← @(_detail?.SetNumber is { } sn ? $"{sn}-to‘plam" : "To‘plam")</a>
+}
+else
+{
+    <a class="back" href="grammatika">← Grammatika</a>
+}
+
+@if (_detail is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+@{
+    var item = _detail.Item;
+    var guide = _detail.Guide;
+}
+
+<header class="page-head">
+    <div>
+        <span class="kicker" lang="ko">@string.Join(" · ", new[] { _detail.SetNumber is { } setNo ? $"{setNo}-to‘plam" : null, item.Section, item.Number is { } n ? $"{n}-band" : null, $"{item.PdfPage}-bet" }.Where(x => x is not null))</span>
+        <h1 class="grammar-form" lang="ko">@item.Form</h1>
+    </div>
+</header>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_detail.CanPractise)
+{
+    <div class="mastery">
+        <span class="pill @(_detail.Mastery == GrammarMastery.Independent ? "pill-dark" : "")">@Format.Mastery(_detail.Mastery)</span>
+        <span class="muted small-text">@MasteryHint(_detail)</span>
+    </div>
+}
+else
+{
+    <div class="notice">
+        <p><strong>Bu band hali tasdiqlanmagan.</strong> Shakl va izohni kitob bilan solishtiring. Tasdiqlangandan keyin gap tuzib mashq qilish mumkin.</p>
+        @if (item.Warning is not null)
+        {
+            <p>@item.Warning</p>
+        }
+        <button class="button small" disabled="@_busy" @onclick="ApproveAsync">To‘g‘ri, tasdiqlash</button>
+        <a class="button small" href="@($"grammatika/{_detail.ImportId}")">Tahrirlash</a>
+    </div>
+}
+
+<section class="card">
+    <span class="kicker">Ma’nosi</span>
+    @if (item.MeaningKo is not null)
+    {
+        <p class="muted" lang="ko">@item.MeaningKo</p>
+    }
+    <p class="lead">@item.MeaningUz</p>
+    @if (guide is not null)
+    {
+        <p>@guide.ExplanationUz</p>
+    }
+    @if (item.Similar is not null)
+    {
+        <p class="muted small-text">Shu guruhda: <span lang="ko">@item.Similar</span></p>
+    }
+</section>
+
+@if (item.ConnectionUz is not null || guide?.FormationUz is not null)
+{
+    <section class="card">
+        <span class="kicker">Qanday qo‘shiladi</span>
+        @if (item.ConnectionUz is not null)
+        {
+            <p>@item.ConnectionUz</p>
+        }
+        @if (guide?.FormationUz is { } formation)
+        {
+            <p class="formation">@formation</p>
+        }
+    </section>
+}
+
+@if (item.RestrictionUz is not null || guide?.CommonMistakeUz is not null)
+{
+    <section class="card">
+        <span class="kicker">E’tibor bering</span>
+        @if (item.RestrictionUz is not null)
+        {
+            <p>@item.RestrictionUz</p>
+        }
+        @if (guide?.CommonMistakeUz is { } mistake)
+        {
+            <p>@mistake</p>
+        }
+    </section>
+}
+
+<section class="card">
+    <span class="kicker">Misollar</span>
+    <ol class="examples">
+        @foreach (var e in item.Examples)
+        {
+            <li>
+                <span class="pill">Kitob</span>
+                <p class="sentence" lang="ko">@e.Korean</p>
+                <Speak Text="@e.Korean" />
+                <SayIt Reference="@e.Korean" Compact="true" />
+                @if (e.Uzbek.Length > 0)
+                {
+                    <p class="muted">@e.Uzbek</p>
+                }
+            </li>
+        }
+        @if (guide is not null)
+        {
+            @foreach (var e in guide.Examples)
+            {
+                <li>
+                    <span class="pill pill-dark">AI</span>
+                    <p class="sentence" lang="ko">@e.Korean</p>
+                <Speak Text="@e.Korean" />
+                <SayIt Reference="@e.Korean" Compact="true" />
+                    <p class="muted">@e.Uzbek</p>
+                </li>
+            }
+        }
+    </ol>
+
+    @if (_guideLoading)
+    {
+        <p class="muted" role="status">AI izoh va misollar yozmoqda…</p>
+    }
+    else if (_guideError is not null)
+    {
+        <p class="notice" role="alert">@_guideError</p>
+        <button class="button small" @onclick="() => LoadGuideAsync(false)">Qayta urinish</button>
+    }
+    else if (guide is not null)
+    {
+        @if (guide.Warning is not null)
+        {
+            <p class="notice">@guide.Warning</p>
+        }
+        <p class="muted small-text">Qo‘shimcha izoh va “AI” misollarini @guide.Provider yozgan. Kitob misollari o‘zgarmagan.</p>
+        <button class="button small" @onclick="() => LoadGuideAsync(true)">Boshqa misollar</button>
+    }
+</section>
+
+<section class="card" id="savol">
+    <span class="kicker">Savol bering</span>
+    @foreach (var note in _detail.Notes)
+    {
+        <div class="qa">
+            <p class="q">@(note.Kind == GrammarQuestionKind.Question ? $"“{note.Question}”" : Format.QuestionKind(note.Kind))</p>
+            <p>@note.AnswerUz</p>
+            @foreach (var e in note.Examples)
+            {
+                <p class="sentence" lang="ko">@e.Korean</p>
+                <Speak Text="@e.Korean" />
+                <SayIt Reference="@e.Korean" Compact="true" />
+                <p class="muted">@e.Uzbek</p>
+            }
+        </div>
+    }
+
+    @if (_asking is not null)
+    {
+        <p class="muted" role="status">AI javob yozmoqda…</p>
+    }
+    else if (_askError is not null)
+    {
+        <p class="notice" role="alert">@_askError</p>
+        <button class="button small" @onclick="RetryAskAsync">Qayta urinish</button>
+    }
+
+    <div class="quick">
+        <button class="button small" disabled="@(_asking is not null)" @onclick="() => AskAsync(GrammarQuestionKind.Simpler)">Soddaroq tushuntir</button>
+        <button class="button small" disabled="@(_asking is not null)" @onclick="() => AskAsync(GrammarQuestionKind.MoreExamples)">Yana misol</button>
+        <button class="button small" disabled="@(_asking is not null)" @onclick="() => AskAsync(GrammarQuestionKind.Difference)">O‘xshashidan farqi</button>
+    </div>
+    <label class="field">
+        Yoki o‘z savolingiz
+        <textarea class="input" rows="2" maxlength="500" placeholder="Masalan: bu grammatikani o‘tgan zamonda ishlatsa bo‘ladimi?" @bind="_question" @bind:event="oninput" disabled="@(_asking is not null)"></textarea>
+    </label>
+    <button class="button" disabled="@(_asking is not null || string.IsNullOrWhiteSpace(_question))" @onclick="() => AskAsync(GrammarQuestionKind.Question)">So‘rash</button>
+</section>
+
+<section class="card" id="mashq">
+    <span class="kicker accent">Gap tuzib ko‘ring</span>
+    @if (_detail.CanPractise)
+    {
+        <p class="muted small-text">Shu grammatika bilan bitta koreyscha gap yozing. AI avval xato qayerdaligini aytadi, to‘g‘ri variantni esa siz so‘raganda ko‘rsatadi.</p>
+        <SayIt OnTranscript="UseTranscript" />
+        <label class="field">
+            Gapingiz (koreyscha)
+            <textarea class="input sentence" rows="3" lang="ko" maxlength="500" @bind="_answer" @bind:event="oninput" disabled="@_busy"></textarea>
+        </label>
+        <button class="button primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_answer))" @onclick="CheckAsync">
+            @(_busy ? "Tekshirilmoqda…" : "Tekshirish")
+        </button>
+        @if (_checkError is not null)
+        {
+            <p class="notice" role="alert" style="margin-top:12px">@_checkError</p>
+        }
+    }
+    else
+    {
+        <p class="muted">Band tasdiqlangandan keyin shu yerda gap tuzib mashq qilasiz.</p>
+    }
+</section>
+
+@if (_check is { } c)
+{
+    <SentenceResult Check="c" Busy="_busy" OnRetry="Retry" OnRecheck="RecheckAsync" MissingText="Grammatika ishlatilmagan" />
+}
+
+@if (_detail.Recent.Count > 0)
+{
+    <section class="card">
+        <span class="kicker">Oldingi gaplaringiz</span>
+        <ul class="plain-list recent">
+            @foreach (var s in _detail.Recent)
+            {
+                <li>
+                    <span class="sentence" lang="ko">@s.Answer</span>
+                    <span class="pill @(s.Verdict is "correct" or "mostly_correct" ? "pill-ok" : "pill-warn")">@SentenceResult.VerdictText(s.Verdict, "Ishlatilmagan")</span>
+                    @if (s.CorrectedText is not null && s.CorrectedText != s.Answer)
+                    {
+                        <span class="muted small-text" lang="ko">→ @s.CorrectedText</span>
+                    }
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+<nav class="pager" aria-label="Bandlar">
+    @if (_detail.PreviousId is { } prev)
+    {
+        <a class="button" href="@($"grammatika/band/{prev}{SetQuery}")">← Oldingi</a>
+    }
+    else
+    {
+        <span></span>
+    }
+    @if (_detail.NextId is { } next)
+    {
+        <a class="button" href="@($"grammatika/band/{next}{SetQuery}")">Keyingi →</a>
+    }
+</nav>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    /// <summary>Opened from a set: "Oldingi/Keyingi" stay inside it (D-28).</summary>
+    [SupplyParameterFromQuery(Name = "toplam")] public Guid? SetId { get; set; }
+
+    private string SetQuery => SetId is { } s ? $"?toplam={s}" : "";
+
+    private GrammarDetailDto? _detail;
+    private string? _error;
+    private bool _busy;
+    private bool _guideLoading;
+    private string? _guideError;
+    private string? _checkError;
+
+    private string _answer = "";
+    private SentenceCheckDto? _check;
+    private Guid _attemptId = Guid.NewGuid();
+    private string? _attemptText;
+    private Guid _loadedId;
+
+    private string _question = "";
+    private AskGrammarRequest? _asking;
+    private AskGrammarRequest? _failedAsk;
+    private string? _askError;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id == _loadedId)
+        {
+            return;
+        }
+
+        // "Keyingi" reuses this page with a new id: start clean.
+        _loadedId = Id;
+        _detail = null;
+        _check = null;
+        _answer = "";
+        _attemptText = null;
+        _guideError = null;
+        _checkError = null;
+        _question = "";
+        _asking = null;
+        _failedAsk = null;
+        _askError = null;
+        _error = null;
+
+        var result = await Api.GetAsync<GrammarDetailDto>($"api/grammar/items/{Id}{(SetId is { } s ? $"?set={s}" : "")}");
+        _detail = result.Value;
+        _error = result.Ok ? null : result.Error;
+
+        // The explanation and examples are written once, the first time the item is opened.
+        if (_detail is { Guide: null })
+        {
+            await LoadGuideAsync(false);
+        }
+    }
+
+    private async Task LoadGuideAsync(bool again)
+    {
+        var forId = Id;
+        _guideLoading = true;
+        _guideError = null;
+        StateHasChanged();
+        var result = await Api.SendJsonAsync<GrammarDetailDto>(HttpMethod.Post, $"api/grammar/items/{forId}/guide{(again ? "?again=true" : "")}", timeout: SessionService.AiTimeout);
+        if (forId != Id)
+        {
+            return; // the learner already moved to another item
+        }
+
+        _guideLoading = false;
+        _guideError = result.Ok ? null : result.Error;
+        _detail = result.Value ?? _detail;
+    }
+
+    private Task AskAsync(GrammarQuestionKind kind) =>
+        SendAskAsync(new AskGrammarRequest(Guid.NewGuid(), kind, kind == GrammarQuestionKind.Question ? _question.Trim() : null));
+
+    /// <summary>After a network error the same id is sent again, so the question is never paid twice (spec API01).</summary>
+    private Task RetryAskAsync() => _failedAsk is null ? Task.CompletedTask : SendAskAsync(_failedAsk);
+
+    private async Task SendAskAsync(AskGrammarRequest request)
+    {
+        var forId = Id;
+        _asking = request;
+        _askError = null;
+        var result = await Api.SendJsonAsync<GrammarNoteDto>(HttpMethod.Post, $"api/grammar/items/{forId}/notes", request, SessionService.AiTimeout);
+        if (forId != Id || _detail is null)
+        {
+            return;
+        }
+
+        _asking = null;
+        if (result.Value is { } note)
+        {
+            _failedAsk = null;
+            _detail = _detail with { Notes = [.. _detail.Notes.Where(n => n.Id != note.Id), note] };
+            if (request.Kind == GrammarQuestionKind.Question)
+            {
+                _question = "";
+            }
+        }
+        else
+        {
+            _failedAsk = request;
+            _askError = result.Error;
+        }
+    }
+
+    private static string MasteryHint(GrammarDetailDto d) => d.Mastery switch
+    {
+        GrammarMastery.Independent => "Uch xil kunda to‘g‘ri ishlatdingiz. Yangi xato bo‘lsa, holat “Mashq qilinyapti” ga qaytadi.",
+        GrammarMastery.Practising => $"To‘g‘ri gap yozilgan kunlar: {d.GoodDays}/{GrammarProgress.RequiredGoodDays}. Oxirgi gap ham to‘g‘ri bo‘lishi kerak.",
+        _ => $"Gap yozib mashq qiling: {GrammarProgress.RequiredGoodDays} xil kunda to‘g‘ri ishlatsangiz, “Mustaqil qo‘llayapti” bo‘ladi.",
+    };
+
+    private async Task ApproveAsync()
+    {
+        var item = _detail!.Item;
+        _busy = true;
+        var result = await Api.SendJsonAsync<GrammarItemDto>(HttpMethod.Patch, $"api/grammar/items/{item.Id}",
+            new UpdateGrammarItemRequest(null, null, null, null, null, null, null, GrammarItemStatus.Approved, item.Version));
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        if (result.Ok)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        var result = await Api.GetAsync<GrammarDetailDto>($"api/grammar/items/{Id}{(SetId is { } s ? $"?set={s}" : "")}");
+        _detail = result.Value ?? _detail;
+    }
+
+    private async Task CheckAsync()
+    {
+        var text = _answer.Trim();
+        if (_attemptText != text)
+        {
+            // A new text is a new attempt; the same text after a network error reuses its id (spec API01).
+            _attemptId = Guid.NewGuid();
+            _attemptText = text;
+        }
+
+        await SendAsync(_attemptId, text);
+    }
+
+    private Guid? _recheckFor;
+
+    private Task RecheckAsync()
+    {
+        if (_recheckFor != _check?.Id)
+        {
+            _recheckFor = _check?.Id;
+            _attemptId = Guid.NewGuid();
+        }
+        return SendAsync(_attemptId, _attemptText ?? _answer.Trim());
+    }
+
+    private async Task SendAsync(Guid attemptId, string text)
+    {
+        _busy = true;
+        try
+        {
+            var result = await Api.SendJsonAsync<SentenceCheckDto>(HttpMethod.Post, "api/practice/check",
+                new SentenceCheckRequest(attemptId, null, text, Id), SessionService.AiTimeout);
+            _checkError = result.Ok ? null : result.Error;
+            _check = result.Value ?? _check;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        if (_check is not null)
+        {
+            await ReloadAsync(); // "Oldingi gaplaringiz"
+        }
+    }
+
+    /// <summary>Spoken sentence → text box; the learner corrects recognition mistakes before checking (spec AU03, GR04).</summary>
+    private void UseTranscript(string text)
+    {
+        _answer = text;
+        _check = null;
+    }
+
+    private void Retry()
+    {
+        _check = null;
+    }
+}
+

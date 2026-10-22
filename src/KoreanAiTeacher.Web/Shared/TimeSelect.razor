@@ -1,0 +1,31 @@
+@* Hour and minute as two lists, 24-hour. iOS Telegram's native time picker did not reliably change the value (D-44). *@
+<div class="time-select" role="group" aria-label="@Label">
+    <select class="input" aria-label="Soat" disabled="@Disabled" value="@Value.Hour" @onchange="e => SetAsync(int.Parse((string)e.Value!), Value.Minute)">
+        @for (var h = 0; h < 24; h++)
+        {
+            <option value="@h">@h.ToString("00")</option>
+        }
+    </select>
+    <span aria-hidden="true">:</span>
+    <select class="input" aria-label="Daqiqa" disabled="@Disabled" value="@Value.Minute" @onchange="e => SetAsync(Value.Hour, int.Parse((string)e.Value!))">
+        @foreach (var m in Minutes)
+        {
+            <option value="@m">@m.ToString("00")</option>
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter] public TimeOnly Value { get; set; }
+
+    [Parameter] public EventCallback<TimeOnly> ValueChanged { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Every five minutes, plus a saved minute that is not on that grid.</summary>
+    private IEnumerable<int> Minutes => Enumerable.Range(0, 12).Select(i => i * 5).Append(Value.Minute).Distinct().Order();
+
+    private Task SetAsync(int hour, int minute) => ValueChanged.InvokeAsync(new TimeOnly(hour, minute));
+}

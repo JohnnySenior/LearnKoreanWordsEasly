@@ -1,0 +1,267 @@
+@page "/lugatlar/jadval/{DocumentId:guid}/{Table:int}"
+@using KoreanAiTeacher.Contracts
+@implements IDisposable
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>@Table-jadvalni yodlash — TOPIK yordamchi</PageTitle>
+
+@* Study a table as it stands in the book before the cards (D-36): first exposure here, recall on the cards. *@
+<a class="back" href="lugatlar">← Lug‘atlar</a>
+
+@if (_table is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<header class="page-head">
+    <div>
+        <span class="kicker">@_table.FileName</span>
+        <h1>@Table-jadval</h1>
+        <span class="muted small-text">@_table.Words.Count ta so‘z · @_table.Words.Count(w => w.Started) tasi kartochkada boshlangan</span>
+    </div>
+</header>
+
+<div class="study-bar">
+    @if (_startedAt is null)
+    {
+        <div class="seg" role="radiogroup" aria-label="Yodlash vaqti">
+            @foreach (var m in Minutes)
+            {
+                var minutes = m;
+                <button class="@(_minutes == minutes ? "selected" : "")" role="radio" aria-checked="@(_minutes == minutes)" @onclick="() => _minutes = minutes">@minutes daq</button>
+            }
+        </div>
+        <button class="button primary block" @onclick="Start">Yodlashni boshlash</button>
+    }
+    else if (Left() is { } left && left > TimeSpan.Zero)
+    {
+        <div class="row-between">
+            <span class="muted small-text">Yodlash vaqti</span>
+            <span class="timer" role="timer" aria-label="Qolgan vaqt">@($"{(int)left.TotalMinutes:00}:{left.Seconds:00}")</span>
+        </div>
+    }
+    else
+    {
+        <p style="margin:0 0 8px"><strong>@_minutes daqiqa tugadi.</strong> Endi kartochkada eslab ko‘ring: avval o‘zingiz eslaysiz, keyin javobni ochasiz.</p>
+    }
+
+    @if (_startedAt is not null)
+    {
+        <button class="button @(Left() is { } l && l > TimeSpan.Zero ? "" : "primary") block" disabled="@_busy" @onclick="ToCardsAsync">
+            <span>Kartochkaga o‘tish</span><span class="aside">@_table.Words.Count so‘z</span>
+        </button>
+    }
+</div>
+
+<div class="seg" role="radiogroup" aria-label="Ustunni yopish" style="margin-top:12px">
+    @foreach (var (mode, label) in Modes)
+    {
+        var m = mode;
+        <button class="@(_cover == m ? "selected" : "")" role="radio" aria-checked="@(_cover == m)" @onclick="() => Cover(m)">@label</button>
+    }
+</div>
+@if (_cover != CoverMode.None)
+{
+    <p class="muted small-text">Yopiq katakni bossangiz, faqat o‘sha so‘z ochiladi. Avval o‘zingiz eslab ko‘ring.</p>
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+<table class="word-table">
+    <thead>
+        <tr><th class="n">№</th><th>한국어</th><th>O‘zbekcha</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var w in _table.Words)
+        {
+            var word = w;
+            var koHidden = _cover == CoverMode.Korean && !_shown.Contains(w.Id);
+            var uzHidden = _cover == CoverMode.Uzbek && !_shown.Contains(w.Id);
+            <tr class="@(_selected == w.Id ? "selected" : "")">
+                <td class="n">@w.Number</td>
+                <td class="ko" lang="ko" @onclick="() => Tap(word, koHidden)">
+                    @if (koHidden)
+                    {
+                        <span class="covered" aria-label="Yopiq. Ochish uchun bosing"></span>
+                    }
+                    else
+                    {
+                        <span>@w.Korean</span>
+                        @if (w.KoreanNote is not null)
+                        {
+                            <small>@w.KoreanNote</small>
+                        }
+                    }
+                </td>
+                <td class="uz" @onclick="() => Tap(word, uzHidden)">
+                    @if (uzHidden)
+                    {
+                        <span class="covered" aria-label="Yopiq. Ochish uchun bosing"></span>
+                    }
+                    else
+                    {
+                        @w.Uzbek
+                    }
+                </td>
+            </tr>
+            @if (_selected == w.Id && !koHidden)
+            {
+                <tr class="speak-row">
+                    <td></td>
+                    <td colspan="2">
+                        <Speak Text="@w.Korean" />
+                        @if (_usage?.Usages.FirstOrDefault(u => u.WordSenseId == word.Id) is { } usage && !uzHidden)
+                        {
+                            <UsageNote Usage="usage" />
+                        }
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+<p class="muted small-text">Koreyscha so‘zni bossangiz, talaffuzini eshitasiz@(_usage is { Ready: > 0 } ? " va qanday ishlatilishini ko‘rasiz" : ""). Bu sahifa kartochkalarning takrorlash jadvalini o‘zgartirmaydi.</p>
+
+@if (_usage is not null)
+{
+    <section class="card">
+        <span class="kicker">So‘z qo‘llanishi</span>
+        @if (_usage.Ready < _usage.Total)
+        {
+            <p class="muted small-text">AI har so‘z uchun qanday ishlatilishini, o‘zbekcha tuzoqni va bitta misolni tayyorlaydi (@_usage.Ready / @_usage.Total tayyor). Bir marta tayyorlanadi va saqlanadi.</p>
+            <button class="button" disabled="@_preparing" @onclick="PrepareUsageAsync">@(_preparing ? $"Tayyorlanmoqda… {_usage.Ready} / {_usage.Total}" : "Qo‘llanishini tayyorlash")</button>
+        }
+        else
+        {
+            <p class="muted small-text">Hammasi tayyor: so‘zni bossangiz, qanday ishlatilishi ochiladi. <a href="mashq/qollanish">Qaysi so‘z to‘g‘ri? mashqi →</a></p>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public Guid DocumentId { get; set; }
+
+    [Parameter] public int Table { get; set; }
+
+    private enum CoverMode
+    {
+        None,
+        Korean,
+        Uzbek,
+    }
+
+    private static readonly int[] Minutes = [5, 10, 15];
+
+    private static readonly (CoverMode Mode, string Label)[] Modes =
+    [
+        (CoverMode.None, "Ochiq"),
+        (CoverMode.Korean, "한국어 yopiq"),
+        (CoverMode.Uzbek, "O‘zbek yopiq"),
+    ];
+
+    private VocabTableWordsDto? _table;
+    private string? _error;
+    private int _minutes = 10;
+    private DateTimeOffset? _startedAt;
+    private CoverMode _cover;
+    private readonly HashSet<Guid> _shown = [];
+    private Guid? _selected;
+    private Timer? _clock;
+    private bool _busy;
+    private TableUsageDto? _usage;
+    private bool _preparing;
+
+    private string UsageUrl => $"api/vocabulary/tables/{DocumentId}/{Table}/usage";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAsync<VocabTableWordsDto>($"api/vocabulary/tables/{DocumentId}/{Table}");
+        _table = result.Value;
+        _error = result.Ok ? null : result.Error;
+        _usage = (await Api.GetAsync<TableUsageDto>(UsageUrl)).Value;
+    }
+
+    /// <summary>One batch of words per request (D-46) until every word is ready or a round adds nothing.</summary>
+    private async Task PrepareUsageAsync()
+    {
+        _preparing = true;
+        _error = null;
+        while (_usage is { } before && before.Ready < before.Total)
+        {
+            var result = await Api.SendJsonAsync<TableUsageDto>(HttpMethod.Post, UsageUrl, null, SessionService.AiTimeout);
+            if (result.Value is not { } usage)
+            {
+                _error = result.Error;
+                break;
+            }
+
+            _usage = usage;
+            StateHasChanged();
+            if (usage.Ready == before.Ready)
+            {
+                break;
+            }
+        }
+
+        _preparing = false;
+    }
+
+    private void Start()
+    {
+        _startedAt = DateTimeOffset.UtcNow;
+        _clock?.Dispose();
+        _clock = new Timer(_ => InvokeAsync(Tick), null, 1000, 1000);
+    }
+
+    /// <summary>Counted from the start time, so a phone that paused the page still shows the right time.</summary>
+    private TimeSpan? Left() => _startedAt is { } at ? at.AddMinutes(_minutes) - DateTimeOffset.UtcNow : null;
+
+    private void Tick()
+    {
+        if (Left() is { } left && left <= TimeSpan.Zero)
+        {
+            _clock?.Dispose();
+            _clock = null;
+        }
+
+        StateHasChanged();
+    }
+
+    private void Cover(CoverMode mode)
+    {
+        _cover = mode;
+        _shown.Clear();
+    }
+
+    private void Tap(TableWordDto word, bool hidden)
+    {
+        if (hidden)
+        {
+            _shown.Add(word.Id);
+        }
+
+        _selected = word.Id;
+    }
+
+    private async Task ToCardsAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions",
+            new StartSessionRequest(null, true, null, DocumentId, Table));
+        _busy = false;
+        if (result.Value?.Session is not null)
+        {
+            Nav.NavigateTo("mashq/kartochka");
+            return;
+        }
+
+        _error = result.Value?.Message ?? result.Error;
+    }
+
+    public void Dispose() => _clock?.Dispose();
+}

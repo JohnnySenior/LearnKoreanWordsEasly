@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KoreanAiTeacher.Api/KoreanAiTeacher.Api.csproj" />
+    <Project Path="src/KoreanAiTeacher.Application/KoreanAiTeacher.Application.csproj" />
+    <Project Path="src/KoreanAiTeacher.Contracts/KoreanAiTeacher.Contracts.csproj" />
+    <Project Path="src/KoreanAiTeacher.Domain/KoreanAiTeacher.Domain.csproj" />
+    <Project Path="src/KoreanAiTeacher.Infrastructure/KoreanAiTeacher.Infrastructure.csproj" />
+    <Project Path="src/KoreanAiTeacher.Web/KoreanAiTeacher.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KoreanAiTeacher.Api.Tests/KoreanAiTeacher.Api.Tests.csproj" />
+    <Project Path="tests/KoreanAiTeacher.Application.Tests/KoreanAiTeacher.Application.Tests.csproj" />
+    <Project Path="tests/KoreanAiTeacher.Domain.Tests/KoreanAiTeacher.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

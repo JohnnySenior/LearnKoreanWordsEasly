@@ -1,0 +1,166 @@
+@page "/diagnostika"
+@using System.Text.Json
+@inject TelegramInterop Telegram
+@inject SessionService Session
+
+<PageTitle>Qurilma tekshiruvi — TOPIK yordamchi</PageTitle>
+
+<h1>Qurilma tekshiruvi</h1>
+<p class="muted">
+    Bu sahifa 1-bosqich uchun: ilova Telegram ichida, telefoningizda to‘g‘ri ishlashini tekshiradi.
+    Har bir qadamni bajaring, oxirida natijani nusxalab yuboring.
+</p>
+
+<section class="card">
+    <h2>1. Telegram va kirish</h2>
+    @if (_info is null)
+    {
+        <p class="muted">Tekshirilmoqda…</p>
+    }
+    else
+    {
+        <dl class="facts">
+            <dt>Telegram ichida</dt><dd>@YesNo(_info.InsideTelegram)</dd>
+            <dt>Platforma</dt><dd>@(_info.Platform ?? "—")</dd>
+            <dt>Telegram versiyasi</dt><dd>@(_info.Version ?? "—")</dd>
+            <dt>Yuklanish</dt><dd>@_info.LoadMs ms</dd>
+            <dt>Kirish</dt><dd>@SessionText</dd>
+        </dl>
+    }
+</section>
+
+<section class="card">
+    <h2>2. Ovoz chiqishi</h2>
+    <p>Tugmani bosing, qisqa signal eshitilishi kerak.</p>
+    <button class="button" @onclick="PlayTone" disabled="@_busy">Signalni ijro etish</button>
+    @if (_tone is not null)
+    {
+        <p>@(_tone.Ok ? "Ijro boshlandi." : $"Xato: {_tone.Error}")</p>
+        <Confirm Question="Signal eshitildimi?" @bind-Value="_toneHeard" />
+    }
+</section>
+
+<section class="card">
+    <h2>3. Mikrofon</h2>
+    <p>3 soniya davomida koreyscha biror so‘z ayting, masalan: <span lang="ko" class="ko">안녕하세요</span></p>
+    <button class="button" @onclick="Record" disabled="@_busy">@(_recording ? "Yozilmoqda…" : "Yozishni boshlash")</button>
+    @if (_record is not null)
+    {
+        <p>
+            @if (_record.Ok)
+            {
+                <text>Yozildi: @_record.MimeType, @(_record.Bytes / 1024) KB.</text>
+            }
+            else
+            {
+                <text>Yozib bo‘lmadi: @_record.Error. Ruxsat berilmasa, yozma javob usuli ishlaydi.</text>
+            }
+        </p>
+        @if (_record.Ok)
+        {
+            <button class="button" @onclick="PlayRecording" disabled="@_busy">Yozuvni eshitish</button>
+            @if (_playback is not null)
+            {
+                <p>@(_playback.Ok ? "Ijro boshlandi." : $"Xato: {_playback.Error}")</p>
+                <Confirm Question="O‘z ovozingiz aniq eshitildimi?" @bind-Value="_recordingHeard" />
+            }
+        }
+    }
+</section>
+
+<section class="card">
+    <h2>4. Natija</h2>
+    <p>Nusxalang va chatga yuboring. Unda shaxsiy matn yoki ovoz yozuvi yo‘q.</p>
+    <button class="button primary" @onclick="CopyReport">Natijani nusxalash</button>
+    @if (_copied is not null)
+    {
+        <p>@(_copied == true ? "Nusxalandi." : "Nusxalab bo‘lmadi, quyidagi matnni qo‘lda belgilang.")</p>
+    }
+    <pre class="report">@Report</pre>
+</section>
+
+@code {
+    private TelegramInfo? _info;
+    private SessionState? _session;
+    private string[] _mimeTypes = [];
+    private AudioResult? _tone;
+    private bool? _toneHeard;
+    private RecordingResult? _record;
+    private AudioResult? _playback;
+    private bool? _recordingHeard;
+    private bool? _copied;
+    private bool _busy;
+    private bool _recording;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _info = await Telegram.GetInfoAsync();
+        _mimeTypes = await Telegram.SupportedRecordingTypesAsync();
+        _session = await Session.EnsureSignedInAsync();
+    }
+
+    private string SessionText => _session switch
+    {
+        null => "tekshirilmoqda…",
+        { Status: SessionStatus.SignedIn } s => $"muvaffaqiyatli (ID {s.Me?.TelegramUserId})",
+        var s => $"{s.Status} ({s.HttpStatus?.ToString() ?? "—"}): {s.Message}",
+    };
+
+    private async Task PlayTone()
+    {
+        _busy = true;
+        _tone = await Telegram.PlayToneAsync();
+        _busy = false;
+    }
+
+    private async Task Record()
+    {
+        _busy = _recording = true;
+        _playback = null;
+        _recordingHeard = null;
+        StateHasChanged();
+        _record = await Telegram.RecordAsync(3000);
+        _busy = _recording = false;
+    }
+
+    private async Task PlayRecording()
+    {
+        _busy = true;
+        _playback = await Telegram.PlayLastRecordingAsync();
+        _busy = false;
+    }
+
+    private async Task CopyReport()
+    {
+        _copied = await Telegram.CopyTextAsync(Report);
+        await Telegram.HapticAsync();
+    }
+
+    private static string YesNo(bool value) => value ? "ha" : "yo‘q";
+
+    private static string? YesNo(bool? value) => value is null ? null : YesNo(value.Value);
+
+    private string Report => JsonSerializer.Serialize(new
+    {
+        kind = "topik-diagnostics-v1",
+        at = DateTimeOffset.UtcNow,
+        telegram = _info is null ? null : new
+        {
+            _info.InsideTelegram,
+            _info.Platform,
+            _info.Version,
+            _info.ColorScheme,
+            _info.ViewportHeight,
+            _info.LoadMs,
+            _info.UserAgent,
+        },
+        auth = _session is null ? null : new { status = _session.Status.ToString(), _session.HttpStatus },
+        audioOut = _tone is null ? null : new { _tone.Ok, _tone.Error, heard = YesNo(_toneHeard) },
+        microphone = new
+        {
+            supportedTypes = _mimeTypes,
+            recorded = _record is null ? null : new { _record.Ok, _record.Error, _record.MimeType, _record.Bytes, _record.DurationMs },
+            playback = _playback is null ? null : new { _playback.Ok, _playback.Error, heard = YesNo(_recordingHeard) },
+        },
+    }, new JsonSerializerOptions { WriteIndented = true });
+}

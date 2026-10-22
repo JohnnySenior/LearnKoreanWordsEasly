@@ -1,0 +1,545 @@
+using KoreanAiTeacher.Application.Abstractions;
+using KoreanAiTeacher.Application.Lessons;
+using KoreanAiTeacher.Contracts;
+using KoreanAiTeacher.Domain.Learning;
+using KoreanAiTeacher.Domain.Lessons;
+using KoreanAiTeacher.Domain.Vocabulary;
+using Microsoft.EntityFrameworkCore;
+
+namespace KoreanAiTeacher.Application.Study;
+
+/// <summary>
+/// Practice sessions over the learner's approved words (spec §5, §6).
+/// Every answer is an idempotent event applied in one transaction with the card and session (spec DATA01, API01).
+/// </summary>
+public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler scheduler, LessonService lessons, TimeProvider time)
+{
+    public const int DefaultSecondsPerCard = 12;
+
+    /// <summary>A forgotten card comes back after this many other prompts, at most this many times per session.</summary>
+    public const int ReinsertGap = 5;
+
+    public const int MaxReinsertsPerCard = 2;
+
+    public static readonly TimeSpan UndoWindow = TimeSpan.FromMinutes(5);
+
+    public async Task<TodayDto> TodayAsync(Guid ownerId, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        var planned = await lessons.PlannedLessonsAsync(ownerId, ct);
+        var lesson = planned.FirstOrDefault();
+        var cards = ActiveCards(ownerId);
+        var dueNow = await cards.CountAsync(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt <= now, ct);
+        var newCards = await cards.Where(c => c.Card.Phase == LearningPhase.New)
+            .Select(c => new { c.Sense.SourceDocumentId, c.Sense.TableNumber }).ToListAsync(ct);
+        var newAvailable = planned.Count == 0
+            ? newCards.Count
+            : newCards.Count(c => LessonRank(planned, c.SourceDocumentId, c.TableNumber) is not null);
+        var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)
+            .OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync(ct);
+
+        return new TodayDto(
+            lesson is null ? null : await lessons.ToDtoAsync(lesson, ct),
+            dueNow,
+            newAvailable,
+            active is null ? null : await ToDtoAsync(active, ct),
+            await SecondsPerCardAsync(ownerId, ct));
+    }
+
+    public async Task<SessionDto?> CurrentAsync(Guid ownerId, CancellationToken ct)
+    {
+        var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)
+            .OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync(ct);
+        return active is null ? null : await ShowAsync(active, ct);
+    }
+
+    public async Task<SessionDto> GetAsync(Guid ownerId, Guid sessionId, CancellationToken ct) =>
+        await ShowAsync(await LoadSessionAsync(ownerId, sessionId, ct), ct);
+
+    /// <summary>Resumes an unfinished session unless <see cref="StartSessionRequest.Restart"/> is set (spec PLAN07 "Davom etish").</summary>
+    public const int MaxMistakeWords = 60;
+
+    public async Task<StartSessionResponse> StartAsync(Guid ownerId, StartSessionRequest request, CancellationToken ct)
+    {
+        if (request.Minutes is { } m && (m <= 0 || m > 240))
+        {
+            throw new ValidationException("Mashg‘ulot vaqti 1 daqiqadan 240 daqiqagacha bo‘lishi mumkin.");
+        }
+
+        var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active).ToListAsync(ct);
+        if (active.Count > 0 && !request.Restart)
+        {
+            var resumed = await ShowAsync(active.OrderByDescending(s => s.CreatedAt).First(), ct);
+            if (resumed.Status == StudySessionStatus.Active)
+            {
+                return new StartSessionResponse(resumed, null);
+            }
+
+            // Everything left in it was removed from the vocabulary: plan a fresh one.
+            active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active).ToListAsync(ct);
+        }
+
+        foreach (var s in active)
+        {
+            s.Status = StudySessionStatus.Abandoned;
+        }
+
+        var now = time.GetUtcNow();
+        var planned = await lessons.PlannedLessonsAsync(ownerId, ct);
+        LessonAssignment? drill = null;
+        HashSet<Guid>? senseFilter = null;
+        if (request.AssignmentId is { } assignmentId)
+        {
+            // Whole-lesson practice: both tables of the lesson in one session (60 words), also a lesson already handed in.
+            drill = await db.LessonAssignments.SingleOrDefaultAsync(a => a.Id == assignmentId && a.OwnerId == ownerId, ct)
+                ?? throw new NotFoundException("Dars topilmadi.");
+            planned = [drill];
+        }
+        else if (request.WordSenseIds is { Count: > 0 } senseIds)
+        {
+            // The mistakes notebook (D-41): these words only, every card, like a lesson drill. Nothing is saved as a lesson.
+            if (senseIds.Count > MaxMistakeWords)
+            {
+                throw new ValidationException($"Bir martada ko‘pi bilan {MaxMistakeWords} ta so‘z.");
+            }
+
+            drill = new LessonAssignment { Title = "Xatolar" };
+            planned = [];
+            senseFilter = senseIds.ToHashSet();
+        }
+        else if (request.TableNumber is { } table)
+        {
+            // One table after studying it on screen (D-36): drilled like a lesson, but nothing is saved as a lesson.
+            var document = request.SourceDocumentId ?? throw new ValidationException("Jadval qaysi kitobdan ekanini ko‘rsating.");
+            drill = new LessonAssignment { SourceDocumentId = document, Tables = [table], Title = $"{table}-jadval" };
+            planned = [drill];
+        }
+
+        var lesson = planned.FirstOrDefault();
+        var rows = await ActiveCards(ownerId).ToListAsync(ct);
+        if (senseFilter is not null)
+        {
+            rows = rows.Where(r => senseFilter.Contains(r.Sense.Id)).ToList();
+        }
+        else if (drill is not null)
+        {
+            rows = rows.Where(r => LessonRank(planned, r.Sense.SourceDocumentId, r.Sense.TableNumber) is not null).ToList();
+        }
+
+        var candidates = rows.Select(r =>
+            {
+                var rank = senseFilter is not null ? 0 : LessonRank(planned, r.Sense.SourceDocumentId, r.Sense.TableNumber);
+                return new PlanCandidate(r.Card.Id, r.Sense.Id, r.Card.Direction, r.Card.ToState(), rank == 0, r.Sense.OrderInDocument, rank);
+            })
+            .ToList();
+
+        int? capacity = request.Minutes is { } minutes && drill is null ? Math.Max(1, minutes * 60 / await SecondsPerCardAsync(ownerId, ct)) : null;
+        var items = SessionPlanner.Plan(candidates, new PlanRequest(now, capacity, NewOnlyFromLesson: lesson is not null, DrillLesson: drill is not null));
+        if (items.Count == 0)
+        {
+            await db.SaveChangesAsync(ct);
+            var message = rows.Count == 0
+                ? drill is null
+                    ? "Hali tasdiqlangan so‘z yo‘q. Avval Lug‘atlar bo‘limida jadvalni tasdiqlang."
+                    : request.TableNumber is not null
+                        ? "Bu jadvalda tasdiqlangan so‘z yo‘q."
+                        : "Bu darsda hali tasdiqlangan so‘z yo‘q. Avval Lug‘atlar bo‘limida jadvallarni tasdiqlang."
+                : "Hozircha takrorlanadigan so‘z yo‘q. Keyingi takrorlash vaqti kelganda qayta kiring.";
+            return new StartSessionResponse(null, message);
+        }
+
+        var session = new StudySession
+        {
+            Id = Guid.CreateVersion7(now),
+            OwnerId = ownerId,
+            AssignmentId = request.TableNumber is null && senseFilter is null ? lesson?.Id : null,
+            Minutes = drill is null ? request.Minutes : null,
+            Items = items,
+            Status = StudySessionStatus.Active,
+            CreatedAt = now,
+        };
+        db.StudySessions.Add(session);
+        await db.SaveChangesAsync(ct);
+        return new StartSessionResponse(await ToDtoAsync(session, ct), null);
+    }
+
+    public async Task<AnswerResultDto> AnswerAsync(Guid ownerId, Guid sessionId, AnswerRequest request, CancellationToken ct)
+    {
+        var existing = await db.ReviewEvents.AsNoTracking().SingleOrDefaultAsync(e => e.Id == request.EventId, ct);
+        if (existing is not null)
+        {
+            return await ReplayAsync(ownerId, existing, ct);
+        }
+
+        var session = await LoadSessionAsync(ownerId, sessionId, ct);
+        if (session.Status != StudySessionStatus.Active)
+        {
+            throw new ConflictException("Bu mashg‘ulot yakunlangan.");
+        }
+
+        if (await SkipInactiveAsync(session, ct))
+        {
+            await db.SaveChangesAsync(ct);
+            throw new ConflictException("Bu so‘z lug‘atdan chiqarilgan. Mashg‘ulot keyingi so‘zdan davom etadi.");
+        }
+
+        if (request.Position != session.Position || session.Position >= session.Items.Count)
+        {
+            throw new ConflictException("Bu savolga boshqa oynada javob berilgan. Mashg‘ulot yangilanadi.");
+        }
+
+        var item = session.Items[session.Position];
+        var card = await db.Cards.SingleAsync(c => c.Id == item.CardId && c.OwnerId == ownerId, ct);
+        var now = time.GetUtcNow();
+        var before = card.ToState();
+        var result = scheduler.Apply(before, request.Answer, request.Assisted, now, await LocalDayAsync(ownerId, now, ct));
+        card.Apply(result.State);
+
+        var reviewEvent = new ReviewEvent
+        {
+            Id = request.EventId,
+            OwnerId = ownerId,
+            SessionId = session.Id,
+            SessionPosition = session.Position,
+            CardId = card.Id,
+            WordSenseId = card.WordSenseId,
+            Direction = card.Direction,
+            Answer = request.Answer,
+            Assisted = request.Assisted,
+            WasDue = result.WasDue,
+            CountedAsIndependentSuccess = result.CountsAsIndependentSuccess,
+            ResponseMs = request.ResponseMs is > 0 and < 600_000 ? request.ResponseMs : null,
+            OccurredAt = now,
+            AlgorithmVersion = scheduler.AlgorithmVersion,
+            PreviousState = before,
+            NextState = result.State,
+        };
+
+        var items = session.Items.ToList();
+        if (request.Answer == ReviewAnswer.Forgot && items.Count(i => i.CardId == card.Id) <= MaxReinsertsPerCard)
+        {
+            var at = Math.Min(session.Position + 1 + ReinsertGap, items.Count);
+            while (at < items.Count && (items[at - 1].WordSenseId == item.WordSenseId || items[at].WordSenseId == item.WordSenseId))
+            {
+                at++; // never right next to the same word's other direction (spec SRS03)
+            }
+
+            items.Insert(at, item with { Kind = SessionItemKind.Relearning });
+            reviewEvent.ReinsertedAt = at;
+        }
+
+        session.Items = items;
+        session.Position++;
+        if (session.Position >= session.Items.Count)
+        {
+            session.Status = StudySessionStatus.Completed;
+            session.CompletedAt = now;
+        }
+
+        await SkipInactiveAsync(session, ct);
+        db.ReviewEvents.Add(reviewEvent);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            db.DiscardChanges();
+            throw new ConflictException("Bu so‘z boshqa qurilmada hozirgina baholandi. Mashg‘ulot yangilanadi.");
+        }
+        catch (DbUpdateException)
+        {
+            // The same answer arrived twice at the same moment: the first one won, answer like a retry.
+            db.DiscardChanges();
+            var first = await db.ReviewEvents.AsNoTracking().SingleOrDefaultAsync(e => e.Id == request.EventId, ct);
+            if (first is null)
+            {
+                throw;
+            }
+
+            return await ReplayAsync(ownerId, first, ct);
+        }
+
+        return new AnswerResultDto(reviewEvent.Id, card.DueAt, (int)card.Interval.TotalSeconds, await ToDtoAsync(session, ct));
+    }
+
+    /// <summary>
+    /// Takes back the latest answer of a session (spec UX03: short undo). Only the last answer, only shortly after,
+    /// and only while nothing else has changed the card.
+    /// </summary>
+    public async Task<SessionDto> UndoAsync(Guid ownerId, Guid eventId, CancellationToken ct)
+    {
+        var ev = await db.ReviewEvents.SingleOrDefaultAsync(e => e.Id == eventId && e.OwnerId == ownerId, ct)
+            ?? throw new NotFoundException("Javob topilmadi.");
+        if (ev.UndoneAt is not null || ev.SessionId is null)
+        {
+            throw new ConflictException("Bu javobni bekor qilib bo‘lmaydi.");
+        }
+
+        var now = time.GetUtcNow();
+        var session = await LoadSessionAsync(ownerId, ev.SessionId.Value, ct);
+        var latest = await db.ReviewEvents.Where(e => e.SessionId == session.Id && e.UndoneAt == null)
+            .OrderByDescending(e => e.SessionPosition).Select(e => e.Id).FirstAsync(ct);
+        if (latest != ev.Id || now - ev.OccurredAt > UndoWindow || session.Position <= ev.SessionPosition)
+        {
+            throw new ConflictException("Faqat oxirgi javobni, bir necha daqiqa ichida bekor qilish mumkin.");
+        }
+
+        // Undo only restores a state nobody has built on: not when the same card was answered again elsewhere
+        // (another session or device), and not for a session that has been replaced by a newer one.
+        var answeredSince = await db.ReviewEvents.AnyAsync(
+            e => e.CardId == ev.CardId && e.Id != ev.Id && e.UndoneAt == null && e.OccurredAt >= ev.OccurredAt, ct);
+        var card = await db.Cards.SingleAsync(c => c.Id == ev.CardId, ct);
+        if (answeredSince || card.LastReviewedAt != ev.NextState.LastReviewedAt || card.DueAt != ev.NextState.DueAt)
+        {
+            throw new ConflictException("Bu so‘z keyinroq yana baholangan, shuning uchun bu javobni bekor qilib bo‘lmaydi.");
+        }
+
+        if (session.Status == StudySessionStatus.Abandoned
+            || await db.StudySessions.AnyAsync(s => s.OwnerId == ownerId && s.Id != session.Id && s.Status == StudySessionStatus.Active, ct))
+        {
+            throw new ConflictException("Yangi mashg‘ulot boshlangan, eski mashg‘ulotdagi javobni bekor qilib bo‘lmaydi.");
+        }
+
+        card.Apply(ev.PreviousState);
+
+        var items = session.Items.ToList();
+        if (ev.ReinsertedAt is { } at && at < items.Count && items[at].CardId == ev.CardId)
+        {
+            items.RemoveAt(at);
+        }
+
+        session.Items = items;
+        session.Position = ev.SessionPosition!.Value;
+        session.Status = StudySessionStatus.Active;
+        session.CompletedAt = null;
+        ev.UndoneAt = now;
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("So‘z boshqa joyda o‘zgargan, bekor qilib bo‘lmadi.");
+        }
+
+        return await ToDtoAsync(session, ct);
+    }
+
+    private async Task<AnswerResultDto> ReplayAsync(Guid ownerId, ReviewEvent existing, CancellationToken ct)
+    {
+        if (existing.OwnerId != ownerId || existing.SessionId is null)
+        {
+            throw new NotFoundException();
+        }
+
+        var session = await LoadSessionAsync(ownerId, existing.SessionId.Value, ct);
+        return new AnswerResultDto(existing.Id, existing.NextState.DueAt, (int)existing.NextState.Interval.TotalSeconds, await ToDtoAsync(session, ct));
+    }
+
+    private async Task<StudySession> LoadSessionAsync(Guid ownerId, Guid sessionId, CancellationToken ct) =>
+        await db.StudySessions.SingleOrDefaultAsync(s => s.Id == sessionId && s.OwnerId == ownerId, ct)
+            ?? throw new NotFoundException("Mashg‘ulot topilmadi.");
+
+    /// <summary>
+    /// A session is planned up front, so a word taken out of the vocabulary afterwards may still be queued.
+    /// Such items are stepped over (spec IMP05: only approved rows are practised). Returns true if the position moved.
+    /// </summary>
+    private async Task<bool> SkipInactiveAsync(StudySession session, CancellationToken ct)
+    {
+        if (session.Status != StudySessionStatus.Active || session.Position >= session.Items.Count)
+        {
+            return false;
+        }
+
+        var remaining = session.Items.Skip(session.Position).Select(i => i.WordSenseId).Distinct().ToList();
+        var inactive = (await db.WordSenses.Where(s => remaining.Contains(s.Id) && !s.IsActive).Select(s => s.Id).ToListAsync(ct)).ToHashSet();
+        var start = session.Position;
+        while (session.Position < session.Items.Count && inactive.Contains(session.Items[session.Position].WordSenseId))
+        {
+            session.Position++;
+        }
+
+        if (session.Position >= session.Items.Count)
+        {
+            session.Status = StudySessionStatus.Completed;
+            session.CompletedAt = time.GetUtcNow();
+        }
+
+        return session.Position != start;
+    }
+
+    /// <summary>Loads a session for display, stepping over removed words first.</summary>
+    private async Task<SessionDto> ShowAsync(StudySession session, CancellationToken ct)
+    {
+        if (await SkipInactiveAsync(session, ct))
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Someone answered at the same moment; show what the database has now.
+                db.DiscardChanges();
+                session = await db.StudySessions.SingleAsync(s => s.Id == session.Id, ct);
+            }
+        }
+
+        return await ToDtoAsync(session, ct);
+    }
+
+    private async Task<SessionDto> ToDtoAsync(StudySession session, CancellationToken ct)
+    {
+        var events = await db.ReviewEvents.AsNoTracking().Where(e => e.SessionId == session.Id && e.UndoneAt == null)
+            .Select(e => new { e.Id, e.Answer, e.SessionPosition, e.OccurredAt, New = e.PreviousState })
+            .ToListAsync(ct);
+        var summary = new SessionSummaryDto(
+            events.Count,
+            events.Count(e => e.Answer == ReviewAnswer.Forgot),
+            events.Count(e => e.Answer == ReviewAnswer.Hard),
+            events.Count(e => e.Answer == ReviewAnswer.Easy),
+            events.Count(e => e.New.Phase == LearningPhase.New));
+
+        var now = time.GetUtcNow();
+        var last = events.OrderByDescending(e => e.SessionPosition).FirstOrDefault();
+        Guid? undoable = last is not null && session.Status != StudySessionStatus.Abandoned
+            && now - last.OccurredAt <= UndoWindow && session.Position > last.SessionPosition ? last.Id : null;
+
+        CardPromptDto? current = null;
+        if (session.Status == StudySessionStatus.Active && session.Position < session.Items.Count)
+        {
+            current = await PromptAsync(session.Items[session.Position], session.Position, now, ct);
+        }
+
+        return new SessionDto(session.Id, session.Status, session.Minutes, session.Position, session.Items.Count, current, summary, undoable);
+    }
+
+    private async Task<CardPromptDto> PromptAsync(SessionItem item, int position, DateTimeOffset now, CancellationToken ct)
+    {
+        var card = await db.Cards.AsNoTracking().SingleAsync(c => c.Id == item.CardId, ct);
+        var sense = await db.WordSenses.AsNoTracking().SingleAsync(s => s.Id == item.WordSenseId, ct);
+        var state = card.ToState();
+        var day = DateOnly.FromDateTime(now.UtcDateTime);
+        var previews = new[] { ReviewAnswer.Forgot, ReviewAnswer.Hard, ReviewAnswer.Easy }
+            .Select(a =>
+            {
+                var r = scheduler.Apply(state, a, assisted: false, now, day);
+                return new RatingPreview(a, (int)r.State.Interval.TotalSeconds, !ReferenceEquals(r.State, state) && r.State.DueAt != state.DueAt);
+            })
+            .ToList();
+
+        var koreanToUzbek = item.Direction == ReviewDirection.KoreanToUzbek;
+        var trap = await db.WordUsages.AsNoTracking()
+            .Where(u => u.WordSenseId == sense.Id && u.ContentVersion == sense.ContentVersion)
+            .Select(u => u.TrapUz).FirstOrDefaultAsync(ct);
+        return new CardPromptDto(
+            position,
+            card.Id,
+            sense.Id,
+            item.Direction,
+            item.Kind,
+            koreanToUzbek ? sense.Korean : sense.Uzbek,
+            koreanToUzbek ? sense.KoreanNote : null,
+            koreanToUzbek ? sense.Uzbek : sense.Korean,
+            koreanToUzbek ? null : sense.KoreanNote,
+            sense.TableNumber,
+            state.IsDue(now),
+            previews,
+            trap);
+    }
+
+    /// <summary>Position of the planned lesson (nearest first) that contains the table, or null.</summary>
+    private static int? LessonRank(List<LessonAssignment> planned, Guid documentId, int table)
+    {
+        for (var i = 0; i < planned.Count; i++)
+        {
+            if (planned[i].SourceDocumentId == documentId && planned[i].Tables.Contains(table))
+            {
+                return i;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Approved tables with their word counts, book by book (D-36).</summary>
+    public async Task<IReadOnlyList<VocabTableDto>> TablesAsync(Guid ownerId, CancellationToken ct)
+    {
+        var rows = await ActiveCards(ownerId)
+            .Select(r => new { r.Sense.Id, r.Sense.SourceDocumentId, r.Sense.TableNumber, r.Card.Phase })
+            .ToListAsync(ct);
+        var names = await db.SourceDocuments.Where(d => d.OwnerId == ownerId).ToDictionaryAsync(d => d.Id, d => d.FileName, ct);
+        return rows
+            .GroupBy(r => (r.SourceDocumentId, r.TableNumber))
+            .OrderBy(g => names.GetValueOrDefault(g.Key.SourceDocumentId)).ThenBy(g => g.Key.TableNumber)
+            .Select(g => new VocabTableDto(
+                g.Key.SourceDocumentId,
+                names.GetValueOrDefault(g.Key.SourceDocumentId) ?? "",
+                g.Key.TableNumber,
+                g.Select(r => r.Id).Distinct().Count(),
+                g.GroupBy(r => r.Id).Count(w => w.Any(r => r.Phase != LearningPhase.New))))
+            .ToList();
+    }
+
+    /// <summary>One table's approved words in book order, to study on screen before the cards (D-36).</summary>
+    public async Task<VocabTableWordsDto> TableAsync(Guid ownerId, Guid documentId, int table, CancellationToken ct)
+    {
+        var document = await db.SourceDocuments.SingleOrDefaultAsync(d => d.Id == documentId && d.OwnerId == ownerId, ct)
+            ?? throw new NotFoundException("Kitob topilmadi.");
+        var rows = await ActiveCards(ownerId)
+            .Where(r => r.Sense.SourceDocumentId == documentId && r.Sense.TableNumber == table)
+            .Select(r => new { r.Sense.Id, r.Sense.OrderInDocument, r.Sense.Korean, r.Sense.KoreanNote, r.Sense.Uzbek, r.Card.Phase })
+            .ToListAsync(ct);
+        if (rows.Count == 0)
+        {
+            throw new NotFoundException("Bu jadvalda tasdiqlangan so‘z yo‘q.");
+        }
+
+        var words = rows.GroupBy(r => r.Id)
+            .Select(g => g.First() with { Phase = g.Any(r => r.Phase != LearningPhase.New) ? LearningPhase.Review : LearningPhase.New })
+            .OrderBy(r => r.OrderInDocument)
+            .Select((r, i) => new TableWordDto(r.Id, i + 1, r.Korean, r.KoreanNote, r.Uzbek, r.Phase != LearningPhase.New))
+            .ToList();
+        return new VocabTableWordsDto(documentId, document.FileName, table, words);
+    }
+
+    private IQueryable<ActiveCard> ActiveCards(Guid ownerId) =>
+        from c in db.Cards
+        join s in db.WordSenses on c.WordSenseId equals s.Id
+        where c.OwnerId == ownerId && s.IsActive
+        select new ActiveCard { Card = c, Sense = s }; // member-init, so EF can still filter on it
+
+    private sealed class ActiveCard
+    {
+        public required Card Card { get; init; }
+
+        public required WordSense Sense { get; init; }
+    }
+
+    /// <summary>
+    /// Estimated seconds per prompt from the learner's own recent answers (spec PLAN06): median answer time plus a few
+    /// seconds for revealing and rating. Only an estimate; never a promise.
+    /// </summary>
+    private async Task<int> SecondsPerCardAsync(Guid ownerId, CancellationToken ct)
+    {
+        var recent = await db.ReviewEvents.Where(e => e.OwnerId == ownerId && e.ResponseMs != null)
+            .OrderByDescending(e => e.OccurredAt).Take(100).Select(e => e.ResponseMs!.Value).ToListAsync(ct);
+        if (recent.Count < 10)
+        {
+            return DefaultSecondsPerCard;
+        }
+
+        recent.Sort();
+        var medianSeconds = recent[recent.Count / 2] / 1000.0;
+        return (int)Math.Clamp(Math.Round(medianSeconds + 4), 6, 40);
+    }
+
+    private async Task<DateOnly> LocalDayAsync(Guid ownerId, DateTimeOffset now, CancellationToken ct)
+    {
+        var zoneId = await db.Users.Where(u => u.Id == ownerId).Select(u => u.TimeZone).SingleAsync(ct);
+        var zone = TimeZoneInfo.TryFindSystemTimeZoneById(zoneId, out var found) ? found : TimeZoneInfo.Utc;
+        return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).DateTime);
+    }
+}

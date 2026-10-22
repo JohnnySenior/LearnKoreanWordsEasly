@@ -1,0 +1,98 @@
+@using KoreanAiTeacher.Contracts
+@using KoreanAiTeacher.Domain.Ai
+
+@* The AI's answer to one written sentence: first a hint, the correction only on request (spec PR08). *@
+<section class="card" aria-live="polite">
+    @if (Check.Message is not null)
+    {
+        <p class="notice">@Check.Message</p>
+    }
+    @if (Check.Result is { } r)
+    {
+        <p class="verdict @(r.Verdict is "correct" or "mostly_correct" ? "verdict-ok" : "verdict-warn")">@VerdictText(r.Verdict, MissingText)</p>
+        <div class="hint"><span class="kicker">Ishora</span>@r.HintUz</div>
+        @if (r.Issues is { Count: > 0 } issues)
+        {
+            @* Every problem at once (D-52): fix them all in one try. *@
+            <ul class="issues">
+                @foreach (var i in issues)
+                {
+                    <li>
+                        <span class="pill @(i.Severity == "error" ? "pill-warn" : "pill-ok")">@(i.Severity == "error" ? "xato" : "taklif (ixtiyoriy)")</span>
+                        <span class="ko" lang="ko">@i.Quote</span> — @i.HintUz
+                    </li>
+                }
+            </ul>
+        }
+        @if (r.Assisted)
+        {
+            <p class="muted small-text">Bu gap mustaqil qo‘llash hisobiga kirmaydi.</p>
+        }
+        @if (!_shown && r.Verdict != "correct")
+        {
+            <button class="button" @onclick="OnRetry">Qayta urinish</button>
+            <button class="button" @onclick="() => _shown = true">To‘g‘ri variantni ko‘rsatish</button>
+        }
+        else
+        {
+            @if (r.CorrectedText is not null && r.CorrectedText != Check.Answer)
+            {
+                <p class="muted small-text">To‘g‘ri variant</p>
+                <p class="sentence" lang="ko">@r.CorrectedText</p>
+            }
+            <p>@r.ExplanationUz</p>
+            @if (r.Alternatives.Count > 0)
+            {
+                <p class="muted small-text">Tabiiyroq variantlar</p>
+                <ul>
+                    @foreach (var a in r.Alternatives)
+                    {
+                        <li class="sentence" lang="ko">@a</li>
+                    }
+                </ul>
+            }
+            <button class="button" @onclick="OnRetry">Yana gap yozish</button>
+        }
+        <button class="button" disabled="@Busy" @onclick="OnRecheck">Bahoga qo‘shilmayman — qayta tekshirish</button>
+        <p class="muted small-text">Tekshirdi: @Check.Provider. AI ham adashishi mumkin.</p>
+    }
+    else if (Check.Status == AiCheckStatus.NeedsReview)
+    {
+        <button class="button" disabled="@Busy" @onclick="OnRecheck">Qayta tekshirish</button>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public SentenceCheckDto Check { get; set; } = default!;
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    [Parameter] public EventCallback OnRecheck { get; set; }
+
+    /// <summary>Verdict text when the target was not used ("So‘z ishlatilmagan" or "Grammatika ishlatilmagan").</summary>
+    [Parameter] public string MissingText { get; set; } = "So‘z ishlatilmagan";
+
+    private bool _shown;
+    private Guid _shownFor;
+
+    protected override void OnParametersSet()
+    {
+        if (Check.Id != _shownFor)
+        {
+            _shownFor = Check.Id;
+            _shown = false;
+        }
+    }
+
+    public static string VerdictText(string? verdict, string missing = "So‘z ishlatilmagan") => verdict switch
+    {
+        "correct" => "To‘g‘ri",
+        "mostly_correct" => "Deyarli to‘g‘ri",
+        "task_not_done" => missing,
+        null => "Tekshirilmadi",
+        _ => "Xato bor",
+    };
+}
+

@@ -1,0 +1,147 @@
+@page "/grammatika/toplam/yangi"
+@using KoreanAiTeacher.Contracts
+@using KoreanAiTeacher.Domain.Grammar
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Yangi to‘plam — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="grammatika">← Grammatika</a>
+<h1>Yangi to‘plam</h1>
+<p class="muted small-text">O‘qituvchi o‘rganib kelishni aytgan bandlarni tanlang. Dastur kitob tartibida keyingi bandlarni taklif qiladi, keraksizini olib tashlang.</p>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_free is null)
+{
+    @if (_error is null)
+    {
+        <p class="muted">Yuklanmoqda…</p>
+    }
+}
+else if (_free.Count == 0)
+{
+    <section class="card">
+        <p>To‘plamga qo‘shiladigan tasdiqlangan band qolmadi.</p>
+        @if (_unapproved > 0)
+        {
+            <p class="muted small-text">@_unapproved ta band hali tasdiqlanmagan. Ularni tasdiqlasangiz, shu yerda chiqadi.</p>
+        }
+        <a class="button" href="grammatika/kitob">Kitob va betlar</a>
+    </section>
+}
+else
+{
+    <section class="card">
+        <span class="kicker">Nechta band</span>
+        <div class="seg" role="radiogroup" aria-label="Bandlar soni">
+            @foreach (var n in Counts)
+            {
+                var count = n;
+                <button class="@(_count == count ? "selected" : "")" role="radio" aria-checked="@(_count == count)" @onclick="() => Pick(count)">@count</button>
+            }
+        </div>
+
+        <label class="field">
+            Muddat (ixtiyoriy)
+            <input class="input" type="date" @bind="_due" />
+        </label>
+        <p class="muted small-text">Masalan, o‘qituvchiga aytib beradigan kun. Dastur qolgan bandlarni kunlarga bo‘lib, Bugun sahifasida ko‘rsatadi.</p>
+    </section>
+
+    <section class="card">
+        <div class="row-between">
+            <span class="kicker">Bandlar</span>
+            <span class="muted small-text">@_selected.Count ta tanlandi</span>
+        </div>
+        <ul class="pick-list">
+            @foreach (var i in _free)
+            {
+                var item = i;
+                <li>
+                    <label class="toggle">
+                        <input type="checkbox" checked="@_selected.Contains(item.Id)" @onchange="e => Toggle(item.Id, (bool)e.Value!)" />
+                        <span>
+                            <span class="ko-form" lang="ko">@item.Form</span>
+                            <span class="muted small-text">@(item.Section is null ? "" : item.Section + " · ")@item.MeaningUz</span>
+                        </span>
+                    </label>
+                </li>
+            }
+        </ul>
+        @if (_unapproved > 0)
+        {
+            <p class="muted small-text">Yana @_unapproved ta band hali tasdiqlanmagan, ular ro‘yxatda yo‘q.</p>
+        }
+    </section>
+
+    <div class="actions">
+        <button class="button primary big" disabled="@(_busy || _selected.Count == 0)" @onclick="CreateAsync">@_selected.Count ta band bilan to‘plam yaratish</button>
+    </div>
+}
+
+@code {
+    private static readonly int[] Counts = [10, 20, 30];
+
+    private List<GrammarListItemDto>? _free;
+    private readonly HashSet<Guid> _selected = [];
+    private int _count = 20;
+    private int _unapproved;
+    private DateTime? _due;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetAsync<List<GrammarListItemDto>>("api/grammar/items");
+        _error = result.Ok ? null : result.Error;
+        if (result.Value is { } items)
+        {
+            _free = items.Where(i => i.Status == GrammarItemStatus.Approved && i.SetNumber is null).ToList();
+            _unapproved = items.Count(i => i.Status == GrammarItemStatus.NeedsReview && i.SetNumber is null);
+            Pick(_count);
+        }
+    }
+
+    /// <summary>The next <paramref name="count"/> points in book order.</summary>
+    private void Pick(int count)
+    {
+        _count = count;
+        _selected.Clear();
+        foreach (var i in _free!.Take(count))
+        {
+            _selected.Add(i.Id);
+        }
+    }
+
+    private void Toggle(Guid id, bool on)
+    {
+        if (on)
+        {
+            _selected.Add(id);
+        }
+        else
+        {
+            _selected.Remove(id);
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        var ids = _free!.Where(i => _selected.Contains(i.Id)).Select(i => i.Id).ToList(); // book order
+        var due = _due is { } d ? DateOnly.FromDateTime(d) : (DateOnly?)null;
+        var result = await Api.SendJsonAsync<GrammarSetDetailDto>(HttpMethod.Post, "api/grammar/sets", new CreateGrammarSetRequest(ids, due));
+        _busy = false;
+        if (result.Value is { } created)
+        {
+            Nav.NavigateTo($"grammatika/toplam/{created.Set.Id}");
+            return;
+        }
+
+        _error = result.Error;
+    }
+}

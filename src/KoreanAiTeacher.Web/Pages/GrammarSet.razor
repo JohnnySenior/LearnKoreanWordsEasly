@@ -1,0 +1,215 @@
+@page "/grammatika/toplam/{Id:guid}"
+@using KoreanAiTeacher.Contracts
+@using KoreanAiTeacher.Domain.Grammar
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>To‘plam — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="grammatika">← Grammatika</a>
+
+@if (_detail is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+@{
+    var set = _detail.Set;
+}
+
+<header class="page-head">
+    <div>
+        <span class="kicker @(set.Overdue ? "accent" : "")">@(set.DueDate is { } due ? $"{Format.Date(due)} · {Format.DueIn(due)}" : "Muddatsiz")</span>
+        <h1>@set.Number-to‘plam</h1>
+    </div>
+</header>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+<div class="stat-grid">
+    <div><b>@set.Total</b><span>Band</span></div>
+    <div><b>@set.Started</b><span>Mashqda</span></div>
+    <div><b>@set.Independent</b><span>Mustaqil</span></div>
+</div>
+
+<section class="card" style="border-top:0">
+    <p>@TodayText(set)</p>
+    @if (set.NextItemId is { } nextId)
+    {
+        <a class="button primary block" href="@($"grammatika/band/{nextId}?toplam={set.Id}")">
+            <span>@(set.Started == 0 ? "Boshlash" : "Davom etish")</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+        </a>
+    }
+</section>
+
+<nav class="menu grammar-list" aria-label="To‘plam bandlari">
+    @foreach (var i in _detail.Items)
+    {
+        var item = i;
+        <div class="set-row">
+            <a href="@($"grammatika/band/{item.Id}?toplam={set.Id}")">
+                <span class="no">@(item.Number is { } n ? n.ToString("00") : "·")</span>
+                <span>
+                    <span class="t" lang="ko">@item.Form</span>
+                    <span class="s clamp">@item.MeaningUz</span>
+                    <span class="aside @(item.Mastery == GrammarMastery.Independent ? "strong" : "done")">@MasteryText(item)</span>
+                </span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </a>
+            @if (_editing && _detail.Items.Count > 1)
+            {
+                <button class="button small remove" disabled="@_busy" aria-label="@($"{item.Form} ni olib tashlash")" @onclick="() => RemoveAsync(item)">Olib tashlash</button>
+            }
+        </div>
+    }
+</nav>
+
+<section class="card" style="margin-top:20px">
+    <span class="kicker">Sozlash</span>
+    <label class="field">
+        Muddat
+        <input class="input" type="date" @bind="_due" />
+    </label>
+    <button class="button small" disabled="@_busy" @onclick="SaveDueAsync">Muddatni saqlash</button>
+    @if (set.DueDate is not null)
+    {
+        <button class="button small" disabled="@_busy" @onclick="ClearDueAsync">Muddatni olib tashlash</button>
+    }
+
+    <div style="margin-top:12px">
+        <button class="button small" @onclick="() => _editing = !_editing">@(_editing ? "Tahrirlashni tugatish" : "Bandlarni olib tashlash")</button>
+        @if (_free.Count > 0)
+        {
+            <label class="field" style="margin-top:12px">
+                Band qo‘shish
+                <select class="input" @bind="_addId">
+                    <option value="">— tanlang —</option>
+                    @foreach (var f in _free)
+                    {
+                        <option value="@f.Id">@f.Form · @f.MeaningUz</option>
+                    }
+                </select>
+            </label>
+            <button class="button small" disabled="@(_busy || _addId is null)" @onclick="AddAsync">Qo‘shish</button>
+        }
+    </div>
+
+    <div style="margin-top:16px">
+        <Confirm Question="To‘plamni o‘chirasizmi? Bandlar va yozgan gaplaringiz saqlanadi." @bind-Value="_confirmDelete" />
+        @if (_confirmDelete == true)
+        {
+            <button class="button small" disabled="@_busy" @onclick="DeleteAsync">O‘chirish</button>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private GrammarSetDetailDto? _detail;
+    private List<GrammarListItemDto> _free = [];
+    private string? _error;
+    private bool _busy;
+    private bool _editing;
+    private bool? _confirmDelete;
+    private DateTime? _due;
+    private Guid? _addId;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<GrammarSetDetailDto>($"api/grammar/sets/{Id}");
+        _error = result.Ok ? null : result.Error;
+        Show(result.Value);
+        var items = await Api.GetAsync<List<GrammarListItemDto>>("api/grammar/items");
+        _free = items.Value?.Where(i => i.Status == GrammarItemStatus.Approved && i.SetNumber is null).ToList() ?? [];
+    }
+
+    private void Show(GrammarSetDetailDto? detail)
+    {
+        if (detail is null)
+        {
+            return;
+        }
+
+        _detail = detail;
+        _due = detail.Set.DueDate?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private Task SaveDueAsync() => UpdateAsync(new UpdateGrammarSetRequest(_due is { } d ? DateOnly.FromDateTime(d) : null, _due is null, null, null, _detail!.Set.Version));
+
+    private Task ClearDueAsync() => UpdateAsync(new UpdateGrammarSetRequest(null, true, null, null, _detail!.Set.Version));
+
+    private Task RemoveAsync(GrammarListItemDto item) => UpdateAsync(new UpdateGrammarSetRequest(null, false, null, [item.Id], _detail!.Set.Version));
+
+    private async Task AddAsync()
+    {
+        if (_addId is { } id)
+        {
+            await UpdateAsync(new UpdateGrammarSetRequest(null, false, [id], null, _detail!.Set.Version));
+            _addId = null;
+        }
+    }
+
+    private async Task UpdateAsync(UpdateGrammarSetRequest request)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<GrammarSetDetailDto>(HttpMethod.Patch, $"api/grammar/sets/{Id}", request);
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        if (result.Ok)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/grammar/sets/{Id}");
+        _busy = false;
+        if (result.Ok)
+        {
+            Nav.NavigateTo("grammatika");
+            return;
+        }
+
+        _error = result.Error;
+    }
+
+    private static string TodayText(GrammarSetDto s)
+    {
+        if (s.Independent == s.Total)
+        {
+            return "Hamma bandlarni mustaqil qo‘llayapsiz. Zo‘r!";
+        }
+
+        if (s.Overdue)
+        {
+            return $"Muddat o‘tdi. {s.Total - s.Independent} ta band hali “Mustaqil” emas: ular Bugun sahifasida takrorlashga chiqib turadi.";
+        }
+
+        if (s.TodayTarget == 0)
+        {
+            return $"Hamma bandlar boshlangan. Endi har biriga boshqa kunlarda ham gap yozing: {GrammarProgress.RequiredGoodDays} xil kunda to‘g‘ri yozilgani “Mustaqil” bo‘ladi.";
+        }
+
+        return s.StartedToday >= s.TodayTarget
+            ? $"Bugungi reja bajarildi: {s.StartedToday} ta yangi band boshlandi. Xohlasangiz, davom eting."
+            : $"Bugun {s.TodayTarget} ta yangi band: {s.StartedToday} tasi boshlandi. Har bandni o‘qing va kamida bitta gap yozing.";
+    }
+
+    private static string MasteryText(GrammarListItemDto i) => i.Mastery switch
+    {
+        GrammarMastery.Independent => "✓ Mustaqil qo‘llayapti",
+        GrammarMastery.Practising => $"Mashq qilinyapti · {i.GoodDays}/{GrammarProgress.RequiredGoodDays} kun",
+        GrammarMastery.Seen => "Ko‘rib chiqildi, gap yozilmagan",
+        _ => "Yangi",
+    };
+}

@@ -1,0 +1,147 @@
+@page "/sinov/kitob/yangi"
+@using KoreanAiTeacher.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Kitobdan test — TOPIK yordamchi</PageTitle>
+
+<a class="back" href="sinov/kitob">← Kitob testlari</a>
+<h1>Kitobdan test qo‘shish</h1>
+
+<section class="card">
+    <p class="muted small-text">TOPIK kitobingizdagi o‘qish (읽기) bo‘limi savollari betma-bet o‘qiladi. Tinglash (듣기) savollari audio talab qiladi, ular olinmaydi. Kitobda javoblar (정답) beti bo‘lsa, uni ham kiriting: shunda natija kitob kaliti bo‘yicha hisoblanadi.</p>
+</section>
+
+@if (_books is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+}
+else
+{
+    <section class="card">
+        <span class="kicker">Kitob</span>
+        <p class="muted small-text">PDF ni avval yuklang (Grammatika → Kitob va betlar sahifasidagidek, 100 MB gacha).</p>
+        <label class="button" for="book-pdf">@(_uploading ? "Yuklanmoqda…" : "PDF yuklash")</label>
+        <InputFile id="book-pdf" accept="application/pdf,.pdf" OnChange="UploadAsync" disabled="@_uploading" class="visually-hidden" />
+
+        @if (_books.Count > 0)
+        {
+            <div class="chips" role="radiogroup" aria-label="Kitob" style="margin-top:12px">
+                @foreach (var b in _books)
+                {
+                    var id = b.Id;
+                    <button class="chip wide @(_bookId == id ? "selected" : "")" role="radio" aria-checked="@(_bookId == id)" @onclick="() => _bookId = id">@b.FileName (@b.PageCount bet)</button>
+                }
+            </div>
+        }
+    </section>
+
+    @if (_bookId is not null)
+    {
+        <section class="card">
+            <label class="field">
+                Test nomi
+                <input class="input" maxlength="200" placeholder="Masalan: 1-mock test · o‘qish" @bind="_title" @bind:event="oninput" />
+            </label>
+
+            <span class="kicker" style="margin-top:12px">Savollar betlari (ko‘pi bilan 40)</span>
+            <div class="row-between">
+                <label class="field">Dan <input class="input" type="number" min="1" @bind="_from" /></label>
+                <label class="field">Gacha <input class="input" type="number" min="1" @bind="_to" /></label>
+            </div>
+
+            <span class="kicker" style="margin-top:12px">Javoblar (정답) betlari · ixtiyoriy</span>
+            <div class="row-between">
+                <label class="field">Dan <input class="input" type="number" min="1" @bind="_answerFrom" /></label>
+                <label class="field">Gacha <input class="input" type="number" min="1" @bind="_answerTo" /></label>
+            </div>
+            <p class="muted small-text">PDF bet raqamlarini kiriting (kitobdagi bosma raqam emas). Javoblar betini bo‘sh qoldirsangiz, javobni AI o‘zi yechadi va bu natijada “AI yechimi” deb ko‘rsatiladi.</p>
+
+            @if (_error is not null)
+            {
+                <div class="notice" role="alert">@_error</div>
+            }
+            <button class="button primary block" disabled="@(_busy || string.IsNullOrWhiteSpace(_title))" @onclick="CreateAsync">
+                @(_busy ? "Yuborilmoqda…" : "Betlarni o‘qishni boshlash")
+            </button>
+            <p class="muted small-text">Har bir bet taxminan bir daqiqa o‘qiladi. Sahifani yopsangiz ham ish davom etadi.</p>
+        </section>
+    }
+    else if (_error is not null)
+    {
+        <div class="notice" role="alert">@_error</div>
+    }
+}
+
+@code {
+    private const long MaxBytes = 100 * 1024 * 1024;
+
+    private List<SourceDocumentDto>? _books;
+    private Guid? _bookId;
+    private string _title = "";
+    private int _from = 1;
+    private int _to = 1;
+    private int? _answerFrom;
+    private int? _answerTo;
+    private bool _busy;
+    private bool _uploading;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<List<SourceDocumentDto>>("api/grammar/books");
+        _books = result.Value ?? _books ?? [];
+        _error = result.Ok ? _error : result.Error;
+        _bookId ??= _books.Count == 1 ? _books[0].Id : null;
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _error = null;
+        var request = new CreateBookTestRequest(_title.Trim(), _from, _to, _answerFrom, _answerTo ?? _answerFrom);
+        var result = await Api.SendJsonAsync<BookTestDto>(HttpMethod.Post, $"api/book-tests/documents/{_bookId}", request);
+        _busy = false;
+        if (result.Value is { } created)
+        {
+            Nav.NavigateTo($"sinov/kitob/{created.Id}");
+            return;
+        }
+
+        _error = result.Error;
+    }
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        if (e.File.Size > MaxBytes)
+        {
+            _error = "Fayl 100 MB dan katta.";
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            using var ms = new MemoryStream();
+            await e.File.OpenReadStream(MaxBytes).CopyToAsync(ms);
+            var result = await Api.UploadAsync<SourceDocumentDto>("api/grammar/books", ms.ToArray(), e.File.Name, "application/pdf");
+            if (result.Value is { } doc)
+            {
+                _bookId = doc.Id;
+            }
+            else
+            {
+                _error = result.Error;
+            }
+        }
+        finally
+        {
+            _uploading = false;
+        }
+
+        await LoadAsync();
+    }
+}
