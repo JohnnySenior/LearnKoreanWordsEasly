@@ -12,7 +12,7 @@ Quyidagilar kodda saqlangan va amal qiladi. Matni KAT’da; bu yerda faqat Lug�
 |---|---|---|
 | D-01 | Bitta deploy: Api Blazor klientni ham tarqatadi | KAT D-01 dan olingan |
 | D-02 | index.html da fingerprint placeholder yo‘q | KAT D-02 dan olingan |
-| D-03 | Sessiya: bearer access 1 soat + refresh | KAT D-03 dan olingan. Telegram initData almashinuvi olib tashlandi (L-03). PWA uchun refresh 30 kun — 1-bosqichda (spec §6.3) |
+| D-03 | Sessiya: bearer access 1 soat + refresh | KAT D-03 dan olingan. Telegram initData o‘rniga Login Widget va Google; refresh 30 kun; sessiya versiyasi (L-13, L-15) |
 | D-05 | Takrorlash algoritmi `ladder-v1` | KAT D-05 dan olingan, o‘zgarishsiz |
 | D-06 | Paket lock fayllari ishlatilmaydi | KAT D-06 dan olingan |
 | D-07 | Qatlamlar: Contracts, Application, Infrastructure | KAT D-07 dan olingan |
@@ -59,7 +59,7 @@ KAT’ning `docs/` papkasi ko‘chirilmadi: bu repoda o‘z spetsifikatsiyasi va
 
 Spec §3.1 dagi "Yo‘q" qismlari kodi, endpoint’lari, sahifalari, testlari va jadvallari bilan olib tashlandi: PDF import va lug‘at parseri (PdfPig paketi ham), grammatika (kitob, bandlar, to‘plamlar, savol-javob), kitobdagi TOPIK testlari va imtihon rejimi, imtihon sanasi va sanog‘i, TOPIK yozish (insho), dars topshiriqlari va dars kalendari, Telegram Mini App kirishi va allow-list. To‘liq ro‘yxat: [CHECKLIST.md](CHECKLIST.md).
 
-## L-03 · 2026-10-22 · Kirish: 1-bosqichgacha oraliq holat
+## L-03 · 2026-10-22 · Kirish: 1-bosqichgacha oraliq holat (o‘rniga: L-13, L-14)
 
 Mini App initData kirishi (`POST /api/auth/telegram`) va `Telegram:AllowedUserIds` olib tashlandi: Lug‘at Mini App emas va ro‘yxatdan o‘tish ochiq (spec §3.1, §6.3).
 - Telegram Login Widget va Google 1-bosqichda qo‘shiladi. Ungacha **production’da kirish yo‘q**; faqat Development’dagi `POST /api/auth/dev` ishlaydi. Klient 404 olsa "Kirish hozircha yopiq" deydi.
@@ -111,3 +111,31 @@ Bo‘lim yakuniy testi (spec §4.4, `WordListening` turi bilan) 4-bosqichda shu 
 ## L-12 · 2026-10-22 · Yangi `Initial` migratsiya
 
 KAT’ning 20 ta migratsiyasi ko‘chirilmadi (spec §5: yangi baza, eski ma’lumot ko‘chirilmaydi). Bitta `Initial` migratsiya: 15 jadval. CI `has-pending-model-changes` bilan tekshiradi.
+
+## L-13 · 2026-10-22 · Kirish: Telegram Login Widget, Google, `UserLogin`, sessiya versiyasi
+
+Spec §5.1, §6.3, §13.2.
+- **Model.** `User` endi provayder ID’sini saqlamaydi: `DisplayName`, `Roles` (flags), `ShowRomanization`, `Theme`, `SessionVersion`, `DeletedAt`. Kirish usullari `user_logins` jadvalida: `(Provider, ProviderUserId)` unikal, bitta foydalanuvchida Telegram va Google bo‘lishi mumkin. Telegram ID — `ProviderUserId` (shaxsiy chat ID’si ham shu), Google — `sub` (email emas: u o‘zgarishi mumkin).
+- **Telegram Login Widget** (`POST /api/auth/telegram-login`): widget qaytargan barcha maydonlar satr ko‘rinishida (`Dictionary<string,string>`), shuning uchun Telegram yangi maydon qo‘shsa ham hash tekshiruvi buzilmaydi. `secret = SHA256(bot_token)`, `hash = hex(HMAC_SHA256(secret, data_check_string))`, constant-time taqqoslash, `auth_date` ≤ 24 soat va 1 daqiqadan ortiq kelajakda emas. Widget `data-request-access="write"` bilan: bot eslatma yubora olishi uchun alohida /start shart emas (NOT02).
+- **Google** (`POST /api/auth/google`): GIS ID token serverda `Microsoft.IdentityModel.JsonWebTokens` bilan tekshiriladi: RS256, Google kalitlari (JWKS, Cache-Control bo‘yicha keshlanadi, noma’lum `kid` bo‘lsa bir marta qayta olinadi), `aud` = `Google:ClientId`, `iss` = accounts.google.com, muddat ilova soati (`TimeProvider`) bo‘yicha. Email faqat `email_verified` bo‘lsa ko‘rsatiladi.
+- **Bitta hisob — bitta foydalanuvchi.** Kirish va bog‘lash `login:{provider}:{id}` advisory lock ostida; unikal indeks ham bor. Parallel 5 ta kirish bitta foydalanuvchi yaratadi (test).
+- **Hisob bog‘lash** (`POST /api/me/logins`): xuddi kirishdagidek isbot. Boshqa foydalanuvchining logini birlashtirilmaydi (409); shu provayderdan ikkinchi login ham 409.
+- **Sessiya versiyasi.** Token faqat `uid` va `sv` (sessiya versiyasi) ni olib yuradi. `SessionGuard` middleware har so‘rovda foydalanuvchini bazadan oladi: o‘chirilgan bo‘lsa yoki `sv` mos kelmasa, token yo‘qdek (401). Chiqish (`POST /api/auth/logout`) va hisobni o‘chirish `SessionVersion++` qiladi — barcha qurilmadagi access va refresh tokenlar darhol to‘xtaydi. Narxi: har so‘rovda bitta PK so‘rovi.
+- **Rollar** ham shu yerda bazadan qo‘shiladi, shuning uchun berilgan yoki olingan rol keyingi so‘rovdayoq amal qiladi.
+- **Hisobni o‘chirish** (`DELETE /api/me`, spec §5.3): loginlar, so‘zlar, kartalar, javoblar, sessiyalar, sinovlar, mashqlar va eslatma yozuvlari bitta tranzaksiyada o‘chiriladi. `users` qatori anonim holda qoladi (`DisplayName` va rollar tozalanadi, `DeletedAt`), chunki `ai_usage` (keyinchalik to‘lovlar) unga bog‘langan. Xuddi shu Telegram bilan qayta kirilsa — yangi, bo‘sh foydalanuvchi.
+- **Eslatmalar** faqat Telegram logini bor foydalanuvchilarga, chat ID loginidan olinadi. Faqat Google bilan kirganlarga Sozlamalarda Telegram’ni bog‘lash taklif qilinadi.
+
+## L-14 · 2026-10-22 · Rollar va birinchi admin
+
+`UserRoles` flags: `Learner`, `Teacher`, `Editor`, `Admin` (spec §5.1). Siyosatlar: `Admin` va `Editor` (admin ham kiradi). Hozir `Admin` ostida: `/api/backups/*`, `/api/ai/budget`, `/api/ai/ping/*` (L-03 dagi ochiq xavf yopildi). `/api/ai/status` va `/api/ai/provider` o‘quvchining o‘ziniki, ochiq qoladi.
+Admin paneli (7-bosqich) bo‘lmaguncha birinchi admin konfiguratsiyadan: `Auth:Admins:TelegramUserIds` yoki `Auth:Admins:GoogleSubjects`. Ro‘yxatdagi login kirganda yoki bog‘langanda `Admin` rolini oladi; bu yerda rol hech qachon olib tashlanmaydi.
+
+## L-15 · 2026-10-22 · Klientda refresh token qurilmada saqlanadi
+
+Mini App’da har ochilishda initData bor edi, shuning uchun KAT tokenlarni faqat xotirada saqlardi (D-03). PWA’da bunday manba yo‘q: har ochilishda qayta kirish noqulay. Access token (1 soat) faqat xotirada; refresh token (30 kun, spec §6.3) `localStorage` da (`lugat.refresh`). Xavf: shu qurilmadagi XSS tokenni o‘qishi mumkin. Yumshatish: refresh token chiqishda va hisob o‘chirilganda serverda darhol bekor bo‘ladi (L-13), ilova tashqi skript sifatida faqat Telegram widget va Google GIS’ni yuklaydi. Kerak bo‘lsa keyinroq HttpOnly cookie’ga o‘tish mumkin (bir origin, D-01).
+
+## L-16 · 2026-10-22 · Rate limit
+
+ASP.NET Core RateLimiter (spec §6.4): kirish endpoint’lari (`telegram-login`, `google`, `refresh`, `dev`, `me/logins`) IP bo‘yicha daqiqasiga 10 (`Auth:SignInPerMinute`), sinov boshlash (`POST /api/tests`) foydalanuvchi bo‘yicha soatiga 20 (`Auth:TestStartsPerHour`). Rad etilganda 429 va o‘zbekcha ProblemDetails. AI chegaralari tarif bo‘yicha — 5-bosqich (spec §7.4). Bir nechta instansga o‘tilsa limiter umumiy omborga ko‘chishi kerak (hozir bitta instans, D-08).
+Railway proksi ortida `RemoteIpAddress` proksi manzili bo‘lishi mumkin: deployda `ForwardedHeaders` sozlanishi kerak (8-bosqich, CHECKLIST’da).
+

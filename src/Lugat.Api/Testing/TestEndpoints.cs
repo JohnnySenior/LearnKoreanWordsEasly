@@ -7,6 +7,9 @@ namespace Lugat.Api.Testing;
 
 public static class TestEndpoints
 {
+    /// <summary>Starting tests: 20 an hour per user (spec §6.4).</summary>
+    public const string StartRateLimitPolicy = "test-start";
+
     public static IEndpointRouteBuilder MapTestEndpoints(this IEndpointRouteBuilder app)
     {
         // Practice tests (spec TEST01–TEST04, D-30): answers stay hidden until the test is finished.
@@ -17,7 +20,7 @@ public static class TestEndpoints
         {
             var created = await s.CreateAsync(user.GetUserId(), body, ct);
             return TypedResults.Created($"/api/tests/{created.Id}", created);
-        });
+        }).RequireRateLimiting(StartRateLimitPolicy);
         tests.MapGet("/{id:guid}", (Guid id, ClaimsPrincipal user, TestService s, CancellationToken ct) => s.GetAsync(user.GetUserId(), id, ct));
         tests.MapPost("/{id:guid}/answers", (Guid id, TestAnswerRequest body, ClaimsPrincipal user, TestService s, CancellationToken ct) =>
             s.AnswerAsync(user.GetUserId(), id, body, ct));

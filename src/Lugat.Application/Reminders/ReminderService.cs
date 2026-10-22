@@ -30,13 +30,17 @@ public sealed class ReminderService(
         }
 
         var now = time.GetUtcNow();
-        var users = await db.Users.Where(u => u.RemindersEnabled).ToListAsync(ct);
+        // Reminders go through the bot, so only learners who sign in with Telegram can get them (spec §8).
+        var users = await (from u in db.Users
+                           join l in db.UserLogins on u.Id equals l.UserId
+                           where u.RemindersEnabled && u.DeletedAt == null && l.Provider == LoginProvider.Telegram
+                           select new { User = u, l.ProviderUserId }).ToListAsync(ct);
         var sent = 0;
-        foreach (var user in users)
+        foreach (var (user, chat) in users.Select(x => (x.User, ChatId(x.ProviderUserId))))
         {
             var zone = user.Zone();
             var occurrence = ReminderPlanner.Due(user.Id, now, zone, user.ReminderPreferences());
-            if (occurrence is not null && await DeliverAsync(user, occurrence, now, ct))
+            if (occurrence is not null && await DeliverAsync(user, chat, occurrence, now, ct))
             {
                 sent++;
             }
@@ -54,12 +58,22 @@ public sealed class ReminderService(
             return new SendResult(SendOutcome.Failed, Error: "Bot sozlanmagan.");
         }
 
-        var result = await telegram.SendAsync(user.TelegramUserId, "Sinov xabari: eslatmalar shu yerga keladi.", OpenAppButton, ct);
+        var login = await db.UserLogins.Where(l => l.UserId == userId && l.Provider == LoginProvider.Telegram)
+            .Select(l => l.ProviderUserId).FirstOrDefaultAsync(ct);
+        if (login is null)
+        {
+            return new SendResult(SendOutcome.Failed, Error: "Telegram hisobi bog‘lanmagan.");
+        }
+
+        var result = await telegram.SendAsync(ChatId(login), "Sinov xabari: eslatmalar shu yerga keladi.", OpenAppButton, ct);
         await RecordBotAccessAsync(user, result, ct);
         return result;
     }
 
-    private async Task<bool> DeliverAsync(User user, ReminderOccurrence occurrence, DateTimeOffset now, CancellationToken ct)
+    /// <summary>A bot's private chat with a user has the user's Telegram id.</summary>
+    private static long ChatId(string telegramUserId) => long.Parse(telegramUserId, System.Globalization.CultureInfo.InvariantCulture);
+
+    private async Task<bool> DeliverAsync(User user, long chatId, ReminderOccurrence occurrence, DateTimeOffset now, CancellationToken ct)
     {
         var delivery = await ClaimAsync(user, occurrence, now, ct);
         if (delivery is null)
@@ -77,7 +91,7 @@ public sealed class ReminderService(
             return false;
         }
 
-        var result = await telegram.SendAsync(user.TelegramUserId, text, OpenAppButton, ct);
+        var result = await telegram.SendAsync(chatId, text, OpenAppButton, ct);
         delivery.Attempts++;
         switch (result.Outcome)
         {

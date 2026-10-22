@@ -629,3 +629,10 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
 .weak-cta { margin-top: 14px; }
 .weak-cta p { margin: 6px 0 10px; }
 .mistake-list li.row-between { display: flex; }
+
+/* Sign-in (spec §6.3): Telegram widget and Google button stacked, each at least 44px tall. */
+.signin-page { padding-top: 32px; }
+.lead-text { font-size: 18px; line-height: 1.5; margin: 6px 0 16px; }
+.signin-buttons { display: grid; gap: 12px; justify-items: start; margin: 12px 0 4px; }
+.signin-buttons > div { min-height: 44px; }
+.danger-zone { border-top: 2px solid var(--color-text); }

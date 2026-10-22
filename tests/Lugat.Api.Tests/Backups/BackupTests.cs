@@ -27,7 +27,7 @@ public class BackupTests
     {
         Assert.SkipWhen(ToolsMissing(), "pg_dump is not installed");
         var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
-        await using var factory = new ApiFactory();
+        await using var factory = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:Directory"] = folder;
         var client = await factory.SignedInClientAsync(ApiFactory.UserA); // creates a user row
 
@@ -56,7 +56,7 @@ public class BackupTests
     public async Task A_failed_dump_is_recorded_and_never_counts_as_a_backup()
     {
         var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
-        await using var factory = new ApiFactory();
+        await using var factory = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:Directory"] = folder;
         factory.Settings["Backup:PgDump"] = "/nonexistent/pg_dump";
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
@@ -74,7 +74,7 @@ public class BackupTests
     [Fact]
     public async Task Nightly_backup_is_due_once_per_scheduled_time()
     {
-        await using var factory = new ApiFactory();
+        await using var factory = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:PgDump"] = "/nonexistent/pg_dump"; // the run fails fast; only the schedule matters here
         factory.Settings["Backup:Directory"] = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
         factory.Time.SetUtcNow(new DateTimeOffset(2026, 10, 5, 3, 30, 0, TimeSpan.FromHours(9)).ToUniversalTime());
@@ -96,7 +96,7 @@ public class BackupTests
         var blocker = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.GetDirectoryName(blocker)!);
         await File.WriteAllTextAsync(blocker, "a file where the folder should be");
-        await using var factory = new ApiFactory();
+        await using var factory = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:Directory"] = Path.Combine(blocker, "backups");
         await factory.SignedInClientAsync(ApiFactory.UserA);
 
@@ -118,7 +118,12 @@ public class BackupTests
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var run = new BackupRun
         {
-            Id = Guid.NewGuid(), StartedAt = factory.Time.GetUtcNow(), FinishedAt = factory.Time.GetUtcNow(), FileName = name, SizeBytes = 4, Verified = true,
+            Id = Guid.NewGuid(),
+            StartedAt = factory.Time.GetUtcNow(),
+            FinishedAt = factory.Time.GetUtcNow(),
+            FileName = name,
+            SizeBytes = 4,
+            Verified = true,
         };
         db.BackupRuns.Add(run);
         await db.SaveChangesAsync();
@@ -130,7 +135,7 @@ public class BackupTests
     {
         var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
         var telegram = new FakeMessenger();
-        await using var factory = new ApiFactory { Messenger = telegram };
+        await using var factory = new ApiFactory { Messenger = telegram, AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:Directory"] = folder;
         factory.Settings["Backup:TelegramChatId"] = ApiFactory.UserA.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
@@ -165,7 +170,7 @@ public class BackupTests
     {
         var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
         var telegram = new FakeMessenger();
-        await using var factory = new ApiFactory { Messenger = telegram };
+        await using var factory = new ApiFactory { Messenger = telegram, AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:Directory"] = folder;
         factory.Settings["Backup:TelegramMaxBytes"] = "16"; // stands in for Telegram's 50 MB
         factory.Settings["Backup:TelegramChatId"] = "777000";
@@ -189,7 +194,7 @@ public class BackupTests
     {
         var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
         var telegram = new FakeMessenger { NextOutcome = SendOutcome.Blocked };
-        await using var factory = new ApiFactory { Messenger = telegram };
+        await using var factory = new ApiFactory { Messenger = telegram, AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:Directory"] = folder;
         factory.Settings["Backup:TelegramChatId"] = "777000";
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
@@ -221,7 +226,7 @@ public class BackupTests
         // The Mini App allow-list is gone (spec §3.1), so its first user is no longer a fallback owner.
         var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
         var telegram = new FakeMessenger();
-        await using var factory = new ApiFactory { Messenger = telegram };
+        await using var factory = new ApiFactory { Messenger = telegram, AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:Directory"] = folder;
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await SeedVerifiedAsync(factory, folder);
@@ -241,7 +246,7 @@ public class BackupTests
     public async Task Nothing_is_sent_without_a_verified_copy()
     {
         var telegram = new FakeMessenger();
-        await using var factory = new ApiFactory { Messenger = telegram };
+        await using var factory = new ApiFactory { Messenger = telegram, AdminTelegramIds = [ApiFactory.UserA] };
         factory.Settings["Backup:TelegramChatId"] = "777000";
         await factory.SignedInClientAsync(ApiFactory.UserA);
 

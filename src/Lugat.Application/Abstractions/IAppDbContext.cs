@@ -10,6 +10,8 @@ public interface IAppDbContext
 {
     DbSet<User> Users { get; }
 
+    DbSet<UserLogin> UserLogins { get; }
+
     DbSet<WordSense> WordSenses { get; }
 
     DbSet<WordUsage> WordUsages { get; }

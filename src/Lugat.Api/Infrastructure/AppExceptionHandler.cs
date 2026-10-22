@@ -20,6 +20,7 @@ public sealed class AppExceptionHandler(IProblemDetailsService problems) : IExce
             PayloadTooLargeException => StatusCodes.Status413PayloadTooLarge,
             ServiceUnavailableException => StatusCodes.Status503ServiceUnavailable,
             TooManyRequestsException => StatusCodes.Status429TooManyRequests,
+            UnauthorizedException => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status422UnprocessableEntity,
         };
 

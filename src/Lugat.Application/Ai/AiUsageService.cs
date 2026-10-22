@@ -48,9 +48,18 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
 
         var row = new AiUsage
         {
-            Id = Guid.CreateVersion7(time.GetUtcNow()), OwnerId = ownerId, Feature = feature, Provider = provider,
-            Model = model, InputTokens = input, OutputTokens = output, Unit = unit,
-            EstimatedUsd = cost, PriceAsOf = rate?.AsOf, Error = "pending", OccurredAt = time.GetUtcNow(),
+            Id = Guid.CreateVersion7(time.GetUtcNow()),
+            OwnerId = ownerId,
+            Feature = feature,
+            Provider = provider,
+            Model = model,
+            InputTokens = input,
+            OutputTokens = output,
+            Unit = unit,
+            EstimatedUsd = cost,
+            PriceAsOf = rate?.AsOf,
+            Error = "pending",
+            OccurredAt = time.GetUtcNow(),
         };
         db.AiUsages.Add(row);
         await db.SaveChangesAsync(ct);

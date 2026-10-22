@@ -1,22 +1,47 @@
 namespace Lugat.Domain.Users;
 
-/// <summary>An app user. All personal data hangs off <see cref="Id"/>. Sign-in logins move to their own table in stage 1 (spec §5.1).</summary>
+/// <summary>What a user may do besides learning (spec §5.1). A user can hold several roles.</summary>
+[Flags]
+public enum UserRoles
+{
+    None = 0,
+    Learner = 1,
+    Teacher = 2,
+    Editor = 4,
+    Admin = 8,
+}
+
+/// <summary>Colour theme chosen in settings; <see cref="Device"/> follows the phone (spec §4.7).</summary>
+public enum ThemeChoice
+{
+    Device,
+    Light,
+    Dark,
+}
+
+/// <summary>
+/// An app user (spec §5.1). All personal data hangs off <see cref="Id"/>. How the user signs in lives in
+/// <see cref="UserLogin"/>: one user may have a Telegram and a Google login.
+/// </summary>
 public sealed class User
 {
     public Guid Id { get; set; }
 
-    public long TelegramUserId { get; set; }
-
-    public string? FirstName { get; set; }
-
-    public string? Username { get; set; }
+    public string? DisplayName { get; set; }
 
     /// <summary>IANA time zone. Reminders and local days use Korea time by default (spec §5.1).</summary>
     public string TimeZone { get; set; } = "Asia/Seoul";
 
+    public UserRoles Roles { get; set; } = UserRoles.Learner;
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset LastSeenAt { get; set; }
+
+    /// <summary>Show the Latin reading of Korean words; on by default for beginners (spec §2.3).</summary>
+    public bool ShowRomanization { get; set; } = true;
+
+    public ThemeChoice Theme { get; set; }
 
     public bool RemindersEnabled { get; set; } = true;
 
@@ -28,9 +53,49 @@ public sealed class User
     /// <summary>AI service chosen in settings; null = the server default (D-21).</summary>
     public Ai.AiProviderKind? AiProvider { get; set; }
 
+    /// <summary>
+    /// Raised on logout and account deletion. Every token carries the value it was issued with, so older tokens
+    /// stop working at once (L-13).
+    /// </summary>
+    public int SessionVersion { get; set; }
+
+    /// <summary>The account was deleted: personal data is gone, the row stays only for anonymous records (spec §5.3).</summary>
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public uint Version { get; set; }
+
     public TimeZoneInfo Zone() =>
         TimeZoneInfo.TryFindSystemTimeZoneById(TimeZone, out var zone) ? zone : TimeZoneInfo.Utc;
 
     public Reminders.ReminderPreferences ReminderPreferences() =>
         new(RemindersEnabled, WeekdayReminderTime);
+}
+
+public enum LoginProvider
+{
+    Telegram,
+    Google,
+}
+
+/// <summary>
+/// One way to sign in (spec §5.1). <see cref="ProviderUserId"/> is unique per provider, so one Telegram or Google
+/// account never makes two users.
+/// </summary>
+public sealed class UserLogin
+{
+    public Guid Id { get; set; }
+
+    public Guid UserId { get; set; }
+
+    public LoginProvider Provider { get; set; }
+
+    /// <summary>Telegram user id, or Google's <c>sub</c>.</summary>
+    public string ProviderUserId { get; set; } = "";
+
+    /// <summary>Telegram username or Google email; only for showing which account is linked.</summary>
+    public string? Display { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset LastUsedAt { get; set; }
 }

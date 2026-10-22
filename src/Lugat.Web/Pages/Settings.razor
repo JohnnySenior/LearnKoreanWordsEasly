@@ -1,7 +1,9 @@
 @page "/sozlamalar"
 @using Lugat.Contracts
 @using Lugat.Domain.Ai
+@using Lugat.Domain.Users
 @inject SessionService Api
+@inject BrowserInterop Browser
 
 <PageTitle>Sozlamalar — Lug‘at</PageTitle>
 
@@ -20,11 +22,60 @@
 }
 else
 {
+    @if (_me is { } me)
+    {
+        <section class="card" id="profil">
+            <h2>Profil</h2>
+            <label class="field">
+                Ism
+                <input class="input" maxlength="100" @bind="_name" />
+            </label>
+            <label class="toggle">
+                <input type="checkbox" @bind="_romanization" /> Lotincha o‘qilishini ko‘rsatish
+            </label>
+            <span class="kicker" style="margin-top:12px">Mavzu</span>
+            <div class="chips" role="radiogroup" aria-label="Mavzu">
+                @foreach (var (value, label) in Themes)
+                {
+                    var v = value;
+                    <button class="chip wide @(_theme == v ? "selected" : "")" role="radio" aria-checked="@(_theme == v)" @onclick="() => _theme = v">@label</button>
+                }
+            </div>
+            <button class="button primary" disabled="@_busy" @onclick="SaveProfileAsync">Saqlash</button>
+            @if (_profileStatus is not null)
+            {
+                <p role="status">@_profileStatus</p>
+            }
+
+            <h3 style="margin-top:16px">Kirish usullari</h3>
+            <ul class="plain-list">
+                @foreach (var login in me.Logins)
+                {
+                    <li><strong>@login.Provider</strong> <span class="muted">@login.Display</span></li>
+                }
+            </ul>
+            @if (me.Logins.Count < 2)
+            {
+                <p class="muted small-text">Ikkinchi kirish usulini bog‘lasangiz, Telegram yoki Google’dan biri ishlamay qolsa ham hisobingizga kira olasiz.</p>
+                <SignIn Link="true" Have="@me.Logins.Select(l => l.Provider).ToList()" OnLinked="ReloadAsync" />
+            }
+
+            <div class="row-links" style="margin-top:16px">
+                <button class="button" disabled="@_busy" @onclick="Api.LogoutAsync">Chiqish</button>
+            </div>
+            <p class="muted small-text">Chiqish barcha qurilmalarda sessiyani tugatadi.</p>
+        </section>
+    }
+
     <section class="card">
         <h2>Eslatmalar</h2>
         @if (!_prefs.RemindersAvailable)
         {
             <p class="muted">Eslatmalar hozircha serverda yoqilmagan.</p>
+        }
+        else if (!_prefs.HasTelegram)
+        {
+            <p class="muted">Eslatmalar Telegram bot orqali keladi. Ularni olish uchun yuqorida Telegram hisobini bog‘lang.</p>
         }
         else
         {
@@ -82,7 +133,10 @@ else
                         @if (p.Configured)
                         {
                             <span>ulangan <span class="muted">(@p.Model)</span></span>
-                            <button class="button small" disabled="@_busy" @onclick="() => PingAsync(p.Kind)">Ulanishni tekshirish</button>
+                            @if (IsAdmin)
+                            {
+                                <button class="button small" disabled="@_busy" @onclick="() => PingAsync(p.Kind)">Ulanishni tekshirish</button>
+                            }
                         }
                         else
                         {
@@ -91,9 +145,13 @@ else
                     </li>
                 }
             </ul>
-            @if (_ai.Effective is null)
+            @if (_ai.Effective is null && IsAdmin)
             {
                 <p class="notice">AI hali ulanmagan. Railway'da <code>Ai__Anthropic__ApiKey</code> yoki <code>Ai__OpenAi__ApiKey</code> o‘zgaruvchisini qo‘shing.</p>
+            }
+            else if (_ai.Effective is null)
+            {
+                <p class="muted small-text">AI xizmati hozircha ulanmagan.</p>
             }
             @if (_budget is { } budget)
             {
@@ -112,6 +170,8 @@ else
         }
     </section>
 
+    @if (IsAdmin)
+    {
     <section class="card">
         <h2>Zaxira nusxa</h2>
         @if (_backup is null)
@@ -168,12 +228,32 @@ else
             }
         }
     </section>
+    }
 
     <a class="button block" href="diagnostika" style="margin-top:12px"><span>Qurilmani tekshirish</span><span class="aside">ovoz va mikrofon →</span></a>
 
     <section class="card">
         <h2>Vaqt zonasi</h2>
         <p>@_prefs.TimeZone <span class="muted">(eslatmalar shu vaqt bo‘yicha)</span></p>
+    </section>
+
+    <section class="card danger-zone">
+        <h2>Hisobni o‘chirish</h2>
+        <p class="muted small-text">Kirish usullari, so‘zlaringiz, kartochkalar, javoblar va sinov natijalari butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.</p>
+        @if (_confirmDelete)
+        {
+            <p><strong>Rostdan ham o‘chirasizmi?</strong></p>
+            <button class="button" disabled="@_busy" @onclick="DeleteAsync">Ha, hisobni o‘chirish</button>
+            <button class="button" disabled="@_busy" @onclick="() => _confirmDelete = false">Bekor qilish</button>
+        }
+        else
+        {
+            <button class="button" @onclick="() => _confirmDelete = true">Hisobni o‘chirish</button>
+        }
+        @if (_deleteError is not null)
+        {
+            <div class="notice" role="alert">@_deleteError</div>
+        }
     </section>
 }
 
@@ -189,14 +269,73 @@ else
     private BackupStatusDto? _backup;
     private string? _backupStatus;
     private string? _aiStatus;
+    private MeDto? _me;
+    private string _name = "";
+    private bool _romanization;
+    private ThemeChoice _theme;
+    private string? _profileStatus;
+    private bool _confirmDelete;
+    private string? _deleteError;
+
+    private static readonly (ThemeChoice Value, string Label)[] Themes =
+        [(ThemeChoice.Device, "Qurilmadagidek"), (ThemeChoice.Light, "Yorug‘"), (ThemeChoice.Dark, "Qorong‘i")];
+
+    private bool IsAdmin => _me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
     protected override async Task OnInitializedAsync()
     {
         var result = await Api.GetAsync<PreferencesDto>("api/me/preferences");
         _error = result.Ok ? null : result.Error;
         Apply(result.Value);
+        ApplyMe(await Api.ReloadMeAsync());
         _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value;
-        _budget = (await Api.GetAsync<AiBudgetDto>("api/ai/budget")).Value;
-        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value;
+        if (IsAdmin)
+        {
+            // The whole app's spend and the backups are for the owner only (spec §6.4).
+            _budget = (await Api.GetAsync<AiBudgetDto>("api/ai/budget")).Value;
+            _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value;
+        }
+    }
+
+    private void ApplyMe(MeDto? me)
+    {
+        if (me is null)
+        {
+            return;
+        }
+
+        _me = me;
+        _name = me.DisplayName ?? "";
+        _romanization = me.ShowRomanization;
+        _theme = me.Theme;
+    }
+
+    private async Task ReloadAsync()
+    {
+        ApplyMe(Api.State.Me);
+        _prefs = (await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value ?? _prefs;
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<MeDto>(HttpMethod.Patch, "api/me",
+            new UpdateMeRequest(string.IsNullOrWhiteSpace(_name) ? null : _name, _romanization, _theme));
+        _busy = false;
+        _profileStatus = result.Ok ? "Saqlandi." : result.Error;
+        if (result.Ok)
+        {
+            ApplyMe(await Api.ReloadMeAsync());
+            await Browser.SetThemeAsync(_theme);
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        var result = await Api.DeleteAccountAsync();
+        _busy = false;
+        _deleteError = result.Ok ? null : result.Error;
     }
 
     private async Task SendToTelegramAsync()

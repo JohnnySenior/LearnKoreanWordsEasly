@@ -1,3 +1,4 @@
+using Lugat.Api.Auth;
 using Lugat.Contracts;
 using Lugat.Infrastructure.Backups;
 using Lugat.Infrastructure.Persistence;
@@ -10,7 +11,8 @@ public static class BackupEndpoints
 {
     public static IEndpointRouteBuilder MapBackupEndpoints(this IEndpointRouteBuilder app)
     {
-        var backups = app.MapGroup("/api/backups").RequireAuthorization();
+        // Backups hold every user's data: the owner only (spec §6.4).
+        var backups = app.MapGroup("/api/backups").RequireAuthorization(Policies.Admin);
 
         backups.MapGet("/status", async (AppDbContext db, BackupService service, IOptions<BackupOptions> options, CancellationToken ct) =>
         {

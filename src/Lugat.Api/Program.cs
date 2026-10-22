@@ -12,7 +12,11 @@ using Lugat.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.DataProtection;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Lugat.Domain.Users;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +28,11 @@ builder.Services.AddExceptionHandler<AppExceptionHandler>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+builder.Services.Configure<TelegramLoginOptions>(builder.Configuration.GetSection(TelegramLoginOptions.SectionName));
+builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection(GoogleOptions.SectionName));
+builder.Services.AddSingleton<TelegramLoginValidator>();
+builder.Services.AddSingleton<GoogleIdTokenValidator>();
+builder.Services.AddHttpClient<IGoogleSigningKeys, GoogleJwksSigningKeys>(c => c.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<ReminderWorker>();
 builder.Services.AddHostedService<BackupWorker>();
@@ -36,7 +45,40 @@ builder.Services
         o.BearerTokenExpiration = authOptions.AccessTokenLifetime;
         o.RefreshTokenExpiration = authOptions.RefreshTokenLifetime;
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy(Policies.Admin, p => p.RequireRole(nameof(UserRoles.Admin)));
+    o.AddPolicy(Policies.Editor, p => p.RequireRole(nameof(UserRoles.Admin), nameof(UserRoles.Editor)));
+});
+
+// Open sign-up (spec §6.3) needs limits (spec §6.4): sign-in per IP, starting tests per user.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.OnRejected = async (ctx, ct) =>
+    {
+        var problems = ctx.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+        await problems.WriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = ctx.HttpContext,
+            ProblemDetails = { Status = StatusCodes.Status429TooManyRequests, Detail = "Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring." },
+        });
+    };
+    o.AddPolicy(AuthEndpoints.RateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        "ip:" + (http.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = http.RequestServices.GetRequiredService<IOptionsMonitor<AuthOptions>>().CurrentValue.SignInPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+    o.AddPolicy(TestEndpoints.StartRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        "user:" + (http.User.FindFirstValue(AuthEndpoints.UserIdClaim) ?? "anonymous"),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = http.RequestServices.GetRequiredService<IOptionsMonitor<AuthOptions>>().CurrentValue.TestStartsPerHour,
+            Window = TimeSpan.FromHours(1),
+        }));
+});
 
 // Session tokens are encrypted with Data Protection keys. In production they must live on the persistent
 // volume, or every restart signs everyone out (docs/DECISIONS.md D-03).
@@ -60,7 +102,9 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 app.UseAuthentication();
+app.UseSessionGuard();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 // Liveness is independent of dependencies; readiness checks the database for Railway's /health probe.
 app.MapGet("/health/live", () => TypedResults.Ok(new { status = "ok" })).AllowAnonymous();

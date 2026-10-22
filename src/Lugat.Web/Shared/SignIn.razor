@@ -1,0 +1,139 @@
+@using Lugat.Contracts
+@using Lugat.Domain.Users
+@implements IDisposable
+@inject SessionService Api
+@inject BrowserInterop Browser
+
+@* Telegram Login Widget and Google buttons (spec §6.3). With Link set, the same proof adds a login to the signed-in
+   account instead of signing in ("Hisobni bog‘lash"). *@
+@if (_config is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+}
+else
+{
+    <div class="signin-buttons">
+        @if (ShowTelegram)
+        {
+            <div id="@TelegramId" class="signin-telegram"></div>
+        }
+        @if (ShowGoogle)
+        {
+            <div id="@GoogleId" class="signin-google"></div>
+        }
+        @if (!Link && _config.DevLogin)
+        {
+            <button class="button" disabled="@_busy" @onclick="DevAsync">Dev sifatida kirish</button>
+        }
+        @if (!ShowTelegram && !ShowGoogle && !(!Link && _config.DevLogin))
+        {
+            <p class="muted">@(Link ? "Bog‘lash uchun boshqa kirish usuli yo‘q." : "Kirish hozircha sozlanmagan.")</p>
+        }
+    </div>
+    @if (_busy)
+    {
+        <p class="muted small-text" role="status">Tekshirilmoqda…</p>
+    }
+    @if (_error is not null)
+    {
+        <div class="notice" role="alert">@_error</div>
+    }
+}
+
+@code {
+    /// <summary>Add a login to the current account instead of signing in.</summary>
+    [Parameter] public bool Link { get; set; }
+
+    /// <summary>Providers the account already has; their buttons are not shown when linking.</summary>
+    [Parameter] public IReadOnlyCollection<LoginProvider> Have { get; set; } = [];
+
+    [Parameter] public EventCallback OnLinked { get; set; }
+
+    private readonly string _suffix = Guid.NewGuid().ToString("N")[..8];
+    private AuthConfigDto? _config;
+    private DotNetObjectReference<SignIn>? _self;
+    private string? _error;
+    private bool _busy;
+    private bool _rendered;
+
+    private string TelegramId => "tg-" + _suffix;
+
+    private string GoogleId => "google-" + _suffix;
+
+    private bool ShowTelegram => _config?.TelegramBot is not null && !Have.Contains(LoginProvider.Telegram);
+
+    private bool ShowGoogle => _config?.GoogleClientId is not null && !Have.Contains(LoginProvider.Google);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var config = await Api.GetAnonymousAsync<AuthConfigDto>("api/auth/config");
+        _config = config.Value;
+        _error = config.Ok ? null : config.Error;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_rendered || _config is null)
+        {
+            return;
+        }
+
+        _rendered = true;
+        _self = DotNetObjectReference.Create(this);
+        var failed = false;
+        if (ShowTelegram)
+        {
+            failed |= !await Browser.TelegramWidgetAsync(TelegramId, _config.TelegramBot!, _self);
+        }
+
+        if (ShowGoogle)
+        {
+            failed |= !await Browser.GoogleButtonAsync(GoogleId, _config.GoogleClientId!, _self);
+        }
+
+        if (failed)
+        {
+            _error = "Kirish tugmasi yuklanmadi. Internetni tekshirib, sahifani yangilang.";
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public Task OnTelegram(Dictionary<string, string> data) => RunAsync(
+        () => Api.SignInWithTelegramAsync(data),
+        () => Api.SendJsonAsync<MeDto>(HttpMethod.Post, "api/me/logins", new LinkLoginRequest(LoginProvider.Telegram, data, null)));
+
+    [JSInvokable]
+    public Task OnGoogle(string credential) => RunAsync(
+        () => Api.SignInWithGoogleAsync(credential),
+        () => Api.SendJsonAsync<MeDto>(HttpMethod.Post, "api/me/logins", new LinkLoginRequest(LoginProvider.Google, null, credential)));
+
+    private Task DevAsync() => RunAsync(Api.DevSignInAsync, null);
+
+    private async Task RunAsync(Func<Task<SessionState>> signIn, Func<Task<ApiResult<MeDto>>>? link)
+    {
+        _busy = true;
+        _error = null;
+        StateHasChanged();
+        if (Link && link is not null)
+        {
+            var result = await link();
+            _error = result.Ok ? null : result.Error;
+            if (result.Ok)
+            {
+                await Api.ReloadMeAsync();
+                await OnLinked.InvokeAsync();
+            }
+        }
+        else
+        {
+            var state = await signIn();
+            _error = state.Status == SessionStatus.SignedIn ? null : state.Message;
+        }
+
+        _busy = false;
+        StateHasChanged();
+    }
+
+    public void Dispose() => _self?.Dispose();
+}

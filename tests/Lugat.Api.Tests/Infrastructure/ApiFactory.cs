@@ -71,6 +71,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public Dictionary<string, string?> Settings { get; } = [];
 
+    /// <summary>Stands in for Google's published keys (tests sign their own ID tokens).</summary>
+    public Lugat.Api.Auth.IGoogleSigningKeys? GoogleKeys { get; init; }
+
+    /// <summary>Telegram users who are administrators (config Auth:Admins, L-14). None by default.</summary>
+    public long[] AdminTelegramIds { get; init; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(EnvironmentName);
@@ -78,7 +84,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Storage:Root", _files);
         builder.UseSetting("Telegram:BotToken", BotToken);
         builder.UseSetting("Auth:DevLoginUserId", UserA.ToString(CultureInfo.InvariantCulture));
-        builder.UseSetting("Backup:Enabled", "false"); // production turns the nightly backup on; tests run it by hand
+        builder.UseSetting("Backup:Enabled", "false");
+        for (var i = 0; i < AdminTelegramIds.Length; i++)
+        {
+            builder.UseSetting($"Auth:Admins:TelegramUserIds:{i}", AdminTelegramIds[i].ToString(CultureInfo.InvariantCulture));
+        }
+        // production turns the nightly backup on; tests run it by hand
         foreach (var (key, value) in Settings)
         {
             builder.UseSetting(key, value);
@@ -88,6 +99,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         {
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter>(new TestEndpoints(this));
+            if (GoogleKeys is not null)
+            {
+                services.RemoveAll<Lugat.Api.Auth.IGoogleSigningKeys>();
+                services.AddSingleton(GoogleKeys);
+            }
 
             // Never talk to the real AI services from tests.
             services.RemoveAll<Application.Ai.IAiProvider>();
@@ -133,10 +149,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     public async Task AddWordsAsync(long telegramUserId, int table, params (string Korean, string Uzbek)[] rows)
     {
         await using var scope = Services.CreateAsyncScope();
-        var user = await scope.ServiceProvider.GetRequiredService<UserService>().EnsureAsync(telegramUserId, null, null, CancellationToken.None);
+        var user = await scope.ServiceProvider.GetRequiredService<UserService>().SignInAsync(TelegramLogin(telegramUserId, null), CancellationToken.None);
         var words = rows.Select((r, i) => new NewWord(table, ((table - 1) * 100) + i + 1, r.Korean, null, r.Uzbek)).ToList();
         await scope.ServiceProvider.GetRequiredService<VocabularyService>().AddAsync(user.Id, words, CancellationToken.None);
     }
+
+    /// <summary>A Telegram login as the widget check would produce it.</summary>
+    public static VerifiedLogin TelegramLogin(long telegramUserId, string? name) =>
+        new(Lugat.Domain.Users.LoginProvider.Telegram, telegramUserId.ToString(CultureInfo.InvariantCulture), name, null);
 
     /// <summary>Generated words "가가", "가나", … with meanings "ma’no 1", "ma’no 2", ….</summary>
     public static (string, string)[] Words(string prefix, int count) =>
@@ -167,8 +187,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             {
                 var telegramId = long.Parse(http.Request.Query["tg"]!, CultureInfo.InvariantCulture);
                 var name = http.Request.Query["name"].ToString() is { Length: > 0 } n ? n : null;
-                var user = await http.RequestServices.GetRequiredService<UserService>().EnsureAsync(telegramId, name, null, http.RequestAborted);
-                await http.SignInAsync(BearerTokenDefaults.AuthenticationScheme, AuthEndpoints.CreatePrincipal(user.Id, telegramId, name, null));
+                var user = await http.RequestServices.GetRequiredService<UserService>().SignInAsync(TelegramLogin(telegramId, name), http.RequestAborted);
+                await http.SignInAsync(BearerTokenDefaults.AuthenticationScheme, AuthEndpoints.CreatePrincipal(user));
             }));
             next(app);
         };

@@ -53,16 +53,16 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         switch (p.Kind)
         {
             case TestQuestionKind.WordMeaning:
-            {
-                var options = Options(w.Uzbek, words.Where(o => o.Id != w.Id).Select(o => o.Uzbek), AnswerMatcher.NormalizeUzbek);
-                return options is null ? null : new TestQuestion(index, p.Kind, KoreanWithNote(w), null, null, options, w.Uzbek, null, null, w.Id, false);
-            }
+                {
+                    var options = Options(w.Uzbek, words.Where(o => o.Id != w.Id).Select(o => o.Uzbek), AnswerMatcher.NormalizeUzbek);
+                    return options is null ? null : new TestQuestion(index, p.Kind, KoreanWithNote(w), null, null, options, w.Uzbek, null, null, w.Id, false);
+                }
 
             case TestQuestionKind.WordKorean:
-            {
-                var options = Options(KoreanWithNote(w), words.Where(o => o.Id != w.Id).Select(KoreanWithNote), AnswerMatcher.NormalizeKorean);
-                return options is null ? null : new TestQuestion(index, p.Kind, w.Uzbek, null, null, options, KoreanWithNote(w), null, null, w.Id, false);
-            }
+                {
+                    var options = Options(KoreanWithNote(w), words.Where(o => o.Id != w.Id).Select(KoreanWithNote), AnswerMatcher.NormalizeKorean);
+                    return options is null ? null : new TestQuestion(index, p.Kind, w.Uzbek, null, null, options, KoreanWithNote(w), null, null, w.Id, false);
+                }
 
             default:
                 return null;

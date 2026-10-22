@@ -50,7 +50,7 @@ dotnet tool restore && dotnet ef migrations add <Nomi> --project src/Lugat.Infra
 
 PostgreSQL: Development va testlar standart holatda `lugat`/`lugat` foydalanuvchisi bilan `localhost` ga ulanadi (`CREATEDB` huquqi kerak). Boshqa server uchun `LUGAT_TEST_POSTGRES` ni o‘rnating.
 
-Kirish: Telegram Login Widget va Google 1-bosqichda qo‘shiladi. Hozircha faqat Development muhitida `POST /api/auth/dev` bor (`Auth:DevLoginUserId`); u boshqa muhitlarda umuman ro‘yxatdan o‘tmaydi va buni test tekshiradi. API testlari faqat `ApiFactory` ichida mavjud test endpoint'lari (`/__test/sign-in`, `/__test/words`) orqali kiradi va so‘z qo‘shadi.
+Kirish: Telegram Login Widget (`POST /api/auth/telegram-login`) va Google (`POST /api/auth/google`), sozlamalari `.env.example` da. Development muhitida qo‘shimcha `POST /api/auth/dev` bor (`Auth:DevLoginUserId`); u boshqa muhitlarda umuman ro‘yxatdan o‘tmaydi va buni test tekshiradi. Lokal ishlab chiqishda kirish sahifasidagi "Dev sifatida kirish" tugmasi shu. API testlari `ApiFactory` ichidagi test endpoint’lari (`/__test/sign-in`, `/__test/words`) orqali kiradi va so‘z qo‘shadi; Telegram va Google tekshiruvining o‘zi `Auth/LoginValidatorTests` va `Auth/AuthEndpointsTests` da sinaladi.
 
 ## Kod uslubi
 

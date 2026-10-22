@@ -33,3 +33,23 @@ Real nusxadan yangi Railway muhitiga tiklash mashqi hali bajarilmagan.
 - `Ai__Anthropic__ApiKey` va/yoki `Ai__OpenAi__ApiKey` (KAT D-21). Ilovada Sozlamalar → "AI xizmati" → "Ulanishni tekshirish".
 - Azure Speech: `Ai__Tts__Azure__Key`, `Ai__Tts__Azure__Region` (KAT D-31, D-32).
 - Oylik byudjet va tariflar: `Ai__Budget__*` (KAT D-50). Tarif kiritilmasa, sarf "noma’lum" deb ko‘rsatiladi va limit to‘liq ishlamaydi.
+
+## Kirish (Telegram va Google)
+
+Ikkalasi ham ixtiyoriy: sozlanmagani kirish sahifasida ko‘rinmaydi (`GET /api/auth/config`). Kalit qiymatlarini faqat Johnny kiritadi.
+
+**Telegram Login Widget** (L-13):
+1. BotFather → bot → `/setdomain` → ilova domeni (masalan `lugat.up.railway.app`). Domen mos kelmasa widget "Bot domain invalid" deydi.
+2. `Telegram__BotToken` (maxfiy) va `Telegram__BotUsername` (`@` siz). Ikkalasi bo‘lmasa Telegram tugmasi chiqmaydi.
+3. Widget "xabar yuborishga ruxsat" so‘raydi — eslatmalar shu chatga keladi.
+
+**Google** (L-13):
+1. Google Cloud Console → APIs & Services → Credentials → OAuth client ID → "Web application".
+2. "Authorized JavaScript origins" ga ilova domeni (`https://...`) va lokal sinov uchun `http://localhost:5248`. Redirect URI kerak emas (GIS ID token).
+3. OAuth consent screen: ilova nomi "Lug‘at", scope’lar faqat `openid`, `email`, `profile`.
+4. `Google__ClientId` — maxfiy emas (brauzerga ham beriladi). Client secret kerak emas va saqlanmaydi.
+
+**Birinchi admin** (L-14): `Auth__Admins__TelegramUserIds__0=<Telegram ID>` yoki `Auth__Admins__GoogleSubjects__0=<Google sub>`. Shu hisob bilan kirilganda `Admin` roli beriladi.
+
+**Proksi:** Railway ortida haqiqiy IP `X-Forwarded-For` da; rate limit to‘g‘ri ishlashi uchun deployda `ForwardedHeaders` yoqiladi (L-16, 8-bosqich).
+

@@ -1,4 +1,39 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject SessionService Api
+@inject BrowserInterop Browser
+
+@* The app shows only after sign-in (spec §4.1, §6.3); without a session the sign-in screen takes its place. *@
+@if (_state is null || _state.Status == SessionStatus.Unknown)
+{
+    <div class="boot">
+        <div class="boot-title">Lug‘at</div>
+        <div class="boot-text">Yuklanmoqda…</div>
+    </div>
+    return;
+}
+
+@if (_state.Status != SessionStatus.SignedIn)
+{
+    <main class="content signin-page">
+        <h1>Lug‘at</h1>
+        <p class="lead-text">Koreys tili so‘zlarini o‘zbek tilida, eng ko‘p ishlatiladiganlaridan boshlab o‘rganing.</p>
+        @if (_state.Status == SessionStatus.Unavailable)
+        {
+            <div class="notice" role="alert">@_state.Message <button class="button small" @onclick="RetryAsync">Qayta urinish</button></div>
+        }
+        else
+        {
+            <section class="card">
+                <h2>Kirish</h2>
+                <p class="muted small-text">Telegram yoki Google hisobingiz bilan kiring. Parol kerak emas.</p>
+                <SignIn />
+            </section>
+        }
+        <p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1).</p>
+    </main>
+    return;
+}
 
 <div class="shell">
     <main class="content">
@@ -13,3 +48,31 @@
     </nav>
 </div>
 
+@code {
+    private SessionState? _state;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Api.Changed += OnChanged;
+        _state = await Api.EnsureSignedInAsync();
+        await ApplyThemeAsync();
+    }
+
+    private async Task RetryAsync()
+    {
+        _state = null;
+        StateHasChanged();
+        _state = await Api.EnsureSignedInAsync();
+    }
+
+    private void OnChanged() => InvokeAsync(async () =>
+    {
+        _state = Api.State;
+        await ApplyThemeAsync();
+        StateHasChanged();
+    });
+
+    private Task ApplyThemeAsync() => Browser.SetThemeAsync(_state?.Me?.Theme ?? Lugat.Domain.Users.ThemeChoice.Device);
+
+    public void Dispose() => Api.Changed -= OnChanged;
+}

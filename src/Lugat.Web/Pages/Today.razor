@@ -82,7 +82,7 @@ else
 @code {
     private static readonly int?[] MinuteOptions = [10, 20, 30, null];
 
-    private string Initial => _signIn?.Me?.FirstName is { Length: > 0 } name ? name[..1].ToUpperInvariant() : "•";
+    private string Initial => _signIn?.Me?.DisplayName is { Length: > 0 } name ? name[..1].ToUpperInvariant() : "•";
 
     private SessionState? _signIn;
     private TodayDto? _today;
