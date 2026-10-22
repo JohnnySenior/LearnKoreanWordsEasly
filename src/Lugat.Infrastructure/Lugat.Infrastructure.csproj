@@ -9,6 +9,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <!-- The official vocabulary list is an Excel file (spec §2.1); MIT, reads .xls and .xlsx. -->
+    <PackageReference Include="ExcelDataReader" />
   </ItemGroup>
 
   <ItemGroup>

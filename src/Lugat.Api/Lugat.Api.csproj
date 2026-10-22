@@ -11,6 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Sample content for Catalog:SeedSample (development and tests, spec §2.4 step 6). -->
+    <Content Include="..\..\content\samples\*.json" Link="content\samples\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Lugat.Api.Tests" />
   </ItemGroup>
 

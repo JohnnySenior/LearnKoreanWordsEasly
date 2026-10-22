@@ -54,8 +54,8 @@ Bosqichlar spec §13 bo‘yicha.
 `content/samples/lugat_A_namuna_50.json` ko‘rib chiqildi:
 - UZ→KO testida bir nechta to‘g‘ri javob chiqishi mumkin bo‘lgan sinonimlar: 또 "yana" / 더 "ko‘proq, yana" (ikkalasi 1-bo‘limda), 나 / 저 "men", 좋다 / 잘 "yaxshi". Distraktor tanlashda `translation_uz` ma’nolari kesishmasi tekshirilishi kerak (spec §4.4).
 - `요`-shakl qoidasidan istisnolar: A-015 (`실패했다`, kitob uslubi), A-003 va A-026 (반말), A-017 va A-036 (`-습니다`). Ataylab, lekin §2.3 qoidasida istisno sifatida yozilishi kerak.
-- Apostrof: faylda ASCII `'`, spetsifikatsiyada `‘`. Import kanonik shaklga keltiradi (`TextNormalizer`).
-- `pos` o‘zbekcha ("fe'l", "ot"…), rasmiy ro‘yxatda koreyscha kod (동/명/보/의/관); `IsStudyable` filtri rasmiy kod bo‘yicha.
+- ~~Apostrof: faylda ASCII `'`~~ — seed va tahrir `TextNormalizer.Uzbek` bilan bitta shaklga keltiradi (L-17).
+- ~~`pos` o‘zbekcha~~ — seed rasmiy kodga o‘giradi (`fe'l` → `동`), `IsStudyable` kod bo‘yicha (L-17).
 - "Qaysi so‘z to‘g‘ri?" savollari (`CatalogUsage`) namunada yo‘q.
 - A-050 `trap_uz` matnida mayda xato ("전 저는 ning qisqasi").
 
@@ -84,9 +84,29 @@ Bosqichlar spec §13 bo‘yicha.
 - Railway proksi ortida rate limit uchun `ForwardedHeaders` sozlash — deployda (L-16).
 - Haqiqiy telefonlarda (iOS Safari, Android Chrome) kirish sinovi — 6–8-bosqich.
 
-## Bosqich 2 · Katalog va kontent jarayoni
+## Bosqich 2 · Katalog va kontent jarayoni (2026-10-22)
 
-- [ ] `CatalogWord`, `CatalogUsage`, `Unit`; Excel import; bo‘lish; AI qoralama; tekshiruv va nashr; namuna JSON seed.
+- [x] `CatalogWord`, `CatalogUsage`, `Unit`, migratsiya `Catalog` (L-17).
+- [x] Rasmiy ro‘yxat importi `POST /api/admin/catalog/import` (faqat admin): .xls/.xlsx/matn, ustunlar sarlavha bo‘yicha, idempotent, yaroqsiz qatorlar sabab bilan (L-17).
+- [x] Bo‘lish `POST /api/admin/catalog/levels/{level}/split` (faqat admin): chastota bo‘yicha 25 tadan, `보/의/관` kirmaydi, nashr qilingan bo‘lim o‘zgarmaydi (L-18).
+- [x] AI qoralama `POST /api/admin/units/{id}/draft` (muharrir): 10 tadan so‘z, server tekshiruvi, yaroqsiz javob saqlanmaydi (L-19).
+- [x] Tahrir `PUT /api/admin/catalog/words/{id}`, "Tekshirildi" `POST …/review`, nashr `POST /api/admin/units/{id}/publish` — hammasi tekshirilgan va tartib bilan (L-18, L-19).
+- [x] O‘quvchi API: `GET /api/levels`, `/api/levels/{level}/units`, `/api/units/{id}` — faqat nashr qilingan (L-20).
+- [x] Namuna seed (Development): A daraja 1–2-bo‘lim nashrda (L-21).
+- [x] Kontent sahifasi `/kontent` (Sozlamalar → Kontent, muharrir va admin): import, bo‘lish, bo‘limlar, AI qoralama, so‘z tahriri, savollarni olib tashlash, tekshirish, nashr.
+
+**Tekshirildi:**
+- `dotnet build` toza; testlar 95 (Domain) + 22 (Application) + 149 (Api) = 266, hammasi o‘tdi.
+- Qabul mezonlari testlarda: real hajmdagi 5,965 qatorli fayl (A 982 · B 2,111 · C 2,872) to‘liq saqlanadi, qayta import 0 yangi / 5,965 o‘zgarmagan; A daraja bo‘limlari chastota tartibida, 25 tadan (oxirgisi 10–34), `보/의/관` hech bir bo‘limda yo‘q; nashr qilinmagan bo‘lim o‘quvchi ro‘yxatida yo‘q va `GET /api/units/{id}` 404; fake AI provayderning kirill tarjimali, 8 so‘zdan uzun misolli javobi saqlanmaydi, butunlay yaroqsiz javob — 503 va bazada o‘zgarish yo‘q.
+- Qo‘shimcha: CP949 matnli fayl importi; sarlavhasiz / buzilgan / .pdf fayl — 422 va sabab; tartibsiz nashr — 422; eski versiya bilan tahrir — 409; muharrir import qila olmaydi (403), o‘quvchi admin endpoint’iga kira olmaydi (403); seed ikki marta ishlasa ham 50 so‘z.
+- Chromium, 360px (Development): Sozlamalar → Kontent → A daraja (2/2 bo‘lim nashrda) → 1-bo‘lim → so‘z tarjimasini tahrirlab saqlash; brauzerdan .xlsx yuklash (40 qator → 39 mos so‘z, 25 + 14 so‘zli yangi bo‘limlar). Gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+
+**Ochiq qoldi:**
+- **Haqiqiy rasmiy fayl sinalmadi**: korean.go.kr bu muhitdan ochilmadi. Johnny `/kontent` da faylni yuklaganda natijani (qatorlar soni, o‘tkazib yuborilganlar, A daraja bo‘limlari soni) tekshirish kerak; ustun nomi boshqacha bo‘lsa — 422 va sabab chiqadi, tuzatish oson.
+- Haqiqiy AI bilan qoralama sifati sinalmadi (testlar fake provayder bilan); birinchi bo‘limlarni Johnny ko‘rib chiqishi kerak.
+- `Editor` rolini berish yo‘li yo‘q (admin paneli — 7-bosqich); hozircha faqat `Auth:Admins` dagi admin kontent bilan ishlaydi.
+- Bo‘lim qulfi, ochish, kartalar va `LearningItem` — 3-bosqich (L-20); o‘quvchi uchun bo‘limlar sahifasi ham 3-bosqichda.
+- UZ→KO sinonimlar (또/더, 나/저) bo‘yicha distraktor tekshiruvi — 4-bosqich (bo‘lim testi).
 
 ## Bosqich 3 · Bo‘limlar, kartalar, takrorlash
 

@@ -1,0 +1,234 @@
+@page "/kontent/{Id:guid}"
+@using Lugat.Contracts
+@using Lugat.Domain.Catalog
+@inject SessionService Api
+
+<PageTitle>Bo‘lim kontenti — Lug‘at</PageTitle>
+
+<a class="back" href="kontent">← Kontent</a>
+
+@if (_unit is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<header class="page-head">
+    <div>
+        <h1>@_unit.Unit.Level · @_unit.Unit.Number-bo‘lim</h1>
+        <span class="muted small-text">@_unit.Unit.Words so‘z · @_unit.Unit.Drafted qoralama · @_unit.Unit.Reviewed tekshirilgan</span>
+    </div>
+    <span class="pill @(Published ? "pill-ok" : "pill-warn")">@(Published ? "Nashrda" : "Qoralama")</span>
+</header>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+@if (_status is not null)
+{
+    <p role="status">@_status</p>
+}
+
+<div class="actions">
+    @if (_unit.Remaining > 0)
+    {
+        <button class="button primary" disabled="@_busy" @onclick="DraftAsync">AI qoralama (@_unit.Remaining so‘z)</button>
+    }
+    @if (!Published)
+    {
+        <button class="button" disabled="@(_busy || _unit.Unit.Reviewed < _unit.Unit.Words)" @onclick="PublishAsync">Nashr qilish</button>
+    }
+</div>
+<p class="muted small-text">
+    AI qoralamasi 10 tadan so‘z yozadi; tekshiruvdan o‘tmagan javob saqlanmaydi. Har so‘zni o‘qib, tuzatib, «Tekshirildi» qiling.
+    Barcha so‘z tekshirilgach bo‘limni nashr qilish mumkin; nashrdan keyin so‘zlar boshqa bo‘limga ko‘chmaydi.
+</p>
+
+@foreach (var w in _unit.Words)
+{
+    var word = w;
+    var edit = _edits[word.Id];
+    <section class="card" id="@($"w-{word.Id}")">
+        <div class="row-between">
+            <span><span class="muted small-text">@word.Order.</span> <strong class="ko" lang="ko">@word.Word</strong><sup class="muted">@word.Homonym</sup>
+                <span class="muted small-text">@word.PosUz · №@word.FreqRank@(word.Gloss is null ? "" : $" · {word.Gloss}")</span></span>
+            <span class="pill @(word.Status == CatalogWordStatus.Reviewed ? "pill-ok" : "pill-warn")">@(word.Status == CatalogWordStatus.Reviewed ? "Tekshirildi" : "Qoralama")</span>
+        </div>
+        <label class="field">Tarjima (1–3 ma’no, «;» bilan)<input class="input" maxlength="300" @bind="edit.TranslationUz" /></label>
+        <label class="field">Lotincha o‘qilishi<input class="input" maxlength="100" @bind="edit.Romanization" /></label>
+        <label class="field">Misol (koreyscha, ≤ 8 so‘z)<input class="input" lang="ko" maxlength="200" @bind="edit.ExampleKo" /></label>
+        <label class="field">Misol tarjimasi<input class="input" maxlength="300" @bind="edit.ExampleUz" /></label>
+        <label class="field">Tuzoq (bo‘lmasa bo‘sh qoldiring)<textarea class="input" maxlength="1000" @bind="edit.TrapUz"></textarea></label>
+        <label class="field">Mavzu<input class="input" maxlength="40" @bind="edit.Theme" /></label>
+        @if (edit.Questions.Count > 0)
+        {
+            <span class="kicker">«Qaysi so‘z to‘g‘ri?» savollari</span>
+            <ul class="plain-list small-text">
+                @foreach (var q in edit.Questions.ToList())
+                {
+                    var question = q;
+                    <li>
+                        <div>@q.Uzbek</div>
+                        <div lang="ko">@q.Sentence — <strong>@q.Answer</strong> <span class="muted">(noto‘g‘ri: @string.Join(", ", q.Wrong))</span></div>
+                        <div class="muted">@q.ExplanationUz</div>
+                        <button class="link-btn muted" @onclick="() => edit.Questions.Remove(question)">Savolni olib tashlash</button>
+                    </li>
+                }
+            </ul>
+        }
+        <p class="muted small-text">
+            @(word.AiProvider is null ? "" : $"Qoralama: {word.AiProvider}. ")@(word.ReviewedBy is null ? "" : $"Tekshirdi: {word.ReviewedBy}.")
+        </p>
+        <div class="actions">
+            @if (word.Status == CatalogWordStatus.Reviewed)
+            {
+                <button class="button primary" disabled="@_busy" @onclick="() => SaveAsync(word, review: false)">Saqlash</button>
+            }
+            else
+            {
+                <button class="button" disabled="@_busy" @onclick="() => SaveAsync(word, review: false)">Saqlash</button>
+                <button class="button primary" disabled="@_busy" @onclick="() => SaveAsync(word, review: true)">Saqlash va «Tekshirildi»</button>
+            }
+        </div>
+        @if (_wordErrors.GetValueOrDefault(word.Id) is { } wordError)
+        {
+            <div class="notice" role="alert">@wordError</div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private sealed class Edit
+    {
+        public string? TranslationUz { get; set; }
+        public string? Romanization { get; set; }
+        public string? ExampleKo { get; set; }
+        public string? ExampleUz { get; set; }
+        public string? TrapUz { get; set; }
+        public string? Theme { get; set; }
+        public List<CatalogQuestionDto> Questions { get; set; } = [];
+    }
+
+    private UnitAdminDto? _unit;
+    private readonly Dictionary<Guid, Edit> _edits = [];
+    private readonly Dictionary<Guid, string> _wordErrors = [];
+    private string? _error;
+    private string? _status;
+    private bool _busy;
+
+    private bool Published => _unit?.Unit.Status == UnitStatus.Published;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAsync<UnitAdminDto>($"api/admin/units/{Id}");
+        _error = result.Error;
+        if (result.Value is { } unit)
+        {
+            Show(unit);
+        }
+    }
+
+    private void Show(UnitAdminDto unit)
+    {
+        _unit = unit;
+        foreach (var w in unit.Words)
+        {
+            Replace(w);
+        }
+    }
+
+    /// <summary>Takes the server's copy of a word; unsaved typing in other words stays.</summary>
+    private void Replace(CatalogWordAdminDto w) => _edits[w.Id] = new Edit
+    {
+        TranslationUz = w.TranslationUz,
+        Romanization = w.Romanization,
+        ExampleKo = w.ExampleKo,
+        ExampleUz = w.ExampleUz,
+        TrapUz = w.TrapUz,
+        Theme = w.Theme,
+        Questions = w.Questions.ToList(),
+    };
+
+    /// <summary>Calls the draft endpoint until every word has a draft; each call is one AI request for 10 words.</summary>
+    private async Task DraftAsync()
+    {
+        _busy = true;
+        _error = null;
+        while (_unit is { Remaining: > 0 })
+        {
+            _status = $"AI yozmoqda… qoldi: {_unit.Remaining} so‘z";
+            StateHasChanged();
+            var before = _unit.Remaining;
+            var result = await Api.SendJsonAsync<UnitAdminDto>(HttpMethod.Post, $"api/admin/units/{Id}/draft", timeout: TimeSpan.FromMinutes(3));
+            if (result.Value is not { } unit)
+            {
+                _error = result.Error;
+                break;
+            }
+
+            Show(unit);
+            if (unit.Remaining >= before)
+            {
+                _error = "AI bu so‘zlar uchun yaroqli javob bermadi. Ularni qo‘lda to‘ldiring yoki keyinroq qayta urinib ko‘ring.";
+                break;
+            }
+        }
+
+        _status = _error is null ? "Qoralama tayyor. Endi har so‘zni tekshiring." : null;
+        _busy = false;
+    }
+
+    private async Task SaveAsync(CatalogWordAdminDto word, bool review)
+    {
+        _busy = true;
+        _wordErrors.Remove(word.Id);
+        var edit = _edits[word.Id];
+        var saved = await Api.SendJsonAsync<CatalogWordAdminDto>(HttpMethod.Put, $"api/admin/catalog/words/{word.Id}", new UpdateCatalogWordRequest(
+            edit.TranslationUz, edit.Romanization, edit.ExampleKo, edit.ExampleUz, edit.TrapUz, edit.Theme, edit.Questions, word.Version));
+        var current = saved.Value;
+        if (current is not null && review && current.Status != CatalogWordStatus.Reviewed)
+        {
+            var reviewed = await Api.SendJsonAsync<CatalogWordAdminDto>(HttpMethod.Post, $"api/admin/catalog/words/{word.Id}/review", new ReviewCatalogWordRequest(current.Version));
+            current = reviewed.Value ?? current;
+            if (reviewed.Error is { } e)
+            {
+                _wordErrors[word.Id] = e;
+            }
+        }
+
+        if (saved.Error is { } error)
+        {
+            _wordErrors[word.Id] = error;
+        }
+
+        if (current is not null && _unit is { } unit)
+        {
+            var words = unit.Words.Select(w => w.Id == current.Id ? current : w).ToList();
+            _unit = unit with
+            {
+                Words = words,
+                Unit = unit.Unit with { Reviewed = words.Count(w => w.Status == CatalogWordStatus.Reviewed), Drafted = words.Count(w => w.TranslationUz is not null) },
+            };
+            Replace(current);
+        }
+
+        _busy = false;
+    }
+
+    private async Task PublishAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<UnitAdminSummaryDto>(HttpMethod.Post, $"api/admin/units/{Id}/publish");
+        _error = result.Error;
+        if (result.Value is { } summary && _unit is not null)
+        {
+            _unit = _unit with { Unit = summary };
+            _status = "Bo‘lim nashr qilindi: endi o‘quvchilarga ko‘rinadi.";
+        }
+
+        _busy = false;
+    }
+}
