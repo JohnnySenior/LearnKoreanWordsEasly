@@ -3,12 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Lugat.Api.Tests.Imports;
 using Lugat.Api.Tests.Infrastructure;
 using Lugat.Application.Ai;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
-using Lugat.Domain.Imports;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,24 +21,13 @@ public class AiEndpointsTests
 
     private ApiFactory NewFactory(params FakeAiProvider[] providers) => new()
     {
-        PdfReader = new FakePdfLayoutReader().AddPage(FakePdfLayoutReader.Words("가", 5)),
+        TableWords = ApiFactory.Words("가", 5),
         AiProviders = providers.Length == 0 ? [_claude, _gpt] : providers,
     };
 
     private static async Task<SentenceTargetDto> ApprovedWordAsync(HttpClient client)
     {
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent("%PDF-1.7 ai"u8.ToArray());
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        form.Add(file, "file", "lugat.pdf");
-        var job = (await (await client.PostAsync("/api/imports", form)).Content.ReadFromJsonAsync<ImportJobDto>(Json))!;
-        for (var i = 0; i < 100 && job.Status != ImportStatus.NeedsReview; i++)
-        {
-            await Task.Delay(100);
-            job = (await client.GetFromJsonAsync<ImportJobDto>($"/api/imports/{job.Id}", Json))!;
-        }
-
-        (await client.PostAsync($"/api/imports/{job.Id}/tables/1/approve", null)).EnsureSuccessStatusCode();
+        (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
         return (await client.GetFromJsonAsync<SentenceTargetDto>("/api/practice/target", Json))!;
     }
 
@@ -286,7 +273,7 @@ public class AiEndpointsTests
     }
 
     [Fact]
-    public void A_copied_variant_does_not_count_as_own_grammar_use()
+    public void A_copied_variant_does_not_count_as_own_use()
     {
         var check = new SentenceCheck { Answer = "많이 할수록 늘어요." };
         var history = new List<(string, SentenceCheckResult)>

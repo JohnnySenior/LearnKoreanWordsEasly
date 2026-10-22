@@ -1,6 +1,5 @@
 using Lugat.Application.Abstractions;
 using Lugat.Contracts;
-using Lugat.Domain.Lessons;
 using Lugat.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,31 +48,6 @@ public sealed class UserService(IAppDbContext db, TimeProvider time)
             user.WeekdayReminderTime = new TimeOnly(weekday.Hour, weekday.Minute);
         }
 
-        if (request.SaturdayReminderTime is { } saturday)
-        {
-            user.SaturdayReminderTime = new TimeOnly(saturday.Hour, saturday.Minute);
-        }
-
-        if (request.TablesPerLesson is { } tables)
-        {
-            if (tables is < 1 or > LessonCalendar.MaxTablesPerLesson)
-            {
-                throw new ValidationException($"Bir darsga 1 dan {LessonCalendar.MaxTablesPerLesson} gacha jadval tanlang.");
-            }
-
-            user.TablesPerLesson = tables;
-        }
-
-        if (request.LessonDays is { } days)
-        {
-            if (!days.Any(d => Enum.IsDefined(d)))
-            {
-                throw new ValidationException("Kamida bitta dars kunini tanlang.");
-            }
-
-            user.LessonDays = [.. LessonCalendar.Normalize(days).Select(d => (int)d)];
-        }
-
         await db.SaveChangesAsync(ct);
         return ToDto(user, remindersAvailable);
     }
@@ -82,9 +56,6 @@ public sealed class UserService(IAppDbContext db, TimeProvider time)
         u.TimeZone,
         u.RemindersEnabled,
         u.WeekdayReminderTime,
-        u.SaturdayReminderTime,
         remindersAvailable,
-        u.BotBlockedAt is not null,
-        u.TablesPerLesson,
-        u.LessonWeekdays());
+        u.BotBlockedAt is not null);
 }

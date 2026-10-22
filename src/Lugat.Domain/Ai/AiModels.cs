@@ -66,9 +66,6 @@ public sealed class SentenceCheck
 
     public Guid? WordSenseId { get; set; }
 
-    /// <summary>Set when the sentence practises a grammar point instead of a word (D-26).</summary>
-    public Guid? GrammarItemId { get; set; }
-
     public string Target { get; set; } = "";
 
     public string TargetMeaning { get; set; } = "";

@@ -7,16 +7,14 @@ using Microsoft.EntityFrameworkCore;
 namespace Lugat.Application.Mistakes;
 
 /// <summary>
-/// Weak points (D-54): the mistakes notebook read for a short window and folded into what to practise next: grammar
-/// points, particles and verb endings missed in the ladder's gaps, the kinds of mistakes in the learner's own
+/// Weak points (D-54): the mistakes notebook read for a short window and folded into what to practise next:
+/// particles and verb endings missed in the ladder's gaps, the kinds of mistakes in the learner's own
 /// sentences (sentence checks and ladder translations), word-for-word traps, words and listening. Nothing new is
 /// stored; the "Zaif joylar zinapoyasi" (LadderService) is built from this.
 /// </summary>
 public sealed class WeakPointService(IAppDbContext db, MistakeService mistakes, TimeProvider time)
 {
     public static readonly int[] Windows = [7, 30];
-
-    public const int MaxGrammar = 5;
 
     public const int MaxForms = 6;
 
@@ -35,7 +33,7 @@ public sealed class WeakPointService(IAppDbContext db, MistakeService mistakes, 
         ["word_choice"] = "so‘z tanlash",
         ["style"] = "uslub",
         ["naturalness"] = "tabiiylik",
-        ["target_missing"] = "kerakli so‘z yoki grammatika ishlatilmagan",
+        ["target_missing"] = "kerakli so‘z ishlatilmagan",
     };
 
     public async Task<WeakPointsDto> GetAsync(Guid ownerId, int days, CancellationToken ct)
@@ -103,7 +101,6 @@ public sealed class WeakPointService(IAppDbContext db, MistakeService mistakes, 
 
         return new WeakPointsDto(
             days,
-            notebook.Grammar.Where(g => !g.Improving).Take(MaxGrammar).ToList(),
             forms,
             errorTypes,
             notebook.Words.Where(w => !w.Improving).Take(MaxWords).ToList(),

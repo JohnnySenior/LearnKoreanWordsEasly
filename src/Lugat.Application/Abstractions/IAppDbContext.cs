@@ -1,6 +1,5 @@
-using Lugat.Domain.Imports;
 using Lugat.Domain.Learning;
-using Lugat.Domain.Lessons;
+using Lugat.Domain.Study;
 using Lugat.Domain.Users;
 using Lugat.Domain.Vocabulary;
 using Microsoft.EntityFrameworkCore;
@@ -11,12 +10,6 @@ public interface IAppDbContext
 {
     DbSet<User> Users { get; }
 
-    DbSet<SourceDocument> SourceDocuments { get; }
-
-    DbSet<ImportJob> ImportJobs { get; }
-
-    DbSet<SourceEntry> SourceEntries { get; }
-
     DbSet<WordSense> WordSenses { get; }
 
     DbSet<WordUsage> WordUsages { get; }
@@ -25,15 +18,11 @@ public interface IAppDbContext
 
     DbSet<Domain.Ladder.TrapNote> TrapNotes { get; }
 
-    DbSet<Domain.Essays.EssayAttempt> EssayAttempts { get; }
-
     DbSet<Domain.Listening.ListeningSet> ListeningSets { get; }
 
     DbSet<Card> Cards { get; }
 
     DbSet<ReviewEvent> ReviewEvents { get; }
-
-    DbSet<LessonAssignment> LessonAssignments { get; }
 
     DbSet<StudySession> StudySessions { get; }
 
@@ -45,21 +34,7 @@ public interface IAppDbContext
 
     DbSet<Domain.Writing.WritingAttempt> WritingAttempts { get; }
 
-    DbSet<Domain.Grammar.GrammarImport> GrammarImports { get; }
-
-    DbSet<Domain.Grammar.GrammarItem> GrammarItems { get; }
-
-    DbSet<Domain.Grammar.GrammarNote> GrammarNotes { get; }
-
-    DbSet<Domain.Grammar.GrammarSet> GrammarSets { get; }
-
-    DbSet<Domain.Grammar.GrammarSetItem> GrammarSetItems { get; }
-
     DbSet<Domain.Testing.TestRun> TestRuns { get; }
-
-    DbSet<Domain.Testing.BookTest> BookTests { get; }
-
-    DbSet<Domain.Testing.BookQuestion> BookQuestions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

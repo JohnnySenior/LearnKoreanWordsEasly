@@ -4,7 +4,7 @@
 @inject SessionService Api
 @inject NavigationManager Nav
 
-<PageTitle>Oldingi sinovlar — TOPIK yordamchi</PageTitle>
+<PageTitle>Oldingi sinovlar — Lug‘at</PageTitle>
 
 <a class="back" href="sinov">← Sinov</a>
 <header class="page-head">
@@ -92,10 +92,7 @@ else
     [
         (null, "Hammasi"),
         (TestCategory.Vocabulary, "Lug‘at"),
-        (TestCategory.Grammar, "Grammatika"),
         (TestCategory.Oral, "Og‘zaki"),
-        (TestCategory.Book, "Kitob"),
-        (TestCategory.Mixed, "Aralash"),
     ];
 
     private List<TestSummaryDto>? _all;
@@ -130,10 +127,7 @@ else
 
     public static string Label(TestCategory c) => c switch
     {
-        TestCategory.Grammar => "Grammatika",
         TestCategory.Oral => "Og‘zaki",
-        TestCategory.Book => "Kitob testi",
-        TestCategory.Mixed => "Lug‘at va grammatika",
         _ => "Lug‘at",
     };
 }

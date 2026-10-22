@@ -2,7 +2,7 @@
 @using Lugat.Contracts
 @inject SessionService Api
 
-<PageTitle>Natijalar — TOPIK yordamchi</PageTitle>
+<PageTitle>Natijalar — Lug‘at</PageTitle>
 
 <a class="back" href="sinov">← Sinov</a>
 <h1>Natijalar</h1>
@@ -17,7 +17,7 @@ else if (_p is null)
 }
 else if (_p.Words == 0)
 {
-    <p class="muted">Hali tasdiqlangan so‘z yo‘q. <a href="lugatlar">Lug‘atlar</a> bo‘limidan boshlang.</p>
+    <p class="muted">Hali so‘z yo‘q. <a href="lugatlar">Lug‘atlar</a> bo‘limidan boshlang.</p>
 }
 else
 {

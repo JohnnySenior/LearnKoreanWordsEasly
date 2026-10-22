@@ -2,10 +2,9 @@
 @using Lugat.Contracts
 @using Lugat.Domain.Testing
 @inject SessionService Api
-@implements IDisposable
 @inject NavigationManager Nav
 
-<PageTitle>Sinov — TOPIK yordamchi</PageTitle>
+<PageTitle>Sinov — Lug‘at</PageTitle>
 
 @if (_test is null)
 {
@@ -26,10 +25,6 @@
 
     <section class="card" style="border-top:0">
         <div class="big-number">@_test.Score<small> / @(_test.Questions.Count - _test.Questions.Count(q => q.Technical))</small></div>
-        @if (IsBook)
-        {
-            <p class="muted small-text">100 ballik hisobda: <strong>@(_test.Score * 100 / Math.Max(1, _test.Questions.Count))</strong>@(_test.TimeLimitMinutes is { } lim && _test.FinishedAt is { } fin ? $" · {Spent(fin)} / {lim} daqiqa" : "")</p>
-        }
         <dl class="facts stats" style="margin-top:12px">
             @foreach (var k in _test.ByKind)
             {
@@ -77,37 +72,6 @@
                     </li>
                     continue;
                 }
-                @if (q.Kind == TestQuestionKind.BookChoice)
-                {
-                    <li class="book-mistake">
-                        <span class="kicker">@q.Number-savol · kitobning @q.Page-beti</span>
-                        <p class="q-stem" lang="ko">@q.Prompt</p>
-                        <p>
-                            <span class="muted">Siz:</span> @(string.IsNullOrEmpty(q.Given) ? "—" : $"{Circled(q, q.Given)} {q.Given}")
-                        </p>
-                        @if (q.Hint is not null)
-                        {
-                            <p class="hint"><span class="kicker">Maslahat</span>@q.Hint</p>
-                        }
-                        <details class="reveal">
-                            <summary>Javob va izoh</summary>
-                            <p><span class="muted">To‘g‘ri:</span> <strong lang="ko">@Circled(q, q.Correct!) @q.Correct</strong></p>
-                            @if (q.OfficialKey != true)
-                            {
-                                <p class="muted small-text">AI yechimi (kitob kaliti emas)</p>
-                            }
-                            @if (q.Explanation is not null)
-                            {
-                                <p class="small-text">@q.Explanation</p>
-                            }
-                            @if (q.Sentence is not null)
-                            {
-                                <div class="paper small" lang="ko">@q.Sentence</div>
-                            }
-                        </details>
-                    </li>
-                    continue;
-                }
                 <li>
                     <span class="kicker">@KindLabel(q.Kind)</span>
                     @if (q.Sentence is not null)
@@ -134,10 +98,6 @@
                     {
                         <p class="small-text">@q.Explanation</p>
                     }
-                    @if (q.GrammarItemId is { } gid)
-                    {
-                        <a class="small-text" href="@($"grammatika/band/{gid}")">Grammatikani ochish →</a>
-                    }
                 </li>
             }
         </ol>
@@ -159,10 +119,6 @@
         </ul>
     }
 
-    @if (_test.BookTestId is { } bookId)
-    {
-        <a class="button block" href="@($"sinov/kitob/{bookId}")" style="margin-top:12px">Kitob testiga qaytish</a>
-    }
     <a class="button block" href="sinov" style="margin-top:12px">Yangi sinov</a>
     return;
 }
@@ -178,21 +134,6 @@
     </div>
     <span class="count">@(_position + 1) / @_test.Questions.Count</span>
 </div>
-
-@if (IsBook)
-{
-    <div class="exam-bar">
-        <span class="exam-title" lang="ko">TOPIK II · 읽기</span>
-        @if (Remaining() is { } left)
-        {
-            <span class="timer @(left.TotalMinutes < 5 ? "low" : "")" role="timer" aria-label="Qolgan vaqt">@($"{(int)left.TotalMinutes:00}:{left.Seconds:00}")</span>
-        }
-        else
-        {
-            <span class="muted small-text">Mashq · vaqt cheklanmagan</span>
-        }
-    </div>
-}
 
 @if (question.Kind == TestQuestionKind.OralKorean)
 {
@@ -229,33 +170,6 @@ else if (question.Kind == TestQuestionKind.OralMeaning)
         {
             <button class="button primary big block" style="margin-top:16px" @onclick="() => _revealed = question.Index">Javobni ko‘rsatish</button>
         }
-    </section>
-}
-else if (question.Kind == TestQuestionKind.BookChoice)
-{
-    <section class="test-question book" aria-live="polite">
-        @if (question.Instruction is not null)
-        {
-            <p class="q-instruction" lang="ko">@question.Instruction</p>
-        }
-        @if (question.Sentence is not null)
-        {
-            <div class="paper" lang="ko">@question.Sentence</div>
-        }
-        @if (question.Figure is not null)
-        {
-            <p class="figure-note">Rasm yoki jadval: @question.Figure · kitobning @question.Page-betiga qarang</p>
-        }
-        <p class="q-stem" lang="ko"><strong>@(question.Number).</strong> @question.Prompt</p>
-        <div class="options">
-            @for (var i = 0; i < question.Options.Count; i++)
-            {
-                var o = question.Options[i];
-                var mark = Marks[Math.Min(i, Marks.Length - 1)];
-                <button class="button option book @(question.Given == o ? "chosen" : "")" aria-pressed="@(question.Given == o)" disabled="@(_busy || TimeUp)"
-                        lang="ko" @onclick="() => AnswerAsync(question, o)"><span class="mark">@mark</span><span>@o</span></button>
-            }
-        </div>
     </section>
 }
 else
@@ -330,27 +244,6 @@ else
     }
 </nav>
 
-@if (IsBook)
-{
-    <section class="omr" aria-label="Javoblar varaqasi">
-        <span class="kicker">Javoblar varaqasi · 답안지</span>
-        <div class="omr-grid">
-            @foreach (var q in _test.Questions)
-            {
-                var index = q.Index;
-                var chosen = q.Given is null ? -1 : q.Options.ToList().IndexOf(q.Given);
-                <button class="omr-row @(index == _position ? "current" : "")" aria-label="@($"{q.Number}-savol{(chosen >= 0 ? $", {chosen + 1}-variant" : ", javobsiz")}")" @onclick="() => Go(index)">
-                    <span class="no">@q.Number</span>
-                    @for (var i = 0; i < 4; i++)
-                    {
-                        <span class="bubble @(i == chosen ? "filled" : "")">@(i + 1)</span>
-                    }
-                </button>
-            }
-        </div>
-    </section>
-}
-
 <section class="card" style="margin-top:16px">
     <p class="muted small-text">Javob berildi: @_test.Answered / @_test.Questions.Count. Javoblar oxirida ko‘rsatiladi.</p>
     @if (_test.Warning is not null)
@@ -380,9 +273,6 @@ else
     private bool _busy;
     private bool _confirmFinish;
     private string? _error;
-    private Timer? _clock;
-
-    private static readonly string[] Marks = ["①", "②", "③", "④", "⑤"];
 
     private int? _revealed;
 
@@ -403,10 +293,6 @@ else
         Go(next?.Index ?? Math.Min(current + 1, _test.Questions.Count - 1));
     }
 
-    private bool IsBook => _test?.Questions.Any(q => q.Kind == TestQuestionKind.BookChoice) == true;
-
-    private bool TimeUp => Remaining() is { } left && left <= TimeSpan.Zero;
-
     protected override async Task OnParametersSetAsync()
     {
         var result = await Api.GetAsync<TestDto>($"api/tests/{Id}");
@@ -418,48 +304,7 @@ else
             var next = _test.Questions.FirstOrDefault(q => q.Given is null);
             Go(next?.Index ?? _test.Questions.Count - 1);
         }
-
-        _clock?.Dispose();
-        _clock = _test is { Status: TestRunStatus.InProgress, TimeLimitMinutes: not null }
-            ? new Timer(_ => InvokeAsync(TickAsync), null, 1000, 1000)
-            : null;
     }
-
-    /// <summary>Exam mode (D-33): time left, counted from when the test was made. Null = no timer.</summary>
-    private TimeSpan? Remaining()
-    {
-        if (_test is not { TimeLimitMinutes: { } limit, Status: TestRunStatus.InProgress })
-        {
-            return null;
-        }
-
-        var left = _test.CreatedAt.AddMinutes(limit) - DateTimeOffset.UtcNow;
-        return left < TimeSpan.Zero ? TimeSpan.Zero : left;
-    }
-
-    private async Task TickAsync()
-    {
-        if (TimeUp && !_busy)
-        {
-            // Like the real exam: when time is up the answer sheet is collected.
-            _clock?.Dispose();
-            _clock = null;
-            await FinishAsync();
-        }
-
-        StateHasChanged();
-    }
-
-    private int Spent(DateTimeOffset finishedAt) =>
-        Math.Min(_test!.TimeLimitMinutes ?? int.MaxValue, (int)Math.Ceiling((finishedAt - _test.CreatedAt).TotalMinutes));
-
-    private static string Circled(TestQuestionDto q, string option)
-    {
-        var i = q.Options.ToList().IndexOf(option);
-        return i >= 0 && i < Marks.Length ? Marks[i] : "";
-    }
-
-    public void Dispose() => _clock?.Dispose();
 
     private void Go(int position)
     {
@@ -501,17 +346,12 @@ else
         _busy = false;
         _error = result.Ok ? null : result.Error;
         _test = result.Value ?? _test;
-        if (_test?.Status == TestRunStatus.Finished)
-        {
-            _clock?.Dispose();
-            _clock = null;
-        }
     }
 
     private async Task RetryMistakesAsync()
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", new CreateTestRequest(Guid.NewGuid(), null, null, false, 0, Id));
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", new CreateTestRequest(Guid.NewGuid(), null, 0, Id));
         _busy = false;
         if (result.Value is { } retry)
         {
@@ -522,9 +362,9 @@ else
         _error = result.Error;
     }
 
-    private static bool IsKoreanPrompt(TestQuestionKind kind) => kind is TestQuestionKind.WordMeaning or TestQuestionKind.GrammarMeaning;
+    private static bool IsKoreanPrompt(TestQuestionKind kind) => kind is TestQuestionKind.WordMeaning;
 
-    private static bool IsKoreanOption(TestQuestionKind kind) => kind is TestQuestionKind.WordKorean or TestQuestionKind.WordCloze or TestQuestionKind.GrammarChoice;
+    private static bool IsKoreanOption(TestQuestionKind kind) => kind is TestQuestionKind.WordKorean or TestQuestionKind.WordCloze;
 
     private static RenderFragment Blanked(string sentence) => builder =>
     {
@@ -550,11 +390,9 @@ else
         TestQuestionKind.WordKorean => "Ma’no → so‘z",
         TestQuestionKind.WordCloze => "Gapni to‘ldirish",
         TestQuestionKind.WordClozeTyped => "Gapni to‘ldirish (yozish)",
-        TestQuestionKind.GrammarChoice => "Grammatika: gapda",
-        TestQuestionKind.BookChoice => "Kitob savoli",
         TestQuestionKind.OralKorean => "Koreyschasini aytish",
         TestQuestionKind.OralMeaning => "Ma’nosini aytish",
         TestQuestionKind.WordUsage => "So‘z qo‘llanishi",
-        _ => "Grammatika: ma’nosi",
+        _ => kind.ToString(),
     };
 }

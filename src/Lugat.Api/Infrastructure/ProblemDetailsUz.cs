@@ -11,7 +11,7 @@ public static class ProblemDetailsUz
     private static readonly Dictionary<int, string> Details = new()
     {
         [StatusCodes.Status400BadRequest] = "So‘rov noto‘g‘ri tuzilgan.",
-        [StatusCodes.Status401Unauthorized] = "Kirish talab qilinadi. Ilovani Telegram ichidan qayta oching.",
+        [StatusCodes.Status401Unauthorized] = "Kirish talab qilinadi. Qaytadan kiring.",
         [StatusCodes.Status403Forbidden] = "Bu amal uchun ruxsat yo‘q.",
         [StatusCodes.Status404NotFound] = "Topilmadi.",
         [StatusCodes.Status409Conflict] = "Ma’lumot boshqa joyda o‘zgargan. Sahifani yangilab, qayta urinib ko‘ring.",

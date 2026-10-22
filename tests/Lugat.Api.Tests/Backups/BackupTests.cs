@@ -7,7 +7,6 @@ using Lugat.Api.Tests.Infrastructure;
 using Lugat.Api.Tests.Me;
 using Lugat.Application.Abstractions;
 using Lugat.Domain.Operations;
-using Lugat.Domain.Imports;
 using Lugat.Infrastructure.Persistence;
 using Lugat.Contracts;
 using Lugat.Infrastructure.Backups;
@@ -33,15 +32,6 @@ public class BackupTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA); // creates a user row
 
         await using var scope = factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var owner = db.Users.Single().Id;
-        var original = "%PDF-1.7 preserved original"u8.ToArray();
-        var sha = Convert.ToHexStringLower(SHA256.HashData(original));
-        var key = $"{owner:N}/{sha}.pdf";
-        await scope.ServiceProvider.GetRequiredService<IFileStore>().SaveAsync(key, new MemoryStream(original), CancellationToken.None);
-        db.SourceDocuments.Add(new SourceDocument { Id = Guid.NewGuid(), OwnerId = owner, Kind = SourceDocumentKind.Vocabulary,
-            StorageKey = key, ContentSha256 = sha, FileName = "lugat.pdf", SizeBytes = original.Length, UploadedAt = factory.Time.GetUtcNow() });
-        await db.SaveChangesAsync();
         var run = await scope.ServiceProvider.GetRequiredService<BackupService>().RunAsync(CancellationToken.None);
         var status = await client.GetFromJsonAsync<BackupStatusDto>("/api/backups/status", Json);
 
@@ -56,35 +46,9 @@ public class BackupTests
         using (var archive = ZipFile.OpenRead(Path.Combine(folder, run.FileName! + ".zip")))
         {
             Assert.NotNull(archive.GetEntry("database.dump"));
-            using var file = archive.GetEntry("files/" + key)!.Open();
-            using var buffer = new MemoryStream();
-            await file.CopyToAsync(buffer);
-            Assert.Equal(original, buffer.ToArray());
             using var manifest = JsonDocument.Parse(archive.GetEntry("manifest.json")!.Open());
-            Assert.Equal(1, manifest.RootElement.GetProperty("counts").GetProperty("source_documents").GetInt32());
-            Assert.Equal(sha, manifest.RootElement.GetProperty("originals")[0].GetProperty("Sha256").GetString());
+            Assert.Equal(1, manifest.RootElement.GetProperty("counts").GetProperty("users").GetInt32());
         }
-        Directory.Delete(folder, recursive: true);
-    }
-
-    [Fact]
-    public async Task A_dump_without_its_original_files_is_never_marked_verified()
-    {
-        Assert.SkipWhen(ToolsMissing(), "pg_dump is not installed");
-        var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
-        await using var factory = new ApiFactory();
-        factory.Settings["Backup:Directory"] = folder;
-        await factory.SignedInClientAsync(ApiFactory.UserA);
-        await using var scope = factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.SourceDocuments.Add(new SourceDocument { Id = Guid.NewGuid(), OwnerId = db.Users.Single().Id,
-            StorageKey = "missing.pdf", ContentSha256 = new string('a', 64), FileName = "missing.pdf", UploadedAt = factory.Time.GetUtcNow() });
-        await db.SaveChangesAsync();
-        var run = await scope.ServiceProvider.GetRequiredService<BackupService>().RunAsync(CancellationToken.None);
-        Assert.False(run.Verified);
-        Assert.Contains("asl PDF", run.Error);
-        Assert.False(File.Exists(Path.Combine(folder, run.FileName! + ".zip")));
-        Assert.Empty(Directory.GetFiles(folder, "*.tmp"));
         Directory.Delete(folder, recursive: true);
     }
 
@@ -168,6 +132,7 @@ public class BackupTests
         var telegram = new FakeMessenger();
         await using var factory = new ApiFactory { Messenger = telegram };
         factory.Settings["Backup:Directory"] = folder;
+        factory.Settings["Backup:TelegramChatId"] = ApiFactory.UserA.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await SeedVerifiedAsync(factory, folder);
 
@@ -179,10 +144,10 @@ public class BackupTests
 
         Assert.Null(error);
         var (chat, file, content, caption) = Assert.Single(telegram.Documents);
-        Assert.Equal((ApiFactory.UserA, "lugat-20261004-040000.dump"), (chat, file)); // the first allowed user is the owner
+        Assert.Equal((ApiFactory.UserA, "lugat-20261004-040000.dump"), (chat, file));
         Assert.Equal([1, 2, 3, 4], content);
         Assert.Contains("tiklab tekshirilgan", caption);
-        Assert.Contains("https://github.com/JohnnySenior/Lugat/blob/main/docs/HOSTING.md", caption);
+        Assert.Contains("https://github.com/JohnnySenior/LearnKoreanWordsEasly/blob/main/docs/HOSTING.md", caption);
         Assert.DoesNotContain(" docs/HOSTING.md", caption); // Telegram links a bare "HOSTING.md" to the site hosting.md
         Assert.NotNull(run!.SentToTelegramAt);
         Assert.True(status.TelegramReady);
@@ -203,9 +168,10 @@ public class BackupTests
         await using var factory = new ApiFactory { Messenger = telegram };
         factory.Settings["Backup:Directory"] = folder;
         factory.Settings["Backup:TelegramMaxBytes"] = "16"; // stands in for Telegram's 50 MB
+        factory.Settings["Backup:TelegramChatId"] = "777000";
         await factory.SignedInClientAsync(ApiFactory.UserA);
         await SeedVerifiedAsync(factory, folder);
-        await File.WriteAllBytesAsync(Path.Combine(folder, "lugat-20261004-040000.dump.zip"), new byte[32]); // database + books
+        await File.WriteAllBytesAsync(Path.Combine(folder, "lugat-20261004-040000.dump.zip"), new byte[32]); // database + manifest
 
         await using var scope = factory.Services.CreateAsyncScope();
         var (run, error) = await scope.ServiceProvider.GetRequiredService<BackupService>().SendToTelegramAsync(CancellationToken.None);
@@ -214,7 +180,6 @@ public class BackupTests
         var (_, file, content, caption) = Assert.Single(telegram.Documents);
         Assert.Equal("lugat-20261004-040000.dump", file);
         Assert.Equal([1, 2, 3, 4], content);
-        Assert.Contains("Faqat baza", caption);
         Assert.NotNull(run!.SentToTelegramAt);
         Directory.Delete(folder, recursive: true);
     }
@@ -251,10 +216,33 @@ public class BackupTests
     }
 
     [Fact]
+    public async Task Without_a_configured_recipient_nothing_goes_to_telegram()
+    {
+        // The Mini App allow-list is gone (spec §3.1), so its first user is no longer a fallback owner.
+        var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
+        var telegram = new FakeMessenger();
+        await using var factory = new ApiFactory { Messenger = telegram };
+        factory.Settings["Backup:Directory"] = folder;
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await SeedVerifiedAsync(factory, folder);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var backups = scope.ServiceProvider.GetRequiredService<BackupService>();
+        var status = (await client.GetFromJsonAsync<BackupStatusDto>("/api/backups/status", Json))!;
+
+        Assert.False(status.TelegramReady);
+        Assert.False(await backups.IsTelegramDueAsync(CancellationToken.None));
+        Assert.NotNull((await backups.SendToTelegramAsync(CancellationToken.None)).Error);
+        Assert.Empty(telegram.Documents);
+        Directory.Delete(folder, recursive: true);
+    }
+
+    [Fact]
     public async Task Nothing_is_sent_without_a_verified_copy()
     {
         var telegram = new FakeMessenger();
         await using var factory = new ApiFactory { Messenger = telegram };
+        factory.Settings["Backup:TelegramChatId"] = "777000";
         await factory.SignedInClientAsync(ApiFactory.UserA);
 
         await using var scope = factory.Services.CreateAsyncScope();

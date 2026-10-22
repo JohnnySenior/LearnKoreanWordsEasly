@@ -3,7 +3,7 @@
 @inject SessionService Api
 @inject NavigationManager Nav
 
-<PageTitle>So‘z qo‘llanishi — TOPIK yordamchi</PageTitle>
+<PageTitle>So‘z qo‘llanishi — Lug‘at</PageTitle>
 
 @* "Which word is right?" (D-46): the Uzbek meaning of a word does not tell where the Korean word fits. *@
 <a class="back" href="mashq">← Mashq</a>
@@ -27,7 +27,7 @@
 
 @if (_tables.Count == 0)
 {
-    <p class="muted">Hali tasdiqlangan so‘z yo‘q. <a href="lugatlar">Lug‘atlar</a> bo‘limida jadvalni tasdiqlang.</p>
+    <p class="muted">Hali so‘z yo‘q.</p>
     return;
 }
 
@@ -46,7 +46,7 @@
                     {
                         <span>Tayyor · @t.Questions savol</span>
                     }
-                    else if (_preparing == (t.SourceDocumentId, t.TableNumber))
+                    else if (_preparing == t.TableNumber)
                     {
                         <span role="status">Tayyorlanmoqda: @t.Ready / @t.Total so‘z…</span>
                     }
@@ -59,7 +59,7 @@
                 {
                     <button class="button small" disabled="@(_preparing is not null)" @onclick="() => PrepareAsync(table)">Tayyorlash</button>
                 }
-                <a class="small-text" href="lugatlar/jadval/@t.SourceDocumentId/@t.TableNumber">Ko‘rish</a>
+                <a class="small-text" href="lugatlar/jadval/@t.TableNumber">Ko‘rish</a>
             </li>
         }
     </ul>
@@ -86,7 +86,7 @@
     private int _count = 10;
     private bool _busy;
     private string? _error;
-    private (Guid, int)? _preparing;
+    private int? _preparing;
     private Guid? _pendingId;
 
     protected override async Task OnInitializedAsync()
@@ -107,9 +107,9 @@
     /// <summary>One batch of words per request until the table is ready, so the page shows progress as it goes.</summary>
     private async Task PrepareAsync(UsageTableSummaryDto table)
     {
-        _preparing = (table.SourceDocumentId, table.TableNumber);
+        _preparing = table.TableNumber;
         _error = null;
-        var url = $"api/vocabulary/tables/{table.SourceDocumentId}/{table.TableNumber}/usage";
+        var url = $"api/vocabulary/tables/{table.TableNumber}/usage";
         var ready = table.Ready;
         while (true)
         {
@@ -135,7 +135,7 @@
 
     private void Replace(UsageTableSummaryDto table, TableUsageDto usage)
     {
-        var i = _tables!.FindIndex(t => t.SourceDocumentId == table.SourceDocumentId && t.TableNumber == table.TableNumber);
+        var i = _tables!.FindIndex(t => t.TableNumber == table.TableNumber);
         if (i >= 0)
         {
             _tables[i] = _tables[i] with { Ready = usage.Ready, Total = usage.Total, Questions = usage.Usages.Sum(u => u.Questions) };
@@ -147,7 +147,7 @@
         _busy = true;
         _error = null;
         var id = _pendingId ??= Guid.NewGuid();
-        var request = new CreateTestRequest(id, _chosen.Count == 0 ? null : _chosen.ToList(), null, false, _count, Usage: true);
+        var request = new CreateTestRequest(id, _chosen.Count == 0 ? null : _chosen.ToList(), _count, Usage: true);
         var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", request);
         _busy = false;
         if (result.Value is { } test)

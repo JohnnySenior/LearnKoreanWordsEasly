@@ -5,7 +5,7 @@ namespace Lugat.Domain.Tests.Testing;
 public class TestGraderTests
 {
     private static TestQuestion Q(TestQuestionKind kind, string correct, string? baseForm = null) =>
-        new(0, kind, "p", "어제 학교에 ___.", null, ["갔어요", "먹었어요", "봤어요", "잤어요"], correct, baseForm, null, null, null, true);
+        new(0, kind, "p", "어제 학교에 ___.", null, ["갔어요", "먹었어요", "봤어요", "잤어요"], correct, baseForm, null, null, true);
 
     [Fact]
     public void Options_must_match_exactly()

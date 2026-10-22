@@ -1,14 +1,12 @@
 @page "/"
 @using Lugat.Contracts
-@using Lugat.Domain.Exams
-@using Lugat.Domain.Lessons
 @inject SessionService Api
 @inject NavigationManager Nav
 
-<PageTitle>Bugun — TOPIK yordamchi</PageTitle>
+<PageTitle>Bugun — Lug‘at</PageTitle>
 
-@* Today shows only what to do now (D-42): the exam count, today's practice, the next lesson and the grammar set.
-   Planning lessons lives in Lug‘atlar, results in Sinov, settings behind the avatar. *@
+@* Today shows only what to do now (D-42): today's practice. Tables live in Lug‘atlar, results in Sinov,
+   settings behind the avatar. The home page of units (spec §4.1) replaces this in stage 3. *@
 <header class="page-head">
     <div>
         <span class="kicker accent">@Format.DayMonth(DateTimeOffset.UtcNow)</span>
@@ -35,11 +33,6 @@ else if (_today is null)
 }
 else
 {
-    @if (_exam is { } exam)
-    {
-        <ExamCard Exam="exam" />
-    }
-
     <section class="card" style="border-top:0">
         <span class="kicker">Bugungi mashq</span>
         <div class="today-stats">
@@ -51,12 +44,12 @@ else
             <a class="button primary block" href="mashq/kartochka">
                 <span>Davom etish</span><span class="aside">@active.Position / @active.Total</span>
             </a>
-            <button class="button small" style="margin-top:8px" disabled="@_busy" @onclick="() => StartAsync(restart: true, null)">Yangidan boshlash</button>
+            <button class="button small" style="margin-top:8px" disabled="@_busy" @onclick="() => StartAsync(restart: true)">Yangidan boshlash</button>
         }
         else if (_today.DueNow == 0 && _today.NewAvailable == 0)
         {
             <p class="muted">Hozircha takrorlanadigan so‘z yo‘q.</p>
-            <p class="small-text"><a href="lugatlar">Lug‘atlar</a> bo‘limida jadvalni tasdiqlang yoki darsni belgilang.</p>
+            <p class="small-text"><a href="lugatlar">Lug‘atlar</a> bo‘limida jadvalni yodlang.</p>
         }
         else
         {
@@ -69,7 +62,7 @@ else
                 }
             </div>
             <p class="muted small-text">≈ @(_minutes is { } m ? $"{m * 60 / _today.SecondsPerCard} karta sig‘adi" : "barcha kartalar")</p>
-            <button class="button primary block" disabled="@_busy" @onclick="() => StartAsync(restart: false, null)">
+            <button class="button primary block" disabled="@_busy" @onclick="() => StartAsync(restart: false)">
                 <span>Boshlash</span>
                 <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
             </button>
@@ -80,81 +73,9 @@ else
         }
     </section>
 
-    @if (_planned.FirstOrDefault() is { } next)
+    @if (_today.DueNow + _today.NewAvailable > 0)
     {
-        <section class="card today-lesson">
-            <div class="row-between">
-                <span class="kicker">Keyingi dars</span>
-                <span class="muted small-text">@Format.LessonDate(next.DueAt)</span>
-            </div>
-            <h2 style="margin:2px 0">@next.Title</h2>
-            <span class="muted small-text">
-                @next.WordCount ta so‘z · @(next.WordCount - next.NewWords) tasi boshlangan
-                @if (next.ApprovedWords < next.WordCount)
-                {
-                    <text> · @(next.WordCount - next.ApprovedWords) tasi tasdiqlanmagan</text>
-                }
-            </span>
-            <nav class="menu compact" aria-label="Dars">
-                @foreach (var t in next.Tables)
-                {
-                    <a href="@($"lugatlar/jadval/{next.SourceDocumentId}/{t}")">
-                        <span><span class="t">@t-jadvalni yodlash</span><span class="s">Kitobdagidek jadval, 10 daqiqa</span></span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-                    </a>
-                }
-                <a href="mashq" @onclick="() => StartAsync(restart: true, next.Id)" @onclick:preventDefault>
-                    <span><span class="t">Butun darsni mashq qilish</span><span class="s">Kartochka · @next.ApprovedWords so‘z</span></span>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-                </a>
-                <a href="sinov" @onclick="() => OralReadinessAsync(next)" @onclick:preventDefault>
-                    <span><span class="t">Og‘zaki tayyorlik sinovi</span><span class="s">Mikrofon · barcha so‘zlar</span></span>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-                </a>
-            </nav>
-            <div class="row-links">
-                <button class="button small" disabled="@_busy" @onclick="() => MarkDoneAsync(next)">Dars topshirildi</button>
-                <a href="lugatlar#darslar">Barcha darslar →</a>
-            </div>
-        </section>
-    }
-    else
-    {
-        <p class="muted small-text" style="margin:12px 0">Rejada dars yo‘q. Keyingi darsni <a href="lugatlar#darslar">Lug‘atlar</a> bo‘limida belgilang.</p>
-    }
-
-    @if (_grammar is { } g && (g.Current is not null || g.ReviewDue > 0))
-    {
-        <section class="card">
-            <span class="kicker">Grammatika</span>
-            @if (g.Current is { } set)
-            {
-                <h2 style="margin:2px 0">@set.Number-to‘plam</h2>
-                <p class="muted small-text" style="margin-bottom:6px">
-                    @set.Total band · @set.Started tasi mashqda · @set.Independent tasi mustaqil
-                    @if (set.DueDate is { } due)
-                    {
-                        <text> · @Format.DueIn(due)</text>
-                    }
-                    @if (set.TodayTarget > 0)
-                    {
-                        <text> · bugun @set.StartedToday / @set.TodayTarget</text>
-                    }
-                </p>
-                @if (set.NextItemId is { } nextId)
-                {
-                    <a class="button block" href="@($"grammatika/band/{nextId}?toplam={set.Id}")">
-                        <span>@(set.Started == 0 ? "Grammatikani boshlash" : "Grammatikani davom ettirish")</span>
-                    </a>
-                }
-            }
-            @if (g.ReviewDue > 0 && g.ReviewNextItemId is { } reviewId)
-            {
-                <a class="button block" style="margin-top:8px" href="@($"grammatika/band/{reviewId}")">
-                    <span>Takrorlash kerak</span><span class="aside">@g.ReviewDue ta band</span>
-                </a>
-            }
-        </section>
+        <p class="muted small-text" style="margin:12px 0"><a href="lugatlar">Lug‘atlar</a>: jadvalni ko‘rib yodlash, keyin kartochkada tekshirish.</p>
     }
 }
 
@@ -165,9 +86,6 @@ else
 
     private SessionState? _signIn;
     private TodayDto? _today;
-    private GrammarTodayDto? _grammar;
-    private ExamDto? _exam;
-    private List<AssignmentDto> _planned = [];
     private int? _minutes = 20;
     private string? _error;
     private string? _startMessage;
@@ -184,52 +102,15 @@ else
 
     private async Task LoadAsync()
     {
-        var grammar = Api.GetAsync<GrammarTodayDto>("api/grammar/today");
-        var exam = Api.GetAsync<ExamDto>("api/exam");
         var today = await Api.GetAsync<TodayDto>("api/today");
-        _grammar = (await grammar).Value;
-        _exam = (await exam).Value;
         _error = today.Ok ? null : today.Error;
         _today = today.Value;
-        if (_today is null)
-        {
-            return;
-        }
-
-        // A week's lessons (e.g. 3 lessons × 2 tables) can be planned ahead, so all Planned ones are shown.
-        var assignments = await Api.GetAsync<List<AssignmentDto>>("api/assignments");
-        _planned = assignments.Value?.Where(a => a.Status == AssignmentStatus.Planned).OrderBy(a => a.DueAt).ToList() ?? [];
     }
 
-    /// <summary>TEST02 (D-38): every word of the lesson once, said aloud in one of the two directions.</summary>
-    private async Task OralReadinessAsync(AssignmentDto lesson)
+    private async Task StartAsync(bool restart)
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests",
-            new CreateTestRequest(Guid.NewGuid(), lesson.Tables, null, false, 0, Oral: true));
-        _busy = false;
-        if (result.Value is { } test)
-        {
-            Nav.NavigateTo($"sinov/{test.Id}");
-            return;
-        }
-
-        _startMessage = result.Error;
-    }
-
-    private async Task MarkDoneAsync(AssignmentDto lesson)
-    {
-        _busy = true;
-        var result = await Api.SendJsonAsync<AssignmentDto>(HttpMethod.Patch, $"api/assignments/{lesson.Id}", new UpdateAssignmentRequest(null, null, AssignmentStatus.Done, null));
-        _error = result.Ok ? null : result.Error;
-        await LoadAsync();
-        _busy = false;
-    }
-
-    private async Task StartAsync(bool restart, Guid? lessonId)
-    {
-        _busy = true;
-        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(_minutes, restart, lessonId));
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(_minutes, restart));
         _busy = false;
         if (!result.Ok)
         {

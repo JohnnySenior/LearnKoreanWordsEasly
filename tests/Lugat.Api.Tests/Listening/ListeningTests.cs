@@ -22,7 +22,27 @@ public class ListeningTests
 
     private readonly FakeSpeech _speech = new();
 
-    private ApiFactory NewFactory() => new() { AiProviders = [_ai], Speech = _speech };
+    /// <summary>Listening is a v1.1 feature (spec §3.1): these tests turn it on, as the setting will in production.</summary>
+    private ApiFactory NewFactory(bool listening = true)
+    {
+        var factory = new ApiFactory { AiProviders = [_ai], Speech = _speech };
+        factory.Settings["Features:Listening"] = listening ? "true" : "false";
+        return factory;
+    }
+
+    [Fact]
+    public async Task Listening_is_not_there_until_the_feature_is_turned_on()
+    {
+        await using var factory = NewFactory(listening: false);
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+
+        var list = await client.GetAsync("/api/listening");
+        var create = await client.PostAsJsonAsync("/api/listening", new CreateListeningRequest(Guid.NewGuid()), Json);
+
+        Assert.Equal(HttpStatusCode.NotFound, list.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, create.StatusCode);
+        Assert.Empty(_ai.Requests);
+    }
 
     private static string Question(string first, string translation = "Ayol: Salom. Erkak: Salom.", int options = 4) => $$"""
         {"questionKo":"다음을 듣고 들은 내용과 같은 것을 고르십시오.",

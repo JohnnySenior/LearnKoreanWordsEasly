@@ -39,10 +39,7 @@ public sealed class BackupOptions
 
     public TimeSpan CommandTimeout { get; set; } = TimeSpan.FromMinutes(15);
 
-    /// <summary>
-    /// Telegram user who gets the weekly copy outside Railway (D-37). Empty = the first of
-    /// <c>Telegram:AllowedUserIds</c>, the app's owner.
-    /// </summary>
+    /// <summary>Telegram user (the app's owner) who gets the weekly copy outside Railway (D-37). Empty = not sent.</summary>
     public long? TelegramChatId { get; set; }
 
     /// <summary>How often a verified copy goes to Telegram.</summary>
@@ -55,7 +52,7 @@ public sealed class BackupOptions
     /// Restore steps linked from the Telegram caption. A full address on purpose: a bare "HOSTING.md" is turned by
     /// Telegram into a link to the unrelated site hosting.md (.md is Moldova's domain).
     /// </summary>
-    public string RestoreGuideUrl { get; set; } = "https://github.com/JohnnySenior/Lugat/blob/main/docs/HOSTING.md#zaxira-nusxa-d-22";
+    public string RestoreGuideUrl { get; set; } = "https://github.com/JohnnySenior/LearnKoreanWordsEasly/blob/main/docs/HOSTING.md#zaxira-nusxa";
 
     /// <summary>Bot API limit for a document a bot uploads (50 MB); settable only so tests need no large files.</summary>
     public long TelegramMaxBytes { get; set; } = 50L * 1024 * 1024;
@@ -73,14 +70,12 @@ public sealed class BackupService(
     ITelegramMessenger telegram,
     TimeProvider time,
     ILogger<BackupService> logger,
-    IOperationLock operations,
-    IFileStore files)
+    IOperationLock operations)
 {
     private BackupOptions Options => options.Value;
 
     /// <summary>Who gets the weekly copy; null when nobody is configured (D-37).</summary>
-    public long? TelegramRecipient =>
-        Options.TelegramChatId is > 0 ? Options.TelegramChatId : config.GetSection("Telegram:AllowedUserIds").Get<long[]>()?.FirstOrDefault(id => id > 0) is { } first and > 0 ? first : null;
+    public long? TelegramRecipient => Options.TelegramChatId is > 0 ? Options.TelegramChatId : null;
 
     public bool TelegramReady => telegram.IsConfigured && TelegramRecipient is not null;
 
@@ -130,10 +125,8 @@ public sealed class BackupService(
         var dump = Path.Combine(Options.Directory, run.FileName!);
         var bundle = dump + ".zip";
 
-        // The full bundle (database + original PDFs) when it fits; otherwise the database alone, which holds all the
-        // learning history and is small. The books are the learner's own files and can be uploaded again (D-51).
+        // The bundle (database + manifest) when it fits; otherwise the database alone, which holds all the history (D-51).
         var path = File.Exists(bundle) && new FileInfo(bundle).Length <= Options.TelegramMaxBytes ? bundle : dump;
-        var withoutBooks = path == dump && File.Exists(bundle);
         SendResult result;
         if (!File.Exists(path))
         {
@@ -146,10 +139,7 @@ public sealed class BackupService(
         else
         {
             var bytes = await File.ReadAllBytesAsync(path, ct);
-            var caption = $"TOPIK yordamchi · zaxira nusxa {run.StartedAt:yyyy-MM-dd HH:mm} UTC · {bytes.Length / 1024.0 / 1024.0:0.##} MB · tiklab tekshirilgan.\n"
-                + (withoutBooks
-                    ? "Faqat baza (o‘quv tarixi): kitob PDF'lari bilan birga 50 MB dan oshdi, ularni o‘zingizdagi asl fayldan qayta yuklaysiz.\n"
-                    : "")
+            var caption = $"Lug‘at · zaxira nusxa {run.StartedAt:yyyy-MM-dd HH:mm} UTC · {bytes.Length / 1024.0 / 1024.0:0.##} MB · tiklab tekshirilgan.\n"
                 + "Bu faylni o‘chirmang: Railway'dagi baza yo‘qolsa, shu fayldan tiklanadi.\n"
                 + $"Tiklash yo‘riqnomasi: {Options.RestoreGuideUrl}";
             result = await telegram.SendDocumentAsync(chat, Path.GetFileName(path), bytes, caption, ct);
@@ -211,7 +201,7 @@ public sealed class BackupService(
                 var restored = await DescribeAsync(restoredConnection, null, ct);
                 var problems = Compare(live, restored);
                 run.RestoredCounts = JsonSerializer.Serialize(restored.Counts);
-                if (problems is null) await CreateBundleAsync(path, snapshotConnection, snapshotTransaction, restored.Counts, ct);
+                if (problems is null) await CreateBundleAsync(path, restored.Counts, ct);
                 run.Verified = problems is null;
                 run.Error = problems;
             }
@@ -248,45 +238,17 @@ public sealed class BackupService(
 
     private sealed record DbShape(string? LastMigration, SortedDictionary<string, long> Counts);
 
-    private sealed record OriginalFile(string Key, string Sha256);
-
-    /// <summary>The recoverable bundle contains the dump, referenced PDFs and a hash/count manifest, not session secrets.</summary>
-    private async Task CreateBundleAsync(string dump, NpgsqlConnection connection, NpgsqlTransaction transaction,
-        SortedDictionary<string, long> counts, CancellationToken ct)
+    /// <summary>The recoverable bundle contains the dump and a count manifest, not session secrets.</summary>
+    private async Task CreateBundleAsync(string dump, SortedDictionary<string, long> counts, CancellationToken ct)
     {
-        var originals = new List<OriginalFile>();
-        await using (var command = new NpgsqlCommand("SELECT \"StorageKey\", \"ContentSha256\" FROM source_documents", connection, transaction))
-        await using (var reader = await command.ExecuteReaderAsync(ct))
-        {
-            while (await reader.ReadAsync(ct)) originals.Add(new OriginalFile(reader.GetString(0), reader.GetString(1)));
-        }
-
         var temp = dump + ".zip.tmp";
         try
         {
             using (var archive = System.IO.Compression.ZipFile.Open(temp, System.IO.Compression.ZipArchiveMode.Create))
             {
                 archive.CreateEntryFromFile(dump, "database.dump", System.IO.Compression.CompressionLevel.Optimal);
-                foreach (var original in originals.DistinctBy(f => f.Key))
-                {
-                    await using var stream = await files.OpenReadAsync(original.Key, ct)
-                        ?? throw new IOException("Zaxiralash uchun asl PDF topilmadi. Kitobni qayta yuklang.");
-                    var entry = archive.CreateEntry("files/" + original.Key, System.IO.Compression.CompressionLevel.Optimal);
-                    await using var destination = entry.Open();
-                    using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
-                    var buffer = new byte[65536];
-                    int length;
-                    while ((length = await stream.ReadAsync(buffer, ct)) != 0)
-                    {
-                        hash.AppendData(buffer, 0, length);
-                        await destination.WriteAsync(buffer.AsMemory(0, length), ct);
-                    }
-                    if (Convert.ToHexStringLower(hash.GetHashAndReset()) != original.Sha256)
-                        throw new IOException("Asl PDF xeshi bazadagi qiymatga mos emas.");
-                }
-
                 await using var manifest = archive.CreateEntry("manifest.json").Open();
-                await JsonSerializer.SerializeAsync(manifest, new { version = 1, counts, originals }, cancellationToken: ct);
+                await JsonSerializer.SerializeAsync(manifest, new { version = 1, counts }, cancellationToken: ct);
             }
 
             File.Move(temp, dump + ".zip", overwrite: true);

@@ -1,8 +1,6 @@
 using Lugat.Api.Ai;
 using Lugat.Api.Auth;
 using Lugat.Api.Backups;
-using Lugat.Api.Grammar;
-using Lugat.Api.Imports;
 using Lugat.Api.Ladder;
 using Lugat.Api.Infrastructure;
 using Lugat.Api.Me;
@@ -25,15 +23,10 @@ builder.Services.AddProblemDetails(ProblemDetailsUz.Configure);
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 
-builder.Services.Configure<TelegramOptions>(builder.Configuration.GetSection(TelegramOptions.SectionName));
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
-builder.Services.AddSingleton<TelegramInitDataValidator>();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddHostedService<ImportWorker>();
 builder.Services.AddHostedService<ReminderWorker>();
 builder.Services.AddHostedService<BackupWorker>();
-builder.Services.AddHostedService<GrammarWorker>();
-builder.Services.AddHostedService<BookTestWorker>();
 
 var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
 builder.Services
@@ -87,15 +80,13 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
     }
 }).AllowAnonymous();
 app.MapAuthEndpoints(app.Environment);
-app.MapImportEndpoints();
 app.MapStudyEndpoints();
 app.MapMeEndpoints();
 app.MapAiEndpoints();
 app.MapBackupEndpoints();
-app.MapGrammarEndpoints();
 app.MapSpeechEndpoints();
 app.MapTestEndpoints();
-app.MapLadderEndpoints();
+app.MapLadderEndpoints(app.Configuration);
 
 // Unknown API routes must be a JSON 404, not the SPA shell.
 app.Map("/api/{**rest}", () => TypedResults.Problem(statusCode: StatusCodes.Status404NotFound));

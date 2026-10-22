@@ -1,10 +1,10 @@
-@page "/lugatlar/jadval/{DocumentId:guid}/{Table:int}"
+@page "/lugatlar/jadval/{Table:int}"
 @using Lugat.Contracts
 @implements IDisposable
 @inject SessionService Api
 @inject NavigationManager Nav
 
-<PageTitle>@Table-jadvalni yodlash — TOPIK yordamchi</PageTitle>
+<PageTitle>@Table-jadvalni yodlash — Lug‘at</PageTitle>
 
 @* Study a table as it stands in the book before the cards (D-36): first exposure here, recall on the cards. *@
 <a class="back" href="lugatlar">← Lug‘atlar</a>
@@ -17,7 +17,6 @@
 
 <header class="page-head">
     <div>
-        <span class="kicker">@_table.FileName</span>
         <h1>@Table-jadval</h1>
         <span class="muted small-text">@_table.Words.Count ta so‘z · @_table.Words.Count(w => w.Started) tasi kartochkada boshlangan</span>
     </div>
@@ -144,8 +143,6 @@
 }
 
 @code {
-    [Parameter] public Guid DocumentId { get; set; }
-
     [Parameter] public int Table { get; set; }
 
     private enum CoverMode
@@ -176,11 +173,11 @@
     private TableUsageDto? _usage;
     private bool _preparing;
 
-    private string UsageUrl => $"api/vocabulary/tables/{DocumentId}/{Table}/usage";
+    private string UsageUrl => $"api/vocabulary/tables/{Table}/usage";
 
     protected override async Task OnParametersSetAsync()
     {
-        var result = await Api.GetAsync<VocabTableWordsDto>($"api/vocabulary/tables/{DocumentId}/{Table}");
+        var result = await Api.GetAsync<VocabTableWordsDto>($"api/vocabulary/tables/{Table}");
         _table = result.Value;
         _error = result.Ok ? null : result.Error;
         _usage = (await Api.GetAsync<TableUsageDto>(UsageUrl)).Value;
@@ -252,7 +249,7 @@
     {
         _busy = true;
         var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions",
-            new StartSessionRequest(null, true, null, DocumentId, Table));
+            new StartSessionRequest(null, true, Table));
         _busy = false;
         if (result.Value?.Session is not null)
         {

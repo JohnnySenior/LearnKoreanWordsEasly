@@ -96,9 +96,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("GrammarItemId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Model")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -138,508 +135,11 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GrammarItemId");
-
                     b.HasIndex("WordSenseId");
 
                     b.HasIndex("OwnerId", "CreatedAt");
 
                     b.ToTable("sentence_checks", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Essays.EssayAttempt", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Answers")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTimeOffset?>("CheckedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Feedback")
-                        .HasColumnType("jsonb");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Prompt")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("Provider")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<string>("Task")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId", "CreatedAt");
-
-                    b.ToTable("essay_attempts", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarImport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("DonePage")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Error")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTimeOffset?>("FinishedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("FromPage")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("StartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<int>("ToPage")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("SourceDocumentId");
-
-                    b.HasIndex("Status", "CreatedAt");
-
-                    b.ToTable("grammar_imports", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ConnectionUz")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Examples")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<bool>("Flagged")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Form")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("GrammarImportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Guide")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("MeaningKo")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("MeaningUz")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<int?>("Number")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("OrderInDocument")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("PdfPage")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RestrictionUz")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Section")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTimeOffset?>("SeenAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Similar")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<string>("Warning")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GrammarImportId", "PdfPage");
-
-                    b.HasIndex("OwnerId", "Status");
-
-                    b.ToTable("grammar_items", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarNote", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AnswerUz")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Examples")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<Guid>("GrammarItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<string>("Model")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("PromptVersion")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Question")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("GrammarItemId", "CreatedAt");
-
-                    b.ToTable("grammar_notes", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarSet", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly?>("DueDate")
-                        .HasColumnType("date");
-
-                    b.Property<int>("Number")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId", "Number")
-                        .IsUnique();
-
-                    b.ToTable("grammar_sets", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarSetItem", b =>
-                {
-                    b.Property<Guid>("GrammarSetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("GrammarItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("integer");
-
-                    b.HasKey("GrammarSetId", "GrammarItemId");
-
-                    b.HasIndex("GrammarItemId");
-
-                    b.HasIndex("OwnerId", "GrammarItemId")
-                        .IsUnique();
-
-                    b.ToTable("grammar_set_items", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Imports.ImportJob", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Error")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTimeOffset?>("FinishedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ParserVersion")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("StartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SourceDocumentId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("OwnerId", "CreatedAt");
-
-                    b.ToTable("import_jobs", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Imports.SourceDocument", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ContentSha256")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("PageCount")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("SizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<DateTimeOffset>("UploadedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId", "Kind", "ContentSha256")
-                        .IsUnique();
-
-                    b.ToTable("source_documents", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Imports.SourceEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ImportJobId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Korean")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("KoreanNote")
-                        .HasColumnType("text");
-
-                    b.Property<int>("OrderInDocument")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("OrderInTable")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("OriginalKorean")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("OriginalKoreanNote")
-                        .HasColumnType("text");
-
-                    b.Property<string>("OriginalUzbek")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("PdfPage")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("PrintedPage")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RawText")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset?>("ReviewedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<int>("TableNumber")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Uzbek")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<int>("Warnings")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("SourceDocumentId");
-
-                    b.HasIndex("ImportJobId", "TableNumber", "OrderInTable")
-                        .IsUnique();
-
-                    b.ToTable("source_entries", (string)null);
                 });
 
             modelBuilder.Entity("Lugat.Domain.Ladder.SentenceLadder", b =>
@@ -876,93 +376,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("review_events", (string)null);
                 });
 
-            modelBuilder.Entity("Lugat.Domain.Lessons.LessonAssignment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("DueAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.PrimitiveCollection<int[]>("Tables")
-                        .IsRequired()
-                        .HasColumnType("integer[]");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SourceDocumentId");
-
-                    b.HasIndex("OwnerId", "Status", "DueAt");
-
-                    b.ToTable("lesson_assignments", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Lessons.StudySession", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("AssignmentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Items")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<int?>("Minutes")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId", "Status");
-
-                    b.ToTable("study_sessions", (string)null);
-                });
-
             modelBuilder.Entity("Lugat.Domain.Listening.ListeningSet", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1113,143 +526,36 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("reminder_deliveries", (string)null);
                 });
 
-            modelBuilder.Entity("Lugat.Domain.Testing.BookQuestion", b =>
+            modelBuilder.Entity("Lugat.Domain.Study.StudySession", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("AiAnswer")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("BookTestId")
-                        .HasColumnType("uuid");
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("Excluded")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ExplanationUz")
-                        .HasMaxLength(1500)
-                        .HasColumnType("character varying(1500)");
-
-                    b.Property<string>("Figure")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<bool>("Flagged")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("HintUz")
-                        .HasMaxLength(600)
-                        .HasColumnType("character varying(600)");
-
-                    b.Property<string>("Instruction")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<int>("Number")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("OfficialAnswer")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Options")
+                    b.Property<string>("Items")
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Passage")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<int>("PdfPage")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Stem")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<string>("Warning")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("BookTestId", "Number");
-
-                    b.ToTable("book_questions", (string)null);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Testing.BookTest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("AnswerDonePage")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("AnswerFromPage")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("AnswerToPage")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("DonePage")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Error")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTimeOffset?>("FinishedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("FromPage")
+                    b.Property<int?>("Minutes")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("StartedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("ToPage")
-                        .HasColumnType("integer");
-
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1258,13 +564,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SourceDocumentId");
+                    b.HasIndex("OwnerId", "Status");
 
-                    b.HasIndex("Status");
-
-                    b.HasIndex("OwnerId", "CreatedAt");
-
-                    b.ToTable("book_tests", (string)null);
+                    b.ToTable("study_sessions", (string)null);
                 });
 
             modelBuilder.Entity("Lugat.Domain.Testing.TestRun", b =>
@@ -1275,9 +577,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<string>("Answers")
                         .IsRequired()
                         .HasColumnType("jsonb");
-
-                    b.Property<Guid?>("BookTestId")
-                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1303,9 +602,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
-
-                    b.Property<int?>("TimeLimitMinutes")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -1345,9 +641,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateOnly?>("ExamDate")
-                        .HasColumnType("date");
-
                     b.Property<string>("FirstName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -1355,21 +648,8 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.PrimitiveCollection<int[]>("LessonDays")
-                        .IsRequired()
-                        .HasColumnType("integer[]");
-
                     b.Property<bool>("RemindersEnabled")
                         .HasColumnType("boolean");
-
-                    b.Property<TimeOnly>("SaturdayReminderTime")
-                        .HasColumnType("time without time zone");
-
-                    b.Property<int>("TablesPerLesson")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("TargetLevel")
-                        .HasColumnType("integer");
 
                     b.Property<long>("TelegramUserId")
                         .HasColumnType("bigint");
@@ -1418,16 +698,10 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<int>("OrderInDocument")
+                    b.Property<int>("Order")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SourceEntryId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("TableNumber")
@@ -1442,10 +716,8 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SourceEntryId")
+                    b.HasIndex("OwnerId", "TableNumber", "Order")
                         .IsUnique();
-
-                    b.HasIndex("OwnerId", "SourceDocumentId", "TableNumber");
 
                     b.ToTable("word_senses", (string)null);
                 });
@@ -1567,11 +839,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Lugat.Domain.Ai.SentenceCheck", b =>
                 {
-                    b.HasOne("Lugat.Domain.Grammar.GrammarItem", null)
-                        .WithMany()
-                        .HasForeignKey("GrammarItemId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Lugat.Domain.Users.User", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
@@ -1582,127 +849,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("WordSenseId")
                         .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Essays.EssayAttempt", b =>
-                {
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarImport", b =>
-                {
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Imports.SourceDocument", "SourceDocument")
-                        .WithMany()
-                        .HasForeignKey("SourceDocumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("SourceDocument");
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarItem", b =>
-                {
-                    b.HasOne("Lugat.Domain.Grammar.GrammarImport", null)
-                        .WithMany()
-                        .HasForeignKey("GrammarImportId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarNote", b =>
-                {
-                    b.HasOne("Lugat.Domain.Grammar.GrammarItem", null)
-                        .WithMany()
-                        .HasForeignKey("GrammarItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarSet", b =>
-                {
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarSetItem", b =>
-                {
-                    b.HasOne("Lugat.Domain.Grammar.GrammarItem", null)
-                        .WithMany()
-                        .HasForeignKey("GrammarItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Grammar.GrammarSet", null)
-                        .WithMany("Items")
-                        .HasForeignKey("GrammarSetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Imports.ImportJob", b =>
-                {
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Imports.SourceDocument", "SourceDocument")
-                        .WithMany()
-                        .HasForeignKey("SourceDocumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("SourceDocument");
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Imports.SourceDocument", b =>
-                {
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Imports.SourceEntry", b =>
-                {
-                    b.HasOne("Lugat.Domain.Imports.ImportJob", null)
-                        .WithMany("Entries")
-                        .HasForeignKey("ImportJobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Imports.SourceDocument", null)
-                        .WithMany()
-                        .HasForeignKey("SourceDocumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Lugat.Domain.Ladder.SentenceLadder", b =>
@@ -1741,30 +887,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Lugat.Domain.Lessons.LessonAssignment", b =>
-                {
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Imports.SourceDocument", null)
-                        .WithMany()
-                        .HasForeignKey("SourceDocumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Lessons.StudySession", b =>
-                {
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Lugat.Domain.Listening.ListeningSet", b =>
                 {
                     b.HasOne("Lugat.Domain.Users.User", null)
@@ -1783,36 +905,13 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Lugat.Domain.Testing.BookQuestion", b =>
-                {
-                    b.HasOne("Lugat.Domain.Testing.BookTest", null)
-                        .WithMany()
-                        .HasForeignKey("BookTestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Testing.BookTest", b =>
+            modelBuilder.Entity("Lugat.Domain.Study.StudySession", b =>
                 {
                     b.HasOne("Lugat.Domain.Users.User", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Imports.SourceDocument", "SourceDocument")
-                        .WithMany()
-                        .HasForeignKey("SourceDocumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("SourceDocument");
                 });
 
             modelBuilder.Entity("Lugat.Domain.Testing.TestRun", b =>
@@ -1829,12 +928,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.HasOne("Lugat.Domain.Users.User", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Lugat.Domain.Imports.SourceEntry", null)
-                        .WithMany()
-                        .HasForeignKey("SourceEntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1867,16 +960,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasForeignKey("WordSenseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Grammar.GrammarSet", b =>
-                {
-                    b.Navigation("Items");
-                });
-
-            modelBuilder.Entity("Lugat.Domain.Imports.ImportJob", b =>
-                {
-                    b.Navigation("Entries");
                 });
 #pragma warning restore 612, 618
         }

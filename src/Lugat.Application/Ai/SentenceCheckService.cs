@@ -2,7 +2,6 @@ using System.Text.Json;
 using Lugat.Application.Abstractions;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
-using Lugat.Domain.Grammar;
 using Lugat.Domain.Learning;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,7 +29,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
 
     private static readonly string[] Severities = ["error", "suggestion"];
 
-    /// <summary>Earlier checks of the same word or grammar shown to the AI, so it does not contradict itself (D-52).</summary>
+    /// <summary>Earlier checks of the same word shown to the AI, so it does not contradict itself (D-52).</summary>
     public const int HistoryChecks = 3;
 
     /// <summary>How far back earlier checks count as "this practice".</summary>
@@ -51,7 +50,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         var count = await pool.CountAsync(ct);
         if (count == 0)
         {
-            throw new NotFoundException("Hali tasdiqlangan so‘z yo‘q. Avval Lug‘atlar bo‘limida jadvalni tasdiqlang.");
+            throw new NotFoundException("Hali o‘rganiladigan so‘z yo‘q.");
         }
 
         var pick = await pool.OrderBy(s => s.Id).Skip(Random.Shared.Next(count)).FirstAsync(ct);
@@ -91,20 +90,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         if (check is null)
         {
             string target = "", meaning = "";
-            if (request.GrammarItemId is { } grammarId)
-            {
-                var item = await db.GrammarItems.SingleOrDefaultAsync(i => i.Id == grammarId && i.OwnerId == ownerId, ct)
-                    ?? throw new NotFoundException("Grammatika bandi topilmadi.");
-                if (item.Status != GrammarItemStatus.Approved)
-                {
-                    // Spec AC03: an unchecked item never goes to practice.
-                    throw new ConflictException("Bu band hali tasdiqlanmagan. Avval uni kitob bilan solishtirib tasdiqlang.");
-                }
-
-                target = item.Similar is null ? item.Form : $"{item.Form} ({item.Similar})";
-                meaning = item.MeaningUz;
-            }
-            else if (request.WordSenseId is { } senseId)
+            if (request.WordSenseId is { } senseId)
             {
                 var sense = await db.WordSenses.SingleOrDefaultAsync(s => s.Id == senseId && s.OwnerId == ownerId && s.IsActive, ct)
                     ?? throw new NotFoundException("So‘z topilmadi.");
@@ -116,8 +102,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
             {
                 Id = request.Id,
                 OwnerId = ownerId,
-                WordSenseId = request.GrammarItemId is null ? request.WordSenseId : null,
-                GrammarItemId = request.GrammarItemId,
+                WordSenseId = request.WordSenseId,
                 Target = Cut(target, 200),
                 TargetMeaning = Cut(meaning, 500),
                 Answer = answer,
@@ -165,10 +150,10 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         return ToDto(check, problem);
     }
 
-    /// <summary>The learner's latest checked sentences for the same word or grammar point, newest first.</summary>
+    /// <summary>The learner's latest checked sentences for the same word, newest first.</summary>
     private async Task<List<(string Answer, SentenceCheckResult Result)>> HistoryAsync(SentenceCheck check, CancellationToken ct)
     {
-        if (check.GrammarItemId is null && check.WordSenseId is null)
+        if (check.WordSenseId is null)
         {
             return [];
         }
@@ -176,7 +161,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         var since = time.GetUtcNow() - HistoryWindow;
         var rows = await db.SentenceChecks.AsNoTracking()
             .Where(c => c.OwnerId == check.OwnerId && c.Id != check.Id && c.CreatedAt >= since && c.ResultJson != null
-                && (check.GrammarItemId != null ? c.GrammarItemId == check.GrammarItemId : c.WordSenseId == check.WordSenseId))
+                && c.WordSenseId == check.WordSenseId)
             .OrderByDescending(c => c.CreatedAt)
             .Take(10)
             .Select(c => new { c.Answer, c.ResultJson })
@@ -204,7 +189,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
                 const string note = "Bu ilova avval ko‘rsatgan to‘g‘ri variant. U to‘g‘ri, lekin mustaqil qo‘llash hisobiga kirmaydi: endi shu qolipda o‘zingiz yangi gap tuzib ko‘ring.";
                 return new SentenceCheckResult(
                     "correct", "none", note, note, null, [],
-                    check.GrammarItemId is null && check.WordSenseId is null ? "not_used" : "used_correctly",
+                    check.WordSenseId is null ? "not_used" : "used_correctly",
                     1, [], [], Assisted: true);
             }
         }
@@ -220,7 +205,6 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
     {
         var task = check switch
         {
-            { GrammarItemId: not null } => $"Target grammar: {check.Target}\nMeaning in Uzbek: {check.TargetMeaning}\nTask: write one Korean sentence that uses the target grammar.",
             { Target.Length: > 0 } => $"Target word: {check.Target}\nMeaning in Uzbek: {check.TargetMeaning}\nTask: write one Korean sentence that uses the target word.",
             _ => "Task: write one natural Korean sentence (no target word).",
         };
@@ -329,7 +313,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
             AiCheckStatus.Failed => "Tekshiruv tugallanmadi. Qayta urinib ko‘ring.",
             _ => null,
         };
-        return new SentenceCheckDto(c.Id, c.WordSenseId, c.Target, c.Answer, c.Status, result, c.Provider is { } p ? AiGateway.Label(p) : null, message, c.GrammarItemId);
+        return new SentenceCheckDto(c.Id, c.WordSenseId, c.Target, c.Answer, c.Status, result, c.Provider is { } p ? AiGateway.Label(p) : null, message);
     }
 
     private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;
@@ -345,10 +329,6 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
           A grammatical sentence that sounds a little unnatural is "mostly_correct", not "incorrect".
         - If a target word is given and the sentence does not use it (any correct conjugated form counts),
           verdict is "task_not_done" and errorType "target_missing", even if the sentence itself is fine; say so kindly.
-        - If a target grammar is given, the sentence must use that grammar pattern (or one of the variants in brackets)
-          attached correctly and in a context that fits its meaning. Not used at all: "task_not_done" / "target_missing".
-          Used with the wrong attachment or in a context that does not fit the meaning: targetUsage "used_incorrectly".
-          In that case explain the rule of this grammar in explanationUz.
         - issues: list EVERY problem in the sentence at once, so the learner can fix them all in one try. Each item:
           quote = the learner's words where the problem is, copied exactly; type = one of the errorType values;
           severity = "error" for something wrong (grammar, spelling, meaning, wrong word, wrong use of the target) or
@@ -366,7 +346,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         - explanationUz: 1-3 short, simple sentences in Uzbek (Latin script) explaining the correction and why.
         - correctedText: the learner's sentence with the smallest change that fixes it, keeping their meaning. null if nothing to fix.
         - alternatives: up to 2 more natural Korean versions at the learner's level; may be empty.
-        - targetUsage: whether the target word or grammar is used correctly; "not_used" when there is no target.
+        - targetUsage: whether the target word is used correctly; "not_used" when there is no target.
         - confidence: 0..1, how sure you are about the verdict. Be honest; lower it for ambiguous sentences.
         - sourceRefs: always an empty list (no book references are available to you). Never invent sources.
         - Write Uzbek with Latin letters and the apostrophes o‘ g‘ ’. Do not use Cyrillic.

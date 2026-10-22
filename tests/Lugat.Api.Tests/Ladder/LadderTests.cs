@@ -4,12 +4,10 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lugat.Api.Tests.Ai;
-using Lugat.Api.Tests.Imports;
 using Lugat.Api.Tests.Infrastructure;
 using Lugat.Application.Ladder;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
-using Lugat.Domain.Imports;
 using Lugat.Domain.Ladder;
 using Lugat.Domain.Learning;
 
@@ -24,25 +22,14 @@ public class LadderTests
 
     private ApiFactory NewFactory() => new()
     {
-        PdfReader = new FakePdfLayoutReader().AddPage(("친구", "do‘st"), ("만나다", "uchrashmoq"), ("사업", "biznes"), ("커피", "qahva"), ("학교", "maktab"), ("가다", "bormoq")),
+        TableWords = [("친구", "do‘st"), ("만나다", "uchrashmoq"), ("사업", "biznes"), ("커피", "qahva"), ("학교", "maktab"), ("가다", "bormoq")],
         AiProviders = [_ai],
     };
 
     /// <summary>Imports the six words and answers each card once, so they count as started.</summary>
     private static async Task StartWordsAsync(HttpClient client)
     {
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent("%PDF-1.7 ladder words"u8.ToArray());
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        form.Add(file, "file", "lugat.pdf");
-        var job = (await (await client.PostAsync("/api/imports", form)).Content.ReadFromJsonAsync<ImportJobDto>(Json))!;
-        for (var i = 0; i < 100 && job.Status != ImportStatus.NeedsReview; i++)
-        {
-            await Task.Delay(100);
-            job = (await client.GetFromJsonAsync<ImportJobDto>($"/api/imports/{job.Id}", Json))!;
-        }
-
-        (await client.PostAsync($"/api/imports/{job.Id}/tables/1/approve", null)).EnsureSuccessStatusCode();
+        (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
         var session = (await (await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true), Json)).Content.ReadFromJsonAsync<StartSessionResponse>(Json))!.Session!;
         while (session.Current is { } card)
         {
@@ -54,19 +41,19 @@ public class LadderTests
     /// <summary>Four good sentences and one whose gap does not give back the sentence (must be dropped).</summary>
     private const string Built = """
         {"sentences":[
-          {"wordId":1,"grammarId":null,"korean":"어제 친구를 만났어요.","uzbek":"Kecha do‘stimni ko‘rdim.",
+          {"wordId":1,"korean":"어제 친구를 만났어요.","uzbek":"Kecha do‘stimni ko‘rdim.",
            "fill":{"sentenceWithGap":"어제 친구___ 만났어요.","answer":"를","wrong":["가","에"],"kind":"particle","explanationUz":"Kimnidir ko‘rmoq — 을/를."},
            "twinUzbek":"Bugun akamni ko‘rdim.","twinKorean":"오늘 형을 만났어요."},
-          {"wordId":3,"grammarId":null,"korean":"저는 작년에 사업을 시작했어요.","uzbek":"Men o‘tgan yili biznes ochdim.",
+          {"wordId":3,"korean":"저는 작년에 사업을 시작했어요.","uzbek":"Men o‘tgan yili biznes ochdim.",
            "fill":{"sentenceWithGap":"저는 작년___ 사업을 시작했어요.","answer":"에","wrong":["에서","를"],"kind":"particle","explanationUz":"Vaqt — 에."},
            "twinUzbek":"Opam bu yil biznes ochdi.","twinKorean":"누나는 올해 사업을 시작했어요."},
-          {"wordId":4,"grammarId":null,"korean":"카페에서 커피를 마시고 싶어요.","uzbek":"Kafeda qahva ichmoqchiman.",
+          {"wordId":4,"korean":"카페에서 커피를 마시고 싶어요.","uzbek":"Kafeda qahva ichmoqchiman.",
            "fill":{"sentenceWithGap":"카페에서 커피를 마시___.","answer":"고 싶어요","wrong":["아서 싶어요","지만 싶어요"],"kind":"ending","explanationUz":"Istak — -고 싶다."},
            "twinUzbek":"Uyda choy ichmoqchiman.","twinKorean":"집에서 차를 마시고 싶어요."},
-          {"wordId":6,"grammarId":null,"korean":"내일 학교에 가요.","uzbek":"Ertaga maktabga boraman.",
+          {"wordId":6,"korean":"내일 학교에 가요.","uzbek":"Ertaga maktabga boraman.",
            "fill":{"sentenceWithGap":"내일 학교___ 가요.","answer":"에","wrong":["에서","을"],"kind":"particle","explanationUz":"Yo‘nalish — 에."},
            "twinUzbek":"Ertaga ishxonaga boraman.","twinKorean":"내일 회사에 가요."},
-          {"wordId":2,"grammarId":null,"korean":"친구를 만나요.","uzbek":"Do‘stni ko‘raman.",
+          {"wordId":2,"korean":"친구를 만나요.","uzbek":"Do‘stni ko‘raman.",
            "fill":{"sentenceWithGap":"친구___ 봐요.","answer":"를","wrong":["가"],"kind":"particle","explanationUz":"Buzuq."},
            "twinUzbek":"Akani ko‘raman.","twinKorean":"형을 만나요."}
         ]}

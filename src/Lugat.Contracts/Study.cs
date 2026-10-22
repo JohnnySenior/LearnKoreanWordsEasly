@@ -1,35 +1,10 @@
 using Lugat.Domain.Learning;
-using Lugat.Domain.Lessons;
+using Lugat.Domain.Study;
 using Lugat.Domain.Vocabulary;
 
 namespace Lugat.Contracts;
 
-public sealed record AssignmentDto(
-    Guid Id,
-    Guid SourceDocumentId,
-    string Title,
-    int[] Tables,
-    DateTimeOffset DueAt,
-    AssignmentStatus Status,
-    int WordCount,
-    int ApprovedWords,
-    int NewWords);
-
-/// <summary>What the app proposes as the next lesson (spec PLAN01). Null tables means the book is fully assigned.</summary>
-public sealed record AssignmentSuggestionDto(
-    Guid SourceDocumentId,
-    string FileName,
-    int[] Tables,
-    DateTimeOffset DueAt,
-    int WordCount,
-    int ApprovedWords);
-
-public sealed record CreateAssignmentRequest(Guid SourceDocumentId, int[] Tables, DateTimeOffset DueAt, string? Title);
-
-public sealed record UpdateAssignmentRequest(int[]? Tables, DateTimeOffset? DueAt, AssignmentStatus? Status, string? Title);
-
 public sealed record TodayDto(
-    AssignmentDto? NextLesson,
     int DueNow,
     int NewAvailable,
     SessionDto? ActiveSession,
@@ -37,10 +12,9 @@ public sealed record TodayDto(
 
 /// <param name="Minutes">10, 20, 30 or null for no limit (spec PLAN06).</param>
 /// <param name="Restart">Abandon an unfinished session and plan a new one.</param>
-/// <param name="AssignmentId">Practise all words of this lesson (both tables together), also those not yet due.</param>
-/// <param name="TableNumber">With <paramref name="SourceDocumentId"/>: practise only this table, all its words (D-36).</param>
+/// <param name="TableNumber">Practise only this table, all its words, also those not yet due (D-36).</param>
 /// <param name="WordSenseIds">Practise only these words, all their cards (the mistakes notebook, D-41).</param>
-public sealed record StartSessionRequest(int? Minutes, bool Restart, Guid? AssignmentId = null, Guid? SourceDocumentId = null, int? TableNumber = null, IReadOnlyList<Guid>? WordSenseIds = null);
+public sealed record StartSessionRequest(int? Minutes, bool Restart, int? TableNumber = null, IReadOnlyList<Guid>? WordSenseIds = null);
 
 public sealed record StartSessionResponse(SessionDto? Session, string? Message);
 
@@ -100,23 +74,21 @@ public sealed record WritingDirectionStatsDto(int Attempts, int Correct, int Spe
 /// <summary>Writing results, kept apart from flash-card results (spec SRS06).</summary>
 public sealed record WritingStatsDto(WritingDirectionStatsDto TypingUzbek, WritingDirectionStatsDto TypingKorean, int Last7Days);
 
-/// <summary>An approved vocabulary table, for studying it as it stands in the book (D-36).</summary>
+/// <summary>A vocabulary table, for studying it as a list before the cards (D-36).</summary>
 /// <param name="Started">Words with at least one card past "new".</param>
-public sealed record VocabTableDto(Guid SourceDocumentId, string FileName, int TableNumber, int Words, int Started);
+public sealed record VocabTableDto(int TableNumber, int Words, int Started);
 
 public sealed record TableWordDto(Guid Id, int Number, string Korean, string? KoreanNote, string Uzbek, bool Started);
 
-public sealed record VocabTableWordsDto(Guid SourceDocumentId, string FileName, int TableNumber, IReadOnlyList<TableWordDto> Words);
+public sealed record VocabTableWordsDto(int TableNumber, IReadOnlyList<TableWordDto> Words);
 
 /// <param name="Mistakes">Mistakes in the window (forgot on a card, wrong in a test, wrong in writing).</param>
 /// <param name="Sources">Where they happened, e.g. "kartochka", "sinov", "og‘zaki", "yozma".</param>
 /// <param name="Improving">The latest attempt after the last mistake was right.</param>
 public sealed record MistakeWordDto(Guid WordSenseId, string Korean, string Uzbek, int TableNumber, int Mistakes, DateTimeOffset LastMistakeAt, IReadOnlyList<string> Sources, bool Improving);
 
-public sealed record MistakeGrammarDto(Guid GrammarItemId, string Form, string MeaningUz, int Mistakes, DateTimeOffset LastMistakeAt, IReadOnlyList<string> Sources, bool Improving);
-
 /// <summary>The mistakes notebook (D-41): weakest first, the ones already improving at the end.</summary>
-public sealed record MistakesDto(int Days, IReadOnlyList<MistakeWordDto> Words, IReadOnlyList<MistakeGrammarDto> Grammar, IReadOnlyList<MistakeListeningDto>? Listening = null);
+public sealed record MistakesDto(int Days, IReadOnlyList<MistakeWordDto> Words, IReadOnlyList<MistakeListeningDto>? Listening = null);
 
 /// <summary>A wrong listening answer (D-53): the question and the right option, linked to its set.</summary>
 public sealed record MistakeListeningDto(Guid SetId, int Index, string QuestionKo, string RightOption, DateTimeOffset At);
@@ -133,9 +105,9 @@ public sealed record WordUsageDto(
     string? Warning);
 
 /// <param name="Ready">Words whose usage is prepared; the rest still need the AI.</param>
-public sealed record TableUsageDto(Guid SourceDocumentId, int TableNumber, int Total, int Ready, IReadOnlyList<WordUsageDto> Usages);
+public sealed record TableUsageDto(int TableNumber, int Total, int Ready, IReadOnlyList<WordUsageDto> Usages);
 
-public sealed record UsageTableSummaryDto(Guid SourceDocumentId, string FileName, int TableNumber, int Total, int Ready, int Questions);
+public sealed record UsageTableSummaryDto(int TableNumber, int Total, int Ready, int Questions);
 
 /// <summary>A particle or verb ending chosen wrongly in the ladder's gaps (D-54).</summary>
 /// <param name="Example">The sentence with the gap, as it was asked.</param>
@@ -149,11 +121,10 @@ public sealed record WeakTrapDto(string Wrong, string Right, string ExplanationU
 
 /// <summary>
 /// Weak points of the last days (D-54): what went wrong most, from every exercise, to practise next.
-/// Words and grammar points that are already improving are left out.
+/// Words that are already improving are left out.
 /// </summary>
 public sealed record WeakPointsDto(
     int Days,
-    IReadOnlyList<MistakeGrammarDto> Grammar,
     IReadOnlyList<WeakFormDto> Forms,
     IReadOnlyList<WeakErrorTypeDto> ErrorTypes,
     IReadOnlyList<MistakeWordDto> Words,

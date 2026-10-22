@@ -3,10 +3,10 @@
 @using Lugat.Contracts
 @implements IDisposable
 @inject SessionService Api
-@inject TelegramInterop Audio
+@inject BrowserInterop Audio
 @inject NavigationManager Nav
 
-<PageTitle>Tinglash — TOPIK yordamchi</PageTitle>
+<PageTitle>Tinglash — Lug‘at</PageTitle>
 
 @* TOPIK II listening (D-53): hear the passage, choose the answer, then see the text, its meaning and why. *@
 @if (Id is null)
@@ -40,7 +40,7 @@
             {
                 <a href="tinglash/@l.Id">
                     <span class="no">@((i + 1).ToString("00"))</span>
-                    <span><span class="t">@l.Title</span><span class="s">@Format.LessonDate(l.CreatedAt) · @(l.Done == l.Total ? $"{l.Correct}/{l.Total} to‘g‘ri" : $"{l.Done}/{l.Total} bajarildi — davom etish")</span></span>
+                    <span><span class="t">@l.Title</span><span class="s">@Format.DayTime(l.CreatedAt) · @(l.Done == l.Total ? $"{l.Correct}/{l.Total} to‘g‘ri" : $"{l.Done}/{l.Total} bajarildi — davom etish")</span></span>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
                 </a>
             }

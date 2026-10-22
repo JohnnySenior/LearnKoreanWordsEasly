@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Lugat.Application.Ai;
-using Lugat.Domain.Grammar;
 using Lugat.Domain.Testing;
 using Lugat.Domain.Vocabulary;
 using Lugat.Domain.Writing;
@@ -13,30 +12,20 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
 {
     private const string Blank = TestService.Blank;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    public sealed record Planned(int Slot, TestQuestionKind Kind, WordSense? Word, GrammarItem? Grammar);
+    public sealed record Planned(int Slot, TestQuestionKind Kind, WordSense Word);
 
     /// <summary>
-    /// Mixes question types (TEST01): for words, meaning/Korean choice and gap sentences (choice and typed); for
-    /// grammar, gap choice and meaning. Words and grammar share the count by how many there are of each.
+    /// Mixes question types (TEST01): meaning/Korean choice and gap sentences (choice and typed).
     /// </summary>
-    public static List<Planned> Plan(List<WordSense> words, List<GrammarItem> grammar, int count)
+    public static List<Planned> Plan(List<WordSense> words, int count)
     {
-        var grammarCount = grammar.Count == 0 ? 0 : words.Count == 0 ? count : Math.Clamp((int)Math.Round(count * 0.4), 1, count - 1);
-        var wordCount = count - grammarCount;
         TestQuestionKind[] wordKinds = [TestQuestionKind.WordMeaning, TestQuestionKind.WordCloze, TestQuestionKind.WordKorean, TestQuestionKind.WordClozeTyped];
-        TestQuestionKind[] grammarKinds = [TestQuestionKind.GrammarChoice, TestQuestionKind.GrammarMeaning, TestQuestionKind.GrammarChoice];
 
         var list = new List<Planned>();
-        var w = Cycle(Shuffle(words), wordCount).ToList();
+        var w = Cycle(Shuffle(words), count).ToList();
         for (var i = 0; i < w.Count; i++)
         {
-            list.Add(new Planned(0, wordKinds[i % wordKinds.Length], w[i], null));
-        }
-
-        var g = Cycle(Shuffle(grammar), grammarCount).ToList();
-        for (var i = 0; i < g.Count; i++)
-        {
-            list.Add(new Planned(0, grammarKinds[i % grammarKinds.Length], null, g[i]));
+            list.Add(new Planned(0, wordKinds[i % wordKinds.Length], w[i]));
         }
 
         return Shuffle(list).Select((p, i) => p with { Slot = i }).ToList();
@@ -55,30 +44,24 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
     {
         TestQuestionKind.WordCloze => TestQuestionKind.WordMeaning,
         TestQuestionKind.WordClozeTyped => TestQuestionKind.WordKorean,
-        TestQuestionKind.GrammarChoice => TestQuestionKind.GrammarMeaning,
         _ => kind,
     };
 
-    public static TestQuestion? Local(int index, Planned p, List<WordSense> words, List<GrammarItem> grammar)
+    public static TestQuestion? Local(int index, Planned p, List<WordSense> words)
     {
+        var w = p.Word;
         switch (p.Kind)
         {
-            case TestQuestionKind.WordMeaning when p.Word is { } w:
+            case TestQuestionKind.WordMeaning:
             {
                 var options = Options(w.Uzbek, words.Where(o => o.Id != w.Id).Select(o => o.Uzbek), AnswerMatcher.NormalizeUzbek);
-                return options is null ? null : new TestQuestion(index, p.Kind, KoreanWithNote(w), null, null, options, w.Uzbek, null, null, w.Id, null, false);
+                return options is null ? null : new TestQuestion(index, p.Kind, KoreanWithNote(w), null, null, options, w.Uzbek, null, null, w.Id, false);
             }
 
-            case TestQuestionKind.WordKorean when p.Word is { } w:
+            case TestQuestionKind.WordKorean:
             {
                 var options = Options(KoreanWithNote(w), words.Where(o => o.Id != w.Id).Select(KoreanWithNote), AnswerMatcher.NormalizeKorean);
-                return options is null ? null : new TestQuestion(index, p.Kind, w.Uzbek, null, null, options, KoreanWithNote(w), null, null, w.Id, null, false);
-            }
-
-            case TestQuestionKind.GrammarMeaning when p.Grammar is { } g:
-            {
-                var options = Options(g.MeaningUz, grammar.Where(o => o.Id != g.Id).Select(o => o.MeaningUz), AnswerMatcher.NormalizeUzbek);
-                return options is null ? null : new TestQuestion(index, p.Kind, g.Form, null, null, options, g.MeaningUz, null, null, null, g.Id, false);
+                return options is null ? null : new TestQuestion(index, p.Kind, w.Uzbek, null, null, options, KoreanWithNote(w), null, null, w.Id, false);
             }
 
             default:
@@ -102,15 +85,14 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         return new TestQuestion(
             index,
             p.Kind,
-            p.Kind == TestQuestionKind.GrammarChoice ? "Bo‘sh joyga mos grammatikani tanlang" : typed ? "Bo‘sh joyga mos so‘zni yozing" : "Bo‘sh joyga mos so‘zni tanlang",
+            typed ? "Bo‘sh joyga mos so‘zni yozing" : "Bo‘sh joyga mos so‘zni tanlang",
             gap.Sentence,
             gap.TranslationUz,
             typed ? [] : Shuffle(gap.Options),
             gap.Answer,
-            typed ? p.Word!.Korean : null,
+            typed ? p.Word.Korean : null,
             gap.ExplanationUz,
-            p.Word?.Id,
-            p.Grammar?.Id,
+            p.Word.Id,
             true);
     }
 
@@ -121,7 +103,7 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
     public sealed record GapItem(int Id, string? Sentence, string? TranslationUz, string? Answer, List<string>? Options, string? ExplanationUz);
 
     public async Task<(Dictionary<int, Gap> Gaps, string? Provider, string? Warning)> AskForGapsAsync(
-        Guid ownerId, List<Planned> tasks, List<WordSense> words, List<GrammarItem> grammar, CancellationToken ct)
+        Guid ownerId, List<Planned> tasks, List<WordSense> words, CancellationToken ct)
     {
         if (tasks.Count == 0)
         {
@@ -130,7 +112,7 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
 
         try
         {
-            var call = await ai.CompleteJsonAsync(ownerId, BuildRequest(tasks, words, grammar), ct);
+            var call = await ai.CompleteJsonAsync(ownerId, BuildRequest(tasks, words), ct);
             var gaps = ParseGaps(call.Response.Json, tasks);
             var missing = tasks.Count - gaps.Count;
             return (gaps, AiGateway.Label(call.Provider),
@@ -143,18 +125,11 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         }
     }
 
-    private static AiJsonRequest BuildRequest(List<Planned> tasks, List<WordSense> words, List<GrammarItem> grammar)
+    private static AiJsonRequest BuildRequest(List<Planned> tasks, List<WordSense> words)
     {
-        var lines = tasks.Select(t => t switch
-        {
-            { Kind: TestQuestionKind.GrammarChoice, Grammar: { } g } =>
-                $"{t.Slot}. grammar_choice | form: {g.Form}{(g.Similar is null ? "" : $" ({g.Similar})")} | meaning: {g.MeaningUz}",
-            { Word: { } w } =>
-                $"{t.Slot}. {(t.Kind == TestQuestionKind.WordClozeTyped ? "word_typed" : "word_choice")} | word: {KoreanWithNote(w)} | meaning: {w.Uzbek}",
-            _ => "",
-        });
+        var lines = tasks.Select(t =>
+            $"{t.Slot}. {(t.Kind == TestQuestionKind.WordClozeTyped ? "word_typed" : "word_choice")} | word: {KoreanWithNote(t.Word)} | meaning: {t.Word.Uzbek}");
         var wordPool = string.Join(", ", words.Select(w => w.Korean).Distinct().Take(80));
-        var grammarPool = string.Join(", ", grammar.Select(g => g.Form).Distinct().Take(60));
         var user = $"""
             <tasks>
             {string.Join("\n", lines)}
@@ -163,10 +138,6 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
             <other_words_for_wrong_options>
             {wordPool}
             </other_words_for_wrong_options>
-
-            <other_grammar_for_wrong_options>
-            {grammarPool}
-            </other_grammar_for_wrong_options>
             """;
         return new AiJsonRequest("test-gaps", Instructions, user, "test_gaps", Schema, 4000, Timeout: TimeSpan.FromSeconds(100));
     }
@@ -234,14 +205,12 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         - sentence: ONE natural Korean sentence (TOPIK II level, everyday topics) where the target is replaced by
           exactly "___" (three underscores). The rest of the sentence must make the target the only good choice.
           The target must not appear anywhere else in the sentence.
-        - answer: exactly the text that fills "___" (the word or grammar conjugated as it must stand in the sentence).
+        - answer: exactly the text that fills "___" (the word conjugated as it must stand in the sentence).
         - translationUz: natural Uzbek translation of the full sentence (Latin script, apostrophes o‘ g‘ ’).
-        - options: for word_choice and grammar_choice, exactly 4 different Korean options that fit "___"
-          grammatically: the answer plus 3 wrong ones. For word_choice take the wrong ones from
-          <other_words_for_wrong_options> (conjugated the same way); for grammar_choice use forms from
-          <other_grammar_for_wrong_options> attached to the same stem. Wrong options must be clearly wrong in this
-          context. For word_typed return an empty list.
-        - explanationUz: one short Uzbek sentence: why the answer fits (meaning or grammar rule).
+        - options: for word_choice, exactly 4 different Korean options that fit "___" grammatically: the answer plus
+          3 wrong ones taken from <other_words_for_wrong_options> (conjugated the same way). Wrong options must be
+          clearly wrong in this context. For word_typed return an empty list.
+        - explanationUz: one short Uzbek sentence: why the answer fits.
         Never use Cyrillic. Korean in Hangul.
         """;
 

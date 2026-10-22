@@ -5,7 +5,7 @@ namespace Lugat.Domain.Tests.Testing;
 public class OralGradingTests
 {
     private static TestQuestion Say(string korean, string? note = null) =>
-        new(0, TestQuestionKind.OralKorean, "ma’no", null, null, [], korean, note, null, null, null, false);
+        new(0, TestQuestionKind.OralKorean, "ma’no", null, null, [], korean, note, null, null, false);
 
     [Theory]
     [InlineData("도서관", "도서관.", true, false)] // recognition adds punctuation

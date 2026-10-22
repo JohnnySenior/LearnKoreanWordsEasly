@@ -1,7 +1,6 @@
 using Lugat.Application.Abstractions;
 using Lugat.Application.Study;
 using Lugat.Contracts;
-using Lugat.Domain.Lessons;
 using Lugat.Domain.Reminders;
 using Lugat.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -36,8 +35,7 @@ public sealed class ReminderService(
         foreach (var user in users)
         {
             var zone = user.Zone();
-            var lessonDays = await LessonDaysAsync(user.Id, zone, now, ct);
-            var occurrence = ReminderPlanner.Due(user.Id, now, zone, user.ReminderPreferences(), lessonDays.Contains);
+            var occurrence = ReminderPlanner.Due(user.Id, now, zone, user.ReminderPreferences());
             if (occurrence is not null && await DeliverAsync(user, occurrence, now, ct))
             {
                 sent++;
@@ -70,7 +68,7 @@ public sealed class ReminderService(
         }
 
         var today = await study.TodayAsync(user.Id, ct);
-        var text = Compose(occurrence, today, user.Zone(), Exams.ExamService.DaysLeft(user, now));
+        var text = Compose(today);
         if (text is null)
         {
             delivery.Status = DeliveryStatus.Skipped;
@@ -173,58 +171,22 @@ public sealed class ReminderService(
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task<HashSet<DateOnly>> LessonDaysAsync(Guid userId, TimeZoneInfo zone, DateTimeOffset now, CancellationToken ct)
-    {
-        var from = now.AddDays(-2);
-        var to = now.AddDays(2);
-        var dues = await db.LessonAssignments
-            .Where(a => a.OwnerId == userId && a.Status == AssignmentStatus.Planned && a.DueAt >= from && a.DueAt <= to)
-            .Select(a => a.DueAt).ToListAsync(ct);
-        return dues.Select(d => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(d, zone).DateTime)).ToHashSet();
-    }
-
     /// <summary>
     /// Short and polite: what is ready and roughly how long it takes; no blame or pressure (spec NOT04).
     /// Returns null when there is nothing to practise, so no empty reminder is sent.
     /// </summary>
-    public static string? Compose(ReminderOccurrence occurrence, TodayDto today, TimeZoneInfo zone, int? examDaysLeft = null)
+    public static string? Compose(TodayDto today)
     {
         var cards = today.DueNow + today.NewAvailable;
-        var minutes = Math.Max(1, (int)Math.Ceiling(Math.Min(cards, 200) * today.SecondsPerCard / 60.0));
-        var ready = today.NewAvailable > 0
-            ? $"{today.DueNow} ta takrorlash va {today.NewAvailable} ta yangi kartochka"
-            : $"{today.DueNow} ta takrorlash";
-
-        if (occurrence.Slot == ReminderSlot.SaturdayLesson && today.NextLesson is { } lesson)
-        {
-            var at = TimeZoneInfo.ConvertTime(lesson.DueAt, zone);
-            var extra = today.DueNow > 0 ? $" Xohlasangiz, qisqa takrorlash tayyor: {today.DueNow} ta kartochka." : "";
-            return $"Bugun soat {at:HH\\:mm} da dars: {lesson.Title}.{extra}";
-        }
-
         if (cards == 0)
         {
             return null;
         }
 
-        var lessonLine = today.NextLesson is { } next
-            ? $"\nKeyingi dars: {next.Title}, {Uz.Day(TimeZoneInfo.ConvertTime(next.DueAt, zone))}."
-            : "";
-        // A calm countdown, not pressure (NOT04, D-34).
-        var examLine = examDaysLeft switch
-        {
-            null => "",
-            0 => "\nBugun imtihon. Omad! 화이팅!",
-            1 => "\nImtihon ertaga.",
-            { } d => $"\nImtihongacha {d} kun.",
-        };
-        return $"Bugungi mashq tayyor: {ready}. Taxminan {minutes} daqiqa.{lessonLine}{examLine}";
-    }
-
-    private static class Uz
-    {
-        private static readonly string[] Days = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
-
-        public static string Day(DateTimeOffset local) => $"{Days[(int)local.DayOfWeek]} {local:HH\\:mm}";
+        var minutes = Math.Max(1, (int)Math.Ceiling(Math.Min(cards, 200) * today.SecondsPerCard / 60.0));
+        var ready = today.NewAvailable > 0
+            ? $"{today.DueNow} ta takrorlash va {today.NewAvailable} ta yangi kartochka"
+            : $"{today.DueNow} ta takrorlash";
+        return $"Bugungi mashq tayyor: {ready}. Taxminan {minutes} daqiqa.";
     }
 }

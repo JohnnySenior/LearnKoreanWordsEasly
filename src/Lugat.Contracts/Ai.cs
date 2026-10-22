@@ -22,8 +22,7 @@ public sealed record AiPingResult(bool Ok, AiProviderKind Provider, string? Mode
 public sealed record SentenceTargetDto(Guid WordSenseId, string Korean, string? KoreanNote, string Uzbek, int TableNumber);
 
 /// <param name="Id">Chosen by the client once per attempt and reused on retries (spec API01).</param>
-/// <param name="GrammarItemId">Practise a grammar point instead of a word (D-26).</param>
-public sealed record SentenceCheckRequest(Guid Id, Guid? WordSenseId, string Answer, Guid? GrammarItemId = null);
+public sealed record SentenceCheckRequest(Guid Id, Guid? WordSenseId, string Answer);
 
 /// <summary>Spec AI01 structure, validated on the server.</summary>
 /// <param name="Verdict">correct, mostly_correct, incorrect, task_not_done.</param>
@@ -59,8 +58,7 @@ public sealed record SentenceCheckDto(
     AiCheckStatus Status,
     SentenceCheckResult? Result,
     string? Provider,
-    string? Message,
-    Guid? GrammarItemId = null);
+    string? Message);
 
 /// <summary>One word of a pronunciation assessment (D-32). <paramref name="ErrorType"/>: None, Mispronunciation, Omission, Insertion.</summary>
 public sealed record PronunciationWordDto(string Word, double? Accuracy, string ErrorType);

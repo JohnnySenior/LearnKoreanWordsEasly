@@ -1,27 +1,11 @@
 using Lugat.Domain.Learning;
-using Lugat.Domain.Lessons;
+using Lugat.Domain.Study;
 
 namespace Lugat.Web.Services;
 
-/// <summary>Uzbek formatting for dates, intervals and study labels. Lesson times are shown in Korea time (spec PLAN02).</summary>
+/// <summary>Uzbek formatting for dates, intervals and study labels. Times are shown in Korea time.</summary>
 public static class Format
 {
-    public static string Mastery(Lugat.Domain.Grammar.GrammarMastery m) => m switch
-    {
-        Lugat.Domain.Grammar.GrammarMastery.Seen => "Ko‘rib chiqildi",
-        Lugat.Domain.Grammar.GrammarMastery.Practising => "Mashq qilinyapti",
-        Lugat.Domain.Grammar.GrammarMastery.Independent => "Mustaqil qo‘llayapti",
-        _ => "Yangi",
-    };
-
-    public static string QuestionKind(Lugat.Domain.Grammar.GrammarQuestionKind k) => k switch
-    {
-        Lugat.Domain.Grammar.GrammarQuestionKind.Simpler => "Soddaroq tushuntir",
-        Lugat.Domain.Grammar.GrammarQuestionKind.MoreExamples => "Yana misol",
-        Lugat.Domain.Grammar.GrammarQuestionKind.Difference => "O‘xshashidan farqi",
-        _ => "Savol",
-    };
-
     private static readonly string[] Days = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
 
     private static readonly string[] Months =
@@ -33,7 +17,7 @@ public static class Format
     public static DateTimeOffset ToKorea(DateTimeOffset value) => value.ToOffset(KoreaOffset);
 
     /// <summary>"Seshanba, 6-oktabr, 23:00".</summary>
-    public static string LessonDate(DateTimeOffset value)
+    public static string DayTime(DateTimeOffset value)
     {
         var k = ToKorea(value);
         return $"{Days[(int)k.DayOfWeek]}, {k.Day}-{Months[k.Month - 1]}, {k:HH\\:mm}";
@@ -45,35 +29,6 @@ public static class Format
         var k = ToKorea(value);
         return $"{Days[(int)k.DayOfWeek]}, {k.Day}-{Months[k.Month - 1]}";
     }
-
-    /// <summary>"Juma, 3-oktabr" for a calendar date (a grammar set's deadline).</summary>
-    public static string Date(DateOnly d) => $"{Days[(int)d.DayOfWeek]}, {d.Day}-{Months[d.Month - 1]}";
-
-    /// <summary>"bugun", "ertaga", "3 kun qoldi", "2 kun o‘tdi" relative to the Korea date today.</summary>
-    public static string DueIn(DateOnly due)
-    {
-        var today = DateOnly.FromDateTime(ToKorea(DateTimeOffset.UtcNow).DateTime);
-        var days = due.DayNumber - today.DayNumber;
-        return days switch
-        {
-            0 => "muddat bugun",
-            1 => "muddat ertaga",
-            > 1 => $"{days} kun qoldi",
-            _ => $"muddat {-days} kun oldin o‘tdi",
-        };
-    }
-
-    /// <summary>Two-letter weekday for the week strip: "Du", "Se", ...</summary>
-    public static string ShortDay(DayOfWeek day) => day switch
-    {
-        DayOfWeek.Monday => "Du",
-        DayOfWeek.Tuesday => "Se",
-        DayOfWeek.Wednesday => "Ch",
-        DayOfWeek.Thursday => "Pa",
-        DayOfWeek.Friday => "Ju",
-        DayOfWeek.Saturday => "Sh",
-        _ => "Ya",
-    };
 
     /// <summary>"15 daq", "5 soat", "1 kun", "2 oy".</summary>
     public static string Interval(int seconds) => seconds switch
@@ -96,7 +51,7 @@ public static class Format
     {
         SessionItemKind.New => "Yangi so‘z",
         SessionItemKind.Relearning => "Qayta",
-        SessionItemKind.LessonReview => "Dars uchun takrorlash",
+        SessionItemKind.FocusReview => "Jadval takrorlash",
         SessionItemKind.Overdue => "Eski so‘z",
         _ => "Takrorlash",
     };

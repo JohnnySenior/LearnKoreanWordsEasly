@@ -1,18 +1,17 @@
 using Lugat.Application.Abstractions;
-using Lugat.Application.Lessons;
 using Lugat.Contracts;
 using Lugat.Domain.Learning;
-using Lugat.Domain.Lessons;
+using Lugat.Domain.Study;
 using Lugat.Domain.Vocabulary;
 using Microsoft.EntityFrameworkCore;
 
 namespace Lugat.Application.Study;
 
 /// <summary>
-/// Practice sessions over the learner's approved words (spec §5, §6).
+/// Practice sessions over the learner's words (spec §4.3, §4.6).
 /// Every answer is an idempotent event applied in one transaction with the card and session (spec DATA01, API01).
 /// </summary>
-public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler scheduler, LessonService lessons, TimeProvider time)
+public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler scheduler, TimeProvider time)
 {
     public const int DefaultSecondsPerCard = 12;
 
@@ -26,20 +25,13 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
     public async Task<TodayDto> TodayAsync(Guid ownerId, CancellationToken ct)
     {
         var now = time.GetUtcNow();
-        var planned = await lessons.PlannedLessonsAsync(ownerId, ct);
-        var lesson = planned.FirstOrDefault();
         var cards = ActiveCards(ownerId);
         var dueNow = await cards.CountAsync(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt <= now, ct);
-        var newCards = await cards.Where(c => c.Card.Phase == LearningPhase.New)
-            .Select(c => new { c.Sense.SourceDocumentId, c.Sense.TableNumber }).ToListAsync(ct);
-        var newAvailable = planned.Count == 0
-            ? newCards.Count
-            : newCards.Count(c => LessonRank(planned, c.SourceDocumentId, c.TableNumber) is not null);
+        var newAvailable = await cards.CountAsync(c => c.Card.Phase == LearningPhase.New, ct);
         var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)
             .OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync(ct);
 
         return new TodayDto(
-            lesson is null ? null : await lessons.ToDtoAsync(lesson, ct),
             dueNow,
             newAvailable,
             active is null ? null : await ToDtoAsync(active, ct),
@@ -85,65 +77,42 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         }
 
         var now = time.GetUtcNow();
-        var planned = await lessons.PlannedLessonsAsync(ownerId, ct);
-        LessonAssignment? drill = null;
-        HashSet<Guid>? senseFilter = null;
-        if (request.AssignmentId is { } assignmentId)
+        var rows = await ActiveCards(ownerId).ToListAsync(ct);
+        Func<WordSense, bool>? focus = null;
+        if (request.WordSenseIds is { Count: > 0 } senseIds)
         {
-            // Whole-lesson practice: both tables of the lesson in one session (60 words), also a lesson already handed in.
-            drill = await db.LessonAssignments.SingleOrDefaultAsync(a => a.Id == assignmentId && a.OwnerId == ownerId, ct)
-                ?? throw new NotFoundException("Dars topilmadi.");
-            planned = [drill];
-        }
-        else if (request.WordSenseIds is { Count: > 0 } senseIds)
-        {
-            // The mistakes notebook (D-41): these words only, every card, like a lesson drill. Nothing is saved as a lesson.
+            // The mistakes notebook (D-41): these words only, every card, like a table drill.
             if (senseIds.Count > MaxMistakeWords)
             {
                 throw new ValidationException($"Bir martada ko‘pi bilan {MaxMistakeWords} ta so‘z.");
             }
 
-            drill = new LessonAssignment { Title = "Xatolar" };
-            planned = [];
-            senseFilter = senseIds.ToHashSet();
+            var ids = senseIds.ToHashSet();
+            focus = s => ids.Contains(s.Id);
         }
         else if (request.TableNumber is { } table)
         {
-            // One table after studying it on screen (D-36): drilled like a lesson, but nothing is saved as a lesson.
-            var document = request.SourceDocumentId ?? throw new ValidationException("Jadval qaysi kitobdan ekanini ko‘rsating.");
-            drill = new LessonAssignment { SourceDocumentId = document, Tables = [table], Title = $"{table}-jadval" };
-            planned = [drill];
+            // One table after studying it on screen (D-36): every word of it, also those not yet due.
+            focus = s => s.TableNumber == table;
         }
 
-        var lesson = planned.FirstOrDefault();
-        var rows = await ActiveCards(ownerId).ToListAsync(ct);
-        if (senseFilter is not null)
+        if (focus is not null)
         {
-            rows = rows.Where(r => senseFilter.Contains(r.Sense.Id)).ToList();
-        }
-        else if (drill is not null)
-        {
-            rows = rows.Where(r => LessonRank(planned, r.Sense.SourceDocumentId, r.Sense.TableNumber) is not null).ToList();
+            rows = rows.Where(r => focus(r.Sense)).ToList();
         }
 
-        var candidates = rows.Select(r =>
-            {
-                var rank = senseFilter is not null ? 0 : LessonRank(planned, r.Sense.SourceDocumentId, r.Sense.TableNumber);
-                return new PlanCandidate(r.Card.Id, r.Sense.Id, r.Card.Direction, r.Card.ToState(), rank == 0, r.Sense.OrderInDocument, rank);
-            })
+        var candidates = rows
+            .Select(r => new PlanCandidate(r.Card.Id, r.Sense.Id, r.Card.Direction, r.Card.ToState(), focus is not null, r.Sense.Order))
             .ToList();
 
-        int? capacity = request.Minutes is { } minutes && drill is null ? Math.Max(1, minutes * 60 / await SecondsPerCardAsync(ownerId, ct)) : null;
-        var items = SessionPlanner.Plan(candidates, new PlanRequest(now, capacity, NewOnlyFromLesson: lesson is not null, DrillLesson: drill is not null));
+        var drill = focus is not null;
+        int? capacity = request.Minutes is { } minutes && !drill ? Math.Max(1, minutes * 60 / await SecondsPerCardAsync(ownerId, ct)) : null;
+        var items = SessionPlanner.Plan(candidates, new PlanRequest(now, capacity, NewOnlyFromFocus: drill, Drill: drill));
         if (items.Count == 0)
         {
             await db.SaveChangesAsync(ct);
             var message = rows.Count == 0
-                ? drill is null
-                    ? "Hali tasdiqlangan so‘z yo‘q. Avval Lug‘atlar bo‘limida jadvalni tasdiqlang."
-                    : request.TableNumber is not null
-                        ? "Bu jadvalda tasdiqlangan so‘z yo‘q."
-                        : "Bu darsda hali tasdiqlangan so‘z yo‘q. Avval Lug‘atlar bo‘limida jadvallarni tasdiqlang."
+                ? request.TableNumber is not null ? "Bu jadvalda so‘z yo‘q." : "Hali o‘rganiladigan so‘z yo‘q."
                 : "Hozircha takrorlanadigan so‘z yo‘q. Keyingi takrorlash vaqti kelganda qayta kiring.";
             return new StartSessionResponse(null, message);
         }
@@ -152,8 +121,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         {
             Id = Guid.CreateVersion7(now),
             OwnerId = ownerId,
-            AssignmentId = request.TableNumber is null && senseFilter is null ? lesson?.Id : null,
-            Minutes = drill is null ? request.Minutes : null,
+            Minutes = drill ? null : request.Minutes,
             Items = items,
             Status = StudySessionStatus.Active,
             CreatedAt = now,
@@ -344,7 +312,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
 
     /// <summary>
     /// A session is planned up front, so a word taken out of the vocabulary afterwards may still be queued.
-    /// Such items are stepped over (spec IMP05: only approved rows are practised). Returns true if the position moved.
+    /// Such items are stepped over: only active words are practised. Returns true if the position moved.
     /// </summary>
     private async Task<bool> SkipInactiveAsync(StudySession session, CancellationToken ct)
     {
@@ -450,59 +418,40 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             trap);
     }
 
-    /// <summary>Position of the planned lesson (nearest first) that contains the table, or null.</summary>
-    private static int? LessonRank(List<LessonAssignment> planned, Guid documentId, int table)
-    {
-        for (var i = 0; i < planned.Count; i++)
-        {
-            if (planned[i].SourceDocumentId == documentId && planned[i].Tables.Contains(table))
-            {
-                return i;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>Approved tables with their word counts, book by book (D-36).</summary>
+    /// <summary>The learner's tables with their word counts (D-36).</summary>
     public async Task<IReadOnlyList<VocabTableDto>> TablesAsync(Guid ownerId, CancellationToken ct)
     {
         var rows = await ActiveCards(ownerId)
-            .Select(r => new { r.Sense.Id, r.Sense.SourceDocumentId, r.Sense.TableNumber, r.Card.Phase })
+            .Select(r => new { r.Sense.Id, r.Sense.TableNumber, r.Card.Phase })
             .ToListAsync(ct);
-        var names = await db.SourceDocuments.Where(d => d.OwnerId == ownerId).ToDictionaryAsync(d => d.Id, d => d.FileName, ct);
         return rows
-            .GroupBy(r => (r.SourceDocumentId, r.TableNumber))
-            .OrderBy(g => names.GetValueOrDefault(g.Key.SourceDocumentId)).ThenBy(g => g.Key.TableNumber)
+            .GroupBy(r => r.TableNumber)
+            .OrderBy(g => g.Key)
             .Select(g => new VocabTableDto(
-                g.Key.SourceDocumentId,
-                names.GetValueOrDefault(g.Key.SourceDocumentId) ?? "",
-                g.Key.TableNumber,
+                g.Key,
                 g.Select(r => r.Id).Distinct().Count(),
                 g.GroupBy(r => r.Id).Count(w => w.Any(r => r.Phase != LearningPhase.New))))
             .ToList();
     }
 
-    /// <summary>One table's approved words in book order, to study on screen before the cards (D-36).</summary>
-    public async Task<VocabTableWordsDto> TableAsync(Guid ownerId, Guid documentId, int table, CancellationToken ct)
+    /// <summary>One table's words in list order, to study on screen before the cards (D-36).</summary>
+    public async Task<VocabTableWordsDto> TableAsync(Guid ownerId, int table, CancellationToken ct)
     {
-        var document = await db.SourceDocuments.SingleOrDefaultAsync(d => d.Id == documentId && d.OwnerId == ownerId, ct)
-            ?? throw new NotFoundException("Kitob topilmadi.");
         var rows = await ActiveCards(ownerId)
-            .Where(r => r.Sense.SourceDocumentId == documentId && r.Sense.TableNumber == table)
-            .Select(r => new { r.Sense.Id, r.Sense.OrderInDocument, r.Sense.Korean, r.Sense.KoreanNote, r.Sense.Uzbek, r.Card.Phase })
+            .Where(r => r.Sense.TableNumber == table)
+            .Select(r => new { r.Sense.Id, r.Sense.Order, r.Sense.Korean, r.Sense.KoreanNote, r.Sense.Uzbek, r.Card.Phase })
             .ToListAsync(ct);
         if (rows.Count == 0)
         {
-            throw new NotFoundException("Bu jadvalda tasdiqlangan so‘z yo‘q.");
+            throw new NotFoundException("Bu jadvalda so‘z yo‘q.");
         }
 
         var words = rows.GroupBy(r => r.Id)
             .Select(g => g.First() with { Phase = g.Any(r => r.Phase != LearningPhase.New) ? LearningPhase.Review : LearningPhase.New })
-            .OrderBy(r => r.OrderInDocument)
+            .OrderBy(r => r.Order)
             .Select((r, i) => new TableWordDto(r.Id, i + 1, r.Korean, r.KoreanNote, r.Uzbek, r.Phase != LearningPhase.New))
             .ToList();
-        return new VocabTableWordsDto(documentId, document.FileName, table, words);
+        return new VocabTableWordsDto(table, words);
     }
 
     private IQueryable<ActiveCard> ActiveCards(Guid ownerId) =>

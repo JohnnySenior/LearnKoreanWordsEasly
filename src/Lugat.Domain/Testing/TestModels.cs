@@ -17,15 +17,6 @@ public enum TestQuestionKind
     /// <summary>A sentence with a gap and its translation → type the missing word (AI-made).</summary>
     WordClozeTyped,
 
-    /// <summary>A sentence with a gap → choose the grammar form that fits (TOPIK style, AI-made).</summary>
-    GrammarChoice,
-
-    /// <summary>Grammar form → choose its Uzbek meaning.</summary>
-    GrammarMeaning,
-
-    /// <summary>A question from the learner's TOPIK book (spec GR06, D-33).</summary>
-    BookChoice,
-
     /// <summary>Oral readiness (TEST02, D-38): Uzbek meaning shown → the learner says the Korean word; speech recognition checks it.</summary>
     OralKorean,
 
@@ -59,22 +50,7 @@ public sealed record TestQuestion(
     string? BaseForm,
     string? Explanation,
     Guid? WordSenseId,
-    Guid? GrammarItemId,
-    bool AiMade,
-    BookQuestionInfo? Book = null);
-
-/// <summary>
-/// Extra data of a book question (D-33). <paramref name="OfficialKey"/>: the answer comes from the book's answer key;
-/// otherwise it is the AI's own answer and is shown as such, never as the book's (GR06).
-/// </summary>
-public sealed record BookQuestionInfo(
-    int Number,
-    int Page,
-    string? Instruction,
-    string? Figure,
-    string? Hint,
-    bool OfficialKey,
-    Guid BookQuestionId);
+    bool AiMade);
 
 /// <param name="Note">Why a typed answer was or was not accepted ("imlo xatosi", "so‘z to‘g‘ri, shakli: …").</param>
 /// <param name="Assisted">A hint (first syllable) was shown before answering (TEST03 "yordam bilan").</param>
@@ -117,11 +93,6 @@ public sealed class TestRun
     public string? Provider { get; set; }
 
     public Guid? RetryOfId { get; set; }
-
-    /// <summary>Exam mode: minutes allowed (TOPIK II reading: 70 minutes for 50 questions). Null = no timer.</summary>
-    public int? TimeLimitMinutes { get; set; }
-
-    public Guid? BookTestId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 

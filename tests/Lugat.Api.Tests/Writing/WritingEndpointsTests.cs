@@ -4,11 +4,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lugat.Api.Tests.Ai;
-using Lugat.Api.Tests.Imports;
 using Lugat.Api.Tests.Infrastructure;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
-using Lugat.Domain.Imports;
 using Lugat.Domain.Learning;
 using Lugat.Domain.Writing;
 using Microsoft.EntityFrameworkCore;
@@ -25,24 +23,13 @@ public class WritingEndpointsTests
     // 가가 = "o‘jarlik", 가나 = "1. ishqalamoq; 2. surtmoq", 가다 = "tutun"
     private ApiFactory NewFactory(bool withAi = true) => new()
     {
-        PdfReader = new FakePdfLayoutReader().AddPage(("가가", "o‘jarlik"), ("가나", "1. ishqalamoq; 2. surtmoq"), ("가다", "tutun"), ("가라", "ma’no 4"), ("가마", "ma’no 5")),
+        TableWords = [("가가", "o‘jarlik"), ("가나", "1. ishqalamoq; 2. surtmoq"), ("가다", "tutun"), ("가라", "ma’no 4"), ("가마", "ma’no 5")],
         AiProviders = withAi ? [_ai] : [],
     };
 
     private static async Task ApproveAsync(HttpClient client)
     {
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent("%PDF-1.7 writing"u8.ToArray());
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        form.Add(file, "file", "lugat.pdf");
-        var job = (await (await client.PostAsync("/api/imports", form)).Content.ReadFromJsonAsync<ImportJobDto>(Json))!;
-        for (var i = 0; i < 100 && job.Status != ImportStatus.NeedsReview; i++)
-        {
-            await Task.Delay(100);
-            job = (await client.GetFromJsonAsync<ImportJobDto>($"/api/imports/{job.Id}", Json))!;
-        }
-
-        (await client.PostAsync($"/api/imports/{job.Id}/tables/1/approve", null)).EnsureSuccessStatusCode();
+        (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
     }
 
     /// <summary>Starts every word in flash cards so it is eligible for writing.</summary>

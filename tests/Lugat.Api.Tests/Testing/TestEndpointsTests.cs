@@ -4,12 +4,10 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lugat.Api.Tests.Ai;
-using Lugat.Api.Tests.Imports;
 using Lugat.Api.Tests.Infrastructure;
 using Lugat.Api.Tests.Speech;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
-using Lugat.Domain.Imports;
 using Lugat.Domain.Testing;
 
 namespace Lugat.Api.Tests.Testing;
@@ -23,24 +21,13 @@ public class TestEndpointsTests
 
     private ApiFactory NewFactory(bool withAi = true) => new()
     {
-        PdfReader = new FakePdfLayoutReader().AddPage(("학교", "maktab"), ("가다", "bormoq"), ("먹다", "yemoq"), ("보다", "ko‘rmoq"), ("자다", "uxlamoq"), ("읽다", "o‘qimoq")),
+        TableWords = [("학교", "maktab"), ("가다", "bormoq"), ("먹다", "yemoq"), ("보다", "ko‘rmoq"), ("자다", "uxlamoq"), ("읽다", "o‘qimoq")],
         AiProviders = withAi ? [_ai] : [],
     };
 
     private static async Task ApproveAsync(HttpClient client)
     {
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent("%PDF-1.7 test words"u8.ToArray());
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        form.Add(file, "file", "lugat.pdf");
-        var job = (await (await client.PostAsync("/api/imports", form)).Content.ReadFromJsonAsync<ImportJobDto>(Json))!;
-        for (var i = 0; i < 100 && job.Status != ImportStatus.NeedsReview; i++)
-        {
-            await Task.Delay(100);
-            job = (await client.GetFromJsonAsync<ImportJobDto>($"/api/imports/{job.Id}", Json))!;
-        }
-
-        (await client.PostAsync($"/api/imports/{job.Id}/tables/1/approve", null)).EnsureSuccessStatusCode();
+        (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
     }
 
     /// <summary>A gap for every task line in the request: "학교" fills the blank.</summary>
@@ -56,7 +43,7 @@ public class TestEndpointsTests
 
     private static async Task<TestDto> CreateAsync(HttpClient client, int count = 10, Guid? id = null)
     {
-        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(id ?? Guid.NewGuid(), [1], null, false, count), Json);
+        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(id ?? Guid.NewGuid(), [1], count), Json);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<TestDto>(Json))!;
     }
@@ -140,7 +127,7 @@ public class TestEndpointsTests
         }
 
         var finished = (await (await client.PostAsync($"/api/tests/{test.Id}/finish", null)).Content.ReadFromJsonAsync<TestDto>(Json))!;
-        var retryResponse = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, null, false, 0, test.Id), Json);
+        var retryResponse = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 0, test.Id), Json);
         var retry = (await retryResponse.Content.ReadFromJsonAsync<TestDto>(Json))!;
 
         Assert.All(test.Questions, q => Assert.False(q.AiMade));
@@ -170,13 +157,13 @@ public class TestEndpointsTests
         var azure = new FakePronunciation();
         await using var factory = new ApiFactory
         {
-            PdfReader = new FakePdfLayoutReader().AddPage(("학교", "maktab"), ("가다", "bormoq"), ("먹다", "yemoq"), ("보다", "ko‘rmoq"), ("자다", "uxlamoq"), ("읽다", "o‘qimoq")),
+            TableWords = [("학교", "maktab"), ("가다", "bormoq"), ("먹다", "yemoq"), ("보다", "ko‘rmoq"), ("자다", "uxlamoq"), ("읽다", "o‘qimoq")],
             Pronunciation = azure,
         };
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
 
-        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], null, false, 0, Oral: true), Json);
+        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 0, Oral: true), Json);
         var test = (await response.Content.ReadFromJsonAsync<TestDto>(Json))!;
         var say = test.Questions.Where(q => q.Kind == TestQuestionKind.OralKorean).ToList();
         var mean = test.Questions.Where(q => q.Kind == TestQuestionKind.OralMeaning).ToList();
@@ -219,10 +206,10 @@ public class TestEndpointsTests
     public async Task A_microphone_failure_is_recorded_apart_and_silence_is_not_stored()
     {
         var azure = new FakePronunciation { Respond = _ => new SpeakingResultDto(false, "", null, null, null, null, [], "Nutq eshitilmadi.") };
-        await using var factory = new ApiFactory { PdfReader = NewFactory().PdfReader, Pronunciation = azure };
+        await using var factory = new ApiFactory { TableWords = NewFactory().TableWords, Pronunciation = azure };
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
-        var test = (await (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], null, false, 20, Oral: true), Json))
+        var test = (await (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 20, Oral: true), Json))
             .Content.ReadFromJsonAsync<TestDto>(Json))!;
         var oral = test.Questions.First(q => q.Kind == TestQuestionKind.OralKorean);
 
@@ -232,7 +219,7 @@ public class TestEndpointsTests
         var silent = await client.PostAsync($"/api/tests/{test.Id}/oral/{oral.Index}", form);
         var technical = (await (await client.PostAsync($"/api/tests/{test.Id}/oral/{oral.Index}/technical", null)).Content.ReadFromJsonAsync<TestDto>(Json))!;
         var wrongKind = await client.PostAsync($"/api/tests/{test.Id}/oral/{test.Questions.First(q => q.Kind == TestQuestionKind.OralMeaning).Index}/technical", null);
-        var badCount = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], null, false, 10, Oral: true), Json);
+        var badCount = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10, Oral: true), Json);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, silent.StatusCode);
         Assert.Contains("eshitilmadi", await silent.Content.ReadAsStringAsync());
@@ -250,7 +237,7 @@ public class TestEndpointsTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
         await CreateAsync(client);
-        (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], null, false, 20, Oral: true), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 20, Oral: true), Json)).EnsureSuccessStatusCode();
 
         var all = (await client.GetFromJsonAsync<List<TestSummaryDto>>("/api/tests", Json))!;
         var oral = (await client.GetFromJsonAsync<List<TestSummaryDto>>("/api/tests?category=Oral", Json))!;

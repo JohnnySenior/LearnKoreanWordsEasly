@@ -31,7 +31,7 @@ public class TelegramBotMessengerTests
     {
         var handler = new Handler(status, body);
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://api.telegram.org/") };
-        var options = new TelegramBotOptions { BotToken = Token, MiniAppUrl = "https://lugat.example" };
+        var options = new TelegramBotOptions { BotToken = Token, AppUrl = "https://lugat.example" };
         return (new TelegramBotMessenger(http, options, NullLogger<TelegramBotMessenger>.Instance), handler);
     }
 
@@ -45,7 +45,8 @@ public class TelegramBotMessengerTests
         Assert.Equal((SendOutcome.Sent, 42L), (result.Outcome, result.MessageId));
         Assert.Equal($"https://api.telegram.org/bot{Token}/sendMessage", handler.Request!.RequestUri!.ToString());
         Assert.Contains("\"chat_id\":1001", handler.Body);
-        Assert.Contains("https://lugat.example", handler.Body);
+        Assert.Contains("\"url\":\"https://lugat.example\"", handler.Body);
+        Assert.DoesNotContain("web_app", handler.Body); // a PWA link, not a Mini App button (spec §6.2)
     }
 
     [Fact]

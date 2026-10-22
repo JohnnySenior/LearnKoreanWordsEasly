@@ -4,7 +4,7 @@
 @using Lugat.Domain.Writing
 @inject SessionService Api
 
-<PageTitle>Yozma mashq — TOPIK yordamchi</PageTitle>
+<PageTitle>Yozma mashq — Lug‘at</PageTitle>
 
 <a class="back" href="mashq">← Mashqlar</a>
 <h1>Yozma mashq</h1>
@@ -31,14 +31,14 @@
                 <button class="chip wide @(_count == n ? "selected" : "")" role="radio" aria-checked="@(_count == n)" @onclick="() => _count = n">@n</button>
             }
         </div>
-        @if (_lessons.Count > 0)
+        @if (_tables.Count > 0)
         {
             <p class="muted small-text">Qaysi so‘zlar?</p>
             <div class="chips" role="radiogroup" aria-label="So‘zlar">
-                <button class="chip wide @(_lessonId is null ? "selected" : "")" role="radio" aria-checked="@(_lessonId is null)" @onclick="() => _lessonId = null">Boshlangan so‘zlar</button>
-                @foreach (var l in _lessons)
+                <button class="chip wide @(_table is null ? "selected" : "")" role="radio" aria-checked="@(_table is null)" @onclick="() => _table = null">Boshlangan so‘zlar</button>
+                @foreach (var t in _tables)
                 {
-                    <button class="chip wide @(_lessonId == l.Id ? "selected" : "")" role="radio" aria-checked="@(_lessonId == l.Id)" @onclick="() => _lessonId = l.Id">@l.Title</button>
+                    <button class="chip wide @(_table == t.TableNumber ? "selected" : "")" role="radio" aria-checked="@(_table == t.TableNumber)" @onclick="() => _table = t.TableNumber">@t.TableNumber-jadval</button>
                 }
             </div>
         }
@@ -92,7 +92,7 @@ else
             <p class="verdict @(_result.Verdict is WritingVerdict.Correct or WritingVerdict.SameMeaning ? "verdict-ok" : "verdict-warn")">@VerdictText(_result.Verdict)</p>
             @if (_result.Verdict != WritingVerdict.Correct)
             {
-                <p class="muted small-text">Kitobda:</p>
+                <p class="muted small-text">Lug‘atda:</p>
                 <p class="@(typingKorean ? "answer ko" : "answer")" lang="@(typingKorean ? "ko" : "uz")">@_result.Expected</p>
             }
             @if (_result.Note is not null)
@@ -116,8 +116,8 @@ else
 
     private ReviewDirection? _direction;
     private int _count = 10;
-    private Guid? _lessonId;
-    private List<AssignmentDto> _lessons = [];
+    private int? _table;
+    private List<VocabTableDto> _tables = [];
     private List<WritingPromptDto>? _queue;
     private readonly List<WritingVerdict> _verdicts = [];
     private int _index;
@@ -129,14 +129,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var lessons = await Api.GetAsync<List<AssignmentDto>>("api/assignments");
-        _lessons = lessons.Value?.Where(a => a.Status == Domain.Lessons.AssignmentStatus.Planned).OrderBy(a => a.DueAt).ToList() ?? [];
+        _tables = (await Api.GetAsync<List<VocabTableDto>>("api/vocabulary/tables")).Value ?? [];
     }
 
     private async Task StartAsync()
     {
         _busy = true;
-        var query = $"api/writing/queue?count={_count}" + (_direction is { } d ? $"&direction={d}" : "") + (_lessonId is { } l ? $"&assignmentId={l}" : "");
+        var query = $"api/writing/queue?count={_count}" + (_direction is { } d ? $"&direction={d}" : "") + (_table is { } t ? $"&table={t}" : "");
         var result = await Api.GetAsync<List<WritingPromptDto>>(query);
         _busy = false;
         _error = result.Ok ? null : result.Error;
@@ -211,7 +210,7 @@ else
     private static string VerdictText(WritingVerdict v) => v switch
     {
         WritingVerdict.Correct => "To‘g‘ri",
-        WritingVerdict.SameMeaning => "Ma’nosi to‘g‘ri, lekin kitobda boshqa so‘z",
+        WritingVerdict.SameMeaning => "Ma’nosi to‘g‘ri, lekin lug‘atda boshqa so‘z",
         WritingVerdict.Spelling => "Deyarli: imlo xatosi",
         _ => "Xato",
     };

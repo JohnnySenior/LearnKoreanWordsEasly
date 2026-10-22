@@ -5,12 +5,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Lugat.Api.Tests.Ai;
-using Lugat.Api.Tests.Imports;
 using Lugat.Api.Tests.Infrastructure;
 using Lugat.Application.Vocabulary;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
-using Lugat.Domain.Imports;
 using Lugat.Domain.Testing;
 
 namespace Lugat.Api.Tests.Vocabulary;
@@ -24,26 +22,12 @@ public class UsageTests
 
     private ApiFactory NewFactory() => new()
     {
-        PdfReader = new FakePdfLayoutReader().AddPage(("열다", "ochmoq"), ("가져오다", "olib kelmoq"), ("먹다", "yemoq"), ("보다", "ko‘rmoq"), ("자다", "uxlamoq"), ("읽다", "o‘qimoq")),
+        TableWords = [("열다", "ochmoq"), ("가져오다", "olib kelmoq"), ("먹다", "yemoq"), ("보다", "ko‘rmoq"), ("자다", "uxlamoq"), ("읽다", "o‘qimoq")],
         AiProviders = [_ai],
     };
 
-    private static async Task<Guid> ApproveAsync(HttpClient client)
-    {
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent("%PDF-1.7 usage words"u8.ToArray());
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        form.Add(file, "file", "lugat.pdf");
-        var job = (await (await client.PostAsync("/api/imports", form)).Content.ReadFromJsonAsync<ImportJobDto>(Json))!;
-        for (var i = 0; i < 100 && job.Status != ImportStatus.NeedsReview; i++)
-        {
-            await Task.Delay(100);
-            job = (await client.GetFromJsonAsync<ImportJobDto>($"/api/imports/{job.Id}", Json))!;
-        }
-
-        (await client.PostAsync($"/api/imports/{job.Id}/tables/1/approve", null)).EnsureSuccessStatusCode();
-        return job.SourceDocumentId;
-    }
+    private static async Task ApproveAsync(HttpClient client) =>
+        (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
 
     /// <summary>
     /// Usage for every "<id>. <korean> — <uzbek>" line except <paramref name="skip"/>. 열다 gets the "biznes ochmoq"
@@ -74,8 +58,8 @@ public class UsageTests
         _ai.Answer = r => Usage(r.UserContent);
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        var document = await ApproveAsync(client);
-        var url = $"/api/vocabulary/tables/{document}/1/usage";
+        await ApproveAsync(client);
+        const string url = "/api/vocabulary/tables/1/usage";
 
         var before = (await client.GetFromJsonAsync<TableUsageDto>(url, Json))!;
         var prepared = (await (await client.PostAsync(url, null)).Content.ReadFromJsonAsync<TableUsageDto>(Json))!;
@@ -95,7 +79,7 @@ public class UsageTests
         Assert.Equal((6, 6, 6), (summary[0].Total, summary[0].Ready, summary[0].Questions));
 
         // The trap also shows on the card's answer side.
-        var start = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, null, document, 1), Json);
+        var start = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, 1), Json);
         var session = (await start.Content.ReadFromJsonAsync<StartSessionResponse>(Json))!.Session!;
         Assert.Equal(session.Current!.Prompt == "열다" || session.Current.Answer == "열다", session.Current.UsageTrap is not null);
     }
@@ -106,8 +90,8 @@ public class UsageTests
         _ai.Answer = r => Usage(r.UserContent, "먹다");
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        var document = await ApproveAsync(client);
-        var url = $"/api/vocabulary/tables/{document}/1/usage";
+        await ApproveAsync(client);
+        const string url = "/api/vocabulary/tables/1/usage";
 
         var first = (await (await client.PostAsync(url, null)).Content.ReadFromJsonAsync<TableUsageDto>(Json))!;
         _ai.Answer = _ => "not json";
@@ -130,12 +114,12 @@ public class UsageTests
         _ai.Answer = r => Usage(r.UserContent);
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        var document = await ApproveAsync(client);
+        await ApproveAsync(client);
 
-        var tooEarly = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], null, false, 10, Usage: true), Json);
-        await client.PostAsync($"/api/vocabulary/tables/{document}/1/usage", null);
+        var tooEarly = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10, Usage: true), Json);
+        await client.PostAsync("/api/vocabulary/tables/1/usage", null);
         var calls = _ai.Requests.Count;
-        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], null, false, 10, Usage: true), Json);
+        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10, Usage: true), Json);
         var test = (await response.Content.ReadFromJsonAsync<TestDto>(Json))!;
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, tooEarly.StatusCode);

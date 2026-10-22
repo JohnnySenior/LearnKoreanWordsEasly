@@ -6,7 +6,6 @@ using Lugat.Api.Tests.Infrastructure;
 using Lugat.Application.Ai;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
-using Lugat.Domain.Essays;
 using Lugat.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +15,7 @@ namespace Lugat.Api.Tests.Ai;
 public class AiConcurrencyTests
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
-    private const string Prompt = "{\"instructionKo\":\"다음을 보고 글을 쓰십시오.\",\"text\":\"여가 시간이 증가하고 있다. 다음 자료를 보고 설명하십시오.\",\"modelAnswers\":[\"여가 시간이 크게 늘었다.\"]}";
+    private const string Answer = "{\"verdict\":\"correct\"}";
 
     private sealed class BlockingProvider : IAiProvider
     {
@@ -31,46 +30,55 @@ public class AiConcurrencyTests
             Interlocked.Increment(ref Calls);
             Entered.TrySetResult();
             await Release.Task.WaitAsync(ct);
-            return new AiJsonResponse(Prompt, Model, 100, 50);
+            return new AiJsonResponse(Answer, Model, 100, 50);
         }
     }
 
+    /// <summary>A client with one word to write sentences with, and that word.</summary>
+    private static async Task<(HttpClient Client, Guid Word)> LearnerAsync(ApiFactory factory)
+    {
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
+        var target = (await client.GetFromJsonAsync<SentenceTargetDto>("/api/practice/target", Json))!;
+        return (client, target.WordSenseId);
+    }
+
     [Fact]
-    public async Task Parallel_creates_with_the_same_id_pay_once_and_return_the_same_question()
+    public async Task Parallel_checks_with_the_same_id_pay_once_and_return_the_same_result()
     {
         var ai = new BlockingProvider();
-        await using var factory = new ApiFactory { AiProviders = [ai] };
-        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        var request = new CreateEssayRequest(Guid.NewGuid(), EssayTask.Q53, EssaySource.Ai);
-        var first = client.PostAsJsonAsync("/api/essays", request, Json);
+        await using var factory = new ApiFactory { AiProviders = [ai], TableWords = [("학교", "maktab")] };
+        var (client, word) = await LearnerAsync(factory);
+        var request = new SentenceCheckRequest(Guid.NewGuid(), word, "저는 학교에 가요.");
+        var first = client.PostAsJsonAsync("/api/practice/check", request, Json);
         await ai.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        var second = client.PostAsJsonAsync("/api/essays", request, Json);
+        var second = client.PostAsJsonAsync("/api/practice/check", request, Json);
         ai.Release.TrySetResult();
         var results = await Task.WhenAll(first, second);
-        Assert.All(results, r => Assert.Equal(HttpStatusCode.Created, r.StatusCode));
+        Assert.All(results, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
         Assert.Equal(1, ai.Calls);
-        var a = (await results[0].Content.ReadFromJsonAsync<EssayDto>(Json))!;
-        var b = (await results[1].Content.ReadFromJsonAsync<EssayDto>(Json))!;
-        Assert.Equal((a.Id, a.Text), (b.Id, b.Text));
+        var a = (await results[0].Content.ReadFromJsonAsync<SentenceCheckDto>(Json))!;
+        var b = (await results[1].Content.ReadFromJsonAsync<SentenceCheckDto>(Json))!;
+        Assert.Equal((a.Id, a.Status), (b.Id, b.Status));
     }
 
     [Fact]
     public async Task In_flight_calls_reserve_the_last_quota_slot_before_a_second_call_can_start()
     {
         var ai = new BlockingProvider();
-        await using var factory = new ApiFactory { AiProviders = [ai] };
+        await using var factory = new ApiFactory { AiProviders = [ai], TableWords = [("학교", "maktab")] };
         factory.Settings["Ai:MaxCallsPerUserPerDay"] = "1";
-        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        var first = client.PostAsJsonAsync("/api/essays", new CreateEssayRequest(Guid.NewGuid(), EssayTask.Q53, EssaySource.Ai), Json);
+        var (client, word) = await LearnerAsync(factory);
+        var first = client.PostAsJsonAsync("/api/practice/check", new SentenceCheckRequest(Guid.NewGuid(), word, "저는 학교에 가요."), Json);
         await ai.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
         try
         {
-            var second = await client.PostAsJsonAsync("/api/essays", new CreateEssayRequest(Guid.NewGuid(), EssayTask.Q53, EssaySource.Ai), Json);
+            var second = await client.PostAsJsonAsync("/api/practice/check", new SentenceCheckRequest(Guid.NewGuid(), word, "학교가 커요."), Json);
             Assert.Equal(HttpStatusCode.TooManyRequests, second.StatusCode);
             Assert.Equal(1, ai.Calls);
         }
         finally { ai.Release.TrySetResult(); }
-        Assert.Equal(HttpStatusCode.Created, (await first).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await first).StatusCode);
     }
 
     [Fact]

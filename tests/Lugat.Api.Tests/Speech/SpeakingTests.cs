@@ -64,9 +64,9 @@ public class SpeakingTests
         var transcript = await PostAsync(client, Wav(), null);
         var notWav = await PostAsync(client, new byte[8000], null);
         var latinReference = await PostAsync(client, Wav(), "school");
-        var ai = (await client.GetFromJsonAsync<AiStatusDto>("/api/ai/status", Grammar.GrammarImportTests.Json))!;
+        var ai = (await client.GetFromJsonAsync<AiStatusDto>("/api/ai/status", ApiFactory.Json))!;
 
-        var result = (await scored.Content.ReadFromJsonAsync<SpeakingResultDto>(Grammar.GrammarImportTests.Json))!;
+        var result = (await scored.Content.ReadFromJsonAsync<SpeakingResultDto>(ApiFactory.Json))!;
         Assert.Equal(HttpStatusCode.OK, scored.StatusCode);
         Assert.Equal((88.0, 2), (result.PronScore, result.Words.Count));
         Assert.Equal(HttpStatusCode.OK, transcript.StatusCode);

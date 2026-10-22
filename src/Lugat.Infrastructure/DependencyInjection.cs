@@ -1,7 +1,5 @@
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
-using Lugat.Application.Imports;
-using Lugat.Application.Lessons;
 using Lugat.Application.Reminders;
 using Lugat.Application.Study;
 using Lugat.Application.Users;
@@ -9,7 +7,6 @@ using Lugat.Application.Vocabulary;
 using Lugat.Domain.Learning;
 using Lugat.Infrastructure.Ai;
 using Lugat.Infrastructure.Files;
-using Lugat.Infrastructure.Pdf;
 using Lugat.Infrastructure.Persistence;
 using Lugat.Infrastructure.Telegram;
 using Microsoft.AspNetCore.Hosting;
@@ -47,12 +44,8 @@ public static class DependencyInjection
             return new LocalFileStore(Path.IsPathRooted(root) ? root : Path.Combine(env.ContentRootPath, root));
         });
 
-        services.AddSingleton<IPdfLayoutReader, PdfPigLayoutReader>();
-        services.Configure<ImportOptions>(config.GetSection(ImportOptions.SectionName));
-        services.AddScoped<ImportService>();
         services.AddScoped<UserService>();
         services.AddScoped<VocabularyService>();
-        services.AddScoped<LessonService>();
         services.AddScoped<StudyService>();
         services.AddSingleton<ISpacedRepetitionScheduler, LadderSchedulerV1>();
 
@@ -81,21 +74,15 @@ public static class DependencyInjection
         services.AddScoped<AiGateway>();
         services.AddScoped<SentenceCheckService>();
         services.AddScoped<Application.Writing.WritingService>();
-        services.AddScoped<Application.Grammar.GrammarService>();
-        services.AddScoped<Application.Grammar.GrammarStudyService>();
-        services.AddScoped<Application.Grammar.GrammarSetService>();
         services.AddScoped<Application.Vocabulary.UsageService>();
         services.AddScoped<Application.Ladder.LadderService>();
-        services.AddScoped<Application.Essays.EssayService>();
         services.AddScoped<Application.Listening.ListeningService>();
         services.AddScoped<Application.Testing.TestService>();
         services.AddScoped<Application.Testing.TestQuestionGenerator>();
-        services.AddScoped<Application.Testing.BookTestService>();
 
         services.Configure<Backups.BackupOptions>(config.GetSection(Backups.BackupOptions.SectionName));
         services.AddScoped<Backups.BackupService>();
         services.AddScoped<ProgressService>();
-        services.AddScoped<Application.Exams.ExamService>();
         services.AddScoped<Application.Mistakes.MistakeService>();
         services.AddScoped<Application.Mistakes.WeakPointService>();
         return services;

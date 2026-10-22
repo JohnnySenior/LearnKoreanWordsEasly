@@ -2,27 +2,15 @@ namespace Lugat.Contracts;
 
 /// <param name="RemindersAvailable">False when the server has no bot configured.</param>
 /// <param name="BotBlocked">Telegram refused the last message: the learner should press Start in the bot (spec NOT02).</param>
-/// <param name="TablesPerLesson">Vocabulary tables per lesson (D-43).</param>
-/// <param name="LessonDays">Lesson weekdays, Monday first (D-43).</param>
-/// <param name="ReplannedLessons">Upcoming lessons rebuilt by this save after the plan changed (D-44).</param>
 public sealed record PreferencesDto(
     string TimeZone,
     bool RemindersEnabled,
     TimeOnly WeekdayReminderTime,
-    TimeOnly SaturdayReminderTime,
     bool RemindersAvailable,
-    bool BotBlocked,
-    int TablesPerLesson,
-    IReadOnlyList<DayOfWeek> LessonDays,
-    int ReplannedLessons = 0);
+    bool BotBlocked);
 
 /// <summary>Null fields are left unchanged.</summary>
-public sealed record UpdatePreferencesRequest(
-    bool? RemindersEnabled,
-    TimeOnly? WeekdayReminderTime,
-    TimeOnly? SaturdayReminderTime,
-    int? TablesPerLesson = null,
-    IReadOnlyList<DayOfWeek>? LessonDays = null);
+public sealed record UpdatePreferencesRequest(bool? RemindersEnabled, TimeOnly? WeekdayReminderTime);
 
 public sealed record TestReminderResult(bool Delivered, string Message);
 

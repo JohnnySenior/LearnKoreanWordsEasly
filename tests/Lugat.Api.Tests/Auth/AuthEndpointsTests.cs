@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Lugat.Contracts;
@@ -12,35 +11,29 @@ namespace Lugat.Api.Tests.Auth;
 
 public class AuthEndpointsTests
 {
-    private const long AllowedUser = ApiFactory.UserA;
-    private const long OtherUser = 3003;
+    private const long User = ApiFactory.UserA;
 
     private FakeTimeProvider _time = null!;
 
-    private ApiFactory Factory(string environment = "Production", string botToken = InitDataBuilder.BotToken)
+    private ApiFactory Factory(string environment = "Production")
     {
-        var factory = new ApiFactory { EnvironmentName = environment, BotToken = botToken };
+        var factory = new ApiFactory { EnvironmentName = environment };
         _time = factory.Time;
         return factory;
     }
 
-    private static Task<HttpResponseMessage> SignIn(HttpClient client, string initData) =>
-        client.PostAsJsonAsync("/api/auth/telegram", new TelegramAuthRequest(initData));
+    /// <summary>The bearer tokens of a fresh sign-in, as a sign-in provider would return them.</summary>
+    private static async Task<AccessTokenResponse> TokensAsync(HttpClient client) =>
+        (await (await client.PostAsync($"{ApiFactory.TestSignInPath}?tg={User}", null)).Content.ReadFromJsonAsync<AccessTokenResponse>())!;
 
     [Fact]
-    public async Task Valid_init_data_gives_a_token_that_opens_me()
+    public async Task Token_opens_me()
     {
         await using var factory = Factory();
-        var client = factory.CreateClient();
 
-        var response = await SignIn(client, InitDataBuilder.Build(AllowedUser, _time.GetUtcNow()));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var token = await response.Content.ReadFromJsonAsync<AccessTokenResponse>();
+        var me = await (await factory.SignedInClientAsync(User, "Ali")).GetFromJsonAsync<MeResponse>("/api/me");
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token!.AccessToken);
-        var me = await client.GetFromJsonAsync<MeResponse>("/api/me");
-
-        Assert.Equal(AllowedUser, me!.TelegramUserId);
+        Assert.Equal(User, me!.TelegramUserId);
         Assert.Equal("Ali", me.FirstName);
     }
 
@@ -54,47 +47,18 @@ public class AuthEndpointsTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Contains("Telegram", body.RootElement.GetProperty("detail").GetString());
+        Assert.Contains("Kirish talab qilinadi", body.RootElement.GetProperty("detail").GetString());
     }
 
     [Fact]
-    public async Task Stale_init_data_is_rejected()
+    public async Task Mini_app_sign_in_is_gone()
     {
+        // The Telegram Mini App and its initData allow-list are not part of Lug‘at (spec §3.1).
         await using var factory = Factory();
 
-        var response = await SignIn(factory.CreateClient(), InitDataBuilder.Build(AllowedUser, _time.GetUtcNow().AddMinutes(-6)));
+        var response = await factory.CreateClient().PostAsJsonAsync("/api/auth/telegram", new { initData = "user=%7B%22id%22%3A1001%7D&hash=x" });
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Forged_init_data_is_rejected()
-    {
-        await using var factory = Factory();
-
-        var response = await SignIn(factory.CreateClient(), InitDataBuilder.Build(AllowedUser, _time.GetUtcNow(), botToken: "1:wrong"));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task User_not_on_allow_list_is_forbidden()
-    {
-        await using var factory = Factory();
-
-        var response = await SignIn(factory.CreateClient(), InitDataBuilder.Build(OtherUser, _time.GetUtcNow()));
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Missing_bot_token_is_503()
-    {
-        await using var factory = Factory(botToken: "");
-
-        var response = await SignIn(factory.CreateClient(), InitDataBuilder.Build(AllowedUser, _time.GetUtcNow()));
-
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -102,12 +66,10 @@ public class AuthEndpointsTests
     {
         await using var factory = Factory();
         var client = factory.CreateClient();
-        var first = await (await SignIn(client, InitDataBuilder.Build(AllowedUser, _time.GetUtcNow())))
-            .Content.ReadFromJsonAsync<AccessTokenResponse>();
+        var first = await TokensAsync(client);
 
-        // Well past the initData freshness window: refresh must not depend on it.
-        _time.Advance(TimeSpan.FromHours(2));
-        var refreshed = await client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(first!.RefreshToken));
+        _time.Advance(TimeSpan.FromHours(2)); // past the 1-hour access token
+        var refreshed = await client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(first.RefreshToken));
 
         Assert.Equal(HttpStatusCode.OK, refreshed.StatusCode);
     }
@@ -127,11 +89,10 @@ public class AuthEndpointsTests
     {
         await using var factory = Factory();
         var client = factory.CreateClient();
-        var first = await (await SignIn(client, InitDataBuilder.Build(AllowedUser, _time.GetUtcNow())))
-            .Content.ReadFromJsonAsync<AccessTokenResponse>();
+        var first = await TokensAsync(client);
 
         _time.Advance(TimeSpan.FromDays(8));
-        var response = await client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(first!.RefreshToken));
+        var response = await client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(first.RefreshToken));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

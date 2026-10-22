@@ -8,8 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Lugat.Api.Auth;
 
-public sealed record TelegramAuthRequest(string? InitData);
-
 public sealed record RefreshRequest(string? RefreshToken);
 
 public static class AuthEndpoints
@@ -22,7 +20,8 @@ public static class AuthEndpoints
     {
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
 
-        auth.MapPost("/telegram", SignInWithTelegram);
+        // Telegram Login Widget and Google sign-in come in stage 1 (spec §6.3). The Mini App initData sign-in and
+        // its allow-list were removed with the Mini App (spec §3.1).
         auth.MapPost("/refresh", Refresh);
         if (env.IsDevelopment())
         {
@@ -45,37 +44,9 @@ public static class AuthEndpoints
     public static Guid GetUserId(this ClaimsPrincipal user) =>
         Guid.Parse(user.FindFirstValue(UserIdClaim) ?? throw new InvalidOperationException("Missing user id claim."));
 
-    private static async Task<Results<SignInHttpResult, ProblemHttpResult>> SignInWithTelegram(
-        TelegramAuthRequest request,
-        TelegramInitDataValidator validator,
-        IOptionsMonitor<TelegramOptions> telegram,
-        UserService users,
-        ILogger<TelegramAuthRequest> logger,
-        CancellationToken ct)
-    {
-        var result = validator.Validate(request.InitData);
-        if (result.User is not { } user)
-        {
-            logger.LogInformation("Telegram sign-in rejected: {Reason}", result.Error);
-            return result.Error == InitDataError.NotConfigured
-                ? Problem(StatusCodes.Status503ServiceUnavailable, "Kirish vaqtincha ishlamayapti. Keyinroq urinib ko‘ring.")
-                : Problem(StatusCodes.Status401Unauthorized, "Telegram orqali kirish tasdiqlanmadi. Ilovani Telegram ichidan qayta oching.");
-        }
-
-        if (!telegram.CurrentValue.IsAllowed(user.Id))
-        {
-            logger.LogWarning("Telegram user {UserId} is not on the allow-list", user.Id);
-            return Problem(StatusCodes.Status403Forbidden, "Bu ilova hozircha faqat taklif qilingan foydalanuvchilar uchun.");
-        }
-
-        var appUser = await users.EnsureAsync(user.Id, user.FirstName, user.Username, ct);
-        return SignIn(CreatePrincipal(appUser.Id, user.Id, user.FirstName, user.Username));
-    }
-
     private static Results<SignInHttpResult, ProblemHttpResult> Refresh(
         RefreshRequest request,
         IOptionsMonitor<BearerTokenOptions> bearer,
-        IOptionsMonitor<TelegramOptions> telegram,
         TimeProvider time)
     {
         var protector = bearer.Get(BearerTokenDefaults.AuthenticationScheme).RefreshTokenProtector;
@@ -83,25 +54,18 @@ public static class AuthEndpoints
 
         if (ticket?.Properties.ExpiresUtc is not { } expires || time.GetUtcNow() >= expires)
         {
-            return Problem(StatusCodes.Status401Unauthorized, "Sessiya muddati tugadi. Ilovani Telegram ichidan qayta oching.");
+            return Problem(StatusCodes.Status401Unauthorized, "Sessiya muddati tugadi. Qaytadan kiring.");
         }
 
-        var principal = ticket.Principal;
-        if (!telegram.CurrentValue.IsAllowed(GetTelegramUserId(principal)))
-        {
-            return Problem(StatusCodes.Status403Forbidden, "Bu ilova hozircha faqat taklif qilingan foydalanuvchilar uchun.");
-        }
-
-        return SignIn(principal);
+        return SignIn(ticket.Principal);
     }
 
     private static async Task<Results<SignInHttpResult, ProblemHttpResult>> DevSignIn(
         IOptionsMonitor<AuthOptions> auth,
-        IOptionsMonitor<TelegramOptions> telegram,
         UserService users,
         CancellationToken ct)
     {
-        if (auth.CurrentValue.DevLoginUserId is not { } id || !telegram.CurrentValue.IsAllowed(id))
+        if (auth.CurrentValue.DevLoginUserId is not { } id)
         {
             return Problem(StatusCodes.Status403Forbidden, "Dev kirish sozlanmagan.");
         }
@@ -110,7 +74,8 @@ public static class AuthEndpoints
         return SignIn(CreatePrincipal(appUser.Id, id, "Dev", null));
     }
 
-    private static ClaimsPrincipal CreatePrincipal(Guid userId, long telegramUserId, string? firstName, string? username)
+    /// <summary>The signed-in identity carried by the bearer token. Public so tests can sign in without a provider.</summary>
+    public static ClaimsPrincipal CreatePrincipal(Guid userId, long telegramUserId, string? firstName, string? username)
     {
         var claims = new List<Claim>
         {

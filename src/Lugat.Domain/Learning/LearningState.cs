@@ -31,7 +31,7 @@ public enum LearningPhase
 }
 
 /// <summary>
-/// Schedule of one learning unit (word sense or grammar usage) in one direction for one user.
+/// Schedule of one learning unit (word sense) in one direction for one user.
 /// Immutable: schedulers return a new instance.
 /// </summary>
 public sealed record LearningState

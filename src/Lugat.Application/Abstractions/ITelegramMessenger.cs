@@ -19,7 +19,7 @@ public enum SendOutcome
 
 public sealed record SendResult(SendOutcome Outcome, long? MessageId = null, string? Error = null, TimeSpan? RetryAfter = null);
 
-/// <summary>Sends bot messages with a button that opens the Mini App (spec NOT02: tapping a reminder opens practice).</summary>
+/// <summary>Sends bot messages with a button that opens the app (spec NOT02: tapping a reminder opens practice).</summary>
 public interface ITelegramMessenger
 {
     /// <summary>False when no bot token is configured; reminders are then not attempted at all.</summary>

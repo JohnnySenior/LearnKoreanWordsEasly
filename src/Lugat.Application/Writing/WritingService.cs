@@ -1,10 +1,8 @@
 using System.Text.Json;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
-using Lugat.Application.Lessons;
 using Lugat.Contracts;
 using Lugat.Domain.Learning;
-using Lugat.Domain.Lessons;
 using Lugat.Domain.Vocabulary;
 using Lugat.Domain.Writing;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +13,7 @@ namespace Lugat.Application.Writing;
 /// Writing exercise (spec PR02, PR06, D-23): the learner types the Korean word or its Uzbek meaning.
 /// Separate from flash cards: nothing here changes a card's schedule, and results are counted on their own (SRS06).
 /// </summary>
-public sealed class WritingService(IAppDbContext db, LessonService lessons, AiGateway ai, TimeProvider time)
+public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider time)
 {
     public const int MaxCount = 50;
 
@@ -24,32 +22,30 @@ public sealed class WritingService(IAppDbContext db, LessonService lessons, AiGa
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     /// <summary>
-    /// Words to type: a lesson's words when <paramref name="assignmentId"/> is given, otherwise words already started
-    /// in flash cards (or the nearest lesson when nothing is started yet). Words typed wrong lately come first.
+    /// Words to type: one table's words when <paramref name="table"/> is given, otherwise words already started
+    /// in flash cards (or the first table when nothing is started yet). Words typed wrong lately come first.
     /// </summary>
-    public async Task<IReadOnlyList<WritingPromptDto>> QueueAsync(Guid ownerId, ReviewDirection? direction, int count, Guid? assignmentId, CancellationToken ct)
+    public async Task<IReadOnlyList<WritingPromptDto>> QueueAsync(Guid ownerId, ReviewDirection? direction, int count, int? table, CancellationToken ct)
     {
         count = Math.Clamp(count, 1, MaxCount);
         var senses = db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive);
         List<WordSense> pool;
-        if (assignmentId is { } id)
+        if (table is { } t)
         {
-            var lesson = await db.LessonAssignments.SingleOrDefaultAsync(a => a.Id == id && a.OwnerId == ownerId, ct)
-                ?? throw new NotFoundException("Dars topilmadi.");
-            pool = await senses.Where(s => s.SourceDocumentId == lesson.SourceDocumentId && lesson.Tables.Contains(s.TableNumber)).ToListAsync(ct);
+            pool = await senses.Where(s => s.TableNumber == t).ToListAsync(ct);
         }
         else
         {
             pool = await senses.Where(s => db.Cards.Any(c => c.WordSenseId == s.Id && c.Phase != LearningPhase.New)).ToListAsync(ct);
-            if (pool.Count == 0 && (await lessons.PlannedLessonsAsync(ownerId, ct)).FirstOrDefault() is { } nearest)
+            if (pool.Count == 0 && await senses.OrderBy(s => s.TableNumber).Select(s => (int?)s.TableNumber).FirstOrDefaultAsync(ct) is { } first)
             {
-                pool = await senses.Where(s => s.SourceDocumentId == nearest.SourceDocumentId && nearest.Tables.Contains(s.TableNumber)).ToListAsync(ct);
+                pool = await senses.Where(s => s.TableNumber == first).ToListAsync(ct);
             }
         }
 
         if (pool.Count == 0)
         {
-            throw new NotFoundException("Yozish uchun so‘z yo‘q. Avval so‘zlarni kartochkada boshlang yoki darsni belgilang.");
+            throw new NotFoundException("Yozish uchun so‘z yo‘q. Avval so‘zlarni kartochkada boshlang.");
         }
 
         var since = time.GetUtcNow().AddDays(-14);
@@ -190,7 +186,7 @@ public sealed class WritingService(IAppDbContext db, LessonService lessons, AiGa
             attempt.AiChecked = true;
             if (result is null || result.Confidence < SentenceCheckService.MinConfidence || !SentenceCheckService.IsUzbekLatin(result.ExplanationUz ?? ""))
             {
-                attempt.Note = "AI aniq javob bermadi. Kitobdagi javob bilan solishtiring.";
+                attempt.Note = "AI aniq javob bermadi. To‘g‘ri javob bilan o‘zingiz solishtiring.";
                 return;
             }
 
@@ -204,7 +200,7 @@ public sealed class WritingService(IAppDbContext db, LessonService lessons, AiGa
         }
         catch (Exception ex) when (ex is ServiceUnavailableException or TooManyRequestsException or JsonException)
         {
-            attempt.Note = "Ma’nosini AI tekshira olmadi. Kitobdagi javob bilan solishtiring.";
+            attempt.Note = "Ma’nosini AI tekshira olmadi. To‘g‘ri javob bilan o‘zingiz solishtiring.";
         }
     }
 

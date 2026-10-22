@@ -2,7 +2,7 @@
 @inject SessionService Api
 @inject NavigationManager Nav
 
-@* One kind of test (D-39): words, grammar or oral readiness. Used by the separate pages under Sinov. *@
+@* One kind of test (D-39): words or oral readiness. Used by the separate pages under Sinov. *@
 @if (_options is null)
 {
     <p class="muted" style="margin-top:16px">@(_error ?? "Yuklanmoqda…")</p>
@@ -10,45 +10,22 @@
 }
 
 <section class="card">
-    @if (Mode != TestCategory.Grammar)
+    <span class="kicker">Lug‘at jadvallari</span>
+    @if (_options.Tables.Count == 0)
     {
-        <span class="kicker">Lug‘at jadvallari</span>
-        @if (_options.Tables.Count == 0)
-        {
-            <p class="muted small-text">Hali tasdiqlangan so‘z yo‘q. <a href="lugatlar">Lug‘atlar</a> bo‘limida jadvalni tasdiqlang.</p>
-        }
-        else
-        {
-            <div class="chips" role="group" aria-label="Jadvallar">
-                @foreach (var t in _options.Tables)
-                {
-                    var n = t.TableNumber;
-                    <button class="chip @(_tables.Contains(n) ? "selected" : "")" aria-pressed="@_tables.Contains(n)" title="@($"{t.Words} ta so‘z")" @onclick="() => Toggle(n)">@n</button>
-                }
-            </div>
-            <p class="muted small-text">@(_tables.Count == 0 ? "Jadval tanlanmagan" : $"{_options.Tables.Where(t => _tables.Contains(t.TableNumber)).Sum(t => t.Words)} ta so‘z")</p>
-        }
+        <p class="muted small-text">Hali so‘z yo‘q.</p>
     }
-    @if (Mode is TestCategory.Grammar or TestCategory.Mixed)
+    else
     {
-        <span class="kicker" style="@(Mode == TestCategory.Mixed ? "margin-top:14px" : "")">Grammatika</span>
-        @if (_options.ApprovedGrammar == 0)
-        {
-            <p class="muted small-text">Hali tasdiqlangan grammatika yo‘q. <a href="grammatika">Grammatika</a> bo‘limida kitob betlarini ajrating.</p>
-        }
-        else
-        {
-            <div class="chips" role="radiogroup" aria-label="Grammatika">
-                @foreach (var s in _options.GrammarSets)
-                {
-                    var key = s.Id.ToString();
-                    <button class="chip wide @(_grammar == key ? "selected" : "")" role="radio" aria-checked="@(_grammar == key)" @onclick="() => _grammar = key">@s.Number-to‘plam (@s.Items)</button>
-                }
-                <button class="chip wide @(_grammar == "all" ? "selected" : "")" role="radio" aria-checked="@(_grammar == "all")" @onclick="@(() => _grammar = "all")">Hammasi (@_options.ApprovedGrammar)</button>
-            </div>
-        }
+        <div class="chips" role="group" aria-label="Jadvallar">
+            @foreach (var t in _options.Tables)
+            {
+                var n = t.TableNumber;
+                <button class="chip @(_tables.Contains(n) ? "selected" : "")" aria-pressed="@_tables.Contains(n)" title="@($"{t.Words} ta so‘z")" @onclick="() => Toggle(n)">@n</button>
+            }
+        </div>
+        <p class="muted small-text">@(_tables.Count == 0 ? "Jadval tanlanmagan" : $"{_options.Tables.Where(t => _tables.Contains(t.TableNumber)).Sum(t => t.Words)} ta so‘z")</p>
     }
-
     <span class="kicker" style="margin-top:14px">Savollar soni</span>
     <div class="seg" role="radiogroup" aria-label="Savollar soni">
         @foreach (var (value, label) in CountOptions)
@@ -73,12 +50,11 @@
 </section>
 
 @code {
-    /// <summary>Vocabulary, Grammar, Mixed or Oral.</summary>
+    /// <summary>Vocabulary or Oral.</summary>
     [Parameter, EditorRequired] public TestCategory Mode { get; set; }
 
     private TestOptionsDto? _options;
     private readonly HashSet<int> _tables = [];
-    private string _grammar = "";
     private int _count;
     private bool _busy;
     private string? _error;
@@ -89,18 +65,11 @@
         ? [(20, "Qisqa: 20"), (0, "Barcha so‘zlar")]
         : [(10, "10"), (20, "20"), (30, "30")];
 
-    private bool Ready => Mode switch
-    {
-        TestCategory.Grammar => _grammar != "",
-        TestCategory.Mixed => _grammar != "" && _tables.Count > 0,
-        _ => _tables.Count > 0,
-    };
+    private bool Ready => _tables.Count > 0;
 
     private string Explanation => Mode switch
     {
-        TestCategory.Oral => "Darsga tayyorlik: har so‘z bir marta so‘raladi. Yarmida o‘zbekcha ma’no chiqadi, siz koreyschasini aytasiz va Azure tekshiradi. Qolganida koreyscha so‘z chiqadi, ma’nosini ovoz chiqarib aytasiz va o‘zingiz tekshirasiz. Javoblar oxirida ko‘rsatiladi.",
-        TestCategory.Grammar => "Gapga mos grammatik shaklni tanlash va grammatikaning ma’nosini topish. Javoblar sinov oxirida ko‘rsatiladi.",
-        TestCategory.Mixed => "So‘z va grammatika aralash, TOPIK'dagidek: savollarning taxminan 40% i grammatika. Javoblar sinov oxirida ko‘rsatiladi.",
+        TestCategory.Oral => "Og‘zaki tayyorlik: har so‘z bir marta so‘raladi. Yarmida o‘zbekcha ma’no chiqadi, siz koreyschasini aytasiz va Azure tekshiradi. Qolganida koreyscha so‘z chiqadi, ma’nosini ovoz chiqarib aytasiz va o‘zingiz tekshirasiz. Javoblar oxirida ko‘rsatiladi.",
         _ => "Savollar aralash: ma’nosini topish, koreyschasini topish, gapdagi bo‘sh joyni to‘ldirish (tanlash va yozish). Javoblar sinov oxirida ko‘rsatiladi. Sinov kartochkalarning takrorlash jadvaliga ta’sir qilmaydi.",
     };
 
@@ -113,11 +82,6 @@
         if (_options?.Tables.FirstOrDefault() is { } first)
         {
             _tables.Add(first.TableNumber);
-        }
-
-        if (_options is { ApprovedGrammar: > 0 })
-        {
-            _grammar = _options.GrammarSets.LastOrDefault()?.Id.ToString() ?? "all";
         }
     }
 
@@ -137,14 +101,8 @@
         var id = _pendingId ??= Guid.NewGuid();
         var request = Mode switch
         {
-            TestCategory.Oral => new CreateTestRequest(id, _tables.Order().ToList(), null, false, _count, Oral: true),
-            TestCategory.Grammar or TestCategory.Mixed => new CreateTestRequest(
-                id,
-                Mode == TestCategory.Mixed ? _tables.Order().ToList() : [],
-                Guid.TryParse(_grammar, out var setId) ? setId : null,
-                _grammar == "all",
-                _count),
-            _ => new CreateTestRequest(id, _tables.Order().ToList(), null, false, _count),
+            TestCategory.Oral => new CreateTestRequest(id, _tables.Order().ToList(), _count, Oral: true),
+            _ => new CreateTestRequest(id, _tables.Order().ToList(), _count),
         };
         var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", request, SessionService.AiTimeout);
         _busy = false;

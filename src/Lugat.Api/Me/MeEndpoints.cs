@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using Lugat.Api.Auth;
 using Lugat.Application.Abstractions;
-using Lugat.Application.Exams;
-using Lugat.Application.Lessons;
 using Lugat.Application.Reminders;
 using Lugat.Application.Study;
 using Lugat.Application.Users;
@@ -19,14 +17,8 @@ public static class MeEndpoints
         me.MapGet("/preferences", (ClaimsPrincipal user, UserService users, ITelegramMessenger telegram, CancellationToken ct) =>
             users.GetPreferencesAsync(user.GetUserId(), telegram.IsConfigured, ct));
 
-        me.MapPatch("/preferences", async (UpdatePreferencesRequest body, ClaimsPrincipal user, UserService users, LessonService lessons, ITelegramMessenger telegram, CancellationToken ct) =>
-        {
-            var prefs = await users.UpdatePreferencesAsync(user.GetUserId(), body, telegram.IsConfigured, ct);
-            // A new lesson plan also reshapes the upcoming lessons (D-44).
-            return body.TablesPerLesson is null && body.LessonDays is null
-                ? prefs
-                : prefs with { ReplannedLessons = await lessons.ReplanAsync(user.GetUserId(), ct) };
-        });
+        me.MapPatch("/preferences", (UpdatePreferencesRequest body, ClaimsPrincipal user, UserService users, ITelegramMessenger telegram, CancellationToken ct) =>
+            users.UpdatePreferencesAsync(user.GetUserId(), body, telegram.IsConfigured, ct));
 
         me.MapPost("/reminders/test", async (ClaimsPrincipal user, ReminderService reminders, CancellationToken ct) =>
         {
@@ -38,11 +30,6 @@ public static class MeEndpoints
                 _ => new TestReminderResult(false, "Xabar yuborilmadi. Birozdan keyin qayta urinib ko‘ring."),
             };
         });
-
-        // Exam date and countdown (D-34).
-        var exam = app.MapGroup("/api/exam").RequireAuthorization();
-        exam.MapGet("/", (ClaimsPrincipal user, ExamService s, CancellationToken ct) => s.GetAsync(user.GetUserId(), ct));
-        exam.MapPut("/", (UpdateExamRequest body, ClaimsPrincipal user, ExamService s, CancellationToken ct) => s.UpdateAsync(user.GetUserId(), body, ct));
 
         // The mistakes notebook (D-41).
         app.MapGet("/api/mistakes", (ClaimsPrincipal user, Application.Mistakes.MistakeService s, CancellationToken ct) => s.GetAsync(user.GetUserId(), ct))

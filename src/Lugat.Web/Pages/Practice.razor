@@ -2,12 +2,12 @@
 @using System.Text.Json
 @using Lugat.Contracts
 @using Lugat.Domain.Learning
-@using Lugat.Domain.Lessons
+@using Lugat.Domain.Study
 @implements IDisposable
 @inject SessionService Api
-@inject TelegramInterop Telegram
+@inject BrowserInterop Browser
 
-<PageTitle>Mashq — TOPIK yordamchi</PageTitle>
+<PageTitle>Mashq — Lug‘at</PageTitle>
 
 @if (_loading)
 {
@@ -191,13 +191,13 @@ else
     {
         try
         {
-            return await Telegram.StorageGetAsync(PendingKey) is { Length: > 0 } json
+            return await Browser.StorageGetAsync(PendingKey) is { Length: > 0 } json
                 ? JsonSerializer.Deserialize<StoredAnswer>(json, SessionService.Json)
                 : null;
         }
         catch (JsonException)
         {
-            await Telegram.StorageRemoveAsync(PendingKey);
+            await Browser.StorageRemoveAsync(PendingKey);
             return null;
         }
     }
@@ -225,7 +225,7 @@ else
         // The event id is fixed here, so a retry after a network error cannot count twice (spec REL03).
         _pending = new AnswerRequest(Guid.NewGuid(), card.Position, answer, false, _responseMs);
         _pendingSessionId = _session.Id;
-        await Telegram.StorageSetAsync(PendingKey, JsonSerializer.Serialize(new StoredAnswer(_session.Id, _pending), SessionService.Json));
+        await Browser.StorageSetAsync(PendingKey, JsonSerializer.Serialize(new StoredAnswer(_session.Id, _pending), SessionService.Json));
         await SendPendingAsync();
     }
 
@@ -254,7 +254,7 @@ else
             await ForgetPendingAsync();
             _error = null;
             _session = result.Value!.Session;
-            await Telegram.HapticAsync();
+            await Browser.VibrateAsync();
             ShowCard();
             FlashUndo();
             return;
@@ -277,7 +277,7 @@ else
     {
         _pending = null;
         _pendingSessionId = null;
-        await Telegram.StorageRemoveAsync(PendingKey);
+        await Browser.StorageRemoveAsync(PendingKey);
     }
 
     private async Task UndoAsync(Guid eventId)

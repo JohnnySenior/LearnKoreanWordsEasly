@@ -11,7 +11,9 @@ public enum SessionStatus
 {
     Unknown,
     SignedIn,
-    NotInTelegram,
+
+    /// <summary>No way to sign in on this server yet (only the Development sign-in exists until stage 1).</summary>
+    NoSignIn,
     Rejected,
     Forbidden,
     Unavailable,
@@ -26,10 +28,11 @@ public sealed record ApiResult<T>(T? Value, int Status, string? Error)
 }
 
 /// <summary>
-/// Exchanges Telegram initData for a short server session and keeps tokens in memory only.
+/// Signs in and keeps the short server session's tokens in memory only. Until Telegram Login Widget and Google
+/// sign-in arrive (stage 1, spec §6.3), only the Development sign-in exists.
 /// On 401 it tries the refresh token once (spec UX07: an expired login must not lose the learner's work).
 /// </summary>
-public sealed class SessionService(HttpClient http, TelegramInterop telegram)
+public sealed class SessionService(HttpClient http)
 {
     private sealed record TokenResponse(string AccessToken, string RefreshToken, long ExpiresIn);
 
@@ -52,23 +55,20 @@ public sealed class SessionService(HttpClient http, TelegramInterop telegram)
 
     private async Task<SessionState> SignInAsync()
     {
-        var info = await telegram.GetInfoAsync();
         HttpResponseMessage response;
         using var cts = new CancellationTokenSource(DefaultTimeout);
         try
         {
-            response = info.InsideTelegram
-                ? await http.PostAsJsonAsync("api/auth/telegram", new { initData = info.InitData }, cts.Token)
-                : await http.PostAsync("api/auth/dev", null, cts.Token); // exists only in Development
+            response = await http.PostAsync("api/auth/dev", null, cts.Token); // exists only in Development
         }
         catch (Exception ex) when (IsNetworkFailure(ex))
         {
             return State = new(SessionStatus.Unavailable, null, "Server bilan aloqa yo‘q. Internetni tekshirib, qayta oching.", null);
         }
 
-        if (!info.InsideTelegram && response.StatusCode == HttpStatusCode.NotFound)
+        if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return State = new(SessionStatus.NotInTelegram, null, "Ilovani Telegram ichidan oching.", 404);
+            return State = new(SessionStatus.NoSignIn, null, "Kirish hozircha yopiq: Telegram va Google orqali kirish tez orada qo‘shiladi.", 404);
         }
 
         if (!response.IsSuccessStatusCode)
@@ -112,7 +112,7 @@ public sealed class SessionService(HttpClient http, TelegramInterop telegram)
     /// <summary>AI checks may try two services one after another.</summary>
     public static readonly TimeSpan AiTimeout = TimeSpan.FromMinutes(2);
 
-    /// <summary>A 43 MB book over a phone connection.</summary>
+    /// <summary>Long operations such as a backup run.</summary>
     public static readonly TimeSpan UploadTimeout = TimeSpan.FromMinutes(10);
 
     public Task<ApiResult<T>> GetAsync<T>(string uri) =>

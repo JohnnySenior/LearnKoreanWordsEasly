@@ -2,10 +2,14 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Lugat.Api.Auth;
-using Lugat.Api.Tests.Auth;
 using Lugat.Application.Abstractions;
+using Lugat.Application.Users;
+using Lugat.Application.Vocabulary;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -37,11 +41,22 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public FakeTimeProvider Time { get; } = new(Start);
 
+    /// <summary>The API's JSON shape: web defaults with enums as names.</summary>
+    public static readonly System.Text.Json.JsonSerializerOptions Json =
+        new(System.Text.Json.JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
+
+    /// <summary>Test-only sign-in endpoint (see <see cref="TestEndpoints"/>); query: tg = Telegram user id, name = first name.</summary>
+    public const string TestSignInPath = "/__test/sign-in";
+
+    /// <summary>Test-only: adds <see cref="TableWords"/> as table 1 (or ?table=n) of the signed-in learner.</summary>
+    public const string TestWordsPath = "/__test/words";
+
+    /// <summary>The words a test's learner gets through <see cref="TestWordsPath"/>.</summary>
+    public IReadOnlyList<(string Korean, string Uzbek)> TableWords { get; init; } = [];
+
     public string EnvironmentName { get; init; } = "Production";
 
-    public string BotToken { get; init; } = InitDataBuilder.BotToken;
-
-    public IPdfLayoutReader? PdfReader { get; init; }
+    public string BotToken { get; init; } = "123456:TEST-TOKEN";
 
     public ITelegramMessenger? Messenger { get; init; }
 
@@ -62,12 +77,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Default", new NpgsqlConnectionStringBuilder(ServerConnection) { Database = _database }.ConnectionString);
         builder.UseSetting("Storage:Root", _files);
         builder.UseSetting("Telegram:BotToken", BotToken);
-        builder.UseSetting("Telegram:AllowedUserIds:0", UserA.ToString(CultureInfo.InvariantCulture));
-        builder.UseSetting("Telegram:AllowedUserIds:1", UserB.ToString(CultureInfo.InvariantCulture));
         builder.UseSetting("Auth:DevLoginUserId", UserA.ToString(CultureInfo.InvariantCulture));
-        builder.UseSetting("Imports:PollInterval", "00:00:00.100");
-        builder.UseSetting("Grammar:PollInterval", "00:00:00.100");
-        builder.UseSetting("BookTests:PollInterval", "00:00:00.100");
         builder.UseSetting("Backup:Enabled", "false"); // production turns the nightly backup on; tests run it by hand
         foreach (var (key, value) in Settings)
         {
@@ -77,11 +87,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<TimeProvider>(Time);
-            if (PdfReader is not null)
-            {
-                services.RemoveAll<IPdfLayoutReader>();
-                services.AddSingleton(PdfReader);
-            }
+            services.AddSingleton<IStartupFilter>(new TestEndpoints(this));
 
             // Never talk to the real AI services from tests.
             services.RemoveAll<Application.Ai.IAiProvider>();
@@ -96,7 +102,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<Application.Speech.IPronunciationAssessor>();
             services.AddSingleton(Pronunciation ?? new Lugat.Api.Tests.Speech.FakePronunciation { IsConfigured = false });
 
-            // Never talk to the real Telegram from tests: without a Mini App URL the real messenger is "not configured".
+            // Never talk to the real Telegram from tests: without an app URL the real messenger is "not configured".
             if (Messenger is not null)
             {
                 services.RemoveAll<ITelegramMessenger>();
@@ -105,14 +111,67 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         });
     }
 
-    public async Task<HttpClient> SignedInClientAsync(long telegramUserId)
+    /// <summary>
+    /// A client signed in as this Telegram user. Real sign-in providers come in stage 1 (spec §6.3); until then the
+    /// tests sign in through <see cref="TestEndpoints"/>, which exist only in this factory.
+    /// </summary>
+    public async Task<HttpClient> SignedInClientAsync(long telegramUserId, string? firstName = "Test")
     {
         var client = CreateClient();
-        var response = await client.PostAsJsonAsync("/api/auth/telegram", new TelegramAuthRequest(InitDataBuilder.Build(telegramUserId, Time.GetUtcNow(), BotToken)));
+        var response = await client.PostAsync(
+            $"{TestSignInPath}?tg={telegramUserId.ToString(CultureInfo.InvariantCulture)}&name={Uri.EscapeDataString(firstName ?? "")}", null);
         response.EnsureSuccessStatusCode();
         var token = await response.Content.ReadFromJsonAsync<AccessTokenResponse>();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token!.AccessToken);
         return client;
+    }
+
+    /// <summary>
+    /// Adds words to the learner's table <paramref name="table"/> as the vocabulary service does, with both cards.
+    /// Interim until the shared catalog (spec §5); the order continues across tables, as in a frequency list.
+    /// </summary>
+    public async Task AddWordsAsync(long telegramUserId, int table, params (string Korean, string Uzbek)[] rows)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var user = await scope.ServiceProvider.GetRequiredService<UserService>().EnsureAsync(telegramUserId, null, null, CancellationToken.None);
+        var words = rows.Select((r, i) => new NewWord(table, ((table - 1) * 100) + i + 1, r.Korean, null, r.Uzbek)).ToList();
+        await scope.ServiceProvider.GetRequiredService<VocabularyService>().AddAsync(user.Id, words, CancellationToken.None);
+    }
+
+    /// <summary>Generated words "가가", "가나", … with meanings "ma’no 1", "ma’no 2", ….</summary>
+    public static (string, string)[] Words(string prefix, int count) =>
+        Enumerable.Range(0, count).Select(i => ($"{prefix}{(char)('가' + i)}", $"ma’no {i + 1}")).ToArray();
+
+    /// <summary>
+    /// Test-only endpoints: a sign-in that issues the same bearer tokens as the real ones for a given Telegram user id,
+    /// and a way to give the signed-in learner words (the shared catalog comes in stages 2–3).
+    /// </summary>
+    private sealed class TestEndpoints(ApiFactory factory) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Map(TestWordsPath, branch => branch.Run(async http =>
+            {
+                var auth = await http.AuthenticateAsync(BearerTokenDefaults.AuthenticationScheme);
+                if (auth.Principal is not { } principal)
+                {
+                    http.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+
+                var table = int.TryParse(http.Request.Query["table"], CultureInfo.InvariantCulture, out var t) ? t : 1;
+                var words = factory.TableWords.Select((w, i) => new NewWord(table, ((table - 1) * 100) + i + 1, w.Korean, null, w.Uzbek)).ToList();
+                await http.RequestServices.GetRequiredService<VocabularyService>().AddAsync(principal.GetUserId(), words, http.RequestAborted);
+            }));
+            app.Map(TestSignInPath, branch => branch.Run(async http =>
+            {
+                var telegramId = long.Parse(http.Request.Query["tg"]!, CultureInfo.InvariantCulture);
+                var name = http.Request.Query["name"].ToString() is { Length: > 0 } n ? n : null;
+                var user = await http.RequestServices.GetRequiredService<UserService>().EnsureAsync(telegramId, name, null, http.RequestAborted);
+                await http.SignInAsync(BearerTokenDefaults.AuthenticationScheme, AuthEndpoints.CreatePrincipal(user.Id, telegramId, name, null));
+            }));
+            next(app);
+        };
     }
 
     public override async ValueTask DisposeAsync()

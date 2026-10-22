@@ -2,12 +2,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Lugat.Api.Tests.Imports;
 using Lugat.Api.Tests.Infrastructure;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Reminders;
 using Lugat.Contracts;
-using Lugat.Domain.Imports;
 using Lugat.Domain.Learning;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,7 +57,7 @@ public class RemindersTests
     {
         var factory = new ApiFactory
         {
-            PdfReader = new FakePdfLayoutReader().AddPage(FakePdfLayoutReader.Words("가", 5)),
+            TableWords = ApiFactory.Words("가", 5),
             Messenger = _telegram,
         };
         factory.Settings["Reminders:PollInterval"] = "01:00:00"; // tests drive the service directly
@@ -75,18 +73,7 @@ public class RemindersTests
 
     internal static async Task ApproveOneTableAsync(HttpClient client)
     {
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent("%PDF-1.7 reminders"u8.ToArray());
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        form.Add(file, "file", "lugat.pdf");
-        var job = (await (await client.PostAsync("/api/imports", form)).Content.ReadFromJsonAsync<ImportJobDto>(Json))!;
-        for (var i = 0; i < 100 && job.Status != ImportStatus.NeedsReview; i++)
-        {
-            await Task.Delay(100);
-            job = (await client.GetFromJsonAsync<ImportJobDto>($"/api/imports/{job.Id}", Json))!;
-        }
-
-        (await client.PostAsync($"/api/imports/{job.Id}/tables/1/approve", null)).EnsureSuccessStatusCode();
+        (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
     }
 
     [Fact]
@@ -138,7 +125,7 @@ public class RemindersTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveOneTableAsync(client);
 
-        var saved = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(false, new TimeOnly(8, 15), null), Json);
+        var saved = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(false, new TimeOnly(8, 15)), Json);
         var prefs = (await saved.Content.ReadFromJsonAsync<PreferencesDto>(Json))!;
         factory.Time.SetUtcNow(MondayMorning);
 

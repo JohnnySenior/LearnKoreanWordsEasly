@@ -4,7 +4,6 @@ using Lugat.Application.Ai;
 using Lugat.Application.Speech;
 using Lugat.Contracts;
 using Lugat.Domain.Learning;
-using Lugat.Domain.Lessons;
 using Lugat.Domain.Listening;
 using Lugat.Domain.Vocabulary;
 using Microsoft.EntityFrameworkCore;
@@ -122,17 +121,13 @@ public sealed class ListeningService(IAppDbContext db, AiGateway ai, SpeechServi
         return ToDto(set);
     }
 
-    /// <summary>Started words, those of the planned lessons first; a random few for the AI to weave in.</summary>
+    /// <summary>Started words; a random few for the AI to weave in.</summary>
     private async Task<List<WordSense>> WordsAsync(Guid ownerId, CancellationToken ct)
     {
         var started = await db.WordSenses
             .Where(s => s.OwnerId == ownerId && s.IsActive && db.Cards.Any(c => c.WordSenseId == s.Id && c.Phase != LearningPhase.New))
             .AsNoTracking().ToListAsync(ct);
-        var planned = await db.LessonAssignments.Where(a => a.OwnerId == ownerId && a.Status == AssignmentStatus.Planned)
-            .AsNoTracking().ToListAsync(ct);
-        var lessonWords = started.Where(s => planned.Any(a => a.SourceDocumentId == s.SourceDocumentId && a.Tables.Contains(s.TableNumber))).ToList();
-        var pool = lessonWords.Count >= MaxWords ? lessonWords : started;
-        return pool.OrderBy(_ => Random.Shared.Next()).Take(MaxWords).ToList();
+        return started.OrderBy(_ => Random.Shared.Next()).Take(MaxWords).ToList();
     }
 
     private async Task<ListeningSet> FindAsync(Guid ownerId, Guid id, CancellationToken ct) =>

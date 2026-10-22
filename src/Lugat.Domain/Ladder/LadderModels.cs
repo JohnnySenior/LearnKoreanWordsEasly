@@ -30,8 +30,7 @@ public sealed record LadderItem(
     LadderFocus Focus,
     string TwinUzbek,
     string TwinKorean,
-    Guid? WordSenseId,
-    Guid? GrammarItemId);
+    Guid? WordSenseId);
 
 /// <param name="ErrorTypes">For a translation: what went wrong (qo‘shimcha, fe’l shakli, so‘z tanlash, so‘z tartibi, imlo).</param>
 /// <param name="Corrected">The learner's sentence corrected, or the right order / form.</param>
@@ -45,7 +44,7 @@ public sealed record LadderAnswer(
     string? ExplanationUz,
     DateTimeOffset AnsweredAt);
 
-/// <summary>A sentence ladder (D-47): a few sentences from the learner's words and grammar, three rungs each.</summary>
+/// <summary>A sentence ladder (D-47): a few sentences from the learner's words, three rungs each.</summary>
 public sealed class SentenceLadder
 {
     /// <summary>Chosen by the client, so a double tap never makes two ladders (API01).</summary>

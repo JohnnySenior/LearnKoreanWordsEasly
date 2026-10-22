@@ -9,8 +9,8 @@ public class ReminderPlannerTests
 
     private static DateTimeOffset Kst(int day, int hour, int minute) => new(2026, 10, day, hour, minute, 0, TimeSpan.FromHours(9));
 
-    private static ReminderOccurrence? Due(DateTimeOffset now, bool lessonToday = false, ReminderPreferences? prefs = null) =>
-        ReminderPlanner.Due(User, now.ToUniversalTime(), Seoul, prefs ?? ReminderPreferences.Default, _ => lessonToday);
+    private static ReminderOccurrence? Due(DateTimeOffset now, ReminderPreferences? prefs = null) =>
+        ReminderPlanner.Due(User, now.ToUniversalTime(), Seoul, prefs ?? ReminderPreferences.Default);
 
     [Fact]
     public void Weekday_reminder_is_due_at_0930_kst()
@@ -34,23 +34,15 @@ public class ReminderPlannerTests
     }
 
     [Fact]
-    public void Sunday_has_no_reminder() => Assert.Null(Due(Kst(4, 9, 30)));
-
-    [Fact]
-    public void Saturday_reminder_only_when_a_lesson_is_due_that_day()
+    public void Weekend_has_no_reminder()
     {
-        Assert.Null(Due(Kst(3, 9, 30), lessonToday: true));   // no morning reminder on Saturday
-        Assert.Null(Due(Kst(3, 22, 0), lessonToday: false));
-
-        var due = Due(Kst(3, 22, 5), lessonToday: true);
-
-        Assert.Equal(ReminderSlot.SaturdayLesson, due!.Slot);
-        Assert.Equal(Kst(3, 22, 0), due.ScheduledAt);
+        Assert.Null(Due(Kst(4, 9, 30))); // Sunday
+        Assert.Null(Due(Kst(3, 9, 30))); // Saturday: the lesson evening slot went with the lessons (spec §3.1)
+        Assert.Null(Due(Kst(3, 22, 0)));
     }
 
     [Fact]
-    public void Tuesday_and_thursday_get_no_extra_evening_reminder() =>
-        Assert.Null(Due(Kst(6, 22, 0), lessonToday: true));
+    public void Weekdays_get_no_evening_reminder() => Assert.Null(Due(Kst(6, 22, 0)));
 
     [Fact]
     public void Disabled_reminders_are_never_due() =>

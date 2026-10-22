@@ -10,20 +10,20 @@ namespace Lugat.Infrastructure.Telegram;
 
 public sealed class TelegramBotOptions
 {
-    /// <summary>Same secret as sign-in (config "Telegram:BotToken").</summary>
+    /// <summary>Bot token from BotFather (config "Telegram:BotToken"). Secret.</summary>
     public string BotToken { get; set; } = "";
 
     /// <summary>
-    /// HTTPS address of the Mini App for the reminder button. Falls back to Railway's public domain.
+    /// HTTPS address of the app (the PWA) for the reminder button. Falls back to Railway's public domain.
     /// </summary>
-    public string MiniAppUrl { get; set; } = "";
+    public string AppUrl { get; set; } = "";
 
     public static TelegramBotOptions From(IConfiguration config)
     {
         var options = config.GetSection("Telegram").Get<TelegramBotOptions>() ?? new TelegramBotOptions();
-        if (string.IsNullOrWhiteSpace(options.MiniAppUrl) && config["RAILWAY_PUBLIC_DOMAIN"] is { Length: > 0 } domain)
+        if (string.IsNullOrWhiteSpace(options.AppUrl) && config["RAILWAY_PUBLIC_DOMAIN"] is { Length: > 0 } domain)
         {
-            options.MiniAppUrl = $"https://{domain}";
+            options.AppUrl = $"https://{domain}";
         }
 
         return options;
@@ -31,12 +31,13 @@ public sealed class TelegramBotOptions
 }
 
 /// <summary>
-/// Telegram Bot API <c>sendMessage</c> with an inline button that opens the Mini App.
+/// Telegram Bot API <c>sendMessage</c> with an inline link button that opens the app in the browser or installed PWA.
+/// The app is not a Telegram Mini App (spec §3.1, §6.2), so the button is a plain URL, not <c>web_app</c>.
 /// The bot token only appears in the request path and is never logged.
 /// </summary>
 public sealed class TelegramBotMessenger(HttpClient http, TelegramBotOptions options, ILogger<TelegramBotMessenger> logger) : ITelegramMessenger
 {
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(options.BotToken) && !string.IsNullOrWhiteSpace(options.MiniAppUrl);
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(options.BotToken) && !string.IsNullOrWhiteSpace(options.AppUrl);
 
     /// <summary>
     /// Bot API method address. The token has a colon ("123:ABC"), so as a bare relative string "bot123:ABC/…" would be
@@ -77,7 +78,7 @@ public sealed class TelegramBotMessenger(HttpClient http, TelegramBotOptions opt
             text,
             reply_markup = new
             {
-                inline_keyboard = new[] { new[] { new { text = openAppButton, web_app = new { url = options.MiniAppUrl } } } },
+                inline_keyboard = new[] { new[] { new { text = openAppButton, url = options.AppUrl } } },
             },
         };
 

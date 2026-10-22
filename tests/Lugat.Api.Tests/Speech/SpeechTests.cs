@@ -81,11 +81,9 @@ public class SpeechTests
         var b = await client.GetAsync("/api/tts?text=" + Uri.EscapeDataString("나"));
         var c = await client.GetAsync("/api/tts?text=" + Uri.EscapeDataString("다"));
         var cached = await client.GetAsync("/api/tts?text=" + Uri.EscapeDataString("가"));
-        var ai = await client.GetFromJsonAsync<Lugat.Contracts.AiStatusDto>("/api/ai/status", GrammarJson);
+        var ai = await client.GetFromJsonAsync<Lugat.Contracts.AiStatusDto>("/api/ai/status", ApiFactory.Json);
 
         Assert.Equal((HttpStatusCode.OK, HttpStatusCode.OK, (HttpStatusCode)429, HttpStatusCode.OK), (a.StatusCode, b.StatusCode, c.StatusCode, cached.StatusCode));
         Assert.Equal(0, ai!.CallsToday);
     }
-
-    private static readonly System.Text.Json.JsonSerializerOptions GrammarJson = Grammar.GrammarImportTests.Json;
 }

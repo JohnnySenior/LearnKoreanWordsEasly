@@ -5,7 +5,7 @@
 @inject SessionService Api
 @inject NavigationManager Nav
 
-<PageTitle>Gap zinapoyasi — TOPIK yordamchi</PageTitle>
+<PageTitle>Gap zinapoyasi — Lug‘at</PageTitle>
 
 @* Sentence building in three rungs (D-47): fill the particle or ending, put the words in order, translate a twin. *@
 @if (Id is null)
@@ -14,7 +14,7 @@
     <header class="page-head">
         <div>
             <h1>Gap zinapoyasi</h1>
-            <span class="muted small-text">Darsingizdagi so‘zlar va grammatika to‘plamidan 6 ta gap, har biri uch bosqichda</span>
+            <span class="muted small-text">Boshlangan so‘zlaringizdan 6 ta gap, har biri uch bosqichda</span>
         </div>
     </header>
 
@@ -39,7 +39,7 @@
             {
                 <a href="gap/zinapoya/@l.Id">
                     <span class="no">@((i + 1).ToString("00"))</span>
-                    <span><span class="t" lang="ko">@l.Title</span><span class="s">@Format.LessonDate(l.CreatedAt) · @(l.Finished ? $"{l.Correct}/{l.Total} to‘g‘ri" : $"{l.Done}/{l.Total} bajarildi — davom etish")</span></span>
+                    <span><span class="t" lang="ko">@l.Title</span><span class="s">@Format.DayTime(l.CreatedAt) · @(l.Finished ? $"{l.Correct}/{l.Total} to‘g‘ri" : $"{l.Done}/{l.Total} bajarildi — davom etish")</span></span>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
                 </a>
             }

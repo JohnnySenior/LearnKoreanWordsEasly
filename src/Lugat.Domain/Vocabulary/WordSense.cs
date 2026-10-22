@@ -1,9 +1,9 @@
 namespace Lugat.Domain.Vocabulary;
 
 /// <summary>
-/// One meaning of a Korean word or expression that a user studies (spec §12 Lexeme/WordSense).
-/// Created from an approved source row; the row's place in the book is kept for lesson planning.
-/// Different printed rows are never merged automatically (spec SRC04).
+/// One meaning of a Korean word or expression that a user studies, with one card per direction.
+/// Interim shape until the shared catalog and units (spec §5, stages 2–3): words are grouped in numbered tables and
+/// keep their place in the list (<see cref="Order"/>), most frequent first.
 /// </summary>
 public sealed class WordSense
 {
@@ -11,13 +11,9 @@ public sealed class WordSense
 
     public Guid OwnerId { get; set; }
 
-    public Guid SourceEntryId { get; set; }
-
-    public Guid SourceDocumentId { get; set; }
-
     public int TableNumber { get; set; }
 
-    public int OrderInDocument { get; set; }
+    public int Order { get; set; }
 
     public string Korean { get; set; } = "";
 
@@ -25,7 +21,7 @@ public sealed class WordSense
 
     public string Uzbek { get; set; } = "";
 
-    /// <summary>False when the source row was excluded again. Cards and history are kept (spec DATA02).</summary>
+    /// <summary>False when the word was taken out again. Cards and history are kept (spec DATA02).</summary>
     public bool IsActive { get; set; } = true;
 
     /// <summary>Raised whenever the practised text changes, so old AI/audio artefacts are not reused (spec AU05).</summary>

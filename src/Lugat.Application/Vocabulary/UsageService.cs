@@ -32,45 +32,41 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         var words = await Words(ownerId)
             .Select(s => new
             {
-                s.SourceDocumentId,
                 s.TableNumber,
                 Usage = db.WordUsages.Where(u => u.WordSenseId == s.Id && u.ContentVersion == s.ContentVersion)
                     .Select(u => new { u.Questions }).FirstOrDefault(),
             })
             .ToListAsync(ct);
-        var names = await db.SourceDocuments.Where(d => d.OwnerId == ownerId).ToDictionaryAsync(d => d.Id, d => d.FileName, ct);
         return words
-            .GroupBy(w => (w.SourceDocumentId, w.TableNumber))
-            .OrderBy(g => names.GetValueOrDefault(g.Key.SourceDocumentId)).ThenBy(g => g.Key.TableNumber)
+            .GroupBy(w => w.TableNumber)
+            .OrderBy(g => g.Key)
             .Select(g => new UsageTableSummaryDto(
-                g.Key.SourceDocumentId,
-                names.GetValueOrDefault(g.Key.SourceDocumentId) ?? "",
-                g.Key.TableNumber,
+                g.Key,
                 g.Count(),
                 g.Count(w => w.Usage is not null),
                 g.Sum(w => w.Usage?.Questions.Count ?? 0)))
             .ToList();
     }
 
-    public async Task<TableUsageDto> TableAsync(Guid ownerId, Guid documentId, int table, CancellationToken ct)
+    public async Task<TableUsageDto> TableAsync(Guid ownerId, int table, CancellationToken ct)
     {
-        var words = await TableWordsAsync(ownerId, documentId, table, ct);
+        var words = await TableWordsAsync(ownerId, table, ct);
         var usages = await CurrentAsync(words, ct);
-        return ToDto(documentId, table, words, usages);
+        return ToDto(table, words, usages);
     }
 
     /// <summary>
     /// Prepares the next <see cref="WordsPerCall"/> words of the table that have no usage yet (one AI call) and
     /// returns the table. The page calls it again until every word is ready, so no request runs for minutes.
     /// </summary>
-    public async Task<TableUsageDto> PrepareTableAsync(Guid ownerId, Guid documentId, int table, CancellationToken ct)
+    public async Task<TableUsageDto> PrepareTableAsync(Guid ownerId, int table, CancellationToken ct)
     {
-        var words = await TableWordsAsync(ownerId, documentId, table, ct);
+        var words = await TableWordsAsync(ownerId, table, ct);
         var usages = await CurrentAsync(words, ct);
         var missing = words.Where(w => !usages.ContainsKey(w.Id)).Take(WordsPerCall).ToList();
         if (missing.Count == 0)
         {
-            return ToDto(documentId, table, words, usages);
+            return ToDto(table, words, usages);
         }
 
         var result = await ai.CompleteJsonAsync(ownerId, BuildRequest(missing), ct);
@@ -98,7 +94,7 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         }
 
         await db.SaveChangesAsync(ct);
-        return ToDto(documentId, table, words, usages);
+        return ToDto(table, words, usages);
     }
 
     /// <summary>Usage questions of the learner's words, for a "which word is right?" test (D-46).</summary>
@@ -120,11 +116,11 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
     private IQueryable<WordSense> Words(Guid ownerId) =>
         db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive && db.Cards.Any(c => c.WordSenseId == s.Id));
 
-    private async Task<List<WordSense>> TableWordsAsync(Guid ownerId, Guid documentId, int table, CancellationToken ct)
+    private async Task<List<WordSense>> TableWordsAsync(Guid ownerId, int table, CancellationToken ct)
     {
-        var words = await Words(ownerId).Where(s => s.SourceDocumentId == documentId && s.TableNumber == table)
-            .OrderBy(s => s.OrderInDocument).ToListAsync(ct);
-        return words.Count == 0 ? throw new NotFoundException("Bu jadvalda tasdiqlangan so‘z yo‘q.") : words;
+        var words = await Words(ownerId).Where(s => s.TableNumber == table)
+            .OrderBy(s => s.Order).ToListAsync(ct);
+        return words.Count == 0 ? throw new NotFoundException("Bu jadvalda so‘z yo‘q.") : words;
     }
 
     private async Task<Dictionary<Guid, WordUsage>> CurrentAsync(List<WordSense> words, CancellationToken ct)
@@ -135,8 +131,7 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         return usages.Where(u => versions[u.WordSenseId] == u.ContentVersion).ToDictionary(u => u.WordSenseId);
     }
 
-    private static TableUsageDto ToDto(Guid documentId, int table, List<WordSense> words, Dictionary<Guid, WordUsage> usages) => new(
-        documentId,
+    private static TableUsageDto ToDto(int table, List<WordSense> words, Dictionary<Guid, WordUsage> usages) => new(
         table,
         words.Count,
         words.Count(w => usages.ContainsKey(w.Id)),
