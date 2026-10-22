@@ -2,12 +2,14 @@ namespace Lugat.Contracts;
 
 /// <param name="RemindersAvailable">False when the server has no bot configured.</param>
 /// <param name="BotBlocked">Telegram refused the last message: the learner should press Start in the bot (spec NOT02).</param>
+/// <param name="HasTelegram">Reminders go through the bot, so only a learner with a Telegram login gets them (spec §8).</param>
 public sealed record PreferencesDto(
     string TimeZone,
     bool RemindersEnabled,
     TimeOnly WeekdayReminderTime,
     bool RemindersAvailable,
-    bool BotBlocked);
+    bool BotBlocked,
+    bool HasTelegram);
 
 /// <summary>Null fields are left unchanged.</summary>
 public sealed record UpdatePreferencesRequest(bool? RemindersEnabled, TimeOnly? WeekdayReminderTime);

@@ -40,6 +40,16 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
 
     public async Task StorageRemoveAsync(string key) => await (await App()).InvokeVoidAsync("storageRemove", key);
 
+    public async Task SetThemeAsync(Lugat.Domain.Users.ThemeChoice theme) => await (await App()).InvokeVoidAsync("setTheme", theme.ToString());
+
+    /// <summary>Puts the Telegram Login Widget into the element; false when its script could not load.</summary>
+    public async Task<bool> TelegramWidgetAsync<T>(string elementId, string botUsername, DotNetObjectReference<T> target) where T : class =>
+        await (await App()).InvokeAsync<bool>("telegramWidget", elementId, botUsername, target);
+
+    /// <summary>Puts the Google sign-in button into the element; false when Google's script could not load.</summary>
+    public async Task<bool> GoogleButtonAsync<T>(string elementId, string clientId, DotNetObjectReference<T> target) where T : class =>
+        await (await App()).InvokeAsync<bool>("googleButton", elementId, clientId, target);
+
     public async Task<string[]> SupportedRecordingTypesAsync() => await (await Audio()).InvokeAsync<string[]>("supportedMimeTypes");
 
     public async Task<AudioResult> PlayToneAsync() => await (await Audio()).InvokeAsync<AudioResult>("playTone");

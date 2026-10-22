@@ -18,7 +18,10 @@ public static class AiEndpoints
     {
         var ai = app.MapGroup("/api/ai").RequireAuthorization();
 
-        ai.MapGet("/budget", (AiUsageService usage, CancellationToken ct) => usage.BudgetAsync(ct));
+        // The whole app's spend and paid test calls are for the owner only (spec §6.4, §10 "Sarf").
+        var admin = app.MapGroup("/api/ai").RequireAuthorization(Policies.Admin);
+
+        admin.MapGet("/budget", (AiUsageService usage, CancellationToken ct) => usage.BudgetAsync(ct));
 
         ai.MapGet("/status", (ClaimsPrincipal user, AiGateway gateway, CancellationToken ct) =>
             gateway.StatusAsync(user.GetUserId(), ct));
@@ -27,7 +30,7 @@ public static class AiEndpoints
             gateway.ChooseAsync(user.GetUserId(), body.Provider, ct));
 
         // "Ulanishni tekshirish": one tiny call to exactly this service, so a wrong key or model name shows up at once.
-        ai.MapPost("/ping/{provider}", async (AiProviderKind provider, ClaimsPrincipal user, AiGateway gateway, CancellationToken ct) =>
+        admin.MapPost("/ping/{provider}", async (AiProviderKind provider, ClaimsPrincipal user, AiGateway gateway, CancellationToken ct) =>
         {
             var watch = Stopwatch.StartNew();
             try

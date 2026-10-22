@@ -170,6 +170,28 @@ public class RemindersTests
     }
 
     [Fact]
+    public async Task Reminders_go_only_to_learners_with_a_telegram_login()
+    {
+        await using var factory = NewFactory();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            // A learner who signed in with Google only: the bot has no chat to write to (spec §8).
+            var users = scope.ServiceProvider.GetRequiredService<Lugat.Application.Users.UserService>();
+            var google = await users.SignInAsync(new Lugat.Application.Users.VerifiedLogin(Lugat.Domain.Users.LoginProvider.Google, "g-1", "G", null), CancellationToken.None);
+            await scope.ServiceProvider.GetRequiredService<Lugat.Application.Vocabulary.VocabularyService>()
+                .AddAsync(google.Id, [new Lugat.Application.Vocabulary.NewWord(1, 1, "가가", null, "ma’no")], CancellationToken.None);
+        }
+
+        var a = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await ApproveOneTableAsync(a);
+        factory.Time.SetUtcNow(MondayMorning);
+
+        await RunAsync(factory);
+
+        Assert.Equal([ApiFactory.UserA], _telegram.Sent.Select(s => s.ChatId));
+    }
+
+    [Fact]
     public async Task Progress_counts_directions_separately()
     {
         await using var factory = NewFactory();

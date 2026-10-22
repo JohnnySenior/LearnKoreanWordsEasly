@@ -23,6 +23,7 @@ public class AiEndpointsTests
     {
         TableWords = ApiFactory.Words("가", 5),
         AiProviders = providers.Length == 0 ? [_claude, _gpt] : providers,
+        AdminTelegramIds = [ApiFactory.UserA], // "Ulanishni tekshirish" is for the owner (L-14)
     };
 
     private static async Task<SentenceTargetDto> ApprovedWordAsync(HttpClient client)

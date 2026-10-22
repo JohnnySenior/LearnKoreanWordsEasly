@@ -42,12 +42,12 @@ Bosqichlar spec §13 bo‘yicha.
 
 ### Bosqich 0 dan keyin ochiq qolganlar (keyingi bosqichlarga)
 
-- **Production’da kirish yo‘q** (faqat Development dev-kirish). 1-bosqich: Telegram Login Widget, Google, `UserLogin` (L-03).
-- **Zaxira va AI sozlamalari endpoint’lari har qanday kirgan foydalanuvchiga ochiq** (KAT’da 2 kishi edi). 1-bosqichdagi rollar bilan `Admin` ostiga o‘tadi (L-03).
+- ~~Production’da kirish yo‘q~~ — 1-bosqichda yopildi (L-13).
+- ~~Zaxira va AI sozlamalari endpoint’lari hammaga ochiq~~ — 1-bosqichda `Admin` ostiga o‘tdi (L-14).
 - Production’da so‘z qo‘shish yo‘li yo‘q: katalog, import va seed 2-bosqichda (L-04).
 - AI promptlari hali KAT auditoriyasi (TOPIK II, 3–4-daraja) uchun yozilgan; Lug‘at foydalanuvchisi boshlang‘ich daraja. Kontent va mashqlar bosqichlarida qayta ko‘rib chiqiladi.
 - Navigatsiya hali KAT’niki (Bugun · Lug‘atlar · Mashq · Sinov). Spec §4.7 dagi panel (Bosh sahifa · Bo‘limlar · Takrorlash · Mashq · Profil) 3-bosqichda.
-- Sozlamalar sahifasida zaxira va AI xizmati bo‘limlari hali hammaga ko‘rinadi (admin paneliga 7-bosqichda ko‘chadi).
+- Sozlamalar sahifasidagi zaxira va AI tekshiruvi bo‘limlari endi faqat adminga ko‘rinadi; admin paneliga 7-bosqichda ko‘chadi.
 
 ### Namuna kontent bo‘yicha kuzatuvlar (2-bosqich uchun)
 
@@ -59,9 +59,30 @@ Bosqichlar spec §13 bo‘yicha.
 - "Qaysi so‘z to‘g‘ri?" savollari (`CatalogUsage`) namunada yo‘q.
 - A-050 `trap_uz` matnida mayda xato ("전 저는 ning qisqasi").
 
-## Bosqich 1 · Kirish va foydalanuvchilar
+## Bosqich 1 · Kirish va foydalanuvchilar (2026-10-22)
 
-- [ ] `User` + `UserLogin`, Telegram Login Widget, Google, refresh (PWA 30 kun), logout, hisobni bog‘lash, o‘chirish, rollar, rate limit.
+- [x] `User` + `UserLogin`, migratsiya `Logins` (L-13).
+- [x] Telegram Login Widget: `POST /api/auth/telegram-login`, hash va `auth_date` tekshiruvi (L-13).
+- [x] Google: `POST /api/auth/google`, ID token imzosi, `aud`, `iss`, muddat (L-13).
+- [x] Refresh 30 kun; refresh token qurilmada, access faqat xotirada (L-15).
+- [x] Chiqish barcha qurilmalarda (`POST /api/auth/logout`, sessiya versiyasi) (L-13).
+- [x] Hisob bog‘lash (`POST /api/me/logins`), boshqa foydalanuvchining logini 409.
+- [x] Profil: ism, romanizatsiya, mavzu (`PATCH /api/me`); Sozlamalar → "Profil".
+- [x] Hisobni o‘chirish (`DELETE /api/me`) — ma’lumotlar o‘chadi, tokenlar to‘xtaydi (L-13).
+- [x] Rollar va `Admin` / `Editor` siyosatlari; birinchi admin `Auth:Admins` dan (L-14).
+- [x] Rate limit: kirish 10/daqiqa/IP, sinov boshlash 20/soat/foydalanuvchi (L-16).
+- [x] Dev kirish faqat Development’da (endpoint boshqa muhitda umuman yo‘q).
+- [x] Eslatmalar faqat Telegram logini bor foydalanuvchilarga.
+
+**Tekshirildi:**
+- `dotnet build -warnaserror` toza; testlar: 82 (Domain) + 6 (Application) + 139 (Api) = 227, hammasi o‘tdi.
+- Qabul mezonlari testlarda: noto‘g‘ri va eskirgan Telegram hash, noto‘g‘ri imzo / `aud` / `iss` / muddati o‘tgan Google token rad etiladi (unit + HTTP); 5 ta parallel kirish → bitta foydalanuvchi; boshqa foydalanuvchining so‘zi, sinovi va sessiyasi 404; chiqishdan keyin access va refresh 401; 29 kunlik refresh ishlaydi, 31 kunlik 401; o‘chirilgan hisob ma’lumotlari bazada qolmaydi; admin bo‘lmagan 403; 11-kirish va 21-sinov 429.
+- Chromium, 360px: kirish sahifasi → dev kirish → Bugun; sahifa yangilanganda sessiya saqlanadi; Sozlamalar → Profil; chiqish → kirish sahifasi. Konsolda xato yo‘q, gorizontal scroll yo‘q.
+
+**Ochiq qoldi:**
+- Haqiqiy Telegram widget va Google tugmasi brauzerda sinalmadi: bot domeni (BotFather `/setdomain`) va Google Client ID kerak; deploy domeni 8-bosqichda (HOSTING.md → "Kirish").
+- Railway proksi ortida rate limit uchun `ForwardedHeaders` sozlash — deployda (L-16).
+- Haqiqiy telefonlarda (iOS Safari, Android Chrome) kirish sinovi — 6–8-bosqich.
 
 ## Bosqich 2 · Katalog va kontent jarayoni
 

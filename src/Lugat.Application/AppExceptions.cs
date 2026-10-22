@@ -20,3 +20,6 @@ public sealed class ServiceUnavailableException(string userMessage) : AppExcepti
 
 /// <summary>A usage limit was reached (spec BUD05).</summary>
 public sealed class TooManyRequestsException(string userMessage) : AppException(userMessage);
+
+/// <summary>A sign-in proof that does not check out (bad signature, expired, wrong audience).</summary>
+public sealed class UnauthorizedException(string userMessage) : AppException(userMessage);

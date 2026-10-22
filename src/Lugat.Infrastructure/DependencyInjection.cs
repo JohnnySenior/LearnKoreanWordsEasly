@@ -44,6 +44,7 @@ public static class DependencyInjection
             return new LocalFileStore(Path.IsPathRooted(root) ? root : Path.Combine(env.ContentRootPath, root));
         });
 
+        services.Configure<AdminOptions>(config.GetSection(AdminOptions.SectionName));
         services.AddScoped<UserService>();
         services.AddScoped<VocabularyService>();
         services.AddScoped<StudyService>();

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using Lugat.Application.Users;
 using Lugat.Contracts;
+using Lugat.Domain.Users;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
@@ -12,47 +13,113 @@ public sealed record RefreshRequest(string? RefreshToken);
 
 public static class AuthEndpoints
 {
-    public const string TelegramIdClaim = "tg_id";
-    public const string UsernameClaim = "tg_username";
     public const string UserIdClaim = "uid";
+
+    /// <summary>The user's <see cref="User.SessionVersion"/> when the token was issued (L-13).</summary>
+    public const string SessionVersionClaim = "sv";
+
+    /// <summary>Rate limit policy for sign-in endpoints: 10 a minute per IP (spec §6.3, §6.4).</summary>
+    public const string RateLimitPolicy = "auth";
 
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app, IHostEnvironment env)
     {
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
 
-        // Telegram Login Widget and Google sign-in come in stage 1 (spec §6.3). The Mini App initData sign-in and
-        // its allow-list were removed with the Mini App (spec §3.1).
-        auth.MapPost("/refresh", Refresh);
+        auth.MapGet("/config", (IOptionsMonitor<TelegramLoginOptions> telegram, IOptionsMonitor<GoogleOptions> google) => new AuthConfigDto(
+            telegram.CurrentValue is { BotToken.Length: > 0, BotUsername.Length: > 0 } t ? t.BotUsername : null,
+            google.CurrentValue.ClientId is { Length: > 0 } id ? id : null,
+            env.IsDevelopment()));
+
+        auth.MapPost("/telegram-login", SignInWithTelegram).RequireRateLimiting(RateLimitPolicy);
+        auth.MapPost("/google", SignInWithGoogle).RequireRateLimiting(RateLimitPolicy);
+        auth.MapPost("/refresh", Refresh).RequireRateLimiting(RateLimitPolicy);
         if (env.IsDevelopment())
         {
-            auth.MapPost("/dev", DevSignIn);
+            auth.MapPost("/dev", DevSignIn).RequireRateLimiting(RateLimitPolicy);
         }
 
-        app.MapGet("/api/me", (ClaimsPrincipal user) => new MeResponse(
-                GetTelegramUserId(user),
-                user.FindFirstValue(ClaimTypes.GivenName),
-                user.FindFirstValue(UsernameClaim)))
-            .RequireAuthorization();
+        // Signs out on every device: all tokens issued so far stop working (L-13).
+        app.MapPost("/api/auth/logout", async (ClaimsPrincipal user, UserService users, CancellationToken ct) =>
+        {
+            await users.LogoutAsync(user.GetUserId(), ct);
+            return TypedResults.NoContent();
+        }).RequireAuthorization();
 
         return app;
     }
-
-    public static long GetTelegramUserId(ClaimsPrincipal user) =>
-        long.Parse(user.FindFirstValue(TelegramIdClaim)!, CultureInfo.InvariantCulture);
 
     /// <summary>Internal user ID. Every owned query filters by this, never by an ID sent from the client.</summary>
     public static Guid GetUserId(this ClaimsPrincipal user) =>
         Guid.Parse(user.FindFirstValue(UserIdClaim) ?? throw new InvalidOperationException("Missing user id claim."));
 
-    private static Results<SignInHttpResult, ProblemHttpResult> Refresh(
+    public static int GetSessionVersion(this ClaimsPrincipal user) =>
+        int.TryParse(user.FindFirstValue(SessionVersionClaim), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : -1;
+
+    /// <summary>Checks a Telegram Login Widget answer; the problem for the caller when it does not check out.</summary>
+    public static (VerifiedLogin? Login, ProblemHttpResult? Problem) Verify(TelegramLoginValidator validator, IReadOnlyDictionary<string, string>? data, ILogger logger)
+    {
+        var result = validator.Validate(data);
+        if (result.Login is { } login)
+        {
+            return (login, null);
+        }
+
+        logger.LogInformation("Telegram sign-in rejected: {Reason}", result.Error);
+        return (null, result.Error switch
+        {
+            TelegramLoginError.NotConfigured => Problem(StatusCodes.Status503ServiceUnavailable, "Telegram orqali kirish hozircha sozlanmagan."),
+            TelegramLoginError.Expired => Problem(StatusCodes.Status401Unauthorized, "Telegram tasdig‘i eskirgan. Qaytadan «Telegram orqali kirish» ni bosing."),
+            _ => Problem(StatusCodes.Status401Unauthorized, "Telegram orqali kirish tasdiqlanmadi. Qaytadan urinib ko‘ring."),
+        });
+    }
+
+    public static async Task<(VerifiedLogin? Login, ProblemHttpResult? Problem)> VerifyAsync(GoogleIdTokenValidator validator, string? idToken, CancellationToken ct)
+    {
+        var result = await validator.ValidateAsync(idToken, ct);
+        return result.Login is { } login
+            ? (login, null)
+            : (null, result.Error switch
+            {
+                GoogleLoginError.NotConfigured => Problem(StatusCodes.Status503ServiceUnavailable, "Google orqali kirish hozircha sozlanmagan."),
+                GoogleLoginError.Unavailable => Problem(StatusCodes.Status503ServiceUnavailable, "Google bilan aloqa bo‘lmadi. Birozdan keyin urinib ko‘ring."),
+                _ => Problem(StatusCodes.Status401Unauthorized, "Google orqali kirish tasdiqlanmadi. Qaytadan urinib ko‘ring."),
+            });
+    }
+
+    private static async Task<Results<SignInHttpResult, ProblemHttpResult>> SignInWithTelegram(
+        TelegramLoginRequest request,
+        TelegramLoginValidator validator,
+        UserService users,
+        ILogger<TelegramLoginRequest> logger,
+        CancellationToken ct)
+    {
+        var (login, problem) = Verify(validator, request.Data, logger);
+        return login is null ? problem! : SignIn(await users.SignInAsync(login, ct));
+    }
+
+    private static async Task<Results<SignInHttpResult, ProblemHttpResult>> SignInWithGoogle(
+        GoogleLoginRequest request,
+        GoogleIdTokenValidator validator,
+        UserService users,
+        CancellationToken ct)
+    {
+        var (login, problem) = await VerifyAsync(validator, request.IdToken, ct);
+        return login is null ? problem! : SignIn(await users.SignInAsync(login, ct));
+    }
+
+    /// <summary>A new pair of tokens without signing in again, unless the user signed out or was deleted since (L-13).</summary>
+    private static async Task<Results<SignInHttpResult, ProblemHttpResult>> Refresh(
         RefreshRequest request,
         IOptionsMonitor<BearerTokenOptions> bearer,
-        TimeProvider time)
+        UserService users,
+        TimeProvider time,
+        CancellationToken ct)
     {
         var protector = bearer.Get(BearerTokenDefaults.AuthenticationScheme).RefreshTokenProtector;
         var ticket = string.IsNullOrEmpty(request.RefreshToken) ? null : protector.Unprotect(request.RefreshToken);
-
-        if (ticket?.Properties.ExpiresUtc is not { } expires || time.GetUtcNow() >= expires)
+        if (ticket?.Properties.ExpiresUtc is not { } expires || time.GetUtcNow() >= expires
+            || ticket.Principal.FindFirstValue(UserIdClaim) is not { } id || !Guid.TryParse(id, out var userId)
+            || await users.CheckSessionAsync(userId, ct) is not { } session || session.SessionVersion != ticket.Principal.GetSessionVersion())
         {
             return Problem(StatusCodes.Status401Unauthorized, "Sessiya muddati tugadi. Qaytadan kiring.");
         }
@@ -70,31 +137,20 @@ public static class AuthEndpoints
             return Problem(StatusCodes.Status403Forbidden, "Dev kirish sozlanmagan.");
         }
 
-        var appUser = await users.EnsureAsync(id, "Dev", null, ct);
-        return SignIn(CreatePrincipal(appUser.Id, id, "Dev", null));
+        var login = new VerifiedLogin(LoginProvider.Telegram, id.ToString(CultureInfo.InvariantCulture), "Dev", null);
+        return SignIn(await users.SignInAsync(login, ct));
     }
 
-    /// <summary>The signed-in identity carried by the bearer token. Public so tests can sign in without a provider.</summary>
-    public static ClaimsPrincipal CreatePrincipal(Guid userId, long telegramUserId, string? firstName, string? username)
-    {
-        var claims = new List<Claim>
-        {
-            new(UserIdClaim, userId.ToString()),
-            new(TelegramIdClaim, telegramUserId.ToString(CultureInfo.InvariantCulture)),
-            new(ClaimTypes.NameIdentifier, telegramUserId.ToString(CultureInfo.InvariantCulture)),
-        };
-        if (!string.IsNullOrEmpty(firstName))
-        {
-            claims.Add(new Claim(ClaimTypes.GivenName, firstName));
-        }
+    /// <summary>The signed-in identity carried by the bearer token: the user id and session version only (L-13).</summary>
+    public static ClaimsPrincipal CreatePrincipal(User user) => new(new ClaimsIdentity(
+        [
+            new Claim(UserIdClaim, user.Id.ToString()),
+            new Claim(SessionVersionClaim, user.SessionVersion.ToString(CultureInfo.InvariantCulture)),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        ],
+        BearerTokenDefaults.AuthenticationScheme));
 
-        if (!string.IsNullOrEmpty(username))
-        {
-            claims.Add(new Claim(UsernameClaim, username));
-        }
-
-        return new ClaimsPrincipal(new ClaimsIdentity(claims, BearerTokenDefaults.AuthenticationScheme));
-    }
+    private static SignInHttpResult SignIn(User user) => SignIn(CreatePrincipal(user));
 
     private static SignInHttpResult SignIn(ClaimsPrincipal principal) =>
         TypedResults.SignIn(principal, authenticationScheme: BearerTokenDefaults.AuthenticationScheme);

@@ -21,6 +21,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<UserLogin> UserLogins => Set<UserLogin>();
+
     public DbSet<WordSense> WordSenses => Set<WordSense>();
 
     public DbSet<WordUsage> WordUsages => Set<WordUsage>();
@@ -57,6 +59,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         // Enums are stored as text so the database stays readable and reordering an enum is safe.
+        configurationBuilder.Properties<LoginProvider>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<ThemeChoice>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ReviewDirection>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<LearningPhase>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<ReviewAnswer>().HaveConversion<string>().HaveMaxLength(32);
@@ -74,10 +78,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         b.Entity<User>(e =>
         {
             e.ToTable("users");
-            e.HasIndex(u => u.TelegramUserId).IsUnique();
-            e.Property(u => u.FirstName).HasMaxLength(256);
-            e.Property(u => u.Username).HasMaxLength(256);
+            e.Property(u => u.DisplayName).HasMaxLength(100);
             e.Property(u => u.TimeZone).HasMaxLength(64);
+            e.Property(u => u.Roles).HasConversion<int>(); // flags
+            e.Property(u => u.Version).IsRowVersion();
+        });
+
+        b.Entity<UserLogin>(e =>
+        {
+            e.ToTable("user_logins");
+            e.HasIndex(x => new { x.Provider, x.ProviderUserId }).IsUnique(); // one account, one user (spec DATA01)
+            e.HasIndex(x => x.UserId);
+            e.Property(x => x.ProviderUserId).HasMaxLength(128);
+            e.Property(x => x.Display).HasMaxLength(256);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<WordUsage>(e =>

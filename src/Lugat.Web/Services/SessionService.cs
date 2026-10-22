@@ -12,14 +12,12 @@ public enum SessionStatus
     Unknown,
     SignedIn,
 
-    /// <summary>No way to sign in on this server yet (only the Development sign-in exists until stage 1).</summary>
-    NoSignIn,
-    Rejected,
-    Forbidden,
+    /// <summary>No session: the sign-in screen is shown.</summary>
+    SignedOut,
     Unavailable,
 }
 
-public sealed record SessionState(SessionStatus Status, MeResponse? Me, string? Message, int? HttpStatus);
+public sealed record SessionState(SessionStatus Status, MeDto? Me, string? Message, int? HttpStatus);
 
 /// <summary>Outcome of an API call. <see cref="Error"/> is the server's Uzbek message, ready to show.</summary>
 public sealed record ApiResult<T>(T? Value, int Status, string? Error)
@@ -28,13 +26,15 @@ public sealed record ApiResult<T>(T? Value, int Status, string? Error)
 }
 
 /// <summary>
-/// Signs in and keeps the short server session's tokens in memory only. Until Telegram Login Widget and Google
-/// sign-in arrive (stage 1, spec §6.3), only the Development sign-in exists.
-/// On 401 it tries the refresh token once (spec UX07: an expired login must not lose the learner's work).
+/// The learner's session (spec §6.3). The short access token lives in memory only; the refresh token is kept on the
+/// device so an installed PWA stays signed in for 30 days (L-15). On 401 the refresh token is tried once
+/// (spec UX07: an expired login must not lose the learner's work); if that fails too, the sign-in screen comes back.
 /// </summary>
-public sealed class SessionService(HttpClient http)
+public sealed class SessionService(HttpClient http, BrowserInterop browser)
 {
     private sealed record TokenResponse(string AccessToken, string RefreshToken, long ExpiresIn);
+
+    private const string RefreshKey = "lugat.refresh";
 
     private string? _accessToken;
     private string? _refreshToken;
@@ -42,51 +42,88 @@ public sealed class SessionService(HttpClient http)
 
     public SessionState State { get; private set; } = new(SessionStatus.Unknown, null, null, null);
 
+    /// <summary>Raised when the learner signs in or out, so the layout can switch between the app and the sign-in screen.</summary>
+    public event Action? Changed;
+
     public Task<SessionState> EnsureSignedInAsync()
     {
-        // A sign-in that failed only for lack of connection is tried again next time.
+        // A restore that failed only for lack of connection is tried again next time.
         if (_signIn is { IsCompleted: true } done && done.Result.Status == SessionStatus.Unavailable)
         {
             _signIn = null;
         }
 
-        return _signIn ??= SignInAsync();
+        return _signIn ??= RestoreAsync();
     }
 
-    private async Task<SessionState> SignInAsync()
+    /// <summary>Continues the session saved on this device, if there is one.</summary>
+    private async Task<SessionState> RestoreAsync()
     {
-        HttpResponseMessage response;
+        var saved = await browser.StorageGetAsync(RefreshKey);
+        if (string.IsNullOrEmpty(saved))
+        {
+            return State = SignedOut();
+        }
+
         using var cts = new CancellationTokenSource(DefaultTimeout);
+        HttpResponseMessage response;
         try
         {
-            response = await http.PostAsync("api/auth/dev", null, cts.Token); // exists only in Development
+            response = await http.PostAsJsonAsync("api/auth/refresh", new { refreshToken = saved }, cts.Token);
         }
         catch (Exception ex) when (IsNetworkFailure(ex))
         {
             return State = new(SessionStatus.Unavailable, null, "Server bilan aloqa yo‘q. Internetni tekshirib, qayta oching.", null);
         }
 
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        if (!response.IsSuccessStatusCode)
         {
-            return State = new(SessionStatus.NoSignIn, null, "Kirish hozircha yopiq: Telegram va Google orqali kirish tez orada qo‘shiladi.", 404);
+            await browser.StorageRemoveAsync(RefreshKey);
+            return State = SignedOut();
+        }
+
+        return await CompleteAsync(response);
+    }
+
+    public Task<SessionState> SignInWithTelegramAsync(Dictionary<string, string> data) =>
+        SignInAsync(() => http.PostAsJsonAsync("api/auth/telegram-login", new TelegramLoginRequest(data), Json));
+
+    public Task<SessionState> SignInWithGoogleAsync(string idToken) =>
+        SignInAsync(() => http.PostAsJsonAsync("api/auth/google", new GoogleLoginRequest(idToken), Json));
+
+    /// <summary>Development only: the server has no such endpoint elsewhere.</summary>
+    public Task<SessionState> DevSignInAsync() => SignInAsync(() => http.PostAsync("api/auth/dev", null));
+
+    private async Task<SessionState> SignInAsync(Func<Task<HttpResponseMessage>> post)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            response = await post();
+        }
+        catch (Exception ex) when (IsNetworkFailure(ex))
+        {
+            return new(SessionStatus.Unavailable, null, "Server bilan aloqa yo‘q. Internetni tekshirib, qayta urinib ko‘ring.", null);
         }
 
         if (!response.IsSuccessStatusCode)
         {
-            var status = response.StatusCode switch
-            {
-                HttpStatusCode.Forbidden => SessionStatus.Forbidden,
-                HttpStatusCode.Unauthorized => SessionStatus.Rejected,
-                _ => SessionStatus.Unavailable,
-            };
-            return State = new(status, null, await ReadDetailAsync(response), (int)response.StatusCode);
+            return new(SessionStatus.SignedOut, null, await ReadDetailAsync(response) ?? "Kirish tasdiqlanmadi.", (int)response.StatusCode);
         }
 
-        StoreTokens((await response.Content.ReadFromJsonAsync<TokenResponse>())!);
-        MeResponse? me = null;
+        var state = await CompleteAsync(response);
+        _signIn = Task.FromResult(state);
+        Changed?.Invoke();
+        return state;
+    }
+
+    private async Task<SessionState> CompleteAsync(HttpResponseMessage response)
+    {
+        await StoreTokensAsync((await response.Content.ReadFromJsonAsync<TokenResponse>())!);
+        MeDto? me = null;
         try
         {
-            me = await GetFromJsonAsync<MeResponse>("api/me");
+            me = await GetFromJsonAsync<MeDto>("api/me");
         }
         catch (Exception ex) when (IsNetworkFailure(ex))
         {
@@ -95,6 +132,50 @@ public sealed class SessionService(HttpClient http)
 
         return State = new(SessionStatus.SignedIn, me, null, 200);
     }
+
+    /// <summary>Loads the account again after it changed (name, linked logins, settings).</summary>
+    public async Task<MeDto?> ReloadMeAsync()
+    {
+        var me = await GetAsync<MeDto>("api/me");
+        if (me.Value is { } value)
+        {
+            State = State with { Me = value };
+            Changed?.Invoke();
+        }
+
+        return me.Value;
+    }
+
+    /// <summary>Signs out on every device: the server stops accepting all tokens issued so far (L-13).</summary>
+    public async Task LogoutAsync()
+    {
+        await SendJsonAsync<object>(HttpMethod.Post, "api/auth/logout");
+        await ForgetAsync();
+    }
+
+    /// <summary>Deletes the account on the server (spec §5.3), then forgets it here.</summary>
+    public async Task<ApiResult<object>> DeleteAccountAsync()
+    {
+        var result = await SendJsonAsync<object>(HttpMethod.Delete, "api/me");
+        if (result.Ok)
+        {
+            await ForgetAsync();
+        }
+
+        return result;
+    }
+
+    private async Task ForgetAsync()
+    {
+        _accessToken = null;
+        _refreshToken = null;
+        await browser.StorageRemoveAsync(RefreshKey);
+        State = SignedOut();
+        _signIn = Task.FromResult(State);
+        Changed?.Invoke();
+    }
+
+    private static SessionState SignedOut() => new(SessionStatus.SignedOut, null, null, null);
 
     /// <summary>
     /// A dropped connection (HttpRequestException) or a request that timed out (TaskCanceledException)
@@ -114,6 +195,23 @@ public sealed class SessionService(HttpClient http)
 
     /// <summary>Long operations such as a backup run.</summary>
     public static readonly TimeSpan UploadTimeout = TimeSpan.FromMinutes(10);
+
+    /// <summary>A call that needs no session (the sign-in screen's configuration).</summary>
+    public async Task<ApiResult<T>> GetAnonymousAsync<T>(string uri)
+    {
+        using var cts = new CancellationTokenSource(DefaultTimeout);
+        try
+        {
+            using var response = await http.GetAsync(uri, cts.Token);
+            return response.IsSuccessStatusCode
+                ? new ApiResult<T>(await response.Content.ReadFromJsonAsync<T>(Json, cts.Token), (int)response.StatusCode, null)
+                : new ApiResult<T>(default, (int)response.StatusCode, await ReadDetailAsync(response, cts.Token) ?? "Kutilmagan xato yuz berdi.");
+        }
+        catch (Exception ex) when (IsNetworkFailure(ex))
+        {
+            return new ApiResult<T>(default, 0, "Server bilan aloqa yo‘q. Internetni tekshirib, qayta urinib ko‘ring.");
+        }
+    }
 
     public Task<ApiResult<T>> GetAsync<T>(string uri) =>
         CallAsync<T>(() => new HttpRequestMessage(HttpMethod.Get, uri), DefaultTimeout);
@@ -219,10 +317,15 @@ public sealed class SessionService(HttpClient http)
         var refreshed = await http.PostAsJsonAsync("api/auth/refresh", new { refreshToken = _refreshToken }, ct);
         if (!refreshed.IsSuccessStatusCode)
         {
+            if (refreshed.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                await ForgetAsync(); // signed out elsewhere, deleted, or expired: back to the sign-in screen
+            }
+
             return response;
         }
 
-        StoreTokens((await refreshed.Content.ReadFromJsonAsync<TokenResponse>())!);
+        await StoreTokensAsync((await refreshed.Content.ReadFromJsonAsync<TokenResponse>())!);
         return await http.SendAsync(WithToken(create()), ct);
     }
 
@@ -236,10 +339,11 @@ public sealed class SessionService(HttpClient http)
         return request;
     }
 
-    private void StoreTokens(TokenResponse tokens)
+    private async Task StoreTokensAsync(TokenResponse tokens)
     {
         _accessToken = tokens.AccessToken;
         _refreshToken = tokens.RefreshToken;
+        await browser.StorageSetAsync(RefreshKey, tokens.RefreshToken);
     }
 
     private static async Task<string?> ReadDetailAsync(HttpResponseMessage response, CancellationToken ct = default)

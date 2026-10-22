@@ -85,7 +85,7 @@ public class AiConcurrencyTests
     public async Task Ping_is_rate_limited_and_counts_towards_the_daily_quota()
     {
         var ai = new FakeAiProvider(AiProviderKind.OpenAi);
-        await using var factory = new ApiFactory { AiProviders = [ai] };
+        await using var factory = new ApiFactory { AiProviders = [ai], AdminTelegramIds = [ApiFactory.UserA, ApiFactory.UserB] };
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/ai/ping/OpenAi", null)).StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsync("/api/ai/ping/OpenAi", null)).StatusCode);
@@ -107,7 +107,7 @@ public class AiConcurrencyTests
     public async Task A_known_monthly_budget_stops_billable_calls_before_contacting_the_provider()
     {
         var ai = new FakeAiProvider(AiProviderKind.OpenAi);
-        await using var factory = new ApiFactory { AiProviders = [ai] };
+        await using var factory = new ApiFactory { AiProviders = [ai], AdminTelegramIds = [ApiFactory.UserA, ApiFactory.UserB] };
         ConfigurePrice(factory);
         factory.Settings["Ai:Budget:MonthlyLimitUsd"] = "1";
         factory.Settings["Ai:Budget:HostingMonthlyUsd"] = "1";
@@ -123,7 +123,7 @@ public class AiConcurrencyTests
     public async Task Observed_usage_replaces_the_reservation_and_missing_rates_are_visible()
     {
         var ai = new FakeAiProvider(AiProviderKind.OpenAi);
-        await using var factory = new ApiFactory { AiProviders = [ai] };
+        await using var factory = new ApiFactory { AiProviders = [ai], AdminTelegramIds = [ApiFactory.UserA, ApiFactory.UserB] };
         ConfigurePrice(factory);
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         (await client.PostAsync("/api/ai/ping/OpenAi", null)).EnsureSuccessStatusCode();
@@ -137,7 +137,7 @@ public class AiConcurrencyTests
     public async Task Canceling_a_caller_finishes_the_reservation_without_leaving_pending_usage()
     {
         var ai = new BlockingProvider();
-        await using var factory = new ApiFactory { AiProviders = [ai] };
+        await using var factory = new ApiFactory { AiProviders = [ai], AdminTelegramIds = [ApiFactory.UserA, ApiFactory.UserB] };
         await factory.SignedInClientAsync(ApiFactory.UserA);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
