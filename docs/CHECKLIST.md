@@ -102,7 +102,7 @@ Bosqichlar spec §13 bo‘yicha.
 - Chromium, 360px (Development): Sozlamalar → Kontent → A daraja (2/2 bo‘lim nashrda) → 1-bo‘lim → so‘z tarjimasini tahrirlab saqlash; brauzerdan .xlsx yuklash (40 qator → 39 mos so‘z, 25 + 14 so‘zli yangi bo‘limlar). Gorizontal scroll yo‘q, sahifa xatosi yo‘q.
 
 **Ochiq qoldi:**
-- **Haqiqiy rasmiy fayl sinalmadi**: korean.go.kr bu muhitdan ochilmadi. Johnny `/kontent` da faylni yuklaganda natijani (qatorlar soni, o‘tkazib yuborilganlar, A daraja bo‘limlari soni) tekshirish kerak; ustun nomi boshqacha bo‘lsa — 422 va sabab chiqadi, tuzatish oson.
+- ~~Haqiqiy rasmiy fayl sinalmadi~~ — 3-bosqichda asl fayl bilan sinaldi va 순위siz 68 so‘z uchun tuzatildi (L-27).
 - Haqiqiy AI bilan qoralama sifati sinalmadi (testlar fake provayder bilan); birinchi bo‘limlarni Johnny ko‘rib chiqishi kerak.
 - `Editor` rolini berish yo‘li yo‘q (admin paneli — 7-bosqich); hozircha faqat `Auth:Admins` dagi admin kontent bilan ishlaydi.
 - Bo‘lim qulfi, ochish, kartalar va `LearningItem` — 3-bosqich (L-20); o‘quvchi uchun bo‘limlar sahifasi ham 3-bosqichda.
@@ -118,9 +118,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Sahifalar: Bosh sahifa (bugungi takrorlash + joriy bo‘lim), Bo‘limlar, Bo‘lim (4 qadam: Jadval, Kartochka, Mashqlar, Test — 4-bosqichda), Takrorlash; navigatsiya spec §4.7 (L-25).
 - [x] Jadval/yozma/sinov/qo‘llanish/xatolar daftari "jadval" o‘rniga bo‘lim bilan (L-22).
 - [x] Matnli rasmiy fayl: UTF-16/UTF-8/CP949, bo‘shliq bilan ajratilgan, sarlavhasiz (L-26).
+- [x] **Asl rasmiy fayl bilan sinaldi** (`content/official`, L-27): 5,965 qator to‘liq saqlanadi (68 ta 순위siz so‘z ham), qayta import dublikatsiz, A daraja — 36 bo‘lim, chastota tartibida, `보/의/관` siz.
 
 **Tekshirildi:**
-- `dotnet build` toza; testlar 95 (Domain) + 26 (Application) + 154 (Api) = 275, hammasi o‘tdi; KAT’dan kelgan scheduler va sessiya testlari yashil.
+- `dotnet build` toza; testlar 95 (Domain) + 27 (Application) + 155 (Api) = 277, hammasi o‘tdi; KAT’dan kelgan scheduler va sessiya testlari yashil.
 - Qabul mezonlari testlarda (`Catalog/UnitProgressTests`): yangi foydalanuvchida faqat A-1 ochiq, A-2 so‘zlari, ochilishi va drill’i — 403; bo‘limni bir necha marta (parallel ham) ochish 50 ta karta (25 × 2) beradi; 3-bo‘limdagi foydalanuvchining kunlik takrorlashida 1-bo‘limning muddati kelgan 6 kartasi va faqat 3-bo‘limning yangi so‘zlari chiqadi; bo‘limni o‘tish keyingisini ochadi, boshqa foydalanuvchiga ta’sir qilmaydi; nashrdan keyingi tahrir elementning matni va versiyasini yangilaydi.
 - Chromium, 360px (Development, namuna seed): Bosh sahifa → joriy bo‘lim A-1; Bo‘limlar (A-1 ochiq, A-2 qulflangan, "Avval 1-bo‘limni tugating"); A-1 sahifasi — 25 so‘z jadvalda, so‘z bosilganda misol va tuzoq; Kartochka → 50 kartali drill; Takrorlash tabi. Gorizontal scroll yo‘q; konsolda faqat TTS 503 (dev’da ovoz kaliti yo‘q).
 
@@ -128,7 +129,6 @@ Bosqichlar spec §13 bo‘yicha.
 - Bo‘lim testi va "Bilaman" — 4-bosqich (tugmalar hozir o‘chiq). Hozircha o‘quvchi faqat A-1 da ishlay oladi.
 - "Qaysi so‘z to‘g‘ri?" mashqi hali har foydalanuvchining AI qo‘llanishidan; katalogning tekshirilgan savollariga (`CatalogUsage`) o‘tkazish kerak (spec §3.1: umumiy, bepul) — 4-bosqich test generatori bilan birga.
 - Onboarding (spec §4.1, 2–3 ekran) va "Ilovani o‘rnatish" — 6-bosqich (PWA).
-- Haqiqiy rasmiy `.txt` fayl hali sinalmadi (L-26).
 
 ## Bosqich 4 · Bo‘lim testi va "Bilaman"
 

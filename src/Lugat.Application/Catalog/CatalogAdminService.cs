@@ -120,7 +120,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             (word.UnitId, word.OrderInUnit) = (null, null);
         }
 
-        var place = words.Where(w => w.IsStudyable && w.UnitId is null).OrderBy(w => w.FreqRank).ThenBy(w => w.SourceKey, StringComparer.Ordinal).ToList();
+        var place = words.Where(w => w.IsStudyable && w.UnitId is null).OrderBy(w => w.FreqRank ?? int.MaxValue).ThenBy(w => w.SourceKey, StringComparer.Ordinal).ToList();
         var first = units.Where(u => published.Contains(u.Id)).Select(u => u.Number).DefaultIfEmpty(0).Max() + 1;
         var plan = UnitSplitter.Plan(place, first);
         var drafts = units.Where(u => !published.Contains(u.Id)).ToDictionary(u => u.Number);

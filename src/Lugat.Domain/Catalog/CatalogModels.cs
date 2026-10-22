@@ -52,8 +52,11 @@ public sealed class CatalogWord
 
     public CatalogLevel Level { get; set; }
 
-    /// <summary>Frequency rank (순위): most used first.</summary>
-    public int FreqRank { get; set; }
+    /// <summary>
+    /// Frequency rank (순위): most used first. Null for the 68 words the list gives no rank (mostly proper nouns such
+    /// as 서울, 경주); they come after the ranked words of their level (L-27).
+    /// </summary>
+    public int? FreqRank { get; set; }
 
     /// <summary>False for parts of speech that do not work as cards (보, 의, 관); kept for a later grammar section.</summary>
     public bool IsStudyable { get; set; }
@@ -126,6 +129,8 @@ public static class CatalogPos
         ["의"] = "qaram ot",
         ["보"] = "yordamchi fe’l",
         ["조"] = "ko‘makchi",
+        ["고"] = "atoqli ot",
+        ["불"] = "tasniflanmagan",
     };
 
     /// <summary>"fe’l" for 동, "ot / qaram ot" for 명/의; unknown codes as they are.</summary>

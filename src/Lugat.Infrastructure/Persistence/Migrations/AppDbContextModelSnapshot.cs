@@ -203,7 +203,7 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
-                    b.Property<int>("FreqRank")
+                    b.Property<int?>("FreqRank")
                         .HasColumnType("integer");
 
                     b.Property<string>("Gloss")

@@ -12,7 +12,7 @@ public interface ICatalogFileReader
 }
 
 /// <summary>One row of the official list, as read from the file.</summary>
-public sealed record CatalogRow(int Line, int Rank, string Word, string? Homonym, string Pos, string? Gloss, CatalogLevel Level)
+public sealed record CatalogRow(int Line, int? Rank, string Word, string? Homonym, string Pos, string? Gloss, CatalogLevel Level)
 {
     public string Key => CatalogWord.Key(Level, Word, Homonym, Pos);
 }
@@ -86,9 +86,10 @@ public static partial class CatalogImport
             dataRows++;
             var line = r + 1;
             string? problem = null;
-            if (!int.TryParse(rankText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rankValue) || rankValue <= 0)
+            int? rankValue = int.TryParse(rankText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedRank) ? parsedRank : null;
+            if (rankText is not null && rankValue is not > 0)
             {
-                problem = "순위 son emas";
+                problem = "순위 son emas"; // empty is allowed: the list has words without a rank (L-27)
             }
             else if (wordText is null || WordWithHomonym().Match(wordText) is not { Success: true } m)
             {

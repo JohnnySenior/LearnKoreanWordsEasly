@@ -145,7 +145,7 @@ Spec §2, §5.1, §13.3.
 - **Modellar:** `CatalogWord` (rasmiy maydonlar + kontent + `Status`, `ContentVersion`, `ReviewedBy/At`, `AiProvider/Model`, `SourceKey`), `CatalogUsage` ("Qaysi so‘z to‘g‘ri?" savollari, so‘z bilan birga tekshiriladi), `Unit` (`Level`, `Number` unikal, `Status`, `WordCount`). Katalog umumiy: egasi yo‘q.
 - **Kalit:** `SourceKey = "{daraja}:{so‘z}{omonim}:{품사}"` (spec §2.4: so‘z + omonim + turkum + daraja), unikal indeks. Qayta import faqat chastota o‘rni (`순위`) va izohni (`풀이`) yangilaydi; kontent, tekshiruv holati va bo‘lim o‘zgarmaydi. Faylda yo‘q so‘z o‘chirilmaydi.
 - **Fayl:** ustunlar sarlavha bo‘yicha topiladi (`순위`, `단어`/`어휘`, `품사`, `풀이`, `등급`), shuning uchun tartib va qo‘shimcha ustunlar muhim emas; `가다01` dan omonim raqami ajratiladi. `.xls` (2003) va `.xlsx` — ExcelDataReader 3.9.0 (MIT), matnli versiya — tab yoki vergul bilan, UTF-8 yoki CP949. Yaroqsiz qatorlar sabab bilan o‘tkazib yuboriladi (javobda birinchi 20 tasi).
-- **Haqiqiy fayl sinalmadi:** korean.go.kr bu ishlab chiqish muhitidan ochilmadi (proksi 403). Format ochiq manbalardagi tavsif va spec §2.1 bo‘yicha; sinovlar shu tuzilishdagi 5,965 qatorli fayl bilan. Johnny haqiqiy faylni yuklaganda natija (qatorlar, o‘tkazilganlar) tekshirilishi kerak — CHECKLIST’da ochiq punkt.
+- **Haqiqiy fayl:** avval korean.go.kr ochilmagani uchun tavsif bo‘yicha yozilgan; keyin Johnny asl faylni berdi va u bilan sinaldi (L-27).
 - **Kartaga mos emas:** `보`, `의`, `관` (spec §2.2). Bir nechta turkumli yozuv (`명/의`) — hech bo‘lmasa bittasi mos bo‘lsa, o‘rganiladi.
 - **Turkum** bazada rasmiy kod bilan (`동`, `명`…); o‘zbekcha nomi (`fe’l`, `ot`…) DTO’da `PosUz`. Namuna fayldagi o‘zbekcha turkumlar kodga o‘giriladi (`fe'l` → `동`), shuning uchun keyingi rasmiy import o‘sha so‘zlarni takrorlamaydi.
 - **Apostrof** (spec §2.3): saqlashda `o‘`, `g‘` uchun U+2018, tutuq belgisi uchun U+2019 (`TextNormalizer.Uzbek`); KAT interfeysidagi shakl. Solishtirish avvalgidek `TextNormalizer.Key`.
@@ -217,5 +217,13 @@ Johnny: rasmiy hujjat `.txt` ko‘rinishida. Matnli o‘qish kengaytirildi (L-17
 - Kodlash: BOM bo‘yicha UTF-16 (Excel "Unicode text") yoki UTF-8, aks holda UTF-8, bo‘lmasa CP949.
 - Ajratuvchi: tab, vergul yoki (ikkalasi bo‘lmasa) bo‘shliqlar. Bo‘shliq bilan ajratilganda izohdagi bo‘shliqlar qayta birlashtiriladi, izohi yo‘q qator ham to‘g‘ri o‘qiladi (izoh ustuni turkum va daraja orasida bo‘lsa).
 - Sarlavha bo‘lmasa: qatorlarning ≥ 80% raqam bilan boshlanib A/B/C bilan tugasa, rasmiy tartib (순위 단어 품사 풀이 등급) deb o‘qiladi; aks holda 422.
-- Haqiqiy fayl hali sinalmadi: Johnny’ning birinchi importi natijasi CHECKLIST’da tekshiriladi.
+- Asl fayl (CP949, tab, sarlavhali) bilan sinaldi: L-27.
+
+## L-27 · 2026-10-22 · Asl rasmiy fayl: 순위siz so‘zlar
+
+Johnny asl faylni berdi; repoda `content/official/eohwi-mokrok-2003.txt` (KOGL 1, manbasi `content/official/README.md` da). Format: CP949, tab, sarlavha `순위 단어 품사 풀이 등급`, 5,965 qator (A 982 · B 2,111 · C 2,872). Test (`Catalog/OfficialListTests`) aynan shu fayl bilan.
+- **68 so‘zda 순위 bo‘sh** (63 tasi atoqli ot `고`: 서울, 경주, 경복궁…; qolgani 구십, 깍두기, 그렇게…). Ular ro‘yxatning qismi, tashlanmaydi: `FreqRank` endi ixtiyoriy (migratsiya `OptionalRank`), bo‘lishda daraja ichida chastotali so‘zlardan keyin turadi. Bo‘sh emas, lekin son bo‘lmagan 순위 — avvalgidek xato.
+- **Yangi turkumlar:** `고` (atoqli ot) va `불` (tasniflanmagan: 걔, 그래서, 이렇게 — so‘zlashuv shakllari). Ikkalasi kartaga mos (spec §2.2 faqat `보/의/관` ni chiqaradi); o‘zbekcha nomlari qo‘shildi.
+- Bir xil yozilgan omonimlar haqiqatda bor (A: `가다01 동` va `가다01 보`) — alohida yozuv, yordamchisi kartaga kirmaydi (spec §2.2).
+- **Natija:** kartaga mos so‘zlar A 904 → **36 bo‘lim** (oxirgisi 29 so‘z; spec’dagi "≈ 33" taxmin edi), B 2,043 → 82, C 2,786 → 112.
 

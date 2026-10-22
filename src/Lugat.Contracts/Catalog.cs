@@ -98,7 +98,7 @@ public sealed record CatalogWordAdminDto(
     string Pos,
     string PosUz,
     string? Gloss,
-    int FreqRank,
+    int? FreqRank,
     string? TranslationUz,
     string? Romanization,
     string? ExampleKo,

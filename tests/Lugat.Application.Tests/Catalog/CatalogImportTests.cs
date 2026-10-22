@@ -37,6 +37,16 @@ public class CatalogImportTests
     }
 
     [Fact]
+    public void A_word_without_a_rank_is_kept()
+    {
+        // The official list has 68 such words, mostly proper nouns (고).
+        var rows = CatalogImport.Parse(Sheet(["순위", "단어", "품사", "풀이", "등급"], ["", "서울", "고", null, "A"]));
+
+        Assert.Equal(("서울", null, "고"), (rows.Rows.Single().Word, rows.Rows[0].Rank, rows.Rows[0].Pos));
+        Assert.Empty(rows.Problems);
+    }
+
+    [Fact]
     public void A_file_without_the_columns_is_refused() =>
         Assert.Throws<ValidationException>(() => CatalogImport.Parse(Sheet(["No", "Word"], ["1", "가다"])));
 
@@ -85,7 +95,7 @@ public class CatalogImportTests
     {
         var rows = ReadText("순위\t단어\t품사\t풀이\t등급\r\n2\t하다01\t동\t\tA\r\n", System.Text.Encoding.Unicode, bom: true);
 
-        Assert.Equal(("하다", 2, CatalogLevel.A), (rows.Rows.Single().Word, rows.Rows[0].Rank, rows.Rows[0].Level));
+        Assert.Equal(("하다", (int?)2, CatalogLevel.A), (rows.Rows.Single().Word, rows.Rows[0].Rank, rows.Rows[0].Level));
     }
 
     [Fact]
