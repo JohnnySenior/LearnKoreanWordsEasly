@@ -307,7 +307,8 @@ public class CatalogTests
         await using var factory = NewFactory();
         var admin = await factory.SignedInClientAsync(ApiFactory.UserA);
 
-        var noHeader = await admin.PostAsync("/api/admin/catalog/import", CatalogFiles.Upload(CatalogFiles.Xlsx(SmallList(), ["No", "Word", "Pos", "Gloss", "Level"]), "a.xlsx"));
+        // Neither the official header nor rows in the official order (a rank first, A/B/C last).
+        var noHeader = await admin.PostAsync("/api/admin/catalog/import", CatalogFiles.Upload("Word\tMeaning\n가다\tbormoq\n"u8.ToArray(), "a.txt"));
         var notExcel = await admin.PostAsync("/api/admin/catalog/import", CatalogFiles.Upload("garbage"u8.ToArray(), "a.xlsx"));
         var pdf = await admin.PostAsync("/api/admin/catalog/import", CatalogFiles.Upload([1, 2, 3], "a.pdf"));
         var someBad = await ImportAsync(admin, CatalogFiles.Xlsx([.. SmallList().Take(3), new(0, "가다", "동", null, "A"), new(7, "나다", "동", null, "D"), SmallList()[0]]), "b.xlsx");

@@ -40,7 +40,7 @@ public class AiConcurrencyTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
         var target = (await client.GetFromJsonAsync<SentenceTargetDto>("/api/practice/target", Json))!;
-        return (client, target.WordSenseId);
+        return (client, target.LearningItemId);
     }
 
     [Fact]

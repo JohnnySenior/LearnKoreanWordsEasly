@@ -52,7 +52,7 @@
     <section class="card" id="@($"w-{word.Id}")">
         <div class="row-between">
             <span><span class="muted small-text">@word.Order.</span> <strong class="ko" lang="ko">@word.Word</strong><sup class="muted">@word.Homonym</sup>
-                <span class="muted small-text">@word.PosUz · №@word.FreqRank@(word.Gloss is null ? "" : $" · {word.Gloss}")</span></span>
+                <span class="muted small-text">@word.PosUz @(word.FreqRank is { } rank ? $"· №{rank}" : "· ro‘yxatda o‘rni yo‘q")@(word.Gloss is null ? "" : $" · {word.Gloss}")</span></span>
             <span class="pill @(word.Status == CatalogWordStatus.Reviewed ? "pill-ok" : "pill-warn")">@(word.Status == CatalogWordStatus.Reviewed ? "Tekshirildi" : "Qoralama")</span>
         </div>
         <label class="field">Tarjima (1–3 ma’no, «;» bilan)<input class="input" maxlength="300" @bind="edit.TranslationUz" /></label>

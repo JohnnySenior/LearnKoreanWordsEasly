@@ -1,4 +1,5 @@
 @page "/mashq/kartochka"
+@page "/takrorlash"
 @using System.Text.Json
 @using Lugat.Contracts
 @using Lugat.Domain.Learning
@@ -23,8 +24,12 @@ else if (_session is null)
     {
         <div class="notice" role="alert">@_error</div>
     }
-    <p class="muted">Hozir faol mashg‘ulot yo‘q.</p>
-    <a class="button primary" href="">Bugungi rejaga o‘tish</a>
+    <p class="muted">Hozir faol mashg‘ulot yo‘q. Takrorlash barcha ochilgan bo‘limlarning vaqti kelgan kartalarini oladi, yangi so‘zlar esa joriy bo‘limdan.</p>
+    <button class="button primary block" disabled="@_busy" @onclick="StartReviewAsync">Takrorlashni boshlash</button>
+    @if (_startMessage is not null)
+    {
+        <p role="status" style="margin-top:8px">@_startMessage</p>
+    }
 }
 else if (_session.Current is not { } card)
 {
@@ -65,7 +70,10 @@ else
     <section class="flashcard" aria-live="polite">
         <div class="tags">
             <span class="pill @(card.Kind == SessionItemKind.New ? "pill-accent" : "")">@Format.Kind(card.Kind)</span>
-            <span class="pill">@card.TableNumber-jadval</span>
+            @if (card.Unit is not null)
+            {
+                <span class="pill">@card.Unit-bo‘lim</span>
+            }
         </div>
         <span class="kicker">@(card.Direction == ReviewDirection.KoreanToUzbek ? "Ma’nosini eslang" : "Koreyschasini eslang")</span>
         @if (card.Direction == ReviewDirection.KoreanToUzbek)
@@ -169,6 +177,22 @@ else
     private sealed record StoredAnswer(Guid SessionId, AnswerRequest Request);
 
     private Guid? _pendingSessionId;
+
+    private string? _startMessage;
+
+    /// <summary>"Takrorlash" (spec §4.6): plans a 20-minute review, or says there is nothing due yet.</summary>
+    private async Task StartReviewAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(20, false));
+        _busy = false;
+        _startMessage = result.Value?.Session is null ? result.Value?.Message ?? result.Error : null;
+        if (result.Value?.Session is { } session)
+        {
+            _session = session;
+            ShowCard();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

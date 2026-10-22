@@ -59,7 +59,7 @@ public class UsageTests
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
-        const string url = "/api/vocabulary/tables/1/usage";
+        var url = $"/api/vocabulary/units/{ApiFactory.Unit(1)}/usage";
 
         var before = (await client.GetFromJsonAsync<TableUsageDto>(url, Json))!;
         var prepared = (await (await client.PostAsync(url, null)).Content.ReadFromJsonAsync<TableUsageDto>(Json))!;
@@ -79,7 +79,7 @@ public class UsageTests
         Assert.Equal((6, 6, 6), (summary[0].Total, summary[0].Ready, summary[0].Questions));
 
         // The trap also shows on the card's answer side.
-        var start = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, 1), Json);
+        var start = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, ApiFactory.Unit(1)), Json);
         var session = (await start.Content.ReadFromJsonAsync<StartSessionResponse>(Json))!.Session!;
         Assert.Equal(session.Current!.Prompt == "열다" || session.Current.Answer == "열다", session.Current.UsageTrap is not null);
     }
@@ -91,7 +91,7 @@ public class UsageTests
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
-        const string url = "/api/vocabulary/tables/1/usage";
+        var url = $"/api/vocabulary/units/{ApiFactory.Unit(1)}/usage";
 
         var first = (await (await client.PostAsync(url, null)).Content.ReadFromJsonAsync<TableUsageDto>(Json))!;
         _ai.Answer = _ => "not json";
@@ -116,10 +116,10 @@ public class UsageTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
 
-        var tooEarly = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10, Usage: true), Json);
-        await client.PostAsync("/api/vocabulary/tables/1/usage", null);
+        var tooEarly = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 10, Usage: true), Json);
+        await client.PostAsync($"/api/vocabulary/units/{ApiFactory.Unit(1)}/usage", null);
         var calls = _ai.Requests.Count;
-        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10, Usage: true), Json);
+        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 10, Usage: true), Json);
         var test = (await response.Content.ReadFromJsonAsync<TestDto>(Json))!;
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, tooEarly.StatusCode);

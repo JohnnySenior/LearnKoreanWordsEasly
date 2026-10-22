@@ -30,10 +30,10 @@ public sealed class MistakeService(IAppDbContext db, TimeProvider time)
         // Cards: "Eslay olmadim" is a mistake; a technical error is not a result at all (SRS04).
         var reviews = await db.ReviewEvents
             .Where(e => e.OwnerId == ownerId && e.UndoneAt == null && e.OccurredAt >= since && e.Answer != ReviewAnswer.TechnicalError)
-            .Select(e => new { e.WordSenseId, e.OccurredAt, e.Answer })
+            .Select(e => new { e.LearningItemId, e.OccurredAt, e.Answer })
             .AsNoTracking()
             .ToListAsync(ct);
-        words.AddRange(reviews.Select(e => new Result(e.WordSenseId, e.OccurredAt, e.Answer != ReviewAnswer.Forgot, "kartochka")));
+        words.AddRange(reviews.Select(e => new Result(e.LearningItemId, e.OccurredAt, e.Answer != ReviewAnswer.Forgot, "kartochka")));
 
         // Tests: wrong answers (unanswered ones too, as in the score); oral technical failures are left out (D-38).
         var runs = await db.TestRuns
@@ -53,7 +53,7 @@ public sealed class MistakeService(IAppDbContext db, TimeProvider time)
 
                 var at = a?.AnsweredAt ?? run.FinishedAt!.Value;
                 var ok = a?.IsCorrect ?? false;
-                if (q.WordSenseId is { } sense)
+                if (q.LearningItemId is { } sense)
                 {
                     words.Add(new Result(sense, at, ok, q.Kind switch
                     {
@@ -75,7 +75,7 @@ public sealed class MistakeService(IAppDbContext db, TimeProvider time)
             foreach (var a in ladder.Answers.Where(a => a.Step == Domain.Ladder.LadderStep.Translate))
             {
                 var item = ladder.Items.Single(i => i.Index == a.Index);
-                if (item.WordSenseId is { } sense)
+                if (item.LearningItemId is { } sense)
                 {
                     words.Add(new Result(sense, a.AnsweredAt, a.IsCorrect, "zinapoya"));
                 }
@@ -85,10 +85,10 @@ public sealed class MistakeService(IAppDbContext db, TimeProvider time)
         // Writing practice: a wrong word is a mistake; a spelling slip or a synonym is not.
         var writing = await db.WritingAttempts
             .Where(w => w.OwnerId == ownerId && w.CreatedAt >= since)
-            .Select(w => new { w.WordSenseId, w.CreatedAt, w.Verdict })
+            .Select(w => new { w.LearningItemId, w.CreatedAt, w.Verdict })
             .AsNoTracking()
             .ToListAsync(ct);
-        words.AddRange(writing.Select(w => new Result(w.WordSenseId, w.CreatedAt, w.Verdict != WritingVerdict.Wrong, "yozma")));
+        words.AddRange(writing.Select(w => new Result(w.LearningItemId, w.CreatedAt, w.Verdict != WritingVerdict.Wrong, "yozma")));
 
         // Listening (D-53): wrong answers, newest first; a question has no word of its own.
         var listening = (await db.ListeningSets.Where(l => l.OwnerId == ownerId && l.CreatedAt >= since).AsNoTracking().ToListAsync(ct))
@@ -99,13 +99,15 @@ public sealed class MistakeService(IAppDbContext db, TimeProvider time)
 
         var wordFolds = Fold(words);
         var senseIds = wordFolds.Select(f => f.Id).ToList();
-        var senses = await db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive && senseIds.Contains(s.Id))
+        var senses = await Study.LearnerItems.Of(db, ownerId).Where(s => senseIds.Contains(s.Id))
             .AsNoTracking().ToDictionaryAsync(s => s.Id, ct);
 
+        var units = await Study.LearnerItems.UnitLabelsAsync(db, senses.Values.Select(s => s.UnitId), ct);
         return new MistakesDto(
             days,
             wordFolds.Where(f => senses.ContainsKey(f.Id)).Take(MaxItems)
-                .Select(f => new MistakeWordDto(f.Id, senses[f.Id].Korean, senses[f.Id].Uzbek, senses[f.Id].TableNumber, f.Mistakes, f.LastMistakeAt, f.Sources, f.Improving))
+                .Select(f => new MistakeWordDto(f.Id, senses[f.Id].Korean, senses[f.Id].Uzbek,
+                    senses[f.Id].UnitId is { } u ? units.GetValueOrDefault(u) : null, f.Mistakes, f.LastMistakeAt, f.Sources, f.Improving))
                 .ToList(),
             listening);
     }

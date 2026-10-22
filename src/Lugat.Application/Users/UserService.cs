@@ -189,7 +189,8 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         await db.TrapNotes.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.ListeningSets.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.ReminderDeliveries.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
-        await db.WordSenses.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
+        await db.UnitProgress.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.LearningItems.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct); // personal words only; catalog items are shared
         await db.UserLogins.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
 
         var user = await db.Users.SingleAsync(u => u.Id == userId, ct);

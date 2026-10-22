@@ -6,14 +6,38 @@ namespace Lugat.Contracts;
 
 public sealed record LevelDto(CatalogLevel Level, string Title, int PublishedUnits, int ComingSoonUnits);
 
-public sealed record UnitSummaryDto(Guid Id, CatalogLevel Level, int Number, int WordCount);
+public enum UnitState
+{
+    /// <summary>Not open yet: its words are not available (spec §4.2).</summary>
+    Locked,
+    Open,
+    Passed,
+}
+
+/// <param name="Label">"A-3".</param>
+/// <param name="Started">Words with a card past "new" (spec §4.2 "12/25 boshlangan").</param>
+/// <param name="Themes">The unit's most common theme tags, at most 3.</param>
+public sealed record UnitSummaryDto(
+    Guid Id,
+    CatalogLevel Level,
+    int Number,
+    string Label,
+    int WordCount,
+    UnitState State,
+    int Started,
+    int? BestScorePercent,
+    IReadOnlyList<string> Themes);
 
 /// <param name="ComingSoon">Units of the level that are still being prepared.</param>
 public sealed record LevelUnitsDto(CatalogLevel Level, string Title, IReadOnlyList<UnitSummaryDto> Units, int ComingSoon);
 
 /// <param name="PosUz">The part of speech in Uzbek, e.g. "fe’l".</param>
+/// <param name="LearningItemId">What the word's cards and practice refer to.</param>
+/// <param name="Started">The learner has rated one of its cards.</param>
 public sealed record CatalogWordDto(
     Guid Id,
+    Guid LearningItemId,
+    bool Started,
     int Order,
     string Word,
     string? Homonym,
@@ -27,7 +51,8 @@ public sealed record CatalogWordDto(
     string? Theme,
     string Source);
 
-public sealed record UnitDto(Guid Id, CatalogLevel Level, int Number, IReadOnlyList<CatalogWordDto> Words);
+/// <param name="CardsReady">The learner started the unit: its cards exist (spec §5.3).</param>
+public sealed record UnitDto(UnitSummaryDto Unit, bool CardsReady, IReadOnlyList<CatalogWordDto> Words);
 
 // Content work (spec §2.4, §10): editors and admins.
 
@@ -73,7 +98,7 @@ public sealed record CatalogWordAdminDto(
     string Pos,
     string PosUz,
     string? Gloss,
-    int FreqRank,
+    int? FreqRank,
     string? TranslationUz,
     string? Romanization,
     string? ExampleKo,

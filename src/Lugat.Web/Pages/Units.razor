@@ -1,0 +1,124 @@
+@page "/bolimlar"
+@using Lugat.Contracts
+@using Lugat.Domain.Catalog
+@inject SessionService Api
+
+<PageTitle>Bo‘limlar — Lug‘at</PageTitle>
+
+@* The units of a level (spec §4.2): locked, open with progress, passed with the best score. What is open is decided
+   by the server only. *@
+<h1>Bo‘limlar</h1>
+
+@if (_levels is not null)
+{
+    <div class="seg" role="tablist" aria-label="Daraja">
+        @foreach (var l in _levels)
+        {
+            var level = l.Level;
+            <button class="@(_level == level ? "selected" : "")" role="tab" aria-selected="@(_level == level)" @onclick="() => SelectAsync(level)">
+                @level@(l.PublishedUnits == 0 ? " · tez orada" : "")
+            </button>
+        }
+    </div>
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert" style="margin-top:12px">@_error <button class="button small" @onclick="LoadAsync">Qayta urinish</button></div>
+}
+else if (_units is null)
+{
+    <p class="muted" style="margin-top:16px">Yuklanmoqda…</p>
+}
+else
+{
+    <p class="muted small-text" style="margin-top:8px">@_units.Title · eng ko‘p ishlatiladigan so‘zlar birinchi, har bo‘limda 25 tadan</p>
+    @if (_units.Units.Count == 0)
+    {
+        <p class="muted">Bu darajaning bo‘limlari tez orada chiqadi.</p>
+    }
+    else
+    {
+        <nav class="menu compact unit-list">
+            @foreach (var u in _units.Units)
+            {
+                var unit = u;
+                @if (u.State == UnitState.Locked)
+                {
+                    <button class="unit-row locked" aria-expanded="@(_tapped == u.Id)" @onclick="() => _tapped = _tapped == unit.Id ? null : unit.Id">
+                        <span>
+                            <span class="t">@u.Number-bo‘lim</span>
+                            <span class="s">@u.WordCount ta so‘z@(Themes(u))</span>
+                        </span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Qulflangan"><rect x="5" y="11" width="14" height="10" rx="1" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                    </button>
+                    @if (_tapped == u.Id)
+                    {
+                        <div class="unit-locked-note" role="status">
+                            <p>Avval @(u.Number - 1)-bo‘limni tugating.</p>
+                            @if (u.Id == NextLocked)
+                            {
+                                @* "Bilaman — testni topshirish" (spec §4.5) comes with the unit test in stage 4. *@
+                                <button class="button small" disabled>Bilaman — testni topshirish</button>
+                                <p class="muted small-text">Bo‘lim testi bilan birga qo‘shiladi.</p>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <a href="@($"bolimlar/{u.Id}")">
+                        <span>
+                            <span class="t">@u.Number-bo‘lim</span>
+                            <span class="s">@(u.State == UnitState.Passed ? $"Tugallangan{(u.BestScorePercent is { } best ? $" · {best}%" : "")}" : $"{u.Started}/{u.WordCount} boshlangan")@(Themes(u))</span>
+                        </span>
+                        @if (u.State == UnitState.Passed)
+                        {
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-label="Tugallangan"><path d="m5 12 5 5 9-10" /></svg>
+                        }
+                        else
+                        {
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                        }
+                    </a>
+                }
+            }
+        </nav>
+    }
+    @if (_units.ComingSoon > 0)
+    {
+        <p class="muted small-text">Yana @_units.ComingSoon ta bo‘lim tez orada.</p>
+    }
+    <p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1-tur).</p>
+}
+
+@code {
+    private IReadOnlyList<LevelDto>? _levels;
+    private CatalogLevel _level = CatalogLevel.A;
+    private LevelUnitsDto? _units;
+    private Guid? _tapped;
+    private string? _error;
+
+    /// <summary>Only the first locked unit can be skipped with a test (spec §4.5).</summary>
+    private Guid? NextLocked => _units?.Units.FirstOrDefault(u => u.State == UnitState.Locked)?.Id;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task SelectAsync(CatalogLevel level)
+    {
+        _level = level;
+        _units = null;
+        _tapped = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _levels ??= (await Api.GetAsync<List<LevelDto>>("api/levels")).Value;
+        var result = await Api.GetAsync<LevelUnitsDto>($"api/levels/{_level}/units");
+        _error = result.Ok ? null : result.Error;
+        _units = result.Value;
+    }
+
+    private static string Themes(UnitSummaryDto u) => u.Themes.Count == 0 ? "" : " · " + string.Join(" · ", u.Themes);
+}

@@ -12,12 +12,12 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
 {
     private const string Blank = TestService.Blank;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    public sealed record Planned(int Slot, TestQuestionKind Kind, WordSense Word);
+    public sealed record Planned(int Slot, TestQuestionKind Kind, LearningItem Word);
 
     /// <summary>
     /// Mixes question types (TEST01): meaning/Korean choice and gap sentences (choice and typed).
     /// </summary>
-    public static List<Planned> Plan(List<WordSense> words, int count)
+    public static List<Planned> Plan(List<LearningItem> words, int count)
     {
         TestQuestionKind[] wordKinds = [TestQuestionKind.WordMeaning, TestQuestionKind.WordCloze, TestQuestionKind.WordKorean, TestQuestionKind.WordClozeTyped];
 
@@ -47,7 +47,7 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         _ => kind,
     };
 
-    public static TestQuestion? Local(int index, Planned p, List<WordSense> words)
+    public static TestQuestion? Local(int index, Planned p, List<LearningItem> words)
     {
         var w = p.Word;
         switch (p.Kind)
@@ -69,7 +69,7 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         }
     }
 
-    public static string KoreanWithNote(WordSense w) => w.KoreanNote is null ? w.Korean : $"{w.Korean} {w.KoreanNote}";
+    public static string KoreanWithNote(LearningItem w) => w.KoreanNote is null ? w.Korean : $"{w.Korean} {w.KoreanNote}";
 
     /// <summary>The right answer and three different wrong ones, shuffled; null when there are not enough.</summary>
     private static List<string>? Options(string correct, IEnumerable<string> others, Func<string, string> normalize)
@@ -103,7 +103,7 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
     public sealed record GapItem(int Id, string? Sentence, string? TranslationUz, string? Answer, List<string>? Options, string? ExplanationUz);
 
     public async Task<(Dictionary<int, Gap> Gaps, string? Provider, string? Warning)> AskForGapsAsync(
-        Guid ownerId, List<Planned> tasks, List<WordSense> words, CancellationToken ct)
+        Guid ownerId, List<Planned> tasks, List<LearningItem> words, CancellationToken ct)
     {
         if (tasks.Count == 0)
         {
@@ -125,7 +125,7 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         }
     }
 
-    private static AiJsonRequest BuildRequest(List<Planned> tasks, List<WordSense> words)
+    private static AiJsonRequest BuildRequest(List<Planned> tasks, List<LearningItem> words)
     {
         var lines = tasks.Select(t =>
             $"{t.Slot}. {(t.Kind == TestQuestionKind.WordClozeTyped ? "word_typed" : "word_choice")} | word: {KoreanWithNote(t.Word)} | meaning: {t.Word.Uzbek}");

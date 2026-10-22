@@ -232,7 +232,7 @@ public class LadderTests
 
         // One sentence of the learner's own with a real error and an optional suggestion.
         var target = (await client.GetFromJsonAsync<SentenceTargetDto>("/api/practice/target", Json))!;
-        (await client.PostAsJsonAsync("/api/practice/check", new SentenceCheckRequest(Guid.NewGuid(), target.WordSenseId, "내일 학교에서 가요."), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/practice/check", new SentenceCheckRequest(Guid.NewGuid(), target.LearningItemId, "내일 학교에서 가요."), Json)).EnsureSuccessStatusCode();
 
         var weak = (await client.GetFromJsonAsync<WeakPointsDto>("/api/weak-points?days=7", Json))!;
         var badWindow = await client.GetAsync("/api/weak-points?days=5");

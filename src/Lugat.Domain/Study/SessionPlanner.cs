@@ -6,7 +6,7 @@ namespace Lugat.Domain.Study;
 /// <param name="InFocus">Belongs to the words in focus: the table being drilled.</param>
 public sealed record PlanCandidate(
     Guid CardId,
-    Guid WordSenseId,
+    Guid LearningItemId,
     ReviewDirection Direction,
     LearningState State,
     bool InFocus,
@@ -75,7 +75,7 @@ public static class SessionPlanner
 
         var newSenses = candidates
             .Where(c => c.State.Phase == LearningPhase.New && (c.InFocus || !request.NewOnlyFromFocus))
-            .GroupBy(c => c.WordSenseId)
+            .GroupBy(c => c.LearningItemId)
             .OrderBy(g => g.Min(c => c.InFocus ? 0 : 1))
             .ThenBy(g => g.Min(c => c.Order))
             .Select(g => g.OrderBy(c => c.Direction).ToList())
@@ -142,7 +142,7 @@ public static class SessionPlanner
         return take;
     }
 
-    private static SessionItem Item(PlanCandidate c, SessionItemKind kind) => new(c.CardId, c.WordSenseId, c.Direction, kind);
+    private static SessionItem Item(PlanCandidate c, SessionItemKind kind) => new(c.CardId, c.LearningItemId, c.Direction, kind);
 
     /// <summary>
     /// Makes sure the two directions of a word never follow each other (spec SRS03). For each clash the later item
@@ -155,14 +155,14 @@ public static class SessionPlanner
         var result = items.ToList();
         for (var i = 1; i < result.Count; i++)
         {
-            if (result[i].WordSenseId != result[i - 1].WordSenseId)
+            if (result[i].LearningItemId != result[i - 1].LearningItemId)
             {
                 continue;
             }
 
             var later = result[i];
             result.RemoveAt(i);
-            var down = FindSlot(result, later.WordSenseId, from: i, to: result.Count);
+            var down = FindSlot(result, later.LearningItemId, from: i, to: result.Count);
             if (down >= 0)
             {
                 result.Insert(down, later);
@@ -173,7 +173,7 @@ public static class SessionPlanner
             result.Insert(i, later);
             var earlier = result[i - 1];
             result.RemoveAt(i - 1);
-            var up = FindSlot(result, earlier.WordSenseId, from: 0, to: i - 2);
+            var up = FindSlot(result, earlier.LearningItemId, from: 0, to: i - 2);
             if (up >= 0)
             {
                 result.Insert(up, earlier);
@@ -192,8 +192,8 @@ public static class SessionPlanner
     {
         for (var p = Math.Max(0, from); p <= Math.Min(to, list.Count); p++)
         {
-            var prevOk = p == 0 || list[p - 1].WordSenseId != sense;
-            var nextOk = p == list.Count || list[p].WordSenseId != sense;
+            var prevOk = p == 0 || list[p - 1].LearningItemId != sense;
+            var nextOk = p == list.Count || list[p].LearningItemId != sense;
             if (prevOk && nextOk)
             {
                 return p;

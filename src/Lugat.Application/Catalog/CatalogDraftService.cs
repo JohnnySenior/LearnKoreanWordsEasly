@@ -55,7 +55,7 @@ public sealed class CatalogDraftService(IAppDbContext db, AiGateway ai, TimeProv
                     && db.Units.Any(u => u.Id == w.UnitId && u.Number <= unit.Number)))
                 .Select(w => new { w.Word, w.Level, w.FreqRank })
                 .ToListAsync(ct))
-            .OrderBy(w => w.Level).ThenBy(w => w.FreqRank)
+            .OrderBy(w => w.Level).ThenBy(w => w.FreqRank ?? int.MaxValue)
             .Select(w => w.Word).Distinct().Take(MaxKnownWords).ToList();
         var result = await ai.CompleteJsonAsync(editorId, BuildRequest(unit.Level, missing, known), ct);
         var drafts = Parse(result.Response.Json, missing);

@@ -49,8 +49,8 @@ public static class AiEndpoints
         });
 
         var practice = app.MapGroup("/api/practice").RequireAuthorization();
-        practice.MapGet("/target", (Guid? wordSenseId, ClaimsPrincipal user, SentenceCheckService s, CancellationToken ct) =>
-            s.TargetAsync(user.GetUserId(), wordSenseId, ct));
+        practice.MapGet("/target", (Guid? learningItemId, ClaimsPrincipal user, SentenceCheckService s, CancellationToken ct) =>
+            s.TargetAsync(user.GetUserId(), learningItemId, ct));
         practice.MapPost("/check", (SentenceCheckRequest body, ClaimsPrincipal user, SentenceCheckService s, CancellationToken ct) =>
             s.CheckAsync(user.GetUserId(), body, ct));
 

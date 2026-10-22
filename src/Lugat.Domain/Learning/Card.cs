@@ -10,7 +10,7 @@ public sealed class Card
 
     public Guid OwnerId { get; set; }
 
-    public Guid WordSenseId { get; set; }
+    public Guid LearningItemId { get; set; }
 
     public ReviewDirection Direction { get; set; }
 
@@ -82,7 +82,7 @@ public sealed class ReviewEvent
 
     public Guid CardId { get; set; }
 
-    public Guid WordSenseId { get; set; }
+    public Guid LearningItemId { get; set; }
 
     public ReviewDirection Direction { get; set; }
 

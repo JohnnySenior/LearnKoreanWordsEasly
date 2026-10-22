@@ -26,13 +26,22 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
 
     public async Task<TestOptionsDto> OptionsAsync(Guid ownerId, CancellationToken ct)
     {
-        var tables = await db.WordSenses
-            .Where(s => s.OwnerId == ownerId && s.IsActive)
-            .GroupBy(s => s.TableNumber)
-            .OrderBy(g => g.Key)
-            .Select(g => new TestTableOptionDto(g.Key, g.Count()))
+        var units = await Study.LearnerItems.Of(db, ownerId)
+            .Where(s => s.UnitId != null)
+            .GroupBy(s => s.UnitId!.Value)
+            .Select(g => new { UnitId = g.Key, Order = g.Min(s => s.Order), Words = g.Count() })
             .ToListAsync(ct);
-        return new TestOptionsDto(tables);
+        var labels = await Study.LearnerItems.UnitLabelsAsync(db, units.Select(u => (Guid?)u.UnitId), ct);
+        return new TestOptionsDto(units.OrderBy(u => u.Order)
+            .Select(u => new TestTableOptionDto(u.UnitId, labels.GetValueOrDefault(u.UnitId, "—"), u.Words)).ToList());
+    }
+
+    /// <summary>"A-1, A-2" for up to three units, otherwise "5 ta bo‘lim".</summary>
+    private async Task<string> UnitTitleAsync(IEnumerable<LearningItem> words, CancellationToken ct)
+    {
+        var ordered = words.Where(w => w.UnitId is not null).GroupBy(w => w.UnitId).OrderBy(g => g.Min(w => w.Order)).Select(g => g.Key).ToList();
+        var labels = await Study.LearnerItems.UnitLabelsAsync(db, ordered, ct);
+        return ordered.Count <= 3 ? string.Join(", ", ordered.Select(u => labels.GetValueOrDefault(u!.Value, "—"))) + "-bo‘lim" : $"{ordered.Count} ta bo‘lim";
     }
 
     /// <summary>How many tests the history shows (newest first).</summary>
@@ -187,10 +196,10 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
     private async Task<TestRun> BuildUsageAsync(Guid ownerId, CreateTestRequest request, CancellationToken ct)
     {
         var count = Counts.Contains(request.Count) ? request.Count : Counts[0];
-        var all = await usage.QuestionsAsync(ownerId, request.TableNumbers?.ToList(), ct);
+        var all = await usage.QuestionsAsync(ownerId, request.UnitIds?.ToList(), ct);
         if (all.Count == 0)
         {
-            throw new ValidationException("Bu jadvallar uchun qo‘llanish hali tayyorlanmagan. Mashq → So‘z qo‘llanishi sahifasida tayyorlang.");
+            throw new ValidationException("Bu bo‘limlar uchun qo‘llanish hali tayyorlanmagan. Mashq → So‘z qo‘llanishi sahifasida tayyorlang.");
         }
 
         var chosen = all.GroupBy(x => x.Word.Id)
@@ -213,10 +222,10 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
                 x.Word.Id,
                 true))
             .ToList();
-        var tables = chosen.Select(x => x.Word.TableNumber).Distinct().Order().ToList();
+        var tables = await UnitTitleAsync(chosen.Select(x => x.Word), ct);
         return new TestRun
         {
-            Title = $"Qo‘llanish · {(tables.Count <= 3 ? string.Join(", ", tables) + "-jadval" : $"{tables.Count} ta jadval")}",
+            Title = $"Qo‘llanish · {tables}",
             Questions = questions,
         };
     }
@@ -232,16 +241,16 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
             throw new ValidationException("Og‘zaki sinov 20 ta savol yoki barcha so‘zlar bo‘lsin.");
         }
 
-        var tables = (request.TableNumbers ?? []).Distinct().Order().ToList();
+        var tables = (request.UnitIds ?? []).Distinct().ToList();
         if (tables.Count == 0)
         {
-            throw new ValidationException("Og‘zaki sinov uchun jadval tanlang.");
+            throw new ValidationException("Og‘zaki sinov uchun bo‘lim tanlang.");
         }
 
-        var words = await db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive && tables.Contains(s.TableNumber)).ToListAsync(ct);
+        var words = await Study.LearnerItems.Of(db, ownerId).Where(s => s.UnitId != null && tables.Contains(s.UnitId.Value)).ToListAsync(ct);
         if (words.Count == 0)
         {
-            throw new ValidationException("Tanlangan jadvallarda so‘z yo‘q.");
+            throw new ValidationException("Tanlangan bo‘limlarda so‘z yo‘q.");
         }
 
         var chosen = Shuffle(words);
@@ -258,7 +267,7 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
         questions = Shuffle(questions).Select((q, i) => q with { Index = i }).ToList();
         return new TestRun
         {
-            Title = $"Og‘zaki tayyorlik · {string.Join(", ", tables)}-jadval",
+            Title = $"Og‘zaki tayyorlik · {await UnitTitleAsync(words, ct)}",
             Questions = questions,
         };
     }
@@ -324,16 +333,16 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
             throw new ValidationException("Savollar soni 10, 20 yoki 30 bo‘lsin.");
         }
 
-        var tables = (request.TableNumbers ?? []).Distinct().Order().ToList();
+        var tables = (request.UnitIds ?? []).Distinct().ToList();
         if (tables.Count == 0)
         {
-            throw new ValidationException("Sinov uchun jadval tanlang.");
+            throw new ValidationException("Sinov uchun bo‘lim tanlang.");
         }
 
-        var words = await db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive && tables.Contains(s.TableNumber)).ToListAsync(ct);
+        var words = await Study.LearnerItems.Of(db, ownerId).Where(s => s.UnitId != null && tables.Contains(s.UnitId.Value)).ToListAsync(ct);
         if (words.Count < 4)
         {
-            throw new ValidationException("Tanlangan jadvallarda kamida 4 ta so‘z bo‘lishi kerak.");
+            throw new ValidationException("Tanlangan bo‘limlarda kamida 4 ta so‘z bo‘lishi kerak.");
         }
 
         var plan = Plan(words, request.Count);
@@ -358,7 +367,7 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
             throw new ValidationException("Savol tuzib bo‘lmadi: variantlar uchun kamida 4 ta so‘z kerak.");
         }
 
-        return new TestRun { Title = $"{string.Join(", ", tables)}-jadval", Questions = questions, Provider = provider, Warning = warning };
+        return new TestRun { Title = await UnitTitleAsync(words, ct), Questions = questions, Provider = provider, Warning = warning };
     }
 
     private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;

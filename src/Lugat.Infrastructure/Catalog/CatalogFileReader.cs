@@ -60,19 +60,34 @@ public sealed class CatalogFileReader : ICatalogFileReader
     {
         using var buffer = new MemoryStream();
         content.CopyTo(buffer);
-        var bytes = buffer.ToArray();
-        string text;
+        var lines = Decode(buffer.ToArray()).Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        // Tab- or comma-separated; otherwise columns separated by spaces (the parser joins a gloss with spaces again).
+        var sample = lines.Take(20).ToList();
+        return sample.Any(l => l.Contains('\t')) ? lines.Select(l => (IReadOnlyList<string?>)l.Split('\t')).ToList()
+            : sample.Count(l => l.Contains(',')) > sample.Count / 2 ? lines.Select(l => (IReadOnlyList<string?>)l.Split(',')).ToList()
+            : lines.Select(l => (IReadOnlyList<string?>)l.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToList();
+    }
+
+    /// <summary>By the byte order mark (UTF-8, or UTF-16 as Excel saves "Unicode text"), else UTF-8, else Korean CP949.</summary>
+    public static string Decode(byte[] bytes)
+    {
+        if (bytes is [0xFF, 0xFE, ..])
+        {
+            return Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+        }
+
+        if (bytes is [0xFE, 0xFF, ..])
+        {
+            return Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
+        }
+
         try
         {
-            text = new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes);
+            return new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes).TrimStart('\uFEFF');
         }
         catch (DecoderFallbackException)
         {
-            text = Encoding.GetEncoding(949).GetString(bytes);
+            return Encoding.GetEncoding(949).GetString(bytes);
         }
-
-        var lines = text.TrimStart('﻿').Split('\n').Select(l => l.TrimEnd('\r')).ToList();
-        var separator = lines.Take(20).Any(l => l.Contains('\t')) ? '\t' : ',';
-        return lines.Select(l => (IReadOnlyList<string?>)l.Split(separator)).ToList();
     }
 }

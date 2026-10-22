@@ -18,14 +18,14 @@ Quyidagilar kodda saqlangan va amal qiladi. Matni KAT’da; bu yerda faqat Lug�
 | D-07 | Qatlamlar: Contracts, Application, Infrastructure | KAT D-07 dan olingan |
 | D-08 | Migratsiyalar ilova ishga tushganda | KAT D-08 dan olingan. Migratsiyalar yangidan: L-12 |
 | D-11 | Testlar: xunit v3, real PostgreSQL | KAT D-11 dan olingan (`LUGAT_TEST_POSTGRES`) |
-| D-13 | O‘rganish birligi va ikki yo‘nalishli kartochkalar | KAT D-13 dan olingan. Manba qatori o‘rniga oraliq so‘z modeli: L-04 |
-| D-14 | Sessiya rejasi, idempotent javob, undo | KAT D-14 dan olingan. Dars ustuvorligi o‘rniga "fokus": L-05 |
+| D-13 | O‘rganish birligi va ikki yo‘nalishli kartochkalar | KAT D-13 dan olingan. O‘rganish birligi — umumiy `LearningItem` (L-22) |
+| D-14 | Sessiya rejasi, idempotent javob, undo | KAT D-14 dan olingan. Dars ustuvorligi o‘rniga "fokus" — joriy bo‘lim (L-05, L-24) |
 | D-16 | Telegram eslatmalari, outbox | KAT D-16 dan olingan. Shanba dars sloti yo‘q (L-06), tugma oddiy havola (L-07) |
 | D-17 | Tashqi tekshiruvdan keyingi tuzatishlar (undo, oflayn javob REL03) | KAT D-17 dan olingan. Import tahriri bandi olib tashlandi |
 | D-19 | CI/CD: deploy faqat `main` dan | KAT D-19 dan olingan. Railway loyihasi hali yo‘q (8-bosqich) |
 | D-21 | AI: Claude va ChatGPT, almashtirsa bo‘ladigan | KAT D-21 dan olingan |
 | D-22 | Zaxira nusxa: har kecha, tiklab tekshiriladi | KAT D-22 dan olingan. Paketda PDF yo‘q: L-08 |
-| D-23 | Yozma mashq kartochkadan alohida | KAT D-23 dan olingan. Dars o‘rniga jadval bo‘yicha tanlash |
+| D-23 | Yozma mashq kartochkadan alohida | KAT D-23 dan olingan. Dars o‘rniga bo‘lim bo‘yicha tanlash |
 | D-25 | "Modernist" dizayn | KAT D-25 dan olingan. Telegram mavzusi o‘rniga qurilma sozlamasi: L-11 |
 | D-29 | Talaffuz: OpenAI ovozi, serverda kesh | KAT D-29 dan olingan (Azure’dan keyin zaxira) |
 | D-30 | Sinov tizimi (TEST01–TEST04) | KAT D-30 dan olingan. Faqat so‘z savollari: L-10 |
@@ -67,7 +67,7 @@ Mini App initData kirishi (`POST /api/auth/telegram`) va `Telegram:AllowedUserId
 - API testlari faqat `ApiFactory` ichida ro‘yxatdan o‘tadigan `/__test/sign-in` orqali kiradi. U production kodida yo‘q.
 - **Ochiq xavf (1-bosqichda yopiladi):** zaxira (`/api/backups/*`) va AI sozlamalari (`/api/ai/provider`, `/api/ai/ping`) KAT’da ikki kishilik ilova uchun edi va har qanday kirgan foydalanuvchiga ochiq. Rollar (spec §5.1, §6.4) kelganda ular `Admin` policy ostiga o‘tadi.
 
-## L-04 · 2026-10-22 · Oraliq so‘z modeli: `WordSense` manbasiz
+## L-04 · 2026-10-22 · Oraliq so‘z modeli: `WordSense` manbasiz (o‘rniga: L-22)
 
 Import olib tashlangani uchun `WordSense` endi `SourceEntry`/`SourceDocument` ga bog‘lanmaydi: `OwnerId`, `TableNumber`, `Order` (ro‘yxatdagi o‘rni), matn, `IsActive`, `ContentVersion`. `(OwnerId, TableNumber, Order)` unikal.
 - So‘zlar `VocabularyService` orqali qo‘shiladi (`AddAsync` — idempotent, har so‘zga ikki karta; `SetActiveAsync`; `UpdateTextAsync` — matn o‘zgarsa `ContentVersion++`, statistika saqlanadi).
@@ -145,7 +145,7 @@ Spec §2, §5.1, §13.3.
 - **Modellar:** `CatalogWord` (rasmiy maydonlar + kontent + `Status`, `ContentVersion`, `ReviewedBy/At`, `AiProvider/Model`, `SourceKey`), `CatalogUsage` ("Qaysi so‘z to‘g‘ri?" savollari, so‘z bilan birga tekshiriladi), `Unit` (`Level`, `Number` unikal, `Status`, `WordCount`). Katalog umumiy: egasi yo‘q.
 - **Kalit:** `SourceKey = "{daraja}:{so‘z}{omonim}:{품사}"` (spec §2.4: so‘z + omonim + turkum + daraja), unikal indeks. Qayta import faqat chastota o‘rni (`순위`) va izohni (`풀이`) yangilaydi; kontent, tekshiruv holati va bo‘lim o‘zgarmaydi. Faylda yo‘q so‘z o‘chirilmaydi.
 - **Fayl:** ustunlar sarlavha bo‘yicha topiladi (`순위`, `단어`/`어휘`, `품사`, `풀이`, `등급`), shuning uchun tartib va qo‘shimcha ustunlar muhim emas; `가다01` dan omonim raqami ajratiladi. `.xls` (2003) va `.xlsx` — ExcelDataReader 3.9.0 (MIT), matnli versiya — tab yoki vergul bilan, UTF-8 yoki CP949. Yaroqsiz qatorlar sabab bilan o‘tkazib yuboriladi (javobda birinchi 20 tasi).
-- **Haqiqiy fayl sinalmadi:** korean.go.kr bu ishlab chiqish muhitidan ochilmadi (proksi 403). Format ochiq manbalardagi tavsif va spec §2.1 bo‘yicha; sinovlar shu tuzilishdagi 5,965 qatorli fayl bilan. Johnny haqiqiy faylni yuklaganda natija (qatorlar, o‘tkazilganlar) tekshirilishi kerak — CHECKLIST’da ochiq punkt.
+- **Haqiqiy fayl:** avval korean.go.kr ochilmagani uchun tavsif bo‘yicha yozilgan; keyin Johnny asl faylni berdi va u bilan sinaldi (L-27).
 - **Kartaga mos emas:** `보`, `의`, `관` (spec §2.2). Bir nechta turkumli yozuv (`명/의`) — hech bo‘lmasa bittasi mos bo‘lsa, o‘rganiladi.
 - **Turkum** bazada rasmiy kod bilan (`동`, `명`…); o‘zbekcha nomi (`fe’l`, `ot`…) DTO’da `PosUz`. Namuna fayldagi o‘zbekcha turkumlar kodga o‘giriladi (`fe'l` → `동`), shuning uchun keyingi rasmiy import o‘sha so‘zlarni takrorlamaydi.
 - **Apostrof** (spec §2.3): saqlashda `o‘`, `g‘` uchun U+2018, tutuq belgisi uchun U+2019 (`TextNormalizer.Uzbek`); KAT interfeysidagi shakl. Solishtirish avvalgidek `TextNormalizer.Key`.
@@ -175,4 +175,55 @@ Takrorlash hali oraliq `WordSense` modelida (L-04); `CatalogWord` → `LearningI
 ## L-21 · 2026-10-22 · Namuna seed
 
 `Catalog:SeedSample` (Development’da `true`, production’da yo‘q): ishga tushganda namuna fayl (`content/samples/lugat_A_namuna_50.json`) yuklanadi. Uning kontentini Johnny yozgan va tekshirgan, shuning uchun so‘zlar `Reviewed` ("Namuna fayl"), bo‘lingach to‘liq bo‘limlar tartib bilan nashr qilinadi. Qayta ishga tushirish hech narsani o‘zgartirmaydi; muharrir tegingan so‘zga seed tegmaydi. Development’da dev foydalanuvchi (Telegram ID 1) admin (`Auth:Admins`), kontent sahifasini sinash uchun.
+
+## L-22 · 2026-10-22 · `LearningItem`: umumiy o‘rganish birligi
+
+Spec §5.2, §13.4. Oraliq `WordSense` (L-04) `LearningItem` ga aylantirildi (`learning_items`).
+- **Shakl:** `Kind` (`Catalog`/`Personal`), `CatalogWordId?` (unikal), `OwnerId?`, `UnitId?`, `Order`, `Korean`, `KoreanNote`, `Uzbek`, `IsActive`, `ContentVersion`. Check constraint: katalog elementida so‘z bor va egasi yo‘q, shaxsiyda aksincha (spec §5.2 dagi "ikki nullable FK + check" varianti). V1 da faqat `Catalog` yaratiladi.
+- **Katalog elementi umumiy:** bitta katalog so‘zi — bitta element, hamma foydalanuvchi uchun. Kartalar, javoblar, sessiyalar, yozma mashq, gap tekshiruvi `LearningItemId` ga bog‘lanadi. "Foydalanuvchining so‘zlari" — unda kartasi bor faol elementlar (`LearnerItems.Of`). Karta noyobligi spec’dagidek: `(OwnerId, LearningItemId, Direction)`; shaxsiy "qo‘llanish" (`WordUsage`) — `(OwnerId, LearningItemId)`.
+- **Sinxronlash** (`LearningItemSync`): bo‘lim nashr qilinganda elementlar yaratiladi; nashrdan keyin so‘z tahrirlansa elementning matni yangilanadi va `ContentVersion` oshadi (kartalar va statistika saqlanadi, spec §5.3). Bitta bo‘limda bir xil yozilgan so‘zlarga `KoreanNote` (izoh yoki turkum) qo‘yiladi (spec §2.2). Ishga tushishda elementlari to‘liq bo‘lmagan nashr qilingan bo‘limlar to‘ldiriladi (2-bosqichda nashr qilinganlar uchun).
+- **Tartib:** `Order = daraja × 1 000 000 + bo‘lim × 1 000 + o‘rni` — kurs tartibi, yangi so‘zlar shu tartibda.
+- **"Jadval" → "bo‘lim":** API va sahifalarda jadval raqami o‘rniga `UnitId` va "A-3" yorlig‘i (`/api/vocabulary/units/{unitId}/usage`, `/api/writing/queue?unit=`, `CreateTestRequest.UnitIds`, `StartSessionRequest.UnitId`). `/api/vocabulary/tables*` va `VocabularyService` olib tashlandi.
+- **Migratsiya `LearningItems`:** `word_senses` o‘chiriladi; unga bog‘langan oraliq mashq ma’lumoti (kartalar, javoblar, sessiyalar, yozma, gap tekshiruvlari, shaxsiy qo‘llanish) ham tozalanadi — u production’ga hech qachon chiqmagan, umumiy elementlarga ko‘chirib bo‘lmaydi.
+- Kartochkadagi tuzoq: avval katalogning tekshirilgan `TrapUz`, bo‘lmasa foydalanuvchining AI qo‘llanishi (D-46).
+
+## L-23 · 2026-10-22 · Bo‘lim progressi va qulf
+
+Spec §4.2, §5.1, §5.3. `UserUnitProgress` (`user_unit_progress`, `(UserId, UnitId)` unikal): `Open`/`Passed`, yozuv yo‘q — qulflangan.
+- **Faqat server ochadi** (`UnitProgressService.SyncAsync`, har o‘qishda): yangi foydalanuvchiga A-1; o‘tilgan bo‘limdan keyingisi — nashr qilinishi bilan (keyinroq nashr qilinsa ham, keyingi kirishda ochiladi). Darajaning oxirgi bo‘limidan keyin — keyingi darajaning 1-bo‘limi, agar o‘sha darajaning barcha bo‘limlari nashr qilingan bo‘lsa. Parallel so‘rovlar unikal indeks bilan himoyalangan.
+- **Qulflangan bo‘lim:** `GET /api/units/{id}`, `POST /api/units/{id}/open` va bo‘lim drill’i — **403** ("Avval A-1-bo‘limni tugating."); nashr qilinmagan — 404 (L-20). Ro‘yxatda qulflangan bo‘lim ko‘rinadi (raqami, so‘zlar soni, mavzulari), so‘zlari emas.
+- **Bo‘limni ochish** (`POST /api/units/{id}/open`, idempotent, foydalanuvchi bo‘yicha lock): yo‘q kartalar yaratiladi, `StartedAt` qo‘yiladi. Sahifa birinchi ochilganda klient shuni chaqiradi; bo‘lim drill’i ham shu orqali o‘tadi.
+- `PassAsync(user, unit, by, score)` — 4-bosqichdagi test uchun: `Passed`, eng yaxshi ball, keyingi bo‘lim ochiladi. Hozir faqat testlarda chaqiriladi; klient bo‘limni "o‘tdi" deb yubora olmaydi.
+
+## L-24 · 2026-10-22 · Kunlik takrorlash va bo‘lim drill’i
+
+Spec §4.3, §4.6.
+- **Kunlik takrorlash** (`POST /api/sessions` bo‘limsiz): barcha ochilgan bo‘limlarning muddati kelgan kartalari teng huquqli (bo‘lim ustuvorligi yo‘q); yangi so‘zlar faqat joriy (`Open`) bo‘limlardan. Planner’da faqat yangi kartalar "fokus"da, shuning uchun takrorlash bo‘limga bog‘lanmaydi.
+- **Bo‘lim drill’i** (`StartSessionRequest.UnitId`): shu bo‘limning barcha kartalari, muddati kelmaganlari ham (D-36 dagidek); erta javob zinapoyada surmaydi.
+- `GET /api/today`: muddati kelganlar (barcha bo‘limlar), joriy bo‘limdagi yangi kartalar va davom ettiriladigan bo‘lim (`CurrentUnit` — eng uzoqdagi ochiq bo‘lim).
+
+## L-25 · 2026-10-22 · Navigatsiya va sahifalar
+
+Spec §4.2, §4.3, §4.7. Pastki panel: **Bosh sahifa · Bo‘limlar · Takrorlash · Mashq · Profil**.
+- Bo‘limlar (`/bolimlar`): daraja tablari, qulf/ochiq ("12/25 boshlangan")/tugallangan (eng yaxshi ball), 3 ta mavzu tegi. Qulflangan bo‘lim bosilsa: "Avval N-1-bo‘limni tugating"; navbatdagi qulflangan bo‘limda "Bilaman" tugmasi o‘chiq holda (4-bosqich).
+- Bo‘lim sahifasi (`/bolimlar/{id}`): 4 qadam. Jadval — KAT D-36 jadvali (ustunni yopish, taymer), so‘z bosilsa talaffuz, misol, tuzoq, turkum; lotincha o‘qilishi profil sozlamasiga qarab. Kartochka — bo‘lim drill’i. Mashqlar — yozma (shu bo‘lim tanlangan holda), "Qaysi so‘z to‘g‘ri?". Test — 4-bosqichda (tugma o‘chiq).
+- Takrorlash tabi `/takrorlash` (kartochka sahifasi): faol mashg‘ulot bo‘lmasa "Takrorlashni boshlash".
+- "Sinov" tabdan chiqdi: Mashq sahifasidan ("Sinovlar"). Profil — Sozlamalar sahifasi.
+- "Qaysi so‘z to‘g‘ri?" mashqi hali foydalanuvchining AI qo‘llanishidan (D-46); katalogning tekshirilgan savollariga (`CatalogUsage`) o‘tkazish — keyingi bosqichlarda (CHECKLIST).
+
+## L-26 · 2026-10-22 · Rasmiy ro‘yxat — matnli fayl
+
+Johnny: rasmiy hujjat `.txt` ko‘rinishida. Matnli o‘qish kengaytirildi (L-17 ga qo‘shimcha):
+- Kodlash: BOM bo‘yicha UTF-16 (Excel "Unicode text") yoki UTF-8, aks holda UTF-8, bo‘lmasa CP949.
+- Ajratuvchi: tab, vergul yoki (ikkalasi bo‘lmasa) bo‘shliqlar. Bo‘shliq bilan ajratilganda izohdagi bo‘shliqlar qayta birlashtiriladi, izohi yo‘q qator ham to‘g‘ri o‘qiladi (izoh ustuni turkum va daraja orasida bo‘lsa).
+- Sarlavha bo‘lmasa: qatorlarning ≥ 80% raqam bilan boshlanib A/B/C bilan tugasa, rasmiy tartib (순위 단어 품사 풀이 등급) deb o‘qiladi; aks holda 422.
+- Asl fayl (CP949, tab, sarlavhali) bilan sinaldi: L-27.
+
+## L-27 · 2026-10-22 · Asl rasmiy fayl: 순위siz so‘zlar
+
+Johnny asl faylni berdi; repoda `content/official/eohwi-mokrok-2003.txt` (KOGL 1, manbasi `content/official/README.md` da). Format: CP949, tab, sarlavha `순위 단어 품사 풀이 등급`, 5,965 qator (A 982 · B 2,111 · C 2,872). Test (`Catalog/OfficialListTests`) aynan shu fayl bilan.
+- **68 so‘zda 순위 bo‘sh** (63 tasi atoqli ot `고`: 서울, 경주, 경복궁…; qolgani 구십, 깍두기, 그렇게…). Ular ro‘yxatning qismi, tashlanmaydi: `FreqRank` endi ixtiyoriy (migratsiya `OptionalRank`), bo‘lishda daraja ichida chastotali so‘zlardan keyin turadi. Bo‘sh emas, lekin son bo‘lmagan 순위 — avvalgidek xato.
+- **Yangi turkumlar:** `고` (atoqli ot) va `불` (tasniflanmagan: 걔, 그래서, 이렇게 — so‘zlashuv shakllari). Ikkalasi kartaga mos (spec §2.2 faqat `보/의/관` ni chiqaradi); o‘zbekcha nomlari qo‘shildi.
+- Bir xil yozilgan omonimlar haqiqatda bor (A: `가다01 동` va `가다01 보`) — alohida yozuv, yordamchisi kartaga kirmaydi (spec §2.2).
+- **Natija:** kartaga mos so‘zlar A 904 → **36 bo‘lim** (oxirgisi 29 so‘z; spec’dagi "≈ 33" taxmin edi), B 2,043 → 82, C 2,786 → 112.
 

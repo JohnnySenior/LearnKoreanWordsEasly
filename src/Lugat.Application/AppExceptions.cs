@@ -9,6 +9,9 @@ public abstract class AppException(string userMessage) : Exception(userMessage)
 /// <summary>Missing, or owned by someone else. Both look the same to the caller (spec SEC02, AC01).</summary>
 public sealed class NotFoundException(string userMessage = "Topilmadi.") : AppException(userMessage);
 
+/// <summary>The caller may see that the thing exists but may not use it yet, e.g. a locked unit (spec §13.4).</summary>
+public sealed class ForbiddenException(string userMessage) : AppException(userMessage);
+
 public sealed class ConflictException(string userMessage) : AppException(userMessage);
 
 public sealed class ValidationException(string userMessage) : AppException(userMessage);

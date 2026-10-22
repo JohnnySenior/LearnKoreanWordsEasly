@@ -636,3 +636,32 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
 .signin-buttons { display: grid; gap: 12px; justify-items: start; margin: 12px 0 4px; }
 .signin-buttons > div { min-height: 44px; }
 .danger-zone { border-top: 2px solid var(--color-text); }
+
+/* Units (spec §4.2, §4.3) */
+.menu button.unit-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20px;
+    gap: 0 8px;
+    align-items: center;
+    width: 100%;
+    min-height: 64px;
+    padding: 12px 16px 12px var(--gutter);
+    border: 0;
+    border-bottom: 1px solid var(--color-divider);
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.menu button.unit-row.locked { color: var(--color-muted); }
+.menu button.unit-row.locked .t { color: var(--color-muted); }
+.unit-locked-note { padding: 8px var(--gutter) 12px; border-bottom: 1px solid var(--color-divider); }
+.unit-locked-note p { margin: 0 0 8px; }
+.steps { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 12px 0; padding: 0; border: 1px solid var(--color-divider); }
+.steps li { border-right: 1px solid var(--color-divider); }
+.steps li:last-child { border-right: 0; }
+.steps .link-btn { display: block; width: 100%; padding: 10px 6px; font-size: 13px; font-weight: 600; text-align: center; }
+.steps li.current { background: var(--color-text); }
+.steps li.current .link-btn { color: var(--color-bg); }
+.word-table td.ko small { display: block; font-size: 12px; color: var(--color-muted); }

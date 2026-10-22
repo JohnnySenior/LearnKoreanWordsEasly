@@ -16,6 +16,7 @@ public sealed class AppExceptionHandler(IProblemDetailsService problems) : IExce
         context.Response.StatusCode = app switch
         {
             NotFoundException => StatusCodes.Status404NotFound,
+            ForbiddenException => StatusCodes.Status403Forbidden,
             ConflictException => StatusCodes.Status409Conflict,
             PayloadTooLargeException => StatusCodes.Status413PayloadTooLarge,
             ServiceUnavailableException => StatusCodes.Status503ServiceUnavailable,

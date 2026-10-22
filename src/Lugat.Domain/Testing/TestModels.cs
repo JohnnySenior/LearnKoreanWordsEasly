@@ -49,7 +49,7 @@ public sealed record TestQuestion(
     string Correct,
     string? BaseForm,
     string? Explanation,
-    Guid? WordSenseId,
+    Guid? LearningItemId,
     bool AiMade);
 
 /// <param name="Note">Why a typed answer was or was not accepted ("imlo xatosi", "so‘z to‘g‘ri, shakli: …").</param>

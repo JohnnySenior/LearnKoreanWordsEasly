@@ -18,7 +18,9 @@ public interface IAppDbContext
 
     DbSet<Domain.Catalog.Unit> Units { get; }
 
-    DbSet<WordSense> WordSenses { get; }
+    DbSet<LearningItem> LearningItems { get; }
+
+    DbSet<Domain.Catalog.UserUnitProgress> UnitProgress { get; }
 
     DbSet<WordUsage> WordUsages { get; }
 

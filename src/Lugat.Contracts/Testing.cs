@@ -2,7 +2,8 @@ using Lugat.Domain.Testing;
 
 namespace Lugat.Contracts;
 
-public sealed record TestTableOptionDto(int TableNumber, int Words);
+/// <param name="Unit">"A-3".</param>
+public sealed record TestTableOptionDto(Guid UnitId, string Unit, int Words);
 
 /// <summary>What a test can be built from (GET /api/tests/options).</summary>
 public sealed record TestOptionsDto(IReadOnlyList<TestTableOptionDto> Tables);
@@ -11,7 +12,7 @@ public sealed record TestOptionsDto(IReadOnlyList<TestTableOptionDto> Tables);
 /// <param name="RetryOf">Build the test from the mistakes of this finished test (no other fields needed).</param>
 public sealed record CreateTestRequest(
     Guid Id,
-    IReadOnlyList<int>? TableNumbers,
+    IReadOnlyList<Guid>? UnitIds,
     int Count,
     Guid? RetryOf = null,
     bool Oral = false,

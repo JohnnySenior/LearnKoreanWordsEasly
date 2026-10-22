@@ -63,7 +63,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
             throw new ValidationException($"Oxirgi {WeakPointDays} kunda xato topilmadi. Oddiy zinapoya yoki boshqa mashq qiling.");
         }
 
-        var words = await WordsAsync(ownerId, weak?.Words.Select(w => w.WordSenseId).ToList() ?? [], ct);
+        var words = await WordsAsync(ownerId, weak?.Words.Select(w => w.LearningItemId).ToList() ?? [], ct);
         if (words.Count < MinSentences)
         {
             throw new ValidationException("Zinapoya uchun kamida 3 ta boshlangan so‘z kerak. Avval kartochkada bir oz mashq qiling.");
@@ -80,7 +80,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
         {
             Id = request.Id,
             OwnerId = ownerId,
-            Title = $"{(weak is null ? "" : "Zaif joylar · ")}{items.Count} ta gap · {string.Join(", ", items.Select(i => words.FirstOrDefault(w => w.Id == i.WordSenseId)?.Korean).OfType<string>().Distinct().Take(3))}",
+            Title = $"{(weak is null ? "" : "Zaif joylar · ")}{items.Count} ta gap · {string.Join(", ", items.Select(i => words.FirstOrDefault(w => w.Id == i.LearningItemId)?.Korean).OfType<string>().Distinct().Take(3))}",
             Items = items,
             Provider = AiGateway.Label(call.Provider),
             Model = call.Response.Model,
@@ -200,11 +200,11 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
     public const int WeakPointDays = 30;
 
     /// <summary>The preferred words (weak ones, D-54) first, the rest of the places filled as usual.</summary>
-    private async Task<List<WordSense>> WordsAsync(Guid ownerId, IReadOnlyList<Guid> preferred, CancellationToken ct)
+    private async Task<List<LearningItem>> WordsAsync(Guid ownerId, IReadOnlyList<Guid> preferred, CancellationToken ct)
     {
         var first = preferred.Count == 0
             ? []
-            : (await db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive && preferred.Contains(s.Id)).AsNoTracking().ToListAsync(ct))
+            : (await Study.LearnerItems.Of(db, ownerId).Where(s => preferred.Contains(s.Id)).AsNoTracking().ToListAsync(ct))
                 .OrderBy(s => preferred.ToList().IndexOf(s.Id)).Take(Sentences).ToList();
         if (first.Count >= Sentences)
         {
@@ -216,10 +216,10 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
     }
 
     /// <summary>Started words; a random few.</summary>
-    private async Task<List<WordSense>> WordsAsync(Guid ownerId, CancellationToken ct)
+    private async Task<List<LearningItem>> WordsAsync(Guid ownerId, CancellationToken ct)
     {
-        var started = await db.WordSenses
-            .Where(s => s.OwnerId == ownerId && s.IsActive && db.Cards.Any(c => c.WordSenseId == s.Id && c.Phase != LearningPhase.New))
+        var started = await Study.LearnerItems.Of(db, ownerId)
+            .Where(s => db.Cards.Any(c => c.OwnerId == ownerId && c.LearningItemId == s.Id && c.Phase != LearningPhase.New))
             .AsNoTracking().ToListAsync(ct);
         return started.OrderBy(_ => Random.Shared.Next()).Take(Sentences).ToList();
     }
@@ -298,7 +298,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
 
     private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;
 
-    public static AiJsonRequest BuildRequest(IReadOnlyList<WordSense> words, WeakPointsDto? weak = null)
+    public static AiJsonRequest BuildRequest(IReadOnlyList<LearningItem> words, WeakPointsDto? weak = null)
     {
         var sb = new StringBuilder("<words>\n");
         for (var i = 0; i < words.Count; i++)
@@ -322,7 +322,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
     }
 
     /// <summary>Keeps sentences whose gap, options and translations are well formed; the rest are dropped.</summary>
-    public static List<LadderItem> Parse(string json, IReadOnlyList<WordSense> words)
+    public static List<LadderItem> Parse(string json, IReadOnlyList<LearningItem> words)
     {
         BuildResult? r;
         try
