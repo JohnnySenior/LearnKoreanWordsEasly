@@ -18,13 +18,13 @@ public sealed class ProgressService(IAppDbContext db, TimeProvider time)
         var now = time.GetUtcNow();
         var rows = await (
                 from c in db.Cards
-                join s in db.WordSenses on c.WordSenseId equals s.Id
+                join s in db.LearningItems on c.LearningItemId equals s.Id
                 where c.OwnerId == ownerId && s.IsActive
                 select new { Card = c, s.Korean, s.Uzbek })
             .AsNoTracking()
             .ToListAsync(ct);
 
-        var senses = rows.GroupBy(r => r.Card.WordSenseId).ToList();
+        var senses = rows.GroupBy(r => r.Card.LearningItemId).ToList();
         int Recalled(ReviewDirection d) => rows.Count(r => r.Card.Direction == d && r.Card.IndependentSuccessDays > 0);
 
         var learned = senses.Count(g =>

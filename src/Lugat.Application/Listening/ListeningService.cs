@@ -122,10 +122,10 @@ public sealed class ListeningService(IAppDbContext db, AiGateway ai, SpeechServi
     }
 
     /// <summary>Started words; a random few for the AI to weave in.</summary>
-    private async Task<List<WordSense>> WordsAsync(Guid ownerId, CancellationToken ct)
+    private async Task<List<LearningItem>> WordsAsync(Guid ownerId, CancellationToken ct)
     {
-        var started = await db.WordSenses
-            .Where(s => s.OwnerId == ownerId && s.IsActive && db.Cards.Any(c => c.WordSenseId == s.Id && c.Phase != LearningPhase.New))
+        var started = await Study.LearnerItems.Of(db, ownerId)
+            .Where(s => db.Cards.Any(c => c.OwnerId == ownerId && c.LearningItemId == s.Id && c.Phase != LearningPhase.New))
             .AsNoTracking().ToListAsync(ct);
         return started.OrderBy(_ => Random.Shared.Next()).Take(MaxWords).ToList();
     }
@@ -153,7 +153,7 @@ public sealed class ListeningService(IAppDbContext db, AiGateway ai, SpeechServi
         s.Provider,
         s.CreatedAt);
 
-    public static AiJsonRequest BuildRequest(IReadOnlyList<WordSense> words)
+    public static AiJsonRequest BuildRequest(IReadOnlyList<LearningItem> words)
     {
         var list = words.Count == 0 ? "(none yet)" : string.Join("\n", words.Select(w => $"{w.Korean} — {w.Uzbek}"));
         var user = $"""

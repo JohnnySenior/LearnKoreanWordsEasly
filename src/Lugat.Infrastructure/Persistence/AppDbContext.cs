@@ -29,7 +29,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Domain.Catalog.Unit> Units => Set<Domain.Catalog.Unit>();
 
-    public DbSet<WordSense> WordSenses => Set<WordSense>();
+    public DbSet<LearningItem> LearningItems => Set<LearningItem>();
+
+    public DbSet<Domain.Catalog.UserUnitProgress> UnitProgress => Set<Domain.Catalog.UserUnitProgress>();
 
     public DbSet<WordUsage> WordUsages => Set<WordUsage>();
 
@@ -70,6 +72,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         configurationBuilder.Properties<Domain.Catalog.CatalogLevel>().HaveConversion<string>().HaveMaxLength(8);
         configurationBuilder.Properties<Domain.Catalog.CatalogWordStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Catalog.UnitStatus>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Catalog.UnitProgressStatus>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Catalog.UnitPassedBy>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<LearningItemKind>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ReviewDirection>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<LearningPhase>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<ReviewAnswer>().HaveConversion<string>().HaveMaxLength(32);
@@ -147,7 +152,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         b.Entity<WordUsage>(e =>
         {
             e.ToTable("word_usages");
-            e.HasIndex(x => x.WordSenseId).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.LearningItemId }).IsUnique();
             e.HasIndex(x => x.OwnerId);
             e.Property(x => x.Phrases).HasColumnType("jsonb").HasConversion(JsonConverter<List<UsagePair>>(), ListComparer<UsagePair>());
             e.Property(x => x.Example).HasColumnType("jsonb").HasConversion(JsonConverter<UsagePair?>());
@@ -157,7 +162,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Model).HasMaxLength(128);
             e.Property(x => x.Warning).HasMaxLength(500);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne<WordSense>().WithMany().HasForeignKey(x => x.WordSenseId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Domain.Ladder.SentenceLadder>(e =>
@@ -196,23 +201,40 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        b.Entity<WordSense>(e =>
+        b.Entity<LearningItem>(e =>
         {
-            e.ToTable("word_senses");
-            e.HasIndex(x => new { x.OwnerId, x.TableNumber, x.Order }).IsUnique(); // one word per place in the list
+            e.ToTable("learning_items");
+            e.HasIndex(x => x.CatalogWordId).IsUnique(); // one item per catalog word (spec §5.2)
+            e.HasIndex(x => new { x.UnitId, x.Order });
+            e.HasIndex(x => x.OwnerId);
             e.Property(x => x.Korean).HasMaxLength(200);
             e.Property(x => x.KoreanNote).HasMaxLength(200);
+            e.Property(x => x.Uzbek).HasMaxLength(300);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Catalog.CatalogWord>().WithMany().HasForeignKey(x => x.CatalogWordId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+            // Catalog items have a word and no owner; personal ones the other way round (spec §5.2).
+            e.ToTable(t => t.HasCheckConstraint("CK_learning_items_kind",
+                "(\"Kind\" = 'Catalog' AND \"CatalogWordId\" IS NOT NULL AND \"OwnerId\" IS NULL) OR (\"Kind\" = 'Personal' AND \"CatalogWordId\" IS NULL AND \"OwnerId\" IS NOT NULL)"));
+        });
+
+        b.Entity<Domain.Catalog.UserUnitProgress>(e =>
+        {
+            e.ToTable("user_unit_progress");
+            e.HasIndex(x => new { x.UserId, x.UnitId }).IsUnique(); // spec DATA01
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Card>(e =>
         {
             e.ToTable("cards");
-            e.HasIndex(x => new { x.WordSenseId, x.Direction }).IsUnique(); // user + unit + direction (spec DATA01)
+            e.HasIndex(x => new { x.OwnerId, x.LearningItemId, x.Direction }).IsUnique(); // spec DATA01
             e.HasIndex(x => new { x.OwnerId, x.DueAt });
             e.Property(x => x.AlgorithmVersion).HasMaxLength(32);
             e.Property(x => x.Version).IsRowVersion();
-            e.HasOne<WordSense>().WithMany().HasForeignKey(x => x.WordSenseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<ReviewEvent>(e =>
@@ -290,7 +312,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Expected).HasMaxLength(500);
             e.Property(x => x.Note).HasMaxLength(500);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne<WordSense>().WithMany().HasForeignKey(x => x.WordSenseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Domain.Operations.BackupRun>(e =>
@@ -315,7 +337,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Model).HasMaxLength(128);
             e.Property(x => x.PromptVersion).HasMaxLength(64);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne<WordSense>().WithMany().HasForeignKey(x => x.WordSenseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

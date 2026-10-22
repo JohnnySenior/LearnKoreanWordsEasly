@@ -64,7 +64,7 @@ public sealed class SentenceCheck
 
     public Guid OwnerId { get; set; }
 
-    public Guid? WordSenseId { get; set; }
+    public Guid? LearningItemId { get; set; }
 
     public string Target { get; set; } = "";
 

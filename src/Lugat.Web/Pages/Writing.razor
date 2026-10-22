@@ -38,7 +38,7 @@
                 <button class="chip wide @(_table is null ? "selected" : "")" role="radio" aria-checked="@(_table is null)" @onclick="() => _table = null">Boshlangan so‘zlar</button>
                 @foreach (var t in _tables)
                 {
-                    <button class="chip wide @(_table == t.TableNumber ? "selected" : "")" role="radio" aria-checked="@(_table == t.TableNumber)" @onclick="() => _table = t.TableNumber">@t.TableNumber-jadval</button>
+                    <button class="chip wide @(_table == t.UnitId ? "selected" : "")" role="radio" aria-checked="@(_table == t.UnitId)" @onclick="() => _table = t.UnitId">@t.Unit-bo‘lim</button>
                 }
             </div>
         }
@@ -62,7 +62,7 @@ else
 {
     var prompt = _queue[_index];
     var typingKorean = prompt.Direction == ReviewDirection.UzbekToKorean;
-    <p class="muted small-text">@(_index + 1) / @_queue.Count · @prompt.TableNumber-jadval</p>
+    <p class="muted small-text">@(_index + 1) / @_queue.Count@(prompt.Unit is null ? "" : $" · {prompt.Unit}-bo‘lim")</p>
     <section class="card">
         <p class="muted small-text">@(typingKorean ? "Koreyschasini yozing" : "O‘zbekcha tarjimasini yozing")</p>
         @if (typingKorean)
@@ -116,8 +116,11 @@ else
 
     private ReviewDirection? _direction;
     private int _count = 10;
-    private int? _table;
-    private List<VocabTableDto> _tables = [];
+    /// <summary>Preselected unit, from the unit page (spec §4.3 step 3).</summary>
+    [SupplyParameterFromQuery(Name = "unit")] public Guid? Unit { get; set; }
+
+    private Guid? _table;
+    private List<TestTableOptionDto> _tables = [];
     private List<WritingPromptDto>? _queue;
     private readonly List<WritingVerdict> _verdicts = [];
     private int _index;
@@ -129,13 +132,14 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _tables = (await Api.GetAsync<List<VocabTableDto>>("api/vocabulary/tables")).Value ?? [];
+        _tables = (await Api.GetAsync<TestOptionsDto>("api/tests/options")).Value?.Tables.ToList() ?? [];
+        _table = _tables.Any(t => t.UnitId == Unit) ? Unit : null;
     }
 
     private async Task StartAsync()
     {
         _busy = true;
-        var query = $"api/writing/queue?count={_count}" + (_direction is { } d ? $"&direction={d}" : "") + (_table is { } t ? $"&table={t}" : "");
+        var query = $"api/writing/queue?count={_count}" + (_direction is { } d ? $"&direction={d}" : "") + (_table is { } t ? $"&unit={t}" : "");
         var result = await Api.GetAsync<List<WritingPromptDto>>(query);
         _busy = false;
         _error = result.Ok ? null : result.Error;
@@ -176,7 +180,7 @@ else
         {
             // The same id on a retry after a network error, so the answer is stored once (spec API01).
             var result = await Api.SendJsonAsync<WritingResultDto>(HttpMethod.Post, "api/writing/answers",
-                new WritingCheckRequest(_attemptId, prompt.WordSenseId, prompt.Direction, _answer), SessionService.AiTimeout);
+                new WritingCheckRequest(_attemptId, prompt.LearningItemId, prompt.Direction, _answer), SessionService.AiTimeout);
             _error = result.Ok ? null : result.Error;
             if (result.Value is { } r)
             {

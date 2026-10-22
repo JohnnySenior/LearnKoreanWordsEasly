@@ -12,11 +12,16 @@ public static class CatalogEndpoints
 {
     public static IEndpointRouteBuilder MapCatalogEndpoints(this IEndpointRouteBuilder app)
     {
-        // Learners: levels and published units (spec §11). Locks and progress come in stage 3.
+        // Learners (spec §11): published units with the learner's locks; a locked unit's words answer 403 (spec §13.4).
         var learner = app.MapGroup("/api").RequireAuthorization();
         learner.MapGet("/levels", (CatalogService catalog, CancellationToken ct) => catalog.LevelsAsync(ct));
-        learner.MapGet("/levels/{level}/units", (CatalogLevel level, CatalogService catalog, CancellationToken ct) => catalog.UnitsAsync(level, ct));
-        learner.MapGet("/units/{id:guid}", (Guid id, CatalogService catalog, CancellationToken ct) => catalog.UnitAsync(id, ct));
+        learner.MapGet("/levels/{level}/units", (CatalogLevel level, ClaimsPrincipal user, UnitProgressService units, CancellationToken ct) =>
+            units.UnitsAsync(user.GetUserId(), level, ct));
+        learner.MapGet("/units/{id:guid}", (Guid id, ClaimsPrincipal user, UnitProgressService units, CancellationToken ct) =>
+            units.UnitAsync(user.GetUserId(), id, ct));
+        // Idempotent: the first call creates the unit's cards (spec §5.3).
+        learner.MapPost("/units/{id:guid}/open", (Guid id, ClaimsPrincipal user, UnitProgressService units, CancellationToken ct) =>
+            units.OpenAsync(user.GetUserId(), id, ct));
 
         // Content work (spec §2.4, §10): editors and admins; importing and splitting the list, the admin only.
         var editor = app.MapGroup("/api/admin").RequireAuthorization(Policies.Editor);
@@ -55,6 +60,18 @@ public static class CatalogEndpoints
             catalog.ReviewAsync(user.GetUserId(), id, body.Version, ct));
 
         return app;
+    }
+
+    /// <summary>Every published unit has its learning items (L-22).</summary>
+    public static async Task SyncLearningItemsAsync(this WebApplication app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        await using (await services.GetRequiredService<Lugat.Application.Abstractions.IOperationLock>().AcquireAsync(CatalogAdminService.LockKey, CancellationToken.None))
+        {
+            await LearningItemSync.SyncMissingAsync(services.GetRequiredService<Lugat.Application.Abstractions.IAppDbContext>(),
+                services.GetRequiredService<TimeProvider>().GetUtcNow(), CancellationToken.None);
+        }
     }
 
     /// <summary>Development and tests only (Catalog:SeedSample): the 50-word sample as level A units 1–2.</summary>

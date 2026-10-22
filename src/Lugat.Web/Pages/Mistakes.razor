@@ -80,7 +80,7 @@ else
                         <span><strong class="ko" lang="ko">@w.Korean</strong> — @w.Uzbek</span>
                         <span class="count" title="Xatolar soni">@w.Mistakes×</span>
                     </div>
-                    <span class="muted small-text">@w.TableNumber-jadval · @string.Join(", ", w.Sources) · @Ago(w.LastMistakeAt)@(w.Improving ? " · ✓ oxirgisi to‘g‘ri" : "")</span>
+                    <span class="muted small-text">@(w.Unit is null ? "" : $"{w.Unit}-bo‘lim · ")@string.Join(", ", w.Sources) · @Ago(w.LastMistakeAt)@(w.Improving ? " · ✓ oxirgisi to‘g‘ri" : "")</span>
                 </li>
             }
         </ul>
@@ -107,8 +107,8 @@ else
     private async Task DrillAsync(List<MistakeWordDto> words)
     {
         _busy = true;
-        var ids = words.Take(MaxDrill).Select(w => w.WordSenseId).ToList();
-        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(null, true, WordSenseIds: ids));
+        var ids = words.Take(MaxDrill).Select(w => w.LearningItemId).ToList();
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(null, true, LearningItemIds: ids));
         _busy = false;
         if (result.Value?.Session is not null)
         {

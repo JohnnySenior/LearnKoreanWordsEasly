@@ -33,20 +33,20 @@
 
 <section class="card">
     <span class="kicker">1. Jadvallarni tayyorlash</span>
-    <p class="muted small-text">Har so‘z uchun AI bir marta qo‘llanish, o‘zbekcha tuzoq va savollarni tayyorlaydi. Natija saqlanadi, mashq paytida AI ishlatilmaydi. 30 so‘zlik jadval taxminan 1–2 daqiqa tayyorlanadi.</p>
+    <p class="muted small-text">Har so‘z uchun AI bir marta qo‘llanish, o‘zbekcha tuzoq va savollarni tayyorlaydi. Natija saqlanadi, mashq paytida AI ishlatilmaydi. 25 so‘zlik bo‘lim taxminan 1–2 daqiqa tayyorlanadi.</p>
     <ul class="usage-tables">
         @foreach (var t in _tables)
         {
             var table = t;
             var ready = t.Ready == t.Total;
             <li>
-                <button class="chip @(_chosen.Contains(t.TableNumber) ? "selected" : "")" aria-pressed="@_chosen.Contains(t.TableNumber)" disabled="@(t.Ready == 0)" @onclick="() => Toggle(table.TableNumber)">@t.TableNumber</button>
+                <button class="chip @(_chosen.Contains(t.UnitId) ? "selected" : "")" aria-pressed="@_chosen.Contains(t.UnitId)" disabled="@(t.Ready == 0)" @onclick="() => Toggle(table.UnitId)">@t.Unit</button>
                 <span class="grow">
                     @if (ready)
                     {
                         <span>Tayyor · @t.Questions savol</span>
                     }
-                    else if (_preparing == t.TableNumber)
+                    else if (_preparing == t.UnitId)
                     {
                         <span role="status">Tayyorlanmoqda: @t.Ready / @t.Total so‘z…</span>
                     }
@@ -59,7 +59,7 @@
                 {
                     <button class="button small" disabled="@(_preparing is not null)" @onclick="() => PrepareAsync(table)">Tayyorlash</button>
                 }
-                <a class="small-text" href="lugatlar/jadval/@t.TableNumber">Ko‘rish</a>
+                <a class="small-text" href="bolimlar/@t.UnitId">Ko‘rish</a>
             </li>
         }
     </ul>
@@ -74,7 +74,7 @@
             <button class="@(_count == count ? "selected" : "")" role="radio" aria-checked="@(_count == count)" @onclick="() => _count = count">@count ta</button>
         }
     </div>
-    <p class="muted small-text">@(_chosen.Count == 0 ? "Jadval tanlanmagan: barcha tayyor jadvallardan" : $"{string.Join(", ", _chosen.Order())}-jadvaldan") · javoblar oxirida izoh bilan ko‘rsatiladi · xatolar Xatolar daftariga tushadi</p>
+    <p class="muted small-text">@(_chosen.Count == 0 ? "Bo‘lim tanlanmagan: barcha tayyor bo‘limlardan" : $"{string.Join(", ", _tables!.Where(t => _chosen.Contains(t.UnitId)).Select(t => t.Unit))}-bo‘limdan") · javoblar oxirida izoh bilan ko‘rsatiladi · xatolar Xatolar daftariga tushadi</p>
     <button class="button primary block" disabled="@(_busy || _tables.All(t => t.Ready == 0))" @onclick="StartAsync">Boshlash</button>
 </section>
 
@@ -82,11 +82,11 @@
     private static readonly int[] Counts = [10, 20, 30];
 
     private List<UsageTableSummaryDto>? _tables;
-    private readonly HashSet<int> _chosen = [];
+    private readonly HashSet<Guid> _chosen = [];
     private int _count = 10;
     private bool _busy;
     private string? _error;
-    private int? _preparing;
+    private Guid? _preparing;
     private Guid? _pendingId;
 
     protected override async Task OnInitializedAsync()
@@ -96,7 +96,7 @@
         _error = result.Ok ? null : result.Error;
     }
 
-    private void Toggle(int table)
+    private void Toggle(Guid table)
     {
         if (!_chosen.Remove(table))
         {
@@ -107,9 +107,9 @@
     /// <summary>One batch of words per request until the table is ready, so the page shows progress as it goes.</summary>
     private async Task PrepareAsync(UsageTableSummaryDto table)
     {
-        _preparing = table.TableNumber;
+        _preparing = table.UnitId;
         _error = null;
-        var url = $"api/vocabulary/tables/{table.TableNumber}/usage";
+        var url = $"api/vocabulary/units/{table.UnitId}/usage";
         var ready = table.Ready;
         while (true)
         {
@@ -135,7 +135,7 @@
 
     private void Replace(UsageTableSummaryDto table, TableUsageDto usage)
     {
-        var i = _tables!.FindIndex(t => t.TableNumber == table.TableNumber);
+        var i = _tables!.FindIndex(t => t.UnitId == table.UnitId);
         if (i >= 0)
         {
             _tables[i] = _tables[i] with { Ready = usage.Ready, Total = usage.Total, Questions = usage.Usages.Sum(u => u.Questions) };

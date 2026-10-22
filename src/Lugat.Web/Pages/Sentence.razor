@@ -26,7 +26,7 @@ else
     <section class="card">
         <div class="row-between">
             <span class="ko big" lang="ko">@_target.Korean</span>
-            <span class="muted">@_target.TableNumber-jadval</span>
+            <span class="muted">@(_target.Unit is null ? "" : $"{_target.Unit}-bo‘lim")</span>
         </div>
         @if (_target.KoreanNote is not null)
         {
@@ -53,7 +53,7 @@ else
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "soz")] public Guid? WordSenseId { get; set; }
+    [SupplyParameterFromQuery(Name = "soz")] public Guid? LearningItemId { get; set; }
 
     private SentenceTargetDto? _target;
     private SentenceCheckDto? _check;
@@ -63,11 +63,11 @@ else
     private bool _busy;
     private string? _error;
 
-    protected override async Task OnInitializedAsync() => await LoadTargetAsync(WordSenseId);
+    protected override async Task OnInitializedAsync() => await LoadTargetAsync(LearningItemId);
 
     private async Task LoadTargetAsync(Guid? id)
     {
-        var result = await Api.GetAsync<SentenceTargetDto>(id is null ? "api/practice/target" : $"api/practice/target?wordSenseId={id}");
+        var result = await Api.GetAsync<SentenceTargetDto>(id is null ? "api/practice/target" : $"api/practice/target?learningItemId={id}");
         _error = result.Ok ? null : result.Error;
         _target = result.Value ?? _target;
     }
@@ -109,7 +109,7 @@ else
         _busy = true;
         try
         {
-            var result = await Api.SendJsonAsync<SentenceCheckDto>(HttpMethod.Post, "api/practice/check", new SentenceCheckRequest(id, _target?.WordSenseId, text), SessionService.AiTimeout);
+            var result = await Api.SendJsonAsync<SentenceCheckDto>(HttpMethod.Post, "api/practice/check", new SentenceCheckRequest(id, _target?.LearningItemId, text), SessionService.AiTimeout);
             _error = result.Ok ? null : result.Error;
             _check = result.Value ?? _check;
         }

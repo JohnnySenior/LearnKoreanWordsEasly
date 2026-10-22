@@ -62,4 +62,47 @@ public class CatalogImportTests
             Assert.Contains(problem, message);
         }
     }
+
+    private static CatalogRows ReadText(string text, System.Text.Encoding encoding, bool bom = false)
+    {
+        var bytes = (bom ? encoding.GetPreamble() : []).Concat(encoding.GetBytes(text)).ToArray();
+        return CatalogImport.Parse(new Lugat.Infrastructure.Catalog.CatalogFileReader().ReadRows(new MemoryStream(bytes), "list.txt"));
+    }
+
+    [Fact]
+    public void A_space_separated_text_file_keeps_glosses_with_spaces_and_lines_without_a_gloss()
+    {
+        var rows = ReadText("순위 단어 품사 풀이 등급\n1 것01 의 A\n2 하다01 동 A\n29 가다01 동 길 따위를 A\n", System.Text.Encoding.UTF8);
+
+        Assert.Equal(3, rows.Rows.Count);
+        Assert.Empty(rows.Problems);
+        Assert.Equal(("것", "01", "의", null, CatalogLevel.A), (rows.Rows[0].Word, rows.Rows[0].Homonym, rows.Rows[0].Pos, rows.Rows[0].Gloss, rows.Rows[0].Level));
+        Assert.Equal(("가다", "길 따위를", CatalogLevel.A), (rows.Rows[2].Word, rows.Rows[2].Gloss, rows.Rows[2].Level));
+    }
+
+    [Fact]
+    public void Unicode_text_as_Excel_saves_it_is_read()
+    {
+        var rows = ReadText("순위\t단어\t품사\t풀이\t등급\r\n2\t하다01\t동\t\tA\r\n", System.Text.Encoding.Unicode, bom: true);
+
+        Assert.Equal(("하다", 2, CatalogLevel.A), (rows.Rows.Single().Word, rows.Rows[0].Rank, rows.Rows[0].Level));
+    }
+
+    [Fact]
+    public void Korean_code_page_text_is_read()
+    {
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        var rows = ReadText("순위\t단어\t품사\t풀이\t등급\n2\t하다01\t동\t\tA\n", System.Text.Encoding.GetEncoding(949));
+
+        Assert.Equal("하다", rows.Rows.Single().Word);
+    }
+
+    [Fact]
+    public void A_file_without_a_header_is_read_in_the_official_order()
+    {
+        var rows = ReadText("1 것01 의 A\n2 하다01 동 A\n4 있다01 형 A\n5 되다01 동 B\n", System.Text.Encoding.UTF8);
+
+        Assert.Equal(["것", "하다", "있다", "되다"], rows.Rows.Select(r => r.Word));
+        Assert.Equal(CatalogLevel.B, rows.Rows[3].Level);
+    }
 }

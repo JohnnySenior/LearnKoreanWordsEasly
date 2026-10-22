@@ -20,7 +20,7 @@ public sealed class WordUsage
 
     public Guid OwnerId { get; set; }
 
-    public Guid WordSenseId { get; set; }
+    public Guid LearningItemId { get; set; }
 
     public int ContentVersion { get; set; }
 

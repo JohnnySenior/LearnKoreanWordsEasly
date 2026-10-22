@@ -43,7 +43,7 @@ public class TestEndpointsTests
 
     private static async Task<TestDto> CreateAsync(HttpClient client, int count = 10, Guid? id = null)
     {
-        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(id ?? Guid.NewGuid(), [1], count), Json);
+        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(id ?? Guid.NewGuid(), [ApiFactory.Unit(1)], count), Json);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<TestDto>(Json))!;
     }
@@ -65,7 +65,7 @@ public class TestEndpointsTests
         Assert.Equal(test.Id, again.Id);
         Assert.Equal(1, _ai.Requests.Count(r => r.Feature == "test-gaps")); // one AI call per test, not per retry
         Assert.Equal(10, test.Questions.Count);
-        Assert.Equal("1-jadval", test.Title);
+        Assert.Equal("A-1-bo‘lim", test.Title);
         Assert.Contains(test.Questions, q => q.Kind == TestQuestionKind.WordMeaning);
         Assert.True(test.Questions.Any(q => q.Kind == TestQuestionKind.WordCloze), test.Warning + string.Join(",", test.Questions.Select(q => q.Kind)));
         Assert.Contains(test.Questions, q => q.Kind == TestQuestionKind.WordClozeTyped);
@@ -163,7 +163,7 @@ public class TestEndpointsTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
 
-        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 0, Oral: true), Json);
+        var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 0, Oral: true), Json);
         var test = (await response.Content.ReadFromJsonAsync<TestDto>(Json))!;
         var say = test.Questions.Where(q => q.Kind == TestQuestionKind.OralKorean).ToList();
         var mean = test.Questions.Where(q => q.Kind == TestQuestionKind.OralMeaning).ToList();
@@ -209,7 +209,7 @@ public class TestEndpointsTests
         await using var factory = new ApiFactory { TableWords = NewFactory().TableWords, Pronunciation = azure };
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
-        var test = (await (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 20, Oral: true), Json))
+        var test = (await (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 20, Oral: true), Json))
             .Content.ReadFromJsonAsync<TestDto>(Json))!;
         var oral = test.Questions.First(q => q.Kind == TestQuestionKind.OralKorean);
 
@@ -219,7 +219,7 @@ public class TestEndpointsTests
         var silent = await client.PostAsync($"/api/tests/{test.Id}/oral/{oral.Index}", form);
         var technical = (await (await client.PostAsync($"/api/tests/{test.Id}/oral/{oral.Index}/technical", null)).Content.ReadFromJsonAsync<TestDto>(Json))!;
         var wrongKind = await client.PostAsync($"/api/tests/{test.Id}/oral/{test.Questions.First(q => q.Kind == TestQuestionKind.OralMeaning).Index}/technical", null);
-        var badCount = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10, Oral: true), Json);
+        var badCount = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 10, Oral: true), Json);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, silent.StatusCode);
         Assert.Contains("eshitilmadi", await silent.Content.ReadAsStringAsync());
@@ -237,7 +237,7 @@ public class TestEndpointsTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await ApproveAsync(client);
         await CreateAsync(client);
-        (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 20, Oral: true), Json)).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 20, Oral: true), Json)).EnsureSuccessStatusCode();
 
         var all = (await client.GetFromJsonAsync<List<TestSummaryDto>>("/api/tests", Json))!;
         var oral = (await client.GetFromJsonAsync<List<TestSummaryDto>>("/api/tests?category=Oral", Json))!;

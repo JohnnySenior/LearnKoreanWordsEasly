@@ -10,7 +10,7 @@ public enum StudySessionStatus
 }
 
 /// <summary>One planned prompt in a session.</summary>
-public sealed record SessionItem(Guid CardId, Guid WordSenseId, ReviewDirection Direction, SessionItemKind Kind);
+public sealed record SessionItem(Guid CardId, Guid LearningItemId, ReviewDirection Direction, SessionItemKind Kind);
 
 /// <summary>Why the planner picked the card (spec PLAN08). Shown in results, and useful for tests.</summary>
 public enum SessionItemKind

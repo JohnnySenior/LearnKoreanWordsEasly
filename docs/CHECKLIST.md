@@ -46,7 +46,7 @@ Bosqichlar spec §13 bo‘yicha.
 - ~~Zaxira va AI sozlamalari endpoint’lari hammaga ochiq~~ — 1-bosqichda `Admin` ostiga o‘tdi (L-14).
 - Production’da so‘z qo‘shish yo‘li yo‘q: katalog, import va seed 2-bosqichda (L-04).
 - AI promptlari hali KAT auditoriyasi (TOPIK II, 3–4-daraja) uchun yozilgan; Lug‘at foydalanuvchisi boshlang‘ich daraja. Kontent va mashqlar bosqichlarida qayta ko‘rib chiqiladi.
-- Navigatsiya hali KAT’niki (Bugun · Lug‘atlar · Mashq · Sinov). Spec §4.7 dagi panel (Bosh sahifa · Bo‘limlar · Takrorlash · Mashq · Profil) 3-bosqichda.
+- ~~Navigatsiya hali KAT’niki~~ — 3-bosqichda spec §4.7 paneli (L-25).
 - Sozlamalar sahifasidagi zaxira va AI tekshiruvi bo‘limlari endi faqat adminga ko‘rinadi; admin paneliga 7-bosqichda ko‘chadi.
 
 ### Namuna kontent bo‘yicha kuzatuvlar (2-bosqich uchun)
@@ -108,9 +108,27 @@ Bosqichlar spec §13 bo‘yicha.
 - Bo‘lim qulfi, ochish, kartalar va `LearningItem` — 3-bosqich (L-20); o‘quvchi uchun bo‘limlar sahifasi ham 3-bosqichda.
 - UZ→KO sinonimlar (또/더, 나/저) bo‘yicha distraktor tekshiruvi — 4-bosqich (bo‘lim testi).
 
-## Bosqich 3 · Bo‘limlar, kartalar, takrorlash
+## Bosqich 3 · Bo‘limlar, kartalar, takrorlash (2026-10-22)
 
-- [ ] `UserUnitProgress`, `LearningItem`, Bo‘limlar va Bo‘lim sahifalari, kunlik takrorlash, Bosh sahifa.
+- [x] `LearningItem` (umumiy, katalog so‘ziga bog‘langan) `WordSense` o‘rniga; karta noyobligi `(OwnerId, LearningItemId, Direction)`; migratsiya `LearningItems` (L-22).
+- [x] Nashr va tahrirda elementlar sinxron; ishga tushishda yetishmaganlari to‘ldiriladi (L-22).
+- [x] `UserUnitProgress`: yangi foydalanuvchida A-1 ochiq, o‘tilgan bo‘limdan keyingisi ochiladi, qulflangan bo‘lim 403 (L-23).
+- [x] Bo‘limni ochish `POST /api/units/{id}/open` — kartalar bir marta yaratiladi (L-23).
+- [x] Kunlik takrorlash: barcha ochilgan bo‘limlardan muddati kelganlar, yangi so‘zlar faqat joriy bo‘limdan; bo‘lim drill’i (L-24).
+- [x] Sahifalar: Bosh sahifa (bugungi takrorlash + joriy bo‘lim), Bo‘limlar, Bo‘lim (4 qadam: Jadval, Kartochka, Mashqlar, Test — 4-bosqichda), Takrorlash; navigatsiya spec §4.7 (L-25).
+- [x] Jadval/yozma/sinov/qo‘llanish/xatolar daftari "jadval" o‘rniga bo‘lim bilan (L-22).
+- [x] Matnli rasmiy fayl: UTF-16/UTF-8/CP949, bo‘shliq bilan ajratilgan, sarlavhasiz (L-26).
+
+**Tekshirildi:**
+- `dotnet build` toza; testlar 95 (Domain) + 26 (Application) + 154 (Api) = 275, hammasi o‘tdi; KAT’dan kelgan scheduler va sessiya testlari yashil.
+- Qabul mezonlari testlarda (`Catalog/UnitProgressTests`): yangi foydalanuvchida faqat A-1 ochiq, A-2 so‘zlari, ochilishi va drill’i — 403; bo‘limni bir necha marta (parallel ham) ochish 50 ta karta (25 × 2) beradi; 3-bo‘limdagi foydalanuvchining kunlik takrorlashida 1-bo‘limning muddati kelgan 6 kartasi va faqat 3-bo‘limning yangi so‘zlari chiqadi; bo‘limni o‘tish keyingisini ochadi, boshqa foydalanuvchiga ta’sir qilmaydi; nashrdan keyingi tahrir elementning matni va versiyasini yangilaydi.
+- Chromium, 360px (Development, namuna seed): Bosh sahifa → joriy bo‘lim A-1; Bo‘limlar (A-1 ochiq, A-2 qulflangan, "Avval 1-bo‘limni tugating"); A-1 sahifasi — 25 so‘z jadvalda, so‘z bosilganda misol va tuzoq; Kartochka → 50 kartali drill; Takrorlash tabi. Gorizontal scroll yo‘q; konsolda faqat TTS 503 (dev’da ovoz kaliti yo‘q).
+
+**Ochiq qoldi:**
+- Bo‘lim testi va "Bilaman" — 4-bosqich (tugmalar hozir o‘chiq). Hozircha o‘quvchi faqat A-1 da ishlay oladi.
+- "Qaysi so‘z to‘g‘ri?" mashqi hali har foydalanuvchining AI qo‘llanishidan; katalogning tekshirilgan savollariga (`CatalogUsage`) o‘tkazish kerak (spec §3.1: umumiy, bepul) — 4-bosqich test generatori bilan birga.
+- Onboarding (spec §4.1, 2–3 ekran) va "Ilovani o‘rnatish" — 6-bosqich (PWA).
+- Haqiqiy rasmiy `.txt` fayl hali sinalmadi (L-26).
 
 ## Bosqich 4 · Bo‘lim testi va "Bilaman"
 

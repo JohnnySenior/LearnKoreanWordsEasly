@@ -27,7 +27,7 @@ public sealed class WritingAttempt
 
     public Guid OwnerId { get; set; }
 
-    public Guid WordSenseId { get; set; }
+    public Guid LearningItemId { get; set; }
 
     /// <summary>KoreanToUzbek = the learner types Uzbek; UzbekToKorean = the learner types Korean.</summary>
     public ReviewDirection Direction { get; set; }

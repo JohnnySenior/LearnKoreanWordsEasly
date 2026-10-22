@@ -22,24 +22,24 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     /// <summary>
-    /// Words to type: one table's words when <paramref name="table"/> is given, otherwise words already started
-    /// in flash cards (or the first table when nothing is started yet). Words typed wrong lately come first.
+    /// Words to type: one unit's words when <paramref name="unitId"/> is given, otherwise words already started
+    /// in flash cards (or the first opened unit when nothing is started yet). Words typed wrong lately come first.
     /// </summary>
-    public async Task<IReadOnlyList<WritingPromptDto>> QueueAsync(Guid ownerId, ReviewDirection? direction, int count, int? table, CancellationToken ct)
+    public async Task<IReadOnlyList<WritingPromptDto>> QueueAsync(Guid ownerId, ReviewDirection? direction, int count, Guid? unitId, CancellationToken ct)
     {
         count = Math.Clamp(count, 1, MaxCount);
-        var senses = db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive);
-        List<WordSense> pool;
-        if (table is { } t)
+        var senses = Study.LearnerItems.Of(db, ownerId);
+        List<LearningItem> pool;
+        if (unitId is { } unit)
         {
-            pool = await senses.Where(s => s.TableNumber == t).ToListAsync(ct);
+            pool = await senses.Where(s => s.UnitId == unit).ToListAsync(ct);
         }
         else
         {
-            pool = await senses.Where(s => db.Cards.Any(c => c.WordSenseId == s.Id && c.Phase != LearningPhase.New)).ToListAsync(ct);
-            if (pool.Count == 0 && await senses.OrderBy(s => s.TableNumber).Select(s => (int?)s.TableNumber).FirstOrDefaultAsync(ct) is { } first)
+            pool = await senses.Where(s => db.Cards.Any(c => c.OwnerId == ownerId && c.LearningItemId == s.Id && c.Phase != LearningPhase.New)).ToListAsync(ct);
+            if (pool.Count == 0 && await senses.OrderBy(s => s.Order).Select(s => s.UnitId).FirstOrDefaultAsync(ct) is { } first)
             {
-                pool = await senses.Where(s => s.TableNumber == first).ToListAsync(ct);
+                pool = await senses.Where(s => s.UnitId == first).ToListAsync(ct);
             }
         }
 
@@ -51,7 +51,7 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
         var since = time.GetUtcNow().AddDays(-14);
         var recentlyWrong = (await db.WritingAttempts
                 .Where(w => w.OwnerId == ownerId && w.CreatedAt >= since && w.Verdict != WritingVerdict.Correct)
-                .Select(w => w.WordSenseId).Distinct().ToListAsync(ct))
+                .Select(w => w.LearningItemId).Distinct().ToListAsync(ct))
             .ToHashSet();
 
         var picked = pool
@@ -61,12 +61,14 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
             .OrderBy(_ => Random.Shared.Next())
             .ToList();
 
+        var units = await Study.LearnerItems.UnitLabelsAsync(db, picked.Select(s => s.UnitId), ct);
         return picked.Select(s =>
         {
             var d = direction ?? (Random.Shared.Next(2) == 0 ? ReviewDirection.KoreanToUzbek : ReviewDirection.UzbekToKorean);
+            var unit = s.UnitId is { } u ? units.GetValueOrDefault(u) : null;
             return d == ReviewDirection.KoreanToUzbek
-                ? new WritingPromptDto(s.Id, d, s.Korean, s.KoreanNote, s.TableNumber)
-                : new WritingPromptDto(s.Id, d, s.Uzbek, null, s.TableNumber);
+                ? new WritingPromptDto(s.Id, d, s.Korean, s.KoreanNote, unit)
+                : new WritingPromptDto(s.Id, d, s.Uzbek, null, unit);
         }).ToList();
     }
 
@@ -80,7 +82,7 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
                 throw new NotFoundException("Javob topilmadi.");
             }
 
-            var s = await db.WordSenses.AsNoTracking().SingleAsync(x => x.Id == existing.WordSenseId, ct);
+            var s = await db.LearningItems.AsNoTracking().SingleAsync(x => x.Id == existing.LearningItemId, ct);
             return ToDto(existing, s);
         }
 
@@ -95,7 +97,7 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
             throw new ValidationException($"Javob juda uzun. Ko‘pi bilan {MaxAnswerLength} belgi.");
         }
 
-        var sense = await db.WordSenses.SingleOrDefaultAsync(s => s.Id == request.WordSenseId && s.OwnerId == ownerId && s.IsActive, ct)
+        var sense = await Study.LearnerItems.Of(db, ownerId).SingleOrDefaultAsync(s => s.Id == request.LearningItemId, ct)
             ?? throw new NotFoundException("So‘z topilmadi.");
 
         var typingKorean = request.Direction == ReviewDirection.UzbekToKorean;
@@ -107,7 +109,7 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
         {
             Id = request.Id,
             OwnerId = ownerId,
-            WordSenseId = sense.Id,
+            LearningItemId = sense.Id,
             Direction = request.Direction,
             Answer = answer,
             Expected = typingKorean ? sense.Korean : sense.Uzbek,
@@ -166,7 +168,7 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
     /// The text did not match the book: ask the AI whether it still means the same (PR06) or is a misspelling of the
     /// target. When the AI is not available the answer stays "wrong" and says so; it is never guessed.
     /// </summary>
-    private async Task JudgeMeaningAsync(Guid ownerId, WritingAttempt attempt, WordSense sense, bool typingKorean, CancellationToken ct)
+    private async Task JudgeMeaningAsync(Guid ownerId, WritingAttempt attempt, LearningItem sense, bool typingKorean, CancellationToken ct)
     {
         var task = typingKorean
             ? $"The learner saw the Uzbek meaning and had to type the Korean word.\nUzbek meaning: {sense.Uzbek}\nExpected Korean: {sense.Korean}"
@@ -204,7 +206,7 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
         }
     }
 
-    private static WritingResultDto ToDto(WritingAttempt w, WordSense s) => new(
+    private static WritingResultDto ToDto(WritingAttempt w, LearningItem s) => new(
         w.Id,
         w.Verdict,
         w.Answer,

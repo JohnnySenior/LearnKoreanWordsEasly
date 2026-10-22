@@ -26,47 +26,51 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    /// <summary>Per table: how many words already have their usage, for the practice page.</summary>
+    /// <summary>Per unit: how many words already have their usage, for the practice page.</summary>
     public async Task<IReadOnlyList<UsageTableSummaryDto>> SummaryAsync(Guid ownerId, CancellationToken ct)
     {
         var words = await Words(ownerId)
             .Select(s => new
             {
-                s.TableNumber,
-                Usage = db.WordUsages.Where(u => u.WordSenseId == s.Id && u.ContentVersion == s.ContentVersion)
+                s.UnitId,
+                s.Order,
+                Usage = db.WordUsages.Where(u => u.OwnerId == ownerId && u.LearningItemId == s.Id && u.ContentVersion == s.ContentVersion)
                     .Select(u => new { u.Questions }).FirstOrDefault(),
             })
             .ToListAsync(ct);
+        var labels = await Study.LearnerItems.UnitLabelsAsync(db, words.Select(w => w.UnitId), ct);
         return words
-            .GroupBy(w => w.TableNumber)
-            .OrderBy(g => g.Key)
+            .Where(w => w.UnitId is not null)
+            .GroupBy(w => w.UnitId!.Value)
+            .OrderBy(g => g.Min(w => w.Order))
             .Select(g => new UsageTableSummaryDto(
                 g.Key,
+                labels.GetValueOrDefault(g.Key, "—"),
                 g.Count(),
                 g.Count(w => w.Usage is not null),
                 g.Sum(w => w.Usage?.Questions.Count ?? 0)))
             .ToList();
     }
 
-    public async Task<TableUsageDto> TableAsync(Guid ownerId, int table, CancellationToken ct)
+    public async Task<TableUsageDto> TableAsync(Guid ownerId, Guid unitId, CancellationToken ct)
     {
-        var words = await TableWordsAsync(ownerId, table, ct);
-        var usages = await CurrentAsync(words, ct);
-        return ToDto(table, words, usages);
+        var words = await TableWordsAsync(ownerId, unitId, ct);
+        var usages = await CurrentAsync(ownerId, words, ct);
+        return await ToDtoAsync(unitId, words, usages, ct);
     }
 
     /// <summary>
-    /// Prepares the next <see cref="WordsPerCall"/> words of the table that have no usage yet (one AI call) and
-    /// returns the table. The page calls it again until every word is ready, so no request runs for minutes.
+    /// Prepares the next <see cref="WordsPerCall"/> words of the unit that have no usage yet (one AI call) and
+    /// returns the unit. The page calls it again until every word is ready, so no request runs for minutes.
     /// </summary>
-    public async Task<TableUsageDto> PrepareTableAsync(Guid ownerId, int table, CancellationToken ct)
+    public async Task<TableUsageDto> PrepareTableAsync(Guid ownerId, Guid unitId, CancellationToken ct)
     {
-        var words = await TableWordsAsync(ownerId, table, ct);
-        var usages = await CurrentAsync(words, ct);
+        var words = await TableWordsAsync(ownerId, unitId, ct);
+        var usages = await CurrentAsync(ownerId, words, ct);
         var missing = words.Where(w => !usages.ContainsKey(w.Id)).Take(WordsPerCall).ToList();
         if (missing.Count == 0)
         {
-            return ToDto(table, words, usages);
+            return await ToDtoAsync(unitId, words, usages, ct);
         }
 
         var result = await ai.CompleteJsonAsync(ownerId, BuildRequest(missing), ct);
@@ -77,14 +81,14 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         }
 
         var ids = parsed.Keys.ToList();
-        var stale = await db.WordUsages.Where(u => ids.Contains(u.WordSenseId)).ToListAsync(ct);
+        var stale = await db.WordUsages.Where(u => u.OwnerId == ownerId && ids.Contains(u.LearningItemId)).ToListAsync(ct);
         db.WordUsages.RemoveRange(stale);
         var now = time.GetUtcNow();
         foreach (var (senseId, usage) in parsed)
         {
             usage.Id = Guid.CreateVersion7(now);
             usage.OwnerId = ownerId;
-            usage.WordSenseId = senseId;
+            usage.LearningItemId = senseId;
             usage.ContentVersion = missing.First(w => w.Id == senseId).ContentVersion;
             usage.Provider = AiGateway.Label(result.Provider);
             usage.Model = result.Response.Model;
@@ -94,45 +98,45 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         }
 
         await db.SaveChangesAsync(ct);
-        return ToDto(table, words, usages);
+        return await ToDtoAsync(unitId, words, usages, ct);
     }
 
     /// <summary>Usage questions of the learner's words, for a "which word is right?" test (D-46).</summary>
-    public async Task<List<(WordSense Word, UsageQuestion Question)>> QuestionsAsync(Guid ownerId, IReadOnlyCollection<int>? tables, CancellationToken ct)
+    public async Task<List<(LearningItem Word, UsageQuestion Question)>> QuestionsAsync(Guid ownerId, IReadOnlyCollection<Guid>? units, CancellationToken ct)
     {
         var query = Words(ownerId);
-        if (tables is { Count: > 0 })
+        if (units is { Count: > 0 })
         {
-            query = query.Where(s => tables.Contains(s.TableNumber));
+            query = query.Where(s => s.UnitId != null && units.Contains(s.UnitId.Value));
         }
 
         var rows = await (from s in query
-                          join u in db.WordUsages on s.Id equals u.WordSenseId
-                          where u.ContentVersion == s.ContentVersion
+                          join u in db.WordUsages on s.Id equals u.LearningItemId
+                          where u.OwnerId == ownerId && u.ContentVersion == s.ContentVersion
                           select new { Word = s, u.Questions }).ToListAsync(ct);
         return rows.SelectMany(r => r.Questions.Select(q => (r.Word, q))).ToList();
     }
 
-    private IQueryable<WordSense> Words(Guid ownerId) =>
-        db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive && db.Cards.Any(c => c.WordSenseId == s.Id));
+    private IQueryable<LearningItem> Words(Guid ownerId) => Study.LearnerItems.Of(db, ownerId);
 
-    private async Task<List<WordSense>> TableWordsAsync(Guid ownerId, int table, CancellationToken ct)
+    private async Task<List<LearningItem>> TableWordsAsync(Guid ownerId, Guid unitId, CancellationToken ct)
     {
-        var words = await Words(ownerId).Where(s => s.TableNumber == table)
+        var words = await Words(ownerId).Where(s => s.UnitId == unitId)
             .OrderBy(s => s.Order).ToListAsync(ct);
-        return words.Count == 0 ? throw new NotFoundException("Bu jadvalda so‘z yo‘q.") : words;
+        return words.Count == 0 ? throw new NotFoundException("Bu bo‘limda so‘z yo‘q.") : words;
     }
 
-    private async Task<Dictionary<Guid, WordUsage>> CurrentAsync(List<WordSense> words, CancellationToken ct)
+    private async Task<Dictionary<Guid, WordUsage>> CurrentAsync(Guid ownerId, List<LearningItem> words, CancellationToken ct)
     {
         var ids = words.Select(w => w.Id).ToList();
         var versions = words.ToDictionary(w => w.Id, w => w.ContentVersion);
-        var usages = await db.WordUsages.Where(u => ids.Contains(u.WordSenseId)).ToListAsync(ct);
-        return usages.Where(u => versions[u.WordSenseId] == u.ContentVersion).ToDictionary(u => u.WordSenseId);
+        var usages = await db.WordUsages.Where(u => u.OwnerId == ownerId && ids.Contains(u.LearningItemId)).ToListAsync(ct);
+        return usages.Where(u => versions[u.LearningItemId] == u.ContentVersion).ToDictionary(u => u.LearningItemId);
     }
 
-    private static TableUsageDto ToDto(int table, List<WordSense> words, Dictionary<Guid, WordUsage> usages) => new(
-        table,
+    private async Task<TableUsageDto> ToDtoAsync(Guid unitId, List<LearningItem> words, Dictionary<Guid, WordUsage> usages, CancellationToken ct) => new(
+        unitId,
+        (await Study.LearnerItems.UnitLabelsAsync(db, [unitId], ct)).GetValueOrDefault(unitId, "—"),
         words.Count,
         words.Count(w => usages.ContainsKey(w.Id)),
         words.Where(w => usages.ContainsKey(w.Id)).Select(w =>
@@ -141,7 +145,7 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
             return new WordUsageDto(w.Id, w.Korean, w.Uzbek, u.Phrases, u.TrapUz, u.Example, u.Questions.Count, u.Warning);
         }).ToList());
 
-    public static AiJsonRequest BuildRequest(IReadOnlyList<WordSense> words)
+    public static AiJsonRequest BuildRequest(IReadOnlyList<LearningItem> words)
     {
         var lines = new StringBuilder();
         for (var i = 0; i < words.Count; i++)
@@ -158,7 +162,7 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
     /// Keeps only well-formed parts: Hangul Korean, Latin-script Uzbek, a question sentence with exactly one gap and
     /// options that are all different. A word the AI skipped is simply left out and asked again next time.
     /// </summary>
-    public static Dictionary<Guid, WordUsage> Parse(string json, IReadOnlyList<WordSense> words)
+    public static Dictionary<Guid, WordUsage> Parse(string json, IReadOnlyList<LearningItem> words)
     {
         UsageResult? r;
         try

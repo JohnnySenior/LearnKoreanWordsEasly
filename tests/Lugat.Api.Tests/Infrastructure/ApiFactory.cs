@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using Lugat.Api.Auth;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Users;
-using Lugat.Application.Vocabulary;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Builder;
@@ -48,7 +48,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Test-only sign-in endpoint (see <see cref="TestEndpoints"/>); query: tg = Telegram user id, name = first name.</summary>
     public const string TestSignInPath = "/__test/sign-in";
 
-    /// <summary>Test-only: adds <see cref="TableWords"/> as table 1 (or ?table=n) of the signed-in learner.</summary>
+    /// <summary>
+    /// Test-only: publishes <see cref="TableWords"/> as catalog unit A-1 (or ?table=n) and opens it for the signed-in
+    /// learner, which creates their cards as the real unit page does.
+    /// </summary>
     public const string TestWordsPath = "/__test/words";
 
     /// <summary>The words a test's learner gets through <see cref="TestWordsPath"/>.</summary>
@@ -143,15 +146,86 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Adds words to the learner's table <paramref name="table"/> as the vocabulary service does, with both cards.
-    /// Interim until the shared catalog (spec §5); the order continues across tables, as in a frequency list.
+    /// Publishes <paramref name="rows"/> as unit A-<paramref name="table"/> (if it is not there yet) and opens it for
+    /// the learner with their cards. Tables of the old tests are units of level A now.
     /// </summary>
     public async Task AddWordsAsync(long telegramUserId, int table, params (string Korean, string Uzbek)[] rows)
     {
         await using var scope = Services.CreateAsyncScope();
         var user = await scope.ServiceProvider.GetRequiredService<UserService>().SignInAsync(TelegramLogin(telegramUserId, null), CancellationToken.None);
-        var words = rows.Select((r, i) => new NewWord(table, ((table - 1) * 100) + i + 1, r.Korean, null, r.Uzbek)).ToList();
-        await scope.ServiceProvider.GetRequiredService<VocabularyService>().AddAsync(user.Id, words, CancellationToken.None);
+        await OpenUnitAsync(scope.ServiceProvider, user.Id, table, rows);
+    }
+
+    /// <summary>The id of test unit A-<paramref name="number"/>: fixed, so tests can name it before it exists.</summary>
+    public static Guid Unit(int number) => new($"00000000-0000-0000-0000-{number:D12}");
+
+    /// <summary>The unit A-<paramref name="number"/>, published with these words when it does not exist yet.</summary>
+    public static async Task<Lugat.Domain.Catalog.Unit> PublishUnitAsync(IServiceProvider services, int number, IReadOnlyList<(string Korean, string Uzbek)> rows)
+    {
+        var db = services.GetRequiredService<Lugat.Infrastructure.Persistence.AppDbContext>();
+        var lockLease = await services.GetRequiredService<IOperationLock>().AcquireAsync(Lugat.Application.Catalog.CatalogAdminService.LockKey, CancellationToken.None);
+        await using (lockLease)
+        {
+            var unit = await db.Units.SingleOrDefaultAsync(u => u.Level == Lugat.Domain.Catalog.CatalogLevel.A && u.Number == number);
+            if (unit is not null)
+            {
+                return unit;
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            unit = new Lugat.Domain.Catalog.Unit
+            {
+                Id = Unit(number),
+                Level = Lugat.Domain.Catalog.CatalogLevel.A,
+                Number = number,
+                Status = Lugat.Domain.Catalog.UnitStatus.Published,
+                PublishedAt = now,
+                WordCount = rows.Count,
+                CreatedAt = now,
+            };
+            db.Units.Add(unit);
+            db.CatalogWords.AddRange(rows.Select((r, i) => new Lugat.Domain.Catalog.CatalogWord
+            {
+                Id = Guid.CreateVersion7(),
+                SourceKey = $"A:{r.Korean}:t{number}-{i}",
+                Word = r.Korean,
+                Pos = "명",
+                Level = Lugat.Domain.Catalog.CatalogLevel.A,
+                FreqRank = (number * 100) + i,
+                IsStudyable = true,
+                UnitId = unit.Id,
+                OrderInUnit = i + 1,
+                TranslationUz = r.Uzbek,
+                Status = Lugat.Domain.Catalog.CatalogWordStatus.Reviewed,
+                CreatedAt = now,
+                UpdatedAt = now,
+            }));
+            await db.SaveChangesAsync();
+            await Lugat.Application.Catalog.LearningItemSync.SyncUnitAsync(db, unit, now, CancellationToken.None);
+            await db.SaveChangesAsync();
+            return unit;
+        }
+    }
+
+    /// <summary>Lets the learner into the unit as passing the one before would (stage 4) and opens it (cards).</summary>
+    public static async Task OpenUnitAsync(IServiceProvider services, Guid userId, int number, IReadOnlyList<(string Korean, string Uzbek)> rows)
+    {
+        var unit = await PublishUnitAsync(services, number, rows);
+        var db = services.GetRequiredService<Lugat.Infrastructure.Persistence.AppDbContext>();
+        if (!await db.UnitProgress.AnyAsync(p => p.UserId == userId && p.UnitId == unit.Id))
+        {
+            db.UnitProgress.Add(new Lugat.Domain.Catalog.UserUnitProgress
+            {
+                Id = Guid.CreateVersion7(),
+                UserId = userId,
+                UnitId = unit.Id,
+                Status = Lugat.Domain.Catalog.UnitProgressStatus.Open,
+                OpenedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await services.GetRequiredService<Lugat.Application.Catalog.UnitProgressService>().OpenAsync(userId, unit.Id, CancellationToken.None);
     }
 
     /// <summary>A Telegram login as the widget check would produce it.</summary>
@@ -180,8 +254,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 }
 
                 var table = int.TryParse(http.Request.Query["table"], CultureInfo.InvariantCulture, out var t) ? t : 1;
-                var words = factory.TableWords.Select((w, i) => new NewWord(table, ((table - 1) * 100) + i + 1, w.Korean, null, w.Uzbek)).ToList();
-                await http.RequestServices.GetRequiredService<VocabularyService>().AddAsync(principal.GetUserId(), words, http.RequestAborted);
+                await OpenUnitAsync(http.RequestServices, principal.GetUserId(), table, factory.TableWords);
             }));
             app.Map(TestSignInPath, branch => branch.Run(async http =>
             {

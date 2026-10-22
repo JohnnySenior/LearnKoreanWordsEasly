@@ -13,9 +13,9 @@
 </header>
 
 <nav class="menu" aria-label="Mashqlar">
-    <a href="lugatlar#jadvallar">
+    <a href="bolimlar">
         <span class="no">01</span>
-        <span><span class="t">Jadvalni yodlash</span><span class="s">Jadvalni ko‘rib 10 daqiqa yodlash, keyin kartochka</span></span>
+        <span><span class="t">Bo‘lim jadvali</span><span class="s">Bo‘limni jadvalda ko‘rib yodlash, keyin kartochka</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
     @if (_today?.ActiveSession is { Current: not null } active)
@@ -69,9 +69,14 @@
         <span><span class="t">Xatolar daftari</span><span class="s">Xato qilingan so‘zlarni kartochkada takrorlash</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
+    <a href="sinov">
+        <span class="no">10</span>
+        <span><span class="t">Sinovlar</span><span class="s">Lug‘at va og‘zaki sinov · oldingi natijalar</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+    </a>
 </nav>
 
-<p class="muted small-text" style="margin-top:16px">Og‘zaki tayyorlik <a href="sinov">Sinov</a> bo‘limida. Mashg‘ulot vaqtini <a href="">Bugun</a> sahifasida ham tanlash mumkin.</p>
+<p class="muted small-text" style="margin-top:16px">Mashg‘ulot vaqtini <a href="">Bosh sahifa</a>da ham tanlash mumkin.</p>
 
 @if (_message is not null)
 {

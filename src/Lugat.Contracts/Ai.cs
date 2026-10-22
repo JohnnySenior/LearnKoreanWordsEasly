@@ -19,10 +19,11 @@ public sealed record ChooseAiProviderRequest(AiProviderKind? Provider);
 public sealed record AiPingResult(bool Ok, AiProviderKind Provider, string? Model, int? LatencyMs, string Message);
 
 /// <summary>A word to build a sentence with (spec PR05).</summary>
-public sealed record SentenceTargetDto(Guid WordSenseId, string Korean, string? KoreanNote, string Uzbek, int TableNumber);
+/// <param name="Unit">"A-3".</param>
+public sealed record SentenceTargetDto(Guid LearningItemId, string Korean, string? KoreanNote, string Uzbek, string? Unit);
 
 /// <param name="Id">Chosen by the client once per attempt and reused on retries (spec API01).</param>
-public sealed record SentenceCheckRequest(Guid Id, Guid? WordSenseId, string Answer);
+public sealed record SentenceCheckRequest(Guid Id, Guid? LearningItemId, string Answer);
 
 /// <summary>Spec AI01 structure, validated on the server.</summary>
 /// <param name="Verdict">correct, mostly_correct, incorrect, task_not_done.</param>
@@ -52,7 +53,7 @@ public sealed record SentenceIssue(string Quote, string Type, string Severity, s
 
 public sealed record SentenceCheckDto(
     Guid Id,
-    Guid? WordSenseId,
+    Guid? LearningItemId,
     string Target,
     string Answer,
     AiCheckStatus Status,

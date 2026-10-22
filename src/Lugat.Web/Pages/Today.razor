@@ -5,8 +5,8 @@
 
 <PageTitle>Bugun — Lug‘at</PageTitle>
 
-@* Today shows only what to do now (D-42): today's practice. Tables live in Lug‘atlar, results in Sinov,
-   settings behind the avatar. The home page of units (spec §4.1) replaces this in stage 3. *@
+@* The home page (spec §4.6, §12.3): today's review across all opened units and the current unit to continue.
+   Units live in Bo‘limlar, settings behind the avatar. *@
 <header class="page-head">
     <div>
         <span class="kicker accent">@Format.DayMonth(DateTimeOffset.UtcNow)</span>
@@ -49,7 +49,7 @@ else
         else if (_today.DueNow == 0 && _today.NewAvailable == 0)
         {
             <p class="muted">Hozircha takrorlanadigan so‘z yo‘q.</p>
-            <p class="small-text"><a href="lugatlar">Lug‘atlar</a> bo‘limida jadvalni yodlang.</p>
+            <p class="small-text">Bo‘limni oching: avval jadvalni ko‘rib yodlang, keyin kartochkada tekshiring.</p>
         }
         else
         {
@@ -73,9 +73,18 @@ else
         }
     </section>
 
-    @if (_today.DueNow + _today.NewAvailable > 0)
+    @if (_today.CurrentUnit is { } unit)
     {
-        <p class="muted small-text" style="margin:12px 0"><a href="lugatlar">Lug‘atlar</a>: jadvalni ko‘rib yodlash, keyin kartochkada tekshirish.</p>
+        <section class="card">
+            <span class="kicker">Joriy bo‘lim</span>
+            <a class="button block" href="@($"bolimlar/{unit.Id}")">
+                <span>@unit.Label-bo‘lim</span><span class="aside">@unit.Started/@unit.WordCount boshlangan →</span>
+            </a>
+        </section>
+    }
+    else
+    {
+        <p class="muted small-text" style="margin:12px 0"><a href="bolimlar">Bo‘limlar</a>: hali ochiq bo‘lim yo‘q.</p>
     }
 }
 

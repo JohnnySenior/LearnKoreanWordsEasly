@@ -90,11 +90,11 @@ public class SessionPlannerTests
         Assert.All(plan, i => Assert.Equal(SessionItemKind.New, i.Kind));
         for (var i = 1; i < plan.Count; i++)
         {
-            Assert.NotEqual(plan[i - 1].WordSenseId, plan[i].WordSenseId);
+            Assert.NotEqual(plan[i - 1].LearningItemId, plan[i].LearningItemId);
         }
 
         // Each word is first asked Korean → Uzbek.
-        foreach (var sense in plan.GroupBy(i => i.WordSenseId))
+        foreach (var sense in plan.GroupBy(i => i.LearningItemId))
         {
             Assert.Equal(ReviewDirection.KoreanToUzbek, sense.First().Direction);
         }
@@ -110,8 +110,8 @@ public class SessionPlannerTests
 
         var plan = SessionPlanner.Plan(words, Request(null));
 
-        var position = plan.Select((item, index) => (item, index)).ToLookup(x => x.item.WordSenseId, x => x.index);
-        var senses = words.Select(w => w.WordSenseId).Distinct().ToList();
+        var position = plan.Select((item, index) => (item, index)).ToLookup(x => x.item.LearningItemId, x => x.index);
+        var senses = words.Select(w => w.LearningItemId).Distinct().ToList();
         // Away from the very end there are enough other words to keep each reverse well apart (D-45).
         foreach (var sense in senses.Take(count - SessionPlanner.MinReverseGap))
         {
@@ -120,8 +120,8 @@ public class SessionPlannerTests
         }
 
         // The Uzbek → Korean prompts do not simply repeat the Korean order (before: K1 K2 K3 U1 U2 U3).
-        var koreanOrder = plan.Where(i => i.Direction == ReviewDirection.KoreanToUzbek).Select(i => i.WordSenseId).ToList();
-        var uzbekOrder = plan.Where(i => i.Direction == ReviewDirection.UzbekToKorean).Select(i => i.WordSenseId).ToList();
+        var koreanOrder = plan.Where(i => i.Direction == ReviewDirection.KoreanToUzbek).Select(i => i.LearningItemId).ToList();
+        var uzbekOrder = plan.Where(i => i.Direction == ReviewDirection.UzbekToKorean).Select(i => i.LearningItemId).ToList();
         Assert.Equal(senses, koreanOrder); // new words still come in book order
         Assert.NotEqual(koreanOrder, uzbekOrder);
     }
@@ -150,7 +150,7 @@ public class SessionPlannerTests
 
         Assert.Equal(Math.Min(count * 2, SessionPlanner.MaxItems), plan.Count);
         AssertNoBackToBack(plan);
-        foreach (var sense in plan.GroupBy(i => i.WordSenseId))
+        foreach (var sense in plan.GroupBy(i => i.LearningItemId))
         {
             Assert.Equal(ReviewDirection.KoreanToUzbek, sense.First().Direction);
         }
@@ -194,7 +194,7 @@ public class SessionPlannerTests
     {
         for (var i = 1; i < plan.Count; i++)
         {
-            Assert.True(plan[i - 1].WordSenseId != plan[i].WordSenseId, $"Items {i - 1} and {i} are the same word");
+            Assert.True(plan[i - 1].LearningItemId != plan[i].LearningItemId, $"Items {i - 1} and {i} are the same word");
         }
     }
 
@@ -206,8 +206,8 @@ public class SessionPlannerTests
         var plan = SessionPlanner.Plan(words, Request(5));
 
         Assert.Equal(4, plan.Count); // two whole words; a third would need 6 slots
-        var firstTwoSenses = words.Select(w => w.WordSenseId).Distinct().Take(2).ToHashSet();
-        Assert.All(plan, i => Assert.Contains(i.WordSenseId, firstTwoSenses));
+        var firstTwoSenses = words.Select(w => w.LearningItemId).Distinct().Take(2).ToHashSet();
+        Assert.All(plan, i => Assert.Contains(i.LearningItemId, firstTwoSenses));
     }
 
     [Fact]

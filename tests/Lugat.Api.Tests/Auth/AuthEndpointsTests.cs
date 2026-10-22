@@ -220,7 +220,7 @@ public class AuthEndpointsTests
             Assert.NotNull(user.DeletedAt);
             Assert.Null(user.DisplayName);
             Assert.False(await db.UserLogins.AnyAsync(l => l.UserId == oldId));
-            Assert.False(await db.WordSenses.AnyAsync(w => w.OwnerId == oldId));
+            Assert.False(await db.LearningItems.AnyAsync(w => w.OwnerId == oldId));
             Assert.False(await db.Cards.AnyAsync(c => c.OwnerId == oldId));
             Assert.False(await db.ReviewEvents.AnyAsync(e => e.OwnerId == oldId));
             Assert.False(await db.StudySessions.AnyAsync(s => s.OwnerId == oldId));
@@ -230,7 +230,7 @@ public class AuthEndpointsTests
         var fresh = await factory.SignedInClientAsync(User);
         var me = (await fresh.GetFromJsonAsync<MeDto>("/api/me", Json))!;
         Assert.NotEqual(oldId, me.Id);
-        Assert.Empty((await fresh.GetFromJsonAsync<List<VocabTableDto>>("/api/vocabulary/tables", Json))!);
+        Assert.Equal(0, (await fresh.GetFromJsonAsync<ProgressDto>("/api/progress", Json))!.Words); // no cards of the old account
     }
 
     [Fact]
@@ -293,7 +293,7 @@ public class AuthEndpointsTests
         (await a.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
         (await b.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
 
-        Task<HttpResponseMessage> Start(HttpClient c) => c.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10), Json);
+        Task<HttpResponseMessage> Start(HttpClient c) => c.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 10), Json);
         var statuses = new List<HttpStatusCode>();
         for (var i = 0; i < 3; i++)
         {

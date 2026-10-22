@@ -46,7 +46,7 @@ public static class DependencyInjection
 
         services.Configure<AdminOptions>(config.GetSection(AdminOptions.SectionName));
         services.AddScoped<UserService>();
-        services.AddScoped<VocabularyService>();
+        services.AddScoped<Application.Catalog.UnitProgressService>();
         services.Configure<Application.Catalog.CatalogOptions>(config.GetSection(Application.Catalog.CatalogOptions.SectionName));
         services.AddSingleton<Application.Catalog.ICatalogFileReader, Catalog.CatalogFileReader>();
         services.AddScoped<Application.Catalog.CatalogService>();

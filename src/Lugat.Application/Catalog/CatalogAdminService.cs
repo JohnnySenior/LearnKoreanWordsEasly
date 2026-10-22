@@ -195,7 +195,8 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
 
         await using var lease = await operations.AcquireAsync(LockKey, ct);
         var word = await LoadAsync(wordId, request.Version, ct);
-        if (word.UnitId is { } unitId && !fields.IsComplete && await db.Units.AnyAsync(u => u.Id == unitId && u.Status == UnitStatus.Published, ct))
+        var publishedUnit = word.UnitId is { } unitId ? await db.Units.SingleOrDefaultAsync(u => u.Id == unitId && u.Status == UnitStatus.Published, ct) : null;
+        if (publishedUnit is not null && !fields.IsComplete)
         {
             throw new ValidationException("Nashr qilingan bo‘limdagi so‘zda tarjima, o‘qilishi va misol bo‘lishi shart.");
         }
@@ -223,6 +224,13 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         if (usage is not null)
         {
             (usage.Questions, usage.ContentVersion, usage.UpdatedAt) = (questions, word.ContentVersion, now);
+        }
+
+        if (publishedUnit is not null)
+        {
+            // Learners already practise this word: their cards follow the corrected text (spec §5.3).
+            await SaveAsync(ct);
+            await LearningItemSync.SyncUnitAsync(db, publishedUnit, now, ct);
         }
 
         await SaveAsync(ct);
@@ -269,6 +277,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             }
 
             (unit.Status, unit.PublishedAt) = (UnitStatus.Published, time.GetUtcNow());
+            await LearningItemSync.SyncUnitAsync(db, unit, unit.PublishedAt.Value, ct);
             await SaveAsync(ct);
         }
 

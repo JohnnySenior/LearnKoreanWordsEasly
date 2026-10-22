@@ -1,15 +1,17 @@
-@page "/lugatlar/jadval/{Table:int}"
+@page "/bolimlar/{Id:guid}"
 @using Lugat.Contracts
+@using Lugat.Domain.Catalog
 @implements IDisposable
 @inject SessionService Api
 @inject NavigationManager Nav
 
-<PageTitle>@Table-jadvalni yodlash — Lug‘at</PageTitle>
+<PageTitle>@(_unit?.Unit.Label ?? "Bo‘lim") — Lug‘at</PageTitle>
 
-@* Study a table as it stands in the book before the cards (D-36): first exposure here, recall on the cards. *@
-<a class="back" href="lugatlar">← Lug‘atlar</a>
+@* A unit (spec §4.3): 1 table, 2 cards, 3 exercises, 4 the unit test. The steps are a guide, not a forced order;
+   only the test finishes a unit (stage 4). Opening the page the first time creates the unit's cards (spec §5.3). *@
+<a class="back" href="bolimlar">← Bo‘limlar</a>
 
-@if (_table is null)
+@if (_unit is null)
 {
     <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
     return;
@@ -17,10 +19,60 @@
 
 <header class="page-head">
     <div>
-        <h1>@Table-jadval</h1>
-        <span class="muted small-text">@_table.Words.Count ta so‘z · @_table.Words.Count(w => w.Started) tasi kartochkada boshlangan</span>
+        <h1>@_unit.Unit.Number-bo‘lim</h1>
+        <span class="muted small-text">@_unit.Unit.Label · @_unit.Words.Count ta so‘z · @_unit.Words.Count(w => w.Started) tasi kartochkada boshlangan</span>
     </div>
+    @if (_unit.Unit.State == UnitState.Passed)
+    {
+        <span class="pill pill-ok">Tugallangan@(_unit.Unit.BestScorePercent is { } best ? $" · {best}%" : "")</span>
+    }
 </header>
+
+<ol class="steps" aria-label="Bo‘lim qadamlari">
+    <li class="@(_step == 1 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 1">1. Jadval</button></li>
+    <li class="@(_step == 2 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 2">2. Kartochka</button></li>
+    <li class="@(_step == 3 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 3">3. Mashqlar</button></li>
+    <li class="@(_step == 4 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 4">4. Test</button></li>
+</ol>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_step == 2)
+{
+    <section class="card">
+        <h2>Kartochka</h2>
+        <p class="muted small-text">Shu bo‘limning @_unit.Words.Count ta so‘zi ikki yo‘nalishda: avval o‘zingiz eslaysiz, keyin javobni ochib baholaysiz. Javoblar takrorlash jadvaliga yoziladi.</p>
+        <button class="button primary block" disabled="@_busy" @onclick="ToCardsAsync"><span>Kartochkani boshlash</span><span class="aside">@(_unit.Words.Count * 2) karta</span></button>
+    </section>
+    return;
+}
+
+@if (_step == 3)
+{
+    <section class="card">
+        <h2>Mashqlar</h2>
+        <nav class="menu compact">
+            <a href="@($"mashq/yozish?unit={Id}")"><span><span class="t">Yozma mashq</span><span class="s">So‘zni yozib tarjima qilish</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a>
+            <a href="mashq/qollanish"><span><span class="t">Qaysi so‘z to‘g‘ri?</span><span class="s">So‘zni gapda to‘g‘ri ishlatish</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a>
+        </nav>
+    </section>
+    return;
+}
+
+@if (_step == 4)
+{
+    <section class="card">
+        <h2>Bo‘lim testi</h2>
+        <p class="muted small-text">25 savol, 80% (20 ta to‘g‘ri) bo‘lsa bo‘lim tugaydi va keyingisi ochiladi.</p>
+        @* The unit test (spec §4.4) is stage 4; nothing here may open a unit (spec §5.3). *@
+        <button class="button primary block" disabled>Testni boshlash</button>
+        <p class="muted small-text">Bo‘lim testi keyingi yangilanishda qo‘shiladi.</p>
+    </section>
+    return;
+}
 
 <div class="study-bar">
     @if (_startedAt is null)
@@ -49,7 +101,7 @@
     @if (_startedAt is not null)
     {
         <button class="button @(Left() is { } l && l > TimeSpan.Zero ? "" : "primary") block" disabled="@_busy" @onclick="ToCardsAsync">
-            <span>Kartochkaga o‘tish</span><span class="aside">@_table.Words.Count so‘z</span>
+            <span>Kartochkaga o‘tish</span><span class="aside">@_unit.Words.Count so‘z</span>
         </button>
     }
 </div>
@@ -76,13 +128,13 @@
         <tr><th class="n">№</th><th>한국어</th><th>O‘zbekcha</th></tr>
     </thead>
     <tbody>
-        @foreach (var w in _table.Words)
+        @foreach (var w in _unit.Words)
         {
             var word = w;
             var koHidden = _cover == CoverMode.Korean && !_shown.Contains(w.Id);
             var uzHidden = _cover == CoverMode.Uzbek && !_shown.Contains(w.Id);
             <tr class="@(_selected == w.Id ? "selected" : "")">
-                <td class="n">@w.Number</td>
+                <td class="n">@w.Order</td>
                 <td class="ko" lang="ko" @onclick="() => Tap(word, koHidden)">
                     @if (koHidden)
                     {
@@ -90,10 +142,10 @@
                     }
                     else
                     {
-                        <span>@w.Korean</span>
-                        @if (w.KoreanNote is not null)
+                        <span>@w.Word</span>
+                        @if (ShowRomanization && w.Romanization is not null)
                         {
-                            <small>@w.KoreanNote</small>
+                            <small>@w.Romanization</small>
                         }
                     }
                 </td>
@@ -104,7 +156,7 @@
                     }
                     else
                     {
-                        @w.Uzbek
+                        @w.TranslationUz
                     }
                 </td>
             </tr>
@@ -113,10 +165,20 @@
                 <tr class="speak-row">
                     <td></td>
                     <td colspan="2">
-                        <Speak Text="@w.Korean" />
-                        @if (_usage?.Usages.FirstOrDefault(u => u.WordSenseId == word.Id) is { } usage && !uzHidden)
+                        <Speak Text="@w.Word" />
+                        @if (!uzHidden)
                         {
-                            <UsageNote Usage="usage" />
+                            <div class="usage-note">
+                                <p class="muted small-text">@w.PosUz@(w.Theme is null ? "" : $" · {w.Theme}")</p>
+                                @if (w.TrapUz is not null)
+                                {
+                                    <p class="usage-trap"><strong>O‘zbekcha tuzoq.</strong> @w.TrapUz</p>
+                                }
+                                @if (w.ExampleKo is not null)
+                                {
+                                    <p class="usage-example"><span lang="ko">@w.ExampleKo</span><br /><span class="muted">@w.ExampleUz</span></p>
+                                }
+                            </div>
                         }
                     </td>
                 </tr>
@@ -124,26 +186,11 @@
         }
     </tbody>
 </table>
-<p class="muted small-text">Koreyscha so‘zni bossangiz, talaffuzini eshitasiz@(_usage is { Ready: > 0 } ? " va qanday ishlatilishini ko‘rasiz" : ""). Bu sahifa kartochkalarning takrorlash jadvalini o‘zgartirmaydi.</p>
-
-@if (_usage is not null)
-{
-    <section class="card">
-        <span class="kicker">So‘z qo‘llanishi</span>
-        @if (_usage.Ready < _usage.Total)
-        {
-            <p class="muted small-text">AI har so‘z uchun qanday ishlatilishini, o‘zbekcha tuzoqni va bitta misolni tayyorlaydi (@_usage.Ready / @_usage.Total tayyor). Bir marta tayyorlanadi va saqlanadi.</p>
-            <button class="button" disabled="@_preparing" @onclick="PrepareUsageAsync">@(_preparing ? $"Tayyorlanmoqda… {_usage.Ready} / {_usage.Total}" : "Qo‘llanishini tayyorlash")</button>
-        }
-        else
-        {
-            <p class="muted small-text">Hammasi tayyor: so‘zni bossangiz, qanday ishlatilishi ochiladi. <a href="mashq/qollanish">Qaysi so‘z to‘g‘ri? mashqi →</a></p>
-        }
-    </section>
-}
+<p class="muted small-text">Koreyscha so‘zni bossangiz, talaffuzini, misol va tuzoqni ko‘rasiz. Jadval kartochkalarning takrorlash jadvalini o‘zgartirmaydi.</p>
+<p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1-tur).</p>
 
 @code {
-    [Parameter] public int Table { get; set; }
+    [Parameter] public Guid Id { get; set; }
 
     private enum CoverMode
     {
@@ -161,7 +208,8 @@
         (CoverMode.Uzbek, "O‘zbek yopiq"),
     ];
 
-    private VocabTableWordsDto? _table;
+    private UnitDto? _unit;
+    private int _step = 1;
     private string? _error;
     private int _minutes = 10;
     private DateTimeOffset? _startedAt;
@@ -170,42 +218,20 @@
     private Guid? _selected;
     private Timer? _clock;
     private bool _busy;
-    private TableUsageDto? _usage;
-    private bool _preparing;
 
-    private string UsageUrl => $"api/vocabulary/tables/{Table}/usage";
+    private bool ShowRomanization => Api.State.Me?.ShowRomanization != false;
 
     protected override async Task OnParametersSetAsync()
     {
-        var result = await Api.GetAsync<VocabTableWordsDto>($"api/vocabulary/tables/{Table}");
-        _table = result.Value;
-        _error = result.Ok ? null : result.Error;
-        _usage = (await Api.GetAsync<TableUsageDto>(UsageUrl)).Value;
-    }
-
-    /// <summary>One batch of words per request (D-46) until every word is ready or a round adds nothing.</summary>
-    private async Task PrepareUsageAsync()
-    {
-        _preparing = true;
-        _error = null;
-        while (_usage is { } before && before.Ready < before.Total)
+        var result = await Api.GetAsync<UnitDto>($"api/units/{Id}");
+        if (result.Value is { CardsReady: false })
         {
-            var result = await Api.SendJsonAsync<TableUsageDto>(HttpMethod.Post, UsageUrl, null, SessionService.AiTimeout);
-            if (result.Value is not { } usage)
-            {
-                _error = result.Error;
-                break;
-            }
-
-            _usage = usage;
-            StateHasChanged();
-            if (usage.Ready == before.Ready)
-            {
-                break;
-            }
+            // First visit: the server creates the unit's cards, once (spec §5.3).
+            result = await Api.SendJsonAsync<UnitDto>(HttpMethod.Post, $"api/units/{Id}/open");
         }
 
-        _preparing = false;
+        _unit = result.Value;
+        _error = result.Ok ? null : result.Error;
     }
 
     private void Start()
@@ -235,7 +261,7 @@
         _shown.Clear();
     }
 
-    private void Tap(TableWordDto word, bool hidden)
+    private void Tap(CatalogWordDto word, bool hidden)
     {
         if (hidden)
         {
@@ -249,7 +275,7 @@
     {
         _busy = true;
         var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions",
-            new StartSessionRequest(null, true, Table));
+            new StartSessionRequest(null, true, Id));
         _busy = false;
         if (result.Value?.Session is not null)
         {

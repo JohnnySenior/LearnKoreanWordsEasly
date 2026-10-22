@@ -101,6 +101,7 @@ public sealed class CatalogSeeder(IAppDbContext db, TimeProvider time, IOperatio
             }
 
             (unit.Status, unit.PublishedAt) = (UnitStatus.Published, now);
+            await LearningItemSync.SyncUnitAsync(db, unit, now, ct);
         }
 
         await db.SaveChangesAsync(ct);

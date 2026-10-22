@@ -30,7 +30,7 @@ public sealed record LadderItem(
     LadderFocus Focus,
     string TwinUzbek,
     string TwinKorean,
-    Guid? WordSenseId);
+    Guid? LearningItemId);
 
 /// <param name="ErrorTypes">For a translation: what went wrong (qo‘shimcha, fe’l shakli, so‘z tanlash, so‘z tartibi, imlo).</param>
 /// <param name="Corrected">The learner's sentence corrected, or the right order / form.</param>

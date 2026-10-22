@@ -11,7 +11,7 @@ namespace Lugat.Application.Study;
 /// Practice sessions over the learner's words (spec §4.3, §4.6).
 /// Every answer is an idempotent event applied in one transaction with the card and session (spec DATA01, API01).
 /// </summary>
-public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler scheduler, TimeProvider time)
+public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler scheduler, TimeProvider time, Catalog.UnitProgressService units)
 {
     public const int DefaultSecondsPerCard = 12;
 
@@ -25,9 +25,11 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
     public async Task<TodayDto> TodayAsync(Guid ownerId, CancellationToken ct)
     {
         var now = time.GetUtcNow();
+        var current = await units.CurrentAsync(ownerId, ct);
+        var currentIds = await units.CurrentUnitIdsAsync(ownerId, ct);
         var cards = ActiveCards(ownerId);
         var dueNow = await cards.CountAsync(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt <= now, ct);
-        var newAvailable = await cards.CountAsync(c => c.Card.Phase == LearningPhase.New, ct);
+        var newAvailable = await cards.CountAsync(c => c.Card.Phase == LearningPhase.New && c.Sense.UnitId != null && currentIds.Contains(c.Sense.UnitId.Value), ct);
         var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)
             .OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync(ct);
 
@@ -35,7 +37,8 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             dueNow,
             newAvailable,
             active is null ? null : await ToDtoAsync(active, ct),
-            await SecondsPerCardAsync(ownerId, ct));
+            await SecondsPerCardAsync(ownerId, ct),
+            current);
     }
 
     public async Task<SessionDto?> CurrentAsync(Guid ownerId, CancellationToken ct)
@@ -78,8 +81,8 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
 
         var now = time.GetUtcNow();
         var rows = await ActiveCards(ownerId).ToListAsync(ct);
-        Func<WordSense, bool>? focus = null;
-        if (request.WordSenseIds is { Count: > 0 } senseIds)
+        Func<LearningItem, bool>? focus = null;
+        if (request.LearningItemIds is { Count: > 0 } senseIds)
         {
             // The mistakes notebook (D-41): these words only, every card, like a table drill.
             if (senseIds.Count > MaxMistakeWords)
@@ -90,29 +93,40 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             var ids = senseIds.ToHashSet();
             focus = s => ids.Contains(s.Id);
         }
-        else if (request.TableNumber is { } table)
+        else if (request.UnitId is { } unitId)
         {
-            // One table after studying it on screen (D-36): every word of it, also those not yet due.
-            focus = s => s.TableNumber == table;
+            // The unit's cards after studying its table (spec §4.3 step 2, D-36): every word, also those not yet due.
+            // A locked unit answers 403, an unknown one 404; an open one gets its cards here if it has none yet.
+            await units.OpenAsync(ownerId, unitId, ct);
+            rows = await ActiveCards(ownerId).ToListAsync(ct);
+            focus = s => s.UnitId == unitId;
         }
 
-        if (focus is not null)
+        var drill = focus is not null;
+        if (drill)
         {
-            rows = rows.Where(r => focus(r.Sense)).ToList();
+            rows = rows.Where(r => focus!(r.Sense)).ToList();
+        }
+        else
+        {
+            // Daily review (spec §4.6): due cards of every opened unit; new words only from the current unit.
+            var current = await units.CurrentUnitIdsAsync(ownerId, ct);
+            focus = s => s.UnitId is { } u && current.Contains(u);
         }
 
         var candidates = rows
-            .Select(r => new PlanCandidate(r.Card.Id, r.Sense.Id, r.Card.Direction, r.Card.ToState(), focus is not null, r.Sense.Order))
+            // In a daily review only new words are tied to the current unit; due cards of every unit count the same.
+            .Select(r => new PlanCandidate(r.Card.Id, r.Sense.Id, r.Card.Direction, r.Card.ToState(),
+                drill || (r.Card.Phase == LearningPhase.New && focus!(r.Sense)), r.Sense.Order))
             .ToList();
 
-        var drill = focus is not null;
         int? capacity = request.Minutes is { } minutes && !drill ? Math.Max(1, minutes * 60 / await SecondsPerCardAsync(ownerId, ct)) : null;
-        var items = SessionPlanner.Plan(candidates, new PlanRequest(now, capacity, NewOnlyFromFocus: drill, Drill: drill));
+        var items = SessionPlanner.Plan(candidates, new PlanRequest(now, capacity, NewOnlyFromFocus: true, Drill: drill));
         if (items.Count == 0)
         {
             await db.SaveChangesAsync(ct);
             var message = rows.Count == 0
-                ? request.TableNumber is not null ? "Bu jadvalda so‘z yo‘q." : "Hali o‘rganiladigan so‘z yo‘q."
+                ? request.UnitId is not null ? "Bu bo‘limda so‘z yo‘q." : "Hali o‘rganiladigan so‘z yo‘q. Bo‘limlar sahifasida birinchi bo‘limni oching."
                 : "Hozircha takrorlanadigan so‘z yo‘q. Keyingi takrorlash vaqti kelganda qayta kiring.";
             return new StartSessionResponse(null, message);
         }
@@ -170,7 +184,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             SessionId = session.Id,
             SessionPosition = session.Position,
             CardId = card.Id,
-            WordSenseId = card.WordSenseId,
+            LearningItemId = card.LearningItemId,
             Direction = card.Direction,
             Answer = request.Answer,
             Assisted = request.Assisted,
@@ -187,7 +201,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         if (request.Answer == ReviewAnswer.Forgot && items.Count(i => i.CardId == card.Id) <= MaxReinsertsPerCard)
         {
             var at = Math.Min(session.Position + 1 + ReinsertGap, items.Count);
-            while (at < items.Count && (items[at - 1].WordSenseId == item.WordSenseId || items[at].WordSenseId == item.WordSenseId))
+            while (at < items.Count && (items[at - 1].LearningItemId == item.LearningItemId || items[at].LearningItemId == item.LearningItemId))
             {
                 at++; // never right next to the same word's other direction (spec SRS03)
             }
@@ -321,10 +335,10 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             return false;
         }
 
-        var remaining = session.Items.Skip(session.Position).Select(i => i.WordSenseId).Distinct().ToList();
-        var inactive = (await db.WordSenses.Where(s => remaining.Contains(s.Id) && !s.IsActive).Select(s => s.Id).ToListAsync(ct)).ToHashSet();
+        var remaining = session.Items.Skip(session.Position).Select(i => i.LearningItemId).Distinct().ToList();
+        var inactive = (await db.LearningItems.Where(s => remaining.Contains(s.Id) && !s.IsActive).Select(s => s.Id).ToListAsync(ct)).ToHashSet();
         var start = session.Position;
-        while (session.Position < session.Items.Count && inactive.Contains(session.Items[session.Position].WordSenseId))
+        while (session.Position < session.Items.Count && inactive.Contains(session.Items[session.Position].LearningItemId))
         {
             session.Position++;
         }
@@ -387,7 +401,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
     private async Task<CardPromptDto> PromptAsync(SessionItem item, int position, DateTimeOffset now, CancellationToken ct)
     {
         var card = await db.Cards.AsNoTracking().SingleAsync(c => c.Id == item.CardId, ct);
-        var sense = await db.WordSenses.AsNoTracking().SingleAsync(s => s.Id == item.WordSenseId, ct);
+        var sense = await db.LearningItems.AsNoTracking().SingleAsync(s => s.Id == item.LearningItemId, ct);
         var state = card.ToState();
         var day = DateOnly.FromDateTime(now.UtcDateTime);
         var previews = new[] { ReviewAnswer.Forgot, ReviewAnswer.Hard, ReviewAnswer.Easy }
@@ -399,9 +413,14 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             .ToList();
 
         var koreanToUzbek = item.Direction == ReviewDirection.KoreanToUzbek;
-        var trap = await db.WordUsages.AsNoTracking()
-            .Where(u => u.WordSenseId == sense.Id && u.ContentVersion == sense.ContentVersion)
-            .Select(u => u.TrapUz).FirstOrDefaultAsync(ct);
+        // The catalog's checked trap (spec §2.3), else the learner's own usage note (D-46).
+        var trap = (sense.CatalogWordId is { } wordId
+                ? await db.CatalogWords.AsNoTracking().Where(w => w.Id == wordId).Select(w => w.TrapUz).FirstOrDefaultAsync(ct)
+                : null)
+            ?? await db.WordUsages.AsNoTracking()
+                .Where(u => u.OwnerId == card.OwnerId && u.LearningItemId == sense.Id && u.ContentVersion == sense.ContentVersion)
+                .Select(u => u.TrapUz).FirstOrDefaultAsync(ct);
+        var unit = sense.UnitId is { } unitRef ? (await LearnerItems.UnitLabelsAsync(db, [unitRef], ct)).GetValueOrDefault(unitRef) : null;
         return new CardPromptDto(
             position,
             card.Id,
@@ -412,51 +431,15 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             koreanToUzbek ? sense.KoreanNote : null,
             koreanToUzbek ? sense.Uzbek : sense.Korean,
             koreanToUzbek ? null : sense.KoreanNote,
-            sense.TableNumber,
+            unit,
             state.IsDue(now),
             previews,
             trap);
     }
 
-    /// <summary>The learner's tables with their word counts (D-36).</summary>
-    public async Task<IReadOnlyList<VocabTableDto>> TablesAsync(Guid ownerId, CancellationToken ct)
-    {
-        var rows = await ActiveCards(ownerId)
-            .Select(r => new { r.Sense.Id, r.Sense.TableNumber, r.Card.Phase })
-            .ToListAsync(ct);
-        return rows
-            .GroupBy(r => r.TableNumber)
-            .OrderBy(g => g.Key)
-            .Select(g => new VocabTableDto(
-                g.Key,
-                g.Select(r => r.Id).Distinct().Count(),
-                g.GroupBy(r => r.Id).Count(w => w.Any(r => r.Phase != LearningPhase.New))))
-            .ToList();
-    }
-
-    /// <summary>One table's words in list order, to study on screen before the cards (D-36).</summary>
-    public async Task<VocabTableWordsDto> TableAsync(Guid ownerId, int table, CancellationToken ct)
-    {
-        var rows = await ActiveCards(ownerId)
-            .Where(r => r.Sense.TableNumber == table)
-            .Select(r => new { r.Sense.Id, r.Sense.Order, r.Sense.Korean, r.Sense.KoreanNote, r.Sense.Uzbek, r.Card.Phase })
-            .ToListAsync(ct);
-        if (rows.Count == 0)
-        {
-            throw new NotFoundException("Bu jadvalda so‘z yo‘q.");
-        }
-
-        var words = rows.GroupBy(r => r.Id)
-            .Select(g => g.First() with { Phase = g.Any(r => r.Phase != LearningPhase.New) ? LearningPhase.Review : LearningPhase.New })
-            .OrderBy(r => r.Order)
-            .Select((r, i) => new TableWordDto(r.Id, i + 1, r.Korean, r.KoreanNote, r.Uzbek, r.Phase != LearningPhase.New))
-            .ToList();
-        return new VocabTableWordsDto(table, words);
-    }
-
     private IQueryable<ActiveCard> ActiveCards(Guid ownerId) =>
         from c in db.Cards
-        join s in db.WordSenses on c.WordSenseId equals s.Id
+        join s in db.LearningItems on c.LearningItemId equals s.Id
         where c.OwnerId == ownerId && s.IsActive
         select new ActiveCard { Card = c, Sense = s }; // member-init, so EF can still filter on it
 
@@ -464,7 +447,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
     {
         public required Card Card { get; init; }
 
-        public required WordSense Sense { get; init; }
+        public required LearningItem Sense { get; init; }
     }
 
     /// <summary>

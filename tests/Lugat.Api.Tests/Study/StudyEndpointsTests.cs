@@ -36,14 +36,14 @@ public class StudyEndpointsTests
         }
     }
 
-    /// <summary>Takes a word out of practice, as editing the vocabulary would (spec DATA02).</summary>
+    /// <summary>Takes a word out of practice (spec DATA02); cards and history stay.</summary>
     private static async Task DeactivateAsync(ApiFactory factory, string korean)
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<Lugat.Infrastructure.Persistence.AppDbContext>();
-        var sense = await db.WordSenses.SingleAsync(w => w.Korean == korean);
-        await scope.ServiceProvider.GetRequiredService<Lugat.Application.Vocabulary.VocabularyService>()
-            .SetActiveAsync(sense.OwnerId, sense.Id, false, CancellationToken.None);
+        var item = await db.LearningItems.SingleAsync(w => w.Korean == korean);
+        item.IsActive = false;
+        await db.SaveChangesAsync();
     }
 
     private static async Task<SessionDto> StartAsync(HttpClient client, int? minutes = null, bool restart = false)
@@ -335,20 +335,20 @@ public class StudyEndpointsTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await AddTablesAsync(factory, 1);
         var session = await StartAsync(client);
-        var removedWord = session.Current!.WordSenseId;
+        var removedWord = session.Current!.LearningItemId;
 
         await DeactivateAsync(factory, session.Current.Prompt);
         var staleAnswer = await AnswerAsync(client, session, ReviewAnswer.Easy);
         var current = (await client.GetFromJsonAsync<SessionDto>("/api/sessions/current", Json))!;
 
         Assert.Equal(HttpStatusCode.Conflict, staleAnswer.StatusCode);
-        Assert.NotEqual(removedWord, current.Current!.WordSenseId);
+        Assert.NotEqual(removedWord, current.Current!.LearningItemId);
 
         // Its reverse, still queued further down, is stepped over as well.
         var seen = new List<Guid>();
         while (current.Current is not null)
         {
-            seen.Add(current.Current.WordSenseId);
+            seen.Add(current.Current.LearningItemId);
             current = (await AnswerOkAsync(client, current, ReviewAnswer.Easy)).Session;
         }
 
@@ -371,7 +371,7 @@ public class StudyEndpointsTests
         }
 
         // Nothing is due now, yet the learner wants to go over table 2 again.
-        var response = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(1, false, 2), Json);
+        var response = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(1, false, ApiFactory.Unit(2)), Json);
         var drill = (await response.Content.ReadFromJsonAsync<StartSessionResponse>(Json))!.Session!;
         DateTimeOffset? dueBefore;
         await using (var scope = factory.Services.CreateAsyncScope())
@@ -383,7 +383,7 @@ public class StudyEndpointsTests
         var answer = await AnswerOkAsync(client, drill, ReviewAnswer.Easy);
 
         Assert.Equal(10, drill.Total); // 5 words × 2 directions; the minute limit does not cut a drill
-        Assert.Equal(2, drill.Current!.TableNumber);
+        Assert.Equal("A-2", drill.Current!.Unit);
         Assert.Equal(SessionItemKind.FocusReview, drill.Current.Kind);
         Assert.False(drill.Current.IsDue);
         Assert.Equal(dueBefore, answer.NextDueAt); // an early answer does not move the card up the ladder
@@ -392,23 +392,24 @@ public class StudyEndpointsTests
 
 
     [Fact]
-    public async Task Tables_are_listed_and_a_table_comes_in_list_order_for_studying()
+    public async Task Units_are_listed_and_a_unit_comes_in_list_order_for_studying()
     {
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await AddTablesAsync(factory, 1, 3);
 
-        var tables = (await client.GetFromJsonAsync<List<VocabTableDto>>("/api/vocabulary/tables", Json))!;
-        var third = (await client.GetFromJsonAsync<VocabTableWordsDto>("/api/vocabulary/tables/3", Json))!;
-        var missing = await client.GetAsync("/api/vocabulary/tables/2");
-        var other = await (await factory.SignedInClientAsync(ApiFactory.UserB)).GetAsync("/api/vocabulary/tables/3");
+        var units = (await client.GetFromJsonAsync<LevelUnitsDto>("/api/levels/A/units", Json))!;
+        var third = (await client.GetFromJsonAsync<UnitDto>($"/api/units/{ApiFactory.Unit(3)}", Json))!;
+        var missing = await client.GetAsync($"/api/units/{ApiFactory.Unit(2)}");
+        var other = await (await factory.SignedInClientAsync(ApiFactory.UserB)).GetAsync($"/api/units/{ApiFactory.Unit(3)}");
 
-        Assert.Equal([(1, 5, 0), (3, 5, 0)], tables.Select(t => (t.TableNumber, t.Words, t.Started)));
-        Assert.Equal(["다가", "다각", "다갂", "다갃", "다간"], third.Words.Select(w => w.Korean));
-        Assert.Equal([1, 2, 3, 4, 5], third.Words.Select(w => w.Number));
-        Assert.Equal("ma’no 1", third.Words[0].Uzbek);
-        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, other.StatusCode);
+        Assert.Equal([("A-1", 5, UnitState.Open, 0), ("A-3", 5, UnitState.Open, 0)], units.Units.Select(u => (u.Label, u.WordCount, u.State, u.Started)));
+        Assert.Equal(["다가", "다각", "다갂", "다갃", "다간"], third.Words.Select(w => w.Word));
+        Assert.Equal([1, 2, 3, 4, 5], third.Words.Select(w => w.Order));
+        Assert.Equal("ma’no 1", third.Words[0].TranslationUz);
+        Assert.True(third.CardsReady);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode); // no such unit
+        Assert.Equal(HttpStatusCode.Forbidden, other.StatusCode); // locked for a learner who has only A-1
     }
 
     [Fact]
@@ -418,19 +419,17 @@ public class StudyEndpointsTests
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         await AddTablesAsync(factory, 1, 3);
 
-        var response = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, 3), Json);
+        var response = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, ApiFactory.Unit(3)), Json);
         var session = (await response.Content.ReadFromJsonAsync<StartSessionResponse>(Json))!.Session!;
         var first = await AnswerOkAsync(client, session, ReviewAnswer.Easy);
-        var tables = (await client.GetFromJsonAsync<List<VocabTableDto>>("/api/vocabulary/tables", Json))!;
-        var empty = (await (await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, 2), Json))
-            .Content.ReadFromJsonAsync<StartSessionResponse>(Json))!;
+        var units = (await client.GetFromJsonAsync<LevelUnitsDto>("/api/levels/A/units", Json))!;
+        var missing = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, ApiFactory.Unit(2)), Json);
 
-        Assert.Equal(10, session.Total); // 5 words × 2 directions, all of table 3
-        Assert.Equal(3, session.Current!.TableNumber);
-        Assert.Equal(3, first.Session.Current!.TableNumber);
-        Assert.Equal([0, 1], tables.Select(t => t.Started));
-        Assert.Null(empty.Session);
-        Assert.Contains("jadvalda", empty.Message);
+        Assert.Equal(10, session.Total); // 5 words × 2 directions, all of unit 3
+        Assert.Equal("A-3", session.Current!.Unit);
+        Assert.Equal("A-3", first.Session.Current!.Unit);
+        Assert.Equal([0, 1], units.Units.Select(u => u.Started));
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
     [Fact]
@@ -443,13 +442,13 @@ public class StudyEndpointsTests
 
         // Forget the first card, then know the second card of the same session.
         var session = await StartAsync(client);
-        var forgotten = session.Current!.WordSenseId;
+        var forgotten = session.Current!.LearningItemId;
         session = (await AnswerOkAsync(client, session, ReviewAnswer.Forgot)).Session;
-        var known = session.Current!.WordSenseId;
+        var known = session.Current!.LearningItemId;
         await AnswerOkAsync(client, session, ReviewAnswer.Easy);
 
         // A word test finished without answers: every question counts as a mistake, as in its score.
-        var created = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [1], 10), Json);
+        var created = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 10), Json);
         var test = (await created.Content.ReadFromJsonAsync<TestDto>(Json))!;
         await client.PostAsync($"/api/tests/{test.Id}/finish", null);
 
@@ -458,19 +457,19 @@ public class StudyEndpointsTests
 
         Assert.Empty(empty.Words);
         Assert.Equal(5, notebook.Words.Count); // every word was in the unanswered test
-        Assert.Equal(forgotten, top.WordSenseId); // forgotten on a card and wrong in the test: most mistakes
+        Assert.Equal(forgotten, top.LearningItemId); // forgotten on a card and wrong in the test: most mistakes
         Assert.Equal(["kartochka", "sinov"], top.Sources.Order());
         Assert.True(top.Mistakes >= 2);
         Assert.All(notebook.Words, w => Assert.False(w.Improving)); // the test came after the right card answer
-        Assert.Equal(1, top.TableNumber);
+        Assert.Equal("A-1", top.Unit);
 
-        var drill = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, WordSenseIds: [forgotten, known]), Json);
+        var drill = await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true, LearningItemIds: [forgotten, known]), Json);
         var drilled = (await drill.Content.ReadFromJsonAsync<StartSessionResponse>(Json))!.Session!;
         var tooMany = await client.PostAsJsonAsync("/api/sessions",
-            new StartSessionRequest(null, true, WordSenseIds: Enumerable.Range(0, 61).Select(_ => Guid.NewGuid()).ToList()), Json);
+            new StartSessionRequest(null, true, LearningItemIds: Enumerable.Range(0, 61).Select(_ => Guid.NewGuid()).ToList()), Json);
 
         Assert.Equal(4, drilled.Total); // two words × two directions
-        Assert.Contains(drilled.Current!.WordSenseId, new[] { forgotten, known });
+        Assert.Contains(drilled.Current!.LearningItemId, new[] { forgotten, known });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, tooMany.StatusCode);
     }
 }

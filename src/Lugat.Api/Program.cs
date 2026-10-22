@@ -99,6 +99,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
+await app.SyncLearningItemsAsync();
 await app.SeedSampleAsync();
 
 app.UseExceptionHandler();

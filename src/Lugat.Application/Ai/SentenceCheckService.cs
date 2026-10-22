@@ -36,16 +36,16 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
     public static readonly TimeSpan HistoryWindow = TimeSpan.FromHours(24);
 
     /// <summary>A word to practise: the given one, or a random word the learner has already started.</summary>
-    public async Task<SentenceTargetDto> TargetAsync(Guid ownerId, Guid? wordSenseId, CancellationToken ct)
+    public async Task<SentenceTargetDto> TargetAsync(Guid ownerId, Guid? learningItemId, CancellationToken ct)
     {
-        var senses = db.WordSenses.Where(s => s.OwnerId == ownerId && s.IsActive);
-        if (wordSenseId is { } id)
+        var senses = Study.LearnerItems.Of(db, ownerId);
+        if (learningItemId is { } id)
         {
             var sense = await senses.SingleOrDefaultAsync(s => s.Id == id, ct) ?? throw new NotFoundException("So‘z topilmadi.");
-            return new SentenceTargetDto(sense.Id, sense.Korean, sense.KoreanNote, sense.Uzbek, sense.TableNumber);
+            return new SentenceTargetDto(sense.Id, sense.Korean, sense.KoreanNote, sense.Uzbek, await UnitAsync(sense, ct));
         }
 
-        var started = senses.Where(s => db.Cards.Any(c => c.WordSenseId == s.Id && c.Phase != LearningPhase.New));
+        var started = senses.Where(s => db.Cards.Any(c => c.OwnerId == ownerId && c.LearningItemId == s.Id && c.Phase != LearningPhase.New));
         var pool = await started.AnyAsync(ct) ? started : senses;
         var count = await pool.CountAsync(ct);
         if (count == 0)
@@ -54,8 +54,11 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         }
 
         var pick = await pool.OrderBy(s => s.Id).Skip(Random.Shared.Next(count)).FirstAsync(ct);
-        return new SentenceTargetDto(pick.Id, pick.Korean, pick.KoreanNote, pick.Uzbek, pick.TableNumber);
+        return new SentenceTargetDto(pick.Id, pick.Korean, pick.KoreanNote, pick.Uzbek, await UnitAsync(pick, ct));
     }
+
+    private async Task<string?> UnitAsync(Domain.Vocabulary.LearningItem item, CancellationToken ct) =>
+        item.UnitId is { } u ? (await Study.LearnerItems.UnitLabelsAsync(db, [u], ct)).GetValueOrDefault(u) : null;
 
     public async Task<SentenceCheckDto> CheckAsync(Guid ownerId, SentenceCheckRequest request, CancellationToken ct)
     {
@@ -90,9 +93,9 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         if (check is null)
         {
             string target = "", meaning = "";
-            if (request.WordSenseId is { } senseId)
+            if (request.LearningItemId is { } senseId)
             {
-                var sense = await db.WordSenses.SingleOrDefaultAsync(s => s.Id == senseId && s.OwnerId == ownerId && s.IsActive, ct)
+                var sense = await Study.LearnerItems.Of(db, ownerId).SingleOrDefaultAsync(s => s.Id == senseId, ct)
                     ?? throw new NotFoundException("So‘z topilmadi.");
                 target = sense.KoreanNote is null ? sense.Korean : $"{sense.Korean} ({sense.KoreanNote})";
                 meaning = sense.Uzbek;
@@ -102,7 +105,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
             {
                 Id = request.Id,
                 OwnerId = ownerId,
-                WordSenseId = request.WordSenseId,
+                LearningItemId = request.LearningItemId,
                 Target = Cut(target, 200),
                 TargetMeaning = Cut(meaning, 500),
                 Answer = answer,
@@ -153,7 +156,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
     /// <summary>The learner's latest checked sentences for the same word, newest first.</summary>
     private async Task<List<(string Answer, SentenceCheckResult Result)>> HistoryAsync(SentenceCheck check, CancellationToken ct)
     {
-        if (check.WordSenseId is null)
+        if (check.LearningItemId is null)
         {
             return [];
         }
@@ -161,7 +164,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
         var since = time.GetUtcNow() - HistoryWindow;
         var rows = await db.SentenceChecks.AsNoTracking()
             .Where(c => c.OwnerId == check.OwnerId && c.Id != check.Id && c.CreatedAt >= since && c.ResultJson != null
-                && c.WordSenseId == check.WordSenseId)
+                && c.LearningItemId == check.LearningItemId)
             .OrderByDescending(c => c.CreatedAt)
             .Take(10)
             .Select(c => new { c.Answer, c.ResultJson })
@@ -189,7 +192,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
                 const string note = "Bu ilova avval ko‘rsatgan to‘g‘ri variant. U to‘g‘ri, lekin mustaqil qo‘llash hisobiga kirmaydi: endi shu qolipda o‘zingiz yangi gap tuzib ko‘ring.";
                 return new SentenceCheckResult(
                     "correct", "none", note, note, null, [],
-                    check.WordSenseId is null ? "not_used" : "used_correctly",
+                    check.LearningItemId is null ? "not_used" : "used_correctly",
                     1, [], [], Assisted: true);
             }
         }
@@ -313,7 +316,7 @@ public sealed class SentenceCheckService(IAppDbContext db, AiGateway ai, TimePro
             AiCheckStatus.Failed => "Tekshiruv tugallanmadi. Qayta urinib ko‘ring.",
             _ => null,
         };
-        return new SentenceCheckDto(c.Id, c.WordSenseId, c.Target, c.Answer, c.Status, result, c.Provider is { } p ? AiGateway.Label(p) : null, message);
+        return new SentenceCheckDto(c.Id, c.LearningItemId, c.Target, c.Answer, c.Status, result, c.Provider is { } p ? AiGateway.Label(p) : null, message);
     }
 
     private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;

@@ -51,7 +51,7 @@ public class WritingEndpointsTests
 
     private static async Task<WritingResultDto> AnswerAsync(HttpClient client, WritingPromptDto prompt, string answer, Guid? id = null)
     {
-        var response = await client.PostAsJsonAsync("/api/writing/answers", new WritingCheckRequest(id ?? Guid.NewGuid(), prompt.WordSenseId, prompt.Direction, answer), Json);
+        var response = await client.PostAsJsonAsync("/api/writing/answers", new WritingCheckRequest(id ?? Guid.NewGuid(), prompt.LearningItemId, prompt.Direction, answer), Json);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<WritingResultDto>(Json))!;
     }
@@ -157,8 +157,8 @@ public class WritingEndpointsTests
         await AnswerAsync(a, prompt, "o‘jarlik", id);
         var b = await factory.SignedInClientAsync(ApiFactory.UserB);
 
-        var foreignWord = await b.PostAsJsonAsync("/api/writing/answers", new WritingCheckRequest(Guid.NewGuid(), prompt.WordSenseId, prompt.Direction, "x"), Json);
-        var foreignId = await b.PostAsJsonAsync("/api/writing/answers", new WritingCheckRequest(id, prompt.WordSenseId, prompt.Direction, "x"), Json);
+        var foreignWord = await b.PostAsJsonAsync("/api/writing/answers", new WritingCheckRequest(Guid.NewGuid(), prompt.LearningItemId, prompt.Direction, "x"), Json);
+        var foreignId = await b.PostAsJsonAsync("/api/writing/answers", new WritingCheckRequest(id, prompt.LearningItemId, prompt.Direction, "x"), Json);
         var emptyQueue = await b.GetAsync("/api/writing/queue");
 
         Assert.Equal(HttpStatusCode.NotFound, foreignWord.StatusCode);
