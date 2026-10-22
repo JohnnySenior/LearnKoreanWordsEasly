@@ -10,6 +10,10 @@
 <a class="back" href="">← Bugun</a>
 <h1>Profil va sozlamalar</h1>
 <a class="button block" href="natijalar"><span>Natijalar</span><span class="aside">o‘rganilgan so‘zlar va xatolar →</span></a>
+@if (IsEditor)
+{
+    <a class="button block" href="kontent"><span>Kontent</span><span class="aside">import, AI qoralama, tekshirish, nashr →</span></a>
+}
 
 @if (_error is not null)
 {
@@ -281,6 +285,8 @@ else
         [(ThemeChoice.Device, "Qurilmadagidek"), (ThemeChoice.Light, "Yorug‘"), (ThemeChoice.Dark, "Qorong‘i")];
 
     private bool IsAdmin => _me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    private bool IsEditor => IsAdmin || _me?.Roles.Contains(nameof(UserRoles.Editor)) == true;
 
     protected override async Task OnInitializedAsync()
     {

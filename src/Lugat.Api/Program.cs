@@ -1,6 +1,7 @@
 using Lugat.Api.Ai;
 using Lugat.Api.Auth;
 using Lugat.Api.Backups;
+using Lugat.Api.Catalog;
 using Lugat.Api.Ladder;
 using Lugat.Api.Infrastructure;
 using Lugat.Api.Me;
@@ -98,6 +99,8 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
+await app.SeedSampleAsync();
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -126,6 +129,7 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
 app.MapAuthEndpoints(app.Environment);
 app.MapStudyEndpoints();
 app.MapMeEndpoints();
+app.MapCatalogEndpoints();
 app.MapAiEndpoints();
 app.MapBackupEndpoints();
 app.MapSpeechEndpoints();

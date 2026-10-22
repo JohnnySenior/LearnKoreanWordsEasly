@@ -139,3 +139,40 @@ Mini App’da har ochilishda initData bor edi, shuning uchun KAT tokenlarni faqa
 ASP.NET Core RateLimiter (spec §6.4): kirish endpoint’lari (`telegram-login`, `google`, `refresh`, `dev`, `me/logins`) IP bo‘yicha daqiqasiga 10 (`Auth:SignInPerMinute`), sinov boshlash (`POST /api/tests`) foydalanuvchi bo‘yicha soatiga 20 (`Auth:TestStartsPerHour`). Rad etilganda 429 va o‘zbekcha ProblemDetails. AI chegaralari tarif bo‘yicha — 5-bosqich (spec §7.4). Bir nechta instansga o‘tilsa limiter umumiy omborga ko‘chishi kerak (hozir bitta instans, D-08).
 Railway proksi ortida `RemoteIpAddress` proksi manzili bo‘lishi mumkin: deployda `ForwardedHeaders` sozlanishi kerak (8-bosqich, CHECKLIST’da).
 
+## L-17 · 2026-10-22 · Katalog modeli va rasmiy ro‘yxat importi
+
+Spec §2, §5.1, §13.3.
+- **Modellar:** `CatalogWord` (rasmiy maydonlar + kontent + `Status`, `ContentVersion`, `ReviewedBy/At`, `AiProvider/Model`, `SourceKey`), `CatalogUsage` ("Qaysi so‘z to‘g‘ri?" savollari, so‘z bilan birga tekshiriladi), `Unit` (`Level`, `Number` unikal, `Status`, `WordCount`). Katalog umumiy: egasi yo‘q.
+- **Kalit:** `SourceKey = "{daraja}:{so‘z}{omonim}:{품사}"` (spec §2.4: so‘z + omonim + turkum + daraja), unikal indeks. Qayta import faqat chastota o‘rni (`순위`) va izohni (`풀이`) yangilaydi; kontent, tekshiruv holati va bo‘lim o‘zgarmaydi. Faylda yo‘q so‘z o‘chirilmaydi.
+- **Fayl:** ustunlar sarlavha bo‘yicha topiladi (`순위`, `단어`/`어휘`, `품사`, `풀이`, `등급`), shuning uchun tartib va qo‘shimcha ustunlar muhim emas; `가다01` dan omonim raqami ajratiladi. `.xls` (2003) va `.xlsx` — ExcelDataReader 3.9.0 (MIT), matnli versiya — tab yoki vergul bilan, UTF-8 yoki CP949. Yaroqsiz qatorlar sabab bilan o‘tkazib yuboriladi (javobda birinchi 20 tasi).
+- **Haqiqiy fayl sinalmadi:** korean.go.kr bu ishlab chiqish muhitidan ochilmadi (proksi 403). Format ochiq manbalardagi tavsif va spec §2.1 bo‘yicha; sinovlar shu tuzilishdagi 5,965 qatorli fayl bilan. Johnny haqiqiy faylni yuklaganda natija (qatorlar, o‘tkazilganlar) tekshirilishi kerak — CHECKLIST’da ochiq punkt.
+- **Kartaga mos emas:** `보`, `의`, `관` (spec §2.2). Bir nechta turkumli yozuv (`명/의`) — hech bo‘lmasa bittasi mos bo‘lsa, o‘rganiladi.
+- **Turkum** bazada rasmiy kod bilan (`동`, `명`…); o‘zbekcha nomi (`fe’l`, `ot`…) DTO’da `PosUz`. Namuna fayldagi o‘zbekcha turkumlar kodga o‘giriladi (`fe'l` → `동`), shuning uchun keyingi rasmiy import o‘sha so‘zlarni takrorlamaydi.
+- **Apostrof** (spec §2.3): saqlashda `o‘`, `g‘` uchun U+2018, tutuq belgisi uchun U+2019 (`TextNormalizer.Uzbek`); KAT interfeysidagi shakl. Solishtirish avvalgidek `TextNormalizer.Key`.
+
+## L-18 · 2026-10-22 · Bo‘limlarga bo‘lish
+
+Spec §2.2. Admin "Bo‘limlarga bo‘lish" ni bosadi (import avtomatik bo‘lmaydi: admin avval import natijasini ko‘radi).
+- Nashr qilingan bo‘limlar va ularning so‘zlari **hech qachon** o‘zgarmaydi. Qolgan barcha kartaga mos so‘zlar chastota bo‘yicha (teng bo‘lsa `SourceKey` bo‘yicha) oxirgi nashr qilingan bo‘limdan keyin 25 tadan qayta joylanadi; qoralama bo‘limlar raqami bo‘yicha qayta ishlatiladi, ortiqchasi o‘chiriladi. Shuning uchun bo‘lishni importdan keyin takrorlash xavfsiz.
+- Oxirgi bo‘limda 10 tadan kam so‘z qolsa, oldingi **yangi** bo‘limga qo‘shiladi (u 34 tagacha bo‘lishi mumkin). Oldingi bo‘lim nashr qilingan bo‘lsa, bu so‘zlar bo‘limsiz kutadi ("bo‘limga kirmagan" soni ko‘rsatiladi). To‘liq rasmiy ro‘yxat bir martada import qilinganda bu holat bo‘lmaydi.
+- **Nashr tartib bilan:** n-bo‘lim faqat 1…n−1 nashr qilingan bo‘lsa (darajada bo‘shliq qolmasin, ochish ketma-ket — spec §4.2).
+
+## L-19 · 2026-10-22 · AI qoralama, tahrir va tekshirish
+
+Spec §2.3, §2.4.
+- **Qoidalar bir joyda** (`CatalogContent`): tarjima — lotin, 1–3 ma’no `; ` bilan; o‘qilishi — faqat lotin harflari; misol — Hangul, ≤ 8 어절, tarjimasi bilan birga; tuzoq va mavzu ixtiyoriy. Muharrir ham, AI ham shu qoidadan o‘tadi (muharrirga 422 va sabab).
+- **AI qoralama** (`POST /api/admin/units/{id}/draft`): bir chaqiruvda 10 so‘z (D-46). Prompt’ga so‘zning omonim raqami, turkumi va izohi (ma’noni aniq tanlash uchun) hamda shu va oldingi bo‘limlarning so‘zlari (≤ 400, misollar shulardan bo‘lishi uchun) beriladi. Tarjima, o‘qilish yoki misoli yaroqsiz so‘z **umuman saqlanmaydi** va keyingi chaqiruvda qayta so‘raladi; yaroqsiz tuzoq, mavzu yoki savol alohida tashlanadi. Hech narsa o‘tmasa — 503, bazada o‘zgarish yo‘q. Sahifa endpoint’ni so‘z qolmaguncha qayta chaqiradi (bitta so‘rov daqiqalab ishlamaydi). Bir bo‘lim uchun bir vaqtda bitta qoralama (advisory lock).
+- AI sarfi qoralamani boshlagan muharrirning hisobiga yoziladi (`ai_usage`, kunlik limit `Ai:MaxCallsPerUserPerDay`, standart 150). A daraja ≈ 100 chaqiruv. "Iboralar" (`Phrases`) katalogda yozdirilmaydi: spec §2.4 ularni so‘ramaydi.
+- **Tekshirish:** qoralama `Draft` bo‘lib qoladi; "Tekshirildi" faqat tarjima, o‘qilish va misol bor bo‘lsa. Tekshirilgan so‘z tahrirlansa ham `Reviewed` qoladi, tekshiruvchi — tahrirlagan muharrir. Nashr qilingan bo‘limdagi so‘zdan majburiy maydonni o‘chirib bo‘lmaydi.
+- **`ContentVersion`** har kontent o‘zgarishida oshadi (spec §5.3). Savollar (`CatalogUsage`) so‘zning rasmiy shakli haqida, u esa o‘zgarmaydi; shuning uchun tahrirda savollar eskirgan deb tashlanmaydi — muharrir ularni so‘z bilan birga ko‘radi va keragini olib tashlaydi. `CatalogUsage.ContentVersion` qaysi versiya bilan tekshirilganini saqlaydi.
+- Bir vaqtda tahrir: `xmin` versiyasi, eski versiya bilan saqlash — 409.
+
+## L-20 · 2026-10-22 · O‘quvchi API’si 2-bosqichda
+
+`GET /api/levels`, `GET /api/levels/{level}/units`, `GET /api/units/{id}` — faqat nashr qilingan bo‘limlar. Nashr qilinmaganlari faqat son sifatida ("Tez orada", spec §2.4), ularning id’si va so‘zlari serverdan chiqmaydi; `GET /api/units/{draftId}` — 404 (spec §13.3). Bo‘lim qulfi, ochish va progress — 3-bosqich; hozircha nashr qilingan bo‘lim so‘zlari har bir kirgan foydalanuvchiga ko‘rinadi.
+Takrorlash hali oraliq `WordSense` modelida (L-04); `CatalogWord` → `LearningItem` → `Card` bog‘lanishi 3-bosqichda.
+
+## L-21 · 2026-10-22 · Namuna seed
+
+`Catalog:SeedSample` (Development’da `true`, production’da yo‘q): ishga tushganda namuna fayl (`content/samples/lugat_A_namuna_50.json`) yuklanadi. Uning kontentini Johnny yozgan va tekshirgan, shuning uchun so‘zlar `Reviewed` ("Namuna fayl"), bo‘lingach to‘liq bo‘limlar tartib bilan nashr qilinadi. Qayta ishga tushirish hech narsani o‘zgartirmaydi; muharrir tegingan so‘zga seed tegmaydi. Development’da dev foydalanuvchi (Telegram ID 1) admin (`Auth:Admins`), kontent sahifasini sinash uchun.
+

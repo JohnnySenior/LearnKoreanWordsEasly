@@ -12,6 +12,12 @@ public interface IAppDbContext
 
     DbSet<UserLogin> UserLogins { get; }
 
+    DbSet<Domain.Catalog.CatalogWord> CatalogWords { get; }
+
+    DbSet<Domain.Catalog.CatalogUsage> CatalogUsages { get; }
+
+    DbSet<Domain.Catalog.Unit> Units { get; }
+
     DbSet<WordSense> WordSenses { get; }
 
     DbSet<WordUsage> WordUsages { get; }

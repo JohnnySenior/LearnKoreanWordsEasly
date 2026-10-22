@@ -47,6 +47,12 @@ public static class DependencyInjection
         services.Configure<AdminOptions>(config.GetSection(AdminOptions.SectionName));
         services.AddScoped<UserService>();
         services.AddScoped<VocabularyService>();
+        services.Configure<Application.Catalog.CatalogOptions>(config.GetSection(Application.Catalog.CatalogOptions.SectionName));
+        services.AddSingleton<Application.Catalog.ICatalogFileReader, Catalog.CatalogFileReader>();
+        services.AddScoped<Application.Catalog.CatalogService>();
+        services.AddScoped<Application.Catalog.CatalogAdminService>();
+        services.AddScoped<Application.Catalog.CatalogDraftService>();
+        services.AddScoped<Application.Catalog.CatalogSeeder>();
         services.AddScoped<StudyService>();
         services.AddSingleton<ISpacedRepetitionScheduler, LadderSchedulerV1>();
 

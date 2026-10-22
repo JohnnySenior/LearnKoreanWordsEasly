@@ -52,6 +52,8 @@ PostgreSQL: Development va testlar standart holatda `lugat`/`lugat` foydalanuvch
 
 Kirish: Telegram Login Widget (`POST /api/auth/telegram-login`) va Google (`POST /api/auth/google`), sozlamalari `.env.example` da. Development muhitida qo‘shimcha `POST /api/auth/dev` bor (`Auth:DevLoginUserId`); u boshqa muhitlarda umuman ro‘yxatdan o‘tmaydi va buni test tekshiradi. Lokal ishlab chiqishda kirish sahifasidagi "Dev sifatida kirish" tugmasi shu. API testlari `ApiFactory` ichidagi test endpoint’lari (`/__test/sign-in`, `/__test/words`) orqali kiradi va so‘z qo‘shadi; Telegram va Google tekshiruvining o‘zi `Auth/LoginValidatorTests` va `Auth/AuthEndpointsTests` da sinaladi.
 
+Katalog: Development’da `Catalog:SeedSample=true` — ishga tushganda `content/samples/lugat_A_namuna_50.json` dan A darajaning 1–2-bo‘limi yuklanadi va nashr qilinadi (L-21); dev foydalanuvchi (Telegram ID 1) admin, kontent sahifasi `/kontent`. Testlar import faylini `Catalog/CatalogFiles` bilan yasaydi (.xlsx va CP949 matn).
+
 ## Kod uslubi
 
 - `Nullable` yoqilgan, ogohlantirishlar xato sifatida (`Directory.Build.props`).

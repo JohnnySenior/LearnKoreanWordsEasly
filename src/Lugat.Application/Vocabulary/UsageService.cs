@@ -202,18 +202,25 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
             ? new UsagePair(Cut(ko.Trim(), 200), Cut(uz.Trim(), 200))
             : null;
 
-    private static UsageQuestion? Question(QuestionResult q)
+    private static UsageQuestion? Question(QuestionResult q) => CheckQuestion(q.Uzbek, q.Sentence, q.Answer, q.Wrong, q.ExplanationUz);
+
+    /// <summary>
+    /// A well-formed "which word is right?" question or null: a Latin-script Uzbek sentence, the Korean one with
+    /// exactly one gap, a Hangul answer, 1-3 different Hangul wrong options and a Latin-script explanation.
+    /// Also used for the shared catalog questions (spec §2.4 step 3).
+    /// </summary>
+    public static UsageQuestion? CheckQuestion(string? uzbek, string? sentence, string? answer, IEnumerable<string?>? wrongOptions, string? explanationUz)
     {
-        var answer = q.Answer?.Trim();
-        var wrong = (q.Wrong ?? []).Select(x => x?.Trim()).OfType<string>().Where(x => x.Length > 0 && x != answer).Distinct().Take(3).ToList();
-        var gaps = q.Sentence is null ? 0 : (q.Sentence.Length - q.Sentence.Replace(Testing.TestService.Blank, "").Length) / Testing.TestService.Blank.Length;
+        answer = answer?.Trim();
+        var wrong = (wrongOptions ?? []).Select(x => x?.Trim()).OfType<string>().Where(x => x.Length > 0 && x != answer).Distinct().Take(3).ToList();
+        var gaps = sentence is null ? 0 : (sentence.Length - sentence.Replace(Testing.TestService.Blank, "").Length) / Testing.TestService.Blank.Length;
         var ok = answer is { Length: > 0 } && SentenceCheckService.ContainsHangul(answer)
             && wrong.Count > 0 && wrong.All(SentenceCheckService.ContainsHangul)
-            && gaps == 1 && SentenceCheckService.ContainsHangul(q.Sentence!)
-            && q.Uzbek is { } uz && SentenceCheckService.IsUzbekLatin(uz)
-            && q.ExplanationUz is { } ex && SentenceCheckService.IsUzbekLatin(ex);
+            && gaps == 1 && SentenceCheckService.ContainsHangul(sentence!)
+            && uzbek is { } uz && SentenceCheckService.IsUzbekLatin(uz)
+            && explanationUz is { } ex && SentenceCheckService.IsUzbekLatin(ex);
         return ok
-            ? new UsageQuestion(Cut(q.Uzbek!.Trim(), 300), Cut(q.Sentence!.Trim(), 300), Cut(answer!, 100), wrong.Select(w => Cut(w, 100)).ToList(), Cut(q.ExplanationUz!.Trim(), 500))
+            ? new UsageQuestion(Cut(uzbek!.Trim(), 300), Cut(sentence!.Trim(), 300), Cut(answer!, 100), wrong.Select(w => Cut(w, 100)).ToList(), Cut(explanationUz!.Trim(), 500))
             : null;
     }
 

@@ -23,6 +23,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<UserLogin> UserLogins => Set<UserLogin>();
 
+    public DbSet<Domain.Catalog.CatalogWord> CatalogWords => Set<Domain.Catalog.CatalogWord>();
+
+    public DbSet<Domain.Catalog.CatalogUsage> CatalogUsages => Set<Domain.Catalog.CatalogUsage>();
+
+    public DbSet<Domain.Catalog.Unit> Units => Set<Domain.Catalog.Unit>();
+
     public DbSet<WordSense> WordSenses => Set<WordSense>();
 
     public DbSet<WordUsage> WordUsages => Set<WordUsage>();
@@ -61,6 +67,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         // Enums are stored as text so the database stays readable and reordering an enum is safe.
         configurationBuilder.Properties<LoginProvider>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ThemeChoice>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Catalog.CatalogLevel>().HaveConversion<string>().HaveMaxLength(8);
+        configurationBuilder.Properties<Domain.Catalog.CatalogWordStatus>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Catalog.UnitStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ReviewDirection>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<LearningPhase>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<ReviewAnswer>().HaveConversion<string>().HaveMaxLength(32);
@@ -92,6 +101,47 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.ProviderUserId).HasMaxLength(128);
             e.Property(x => x.Display).HasMaxLength(256);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // The shared catalog (spec §2, §5.1): one copy for everyone, no owner.
+        b.Entity<Domain.Catalog.Unit>(e =>
+        {
+            e.ToTable("units");
+            e.HasIndex(x => new { x.Level, x.Number }).IsUnique(); // spec DATA01
+            e.Property(x => x.Version).IsRowVersion();
+        });
+
+        b.Entity<Domain.Catalog.CatalogWord>(e =>
+        {
+            e.ToTable("catalog_words");
+            e.HasIndex(x => x.SourceKey).IsUnique(); // re-import never duplicates (spec §2.4)
+            e.HasIndex(x => new { x.Level, x.FreqRank });
+            e.HasIndex(x => new { x.UnitId, x.OrderInUnit });
+            e.Property(x => x.SourceKey).HasMaxLength(200);
+            e.Property(x => x.Word).HasMaxLength(100);
+            e.Property(x => x.Homonym).HasMaxLength(8);
+            e.Property(x => x.Pos).HasMaxLength(32);
+            e.Property(x => x.Gloss).HasMaxLength(200);
+            e.Property(x => x.TranslationUz).HasMaxLength(300);
+            e.Property(x => x.Romanization).HasMaxLength(100);
+            e.Property(x => x.ExampleKo).HasMaxLength(200);
+            e.Property(x => x.ExampleUz).HasMaxLength(300);
+            e.Property(x => x.TrapUz).HasMaxLength(1000);
+            e.Property(x => x.Theme).HasMaxLength(40);
+            e.Property(x => x.Source).HasMaxLength(200);
+            e.Property(x => x.AiProvider).HasMaxLength(64);
+            e.Property(x => x.AiModel).HasMaxLength(128);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Catalog.CatalogUsage>(e =>
+        {
+            e.ToTable("catalog_usages");
+            e.HasIndex(x => x.CatalogWordId).IsUnique();
+            e.Property(x => x.Questions).HasColumnType("jsonb").HasConversion(JsonConverter<List<UsageQuestion>>(), ListComparer<UsageQuestion>());
+            e.HasOne<Domain.Catalog.CatalogWord>().WithMany().HasForeignKey(x => x.CatalogWordId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<WordUsage>(e =>

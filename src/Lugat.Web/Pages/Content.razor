@@ -1,0 +1,165 @@
+@page "/kontent"
+@using Lugat.Contracts
+@using Lugat.Domain.Catalog
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Kontent — Lug‘at</PageTitle>
+
+@* Content work (spec §2.4): editors and admins. Importing and splitting the official list is for the admin. *@
+<a class="back" href="sozlamalar">← Sozlamalar</a>
+<header class="page-head">
+    <div>
+        <h1>Kontent</h1>
+        <span class="muted small-text">Rasmiy ro‘yxat → bo‘limlar → AI qoralama → tekshirish → nashr</span>
+    </div>
+</header>
+
+@if (!IsEditor)
+{
+    <p class="muted">Bu sahifa muharrir va admin uchun.</p>
+    return;
+}
+
+<div class="seg" role="tablist" aria-label="Daraja">
+    @foreach (var level in Enum.GetValues<CatalogLevel>())
+    {
+        var l = level;
+        <button class="@(_level == l ? "selected" : "")" role="tab" aria-selected="@(_level == l)" @onclick="() => SelectAsync(l)">@l</button>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert" style="margin-top:10px">@_error</div>
+}
+
+@if (_levels?.FirstOrDefault(x => x.Level == _level) is { } stats)
+{
+    <section class="card" style="margin-top:12px">
+        <div class="stat-grid">
+            <div><b>@stats.Studyable</b><span>kartaga mos (@stats.Words dan)</span></div>
+            <div><b>@stats.Reviewed</b><span>tekshirilgan</span></div>
+            <div><b>@stats.PublishedUnits/@stats.Units</b><span>bo‘lim nashrda</span></div>
+        </div>
+        @if (stats.Unplaced > 0)
+        {
+            <p class="muted small-text">Bo‘limga kirmagan so‘z: @stats.Unplaced. «Bo‘limlarga bo‘lish» ularni joylaydi (10 tadan kam qolsa, keyingi importni kutadi).</p>
+        }
+        @if (IsAdmin)
+        {
+            <div class="actions">
+                <button class="button" disabled="@_busy" @onclick="SplitAsync">Bo‘limlarga bo‘lish</button>
+            </div>
+            <p class="muted small-text">Nashr qilingan bo‘limlar o‘zgarmaydi; qolgan so‘zlar chastota bo‘yicha 25 tadan qayta joylanadi.</p>
+        }
+    </section>
+}
+
+@if (IsAdmin)
+{
+    <section class="card">
+        <h2>Rasmiy ro‘yxatni import qilish</h2>
+        <p class="muted small-text">국립국어원 「한국어 학습용 어휘 목록」 fayli (.xls, .xlsx yoki .txt). Qayta yuklash dublikat yaratmaydi: mavjud so‘zlarning faqat chastota o‘rni va izohi yangilanadi.</p>
+        <InputFile OnChange="ImportAsync" accept=".xls,.xlsx,.txt,.tsv,.csv" disabled="@_busy" />
+        @if (_import is { } r)
+        {
+            <p role="status">@r.Rows qator: @r.Created yangi, @r.Updated yangilandi, @r.Unchanged o‘zgarmadi, @r.Skipped o‘tkazib yuborildi.</p>
+            @if (r.Problems.Count > 0)
+            {
+                <ul class="plain-list small-text">
+                    @foreach (var p in r.Problems)
+                    {
+                        <li>@p</li>
+                    }
+                </ul>
+            }
+        }
+    </section>
+}
+
+@if (_units is null)
+{
+    <p class="muted">Yuklanmoqda…</p>
+}
+else if (_units.Count == 0)
+{
+    <p class="muted">@_level darajada hali bo‘lim yo‘q.@(IsAdmin ? " Ro‘yxatni import qilib, «Bo‘limlarga bo‘lish» ni bosing." : "")</p>
+}
+else
+{
+    <ul class="plain-list">
+        @foreach (var u in _units)
+        {
+            <li>
+                <a class="link-card" href="@($"kontent/{u.Id}")">
+                    <span><strong>@u.Number-bo‘lim</strong> <span class="muted small-text">@u.Words so‘z · @u.Drafted qoralama · @u.Reviewed tekshirilgan</span></span>
+                    <span class="pill @(u.Status == UnitStatus.Published ? "pill-ok" : "pill-warn")">@(u.Status == UnitStatus.Published ? "Nashrda" : "Qoralama")</span>
+                </a>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private CatalogLevel _level = CatalogLevel.A;
+    private IReadOnlyList<CatalogLevelAdminDto>? _levels;
+    private List<UnitAdminSummaryDto>? _units;
+    private CatalogImportResultDto? _import;
+    private string? _error;
+    private bool _busy;
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    private bool IsEditor => IsAdmin || Api.State.Me?.Roles.Contains(nameof(UserRoles.Editor)) == true;
+
+    protected override Task OnInitializedAsync() => IsEditor ? LoadAsync() : Task.CompletedTask;
+
+    private async Task SelectAsync(CatalogLevel level)
+    {
+        _level = level;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _units = null;
+        var levels = await Api.GetAsync<List<CatalogLevelAdminDto>>("api/admin/catalog/levels");
+        var units = await Api.GetAsync<List<UnitAdminSummaryDto>>($"api/admin/units?level={_level}");
+        _levels = levels.Value;
+        _units = units.Value ?? [];
+        _error = levels.Error ?? units.Error;
+    }
+
+    private async Task SplitAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<CatalogLevelAdminDto>(HttpMethod.Post, $"api/admin/catalog/levels/{_level}/split");
+        _error = result.Error;
+        _busy = false;
+        await LoadAsync();
+    }
+
+    private async Task ImportAsync(InputFileChangeEventArgs e)
+    {
+        _busy = true;
+        _error = null;
+        StateHasChanged();
+        try
+        {
+            await using var stream = e.File.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var result = await Api.UploadAsync<CatalogImportResultDto>("api/admin/catalog/import", buffer.ToArray(), e.File.Name, "application/octet-stream");
+            _import = result.Value;
+            _error = result.Error;
+        }
+        catch (IOException)
+        {
+            _error = "Fayl juda katta (20 MB gacha).";
+        }
+
+        _busy = false;
+        await LoadAsync();
+    }
+}
