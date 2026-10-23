@@ -4,7 +4,13 @@
     <!-- index.html is served by the Api host through a fallback route, where build-time
          fingerprint placeholders are not applied on publish. Keep plain framework URLs. -->
     <OverrideHtmlAssetPlaceholders>false</OverrideHtmlAssetPlaceholders>
+    <!-- PWA (spec §6.2): publish writes the asset list with hashes; its version changes with every build. -->
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />

@@ -665,3 +665,33 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
 .steps li.current { background: var(--color-text); }
 .steps li.current .link-btn { color: var(--color-bg); }
 .word-table td.ko small { display: block; font-size: 12px; color: var(--color-muted); }
+
+/* PWA: update bar above the tab bar, install steps, onboarding (spec §4.1, §6.2). */
+.update-banner {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px var(--gutter);
+    background: var(--color-text);
+    color: var(--color-bg);
+    font-weight: 600;
+}
+.signin-page ~ .update-banner, .onboarding ~ .update-banner { bottom: env(safe-area-inset-bottom); }
+.install-steps { list-style: none; counter-reset: step; padding: 0; margin: 8px 0; border-top: 2px solid var(--color-divider); }
+.install-steps li { counter-increment: step; display: grid; grid-template-columns: 28px 28px 1fr; align-items: center; gap: 10px; min-height: 56px; padding: 6px 0; border-bottom: 1px solid var(--color-rule-soft); }
+.install-steps li::before { content: counter(step); font: 800 20px var(--font-heading); color: var(--color-accent); }
+.install-steps svg, .install-steps img { width: 24px; height: 24px; }
+.onboarding { min-height: 100dvh; display: flex; flex-direction: column; padding-bottom: 0; }
+.onboarding .onboarding-body { flex: 1; }
+.onboarding .big-number { font: 800 56px/1 var(--font-heading); color: var(--color-accent); margin: 24px 0 8px; }
+.onboarding-dots { display: flex; gap: 6px; margin: 16px 0; }
+.onboarding-dots span { width: 24px; height: 4px; background: var(--color-rule-soft); }
+.onboarding-dots span.current { background: var(--color-accent); }
+.onboarding-actions { display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.onboarding-actions .link-btn { min-height: 44px; font-weight: 600; }

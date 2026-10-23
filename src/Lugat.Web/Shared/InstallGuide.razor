@@ -1,0 +1,57 @@
+@inject BrowserInterop Browser
+
+@* Putting the app on the home screen (spec §4.1 step 3, §6.2): Chrome's own install dialog where the browser offers
+   it, the three Safari steps on iPhone/iPad, the browser menu elsewhere. *@
+@switch (_state)
+{
+    case null:
+        break;
+    case "installed":
+        <p role="status"><strong>Ilova o‘rnatilgan.</strong> Uni bosh ekrandagi «Lug‘at» belgisidan oching.</p>
+        break;
+    case "prompt":
+        <p>Ilovani telefoningizga o‘rnating: u bosh ekrandan, brauzer panellarisiz ochiladi.</p>
+        <button class="button primary" @onclick="InstallAsync">O‘rnatish</button>
+        break;
+    case "ios":
+        <p>iPhone’da ilova Safari orqali bosh ekranga qo‘shiladi:</p>
+        <ol class="install-steps">
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9H6a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10a1 1 0 0 0-1-1h-2" /><path d="M12 15V3M8 7l4-4 4 4" /></svg>
+                <span>Safari’da pastdagi <strong>Ulashish</strong> tugmasini bosing.</span>
+            </li>
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></svg>
+                <span>Ro‘yxatdan <strong>«Bosh ekranga qo‘shish»</strong> (Add to Home Screen) ni tanlang.</span>
+            </li>
+            <li>
+                <img src="icons/icon-192.png" alt="" width="24" height="24" />
+                <span>Yuqorida <strong>«Qo‘shish»</strong> (Add) ni bosing. «Lug‘at» belgisi bosh ekranda paydo bo‘ladi.</span>
+            </li>
+        </ol>
+        <p class="muted small-text">Telegram ichida ochilgan bo‘lsa, avval havolani Safari’da oching.</p>
+        break;
+    default:
+        <p>Brauzer menyusini (<strong>⋮</strong>) oching va <strong>«Ilovani o‘rnatish»</strong> yoki <strong>«Bosh ekranga qo‘shish»</strong> ni tanlang.</p>
+        <p class="muted small-text">Telegram ichida ochilgan bo‘lsa, avval havolani Chrome’da oching.</p>
+        break;
+}
+
+@code {
+    private string? _state;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _state = await Browser.InstallStateAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task InstallAsync()
+    {
+        // Accepted: Chrome installs it now. Dismissed: the offer is used up, so the menu steps are shown instead.
+        _state = await Browser.PromptInstallAsync() ? "installed" : await Browser.InstallStateAsync();
+    }
+}

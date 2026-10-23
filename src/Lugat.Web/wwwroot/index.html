@@ -10,8 +10,22 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&amp;family=Noto+Sans+KR:wght@400;500;700&amp;display=swap" />
     <link rel="stylesheet" href="css/app.css" />
-    <script>window.__appStart = performance.now();</script>
-    <meta name="theme-color" content="#f3f2f2" />
+    <script>
+        window.__appStart = performance.now();
+        // Chrome/Android offers installing before Blazor starts; keep the offer for the "O‘rnatish" button (spec §6.2).
+        window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installPrompt = e; });
+        window.addEventListener('appinstalled', () => { window.__installPrompt = null; });
+    </script>
+    <meta name="theme-color" content="#f3f2f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191817" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Koreys tili so‘zlarini o‘zbek tilida, eng ko‘p ishlatiladiganlaridan boshlab o‘rganing." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Lug‘at" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 </head>
 
 <body>
@@ -27,7 +41,14 @@
         <a href="." class="reload">Qayta yuklash</a>
         <span class="dismiss">✕</span>
     </div>
-    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
+    <script>
+        // The service worker is registered after Blazor has started, so on the first visit its caching does not compete
+        // with the app's own downloads (it then revalidates them from the HTTP cache).
+        window.__swRegistration = Blazor.start().then(() => 'serviceWorker' in navigator
+            ? navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+            : null).catch(() => null);
+    </script>
 </body>
 
 </html>

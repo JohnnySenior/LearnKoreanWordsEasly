@@ -1,0 +1,41 @@
+@implements IDisposable
+@inject BrowserInterop Browser
+
+@* "Yangilanish tayyor — qayta yuklash" (spec §6.2): a new version is installed and waits for the learner. *@
+@if (_ready)
+{
+    <div class="update-banner" role="status">
+        <span>Yangilanish tayyor</span>
+        <button class="button small primary" disabled="@_applying" @onclick="ApplyAsync">Qayta yuklash</button>
+    </div>
+}
+
+@code {
+    private DotNetObjectReference<UpdateBanner>? _self;
+    private bool _ready;
+    private bool _applying;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            await Browser.WatchUpdatesAsync(_self);
+        }
+    }
+
+    [JSInvokable]
+    public void OnUpdateReady()
+    {
+        _ready = true;
+        StateHasChanged();
+    }
+
+    private async Task ApplyAsync()
+    {
+        _applying = true;
+        await Browser.ApplyUpdateAsync();
+    }
+
+    public void Dispose() => _self?.Dispose();
+}
