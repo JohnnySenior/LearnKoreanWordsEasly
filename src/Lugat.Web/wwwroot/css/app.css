@@ -1013,3 +1013,15 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .wrong-row b { display: block; font-weight: 600; }
 .wrong-row s { display: block; font-size: 13px; }
 .result-actions { padding: 16px 0; display: grid; gap: 8px; }
+
+/* 1h Mashq. */
+.practice-head { margin: 0 calc(-1 * var(--gutter)); padding: 12px var(--gutter) 14px; border-bottom: 2px solid var(--color-divider); }
+.practice-head h1 { font: 800 30px/1.12 var(--font-heading); margin: 0; }
+.practice-head p { margin: 4px 0 0; }
+.practice-list { margin: 0 calc(-1 * var(--gutter)); }
+.practice-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 0 8px; min-height: 72px; padding: 12px var(--gutter); border-bottom: 1px solid var(--color-divider); color: var(--color-text); text-decoration: none; }
+.practice-row:hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); color: var(--color-text); }
+.practice-no { font: 900 15px var(--font-heading); color: var(--color-neutral-500); }
+.practice-text b { display: block; font: 800 16px/1.25 var(--font-heading); }
+.practice-text span { display: block; font-size: 13px; color: var(--color-muted); margin-top: 2px; }
+.practice-end { display: inline-flex; align-items: center; gap: 10px; }
