@@ -664,7 +664,18 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
 .steps .link-btn { display: block; width: 100%; padding: 10px 6px; font-size: 13px; font-weight: 600; text-align: center; }
 .steps li.current { background: var(--color-text); }
 .steps li.current .link-btn { color: var(--color-bg); }
-.word-table td.ko small { display: block; font-size: 12px; color: var(--color-muted); }
+/* The unit's word table, as in KoreanAiTeacher (D-36): first exposure before the cards. */
+.study-bar { position: sticky; top: 0; z-index: 2; background: var(--color-bg); padding: 10px 0; border-bottom: 2px solid var(--color-text); display: grid; gap: 8px; }
+.word-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.word-table th { text-align: left; font: 700 12px var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--color-muted); padding: 6px 8px; border-bottom: 2px solid var(--color-text); }
+.word-table td { padding: 10px 8px; border-bottom: 1px solid var(--color-rule-soft); vertical-align: top; cursor: pointer; }
+.word-table .n { width: 2.2em; color: var(--color-muted); font-variant-numeric: tabular-nums; cursor: default; }
+.word-table td.ko { font-family: var(--font-ko); font-size: 20px; font-weight: 700; word-break: keep-all; overflow-wrap: normal; width: 42%; }
+.word-table td.ko small { display: block; font-family: var(--font-body); font-size: 13px; font-weight: 400; color: var(--color-muted); }
+.word-table td.uz { font-size: 16px; }
+.word-table tr.selected td { background: var(--color-surface); }
+.word-table tr.speak-row td { padding-top: 0; cursor: default; background: var(--color-surface); }
+.covered { display: inline-block; width: 100%; min-width: 4em; height: 1.2em; background: repeating-linear-gradient(135deg, var(--color-surface) 0 6px, var(--color-rule-soft) 6px 8px); border: 1px dashed var(--color-divider); vertical-align: middle; }
 
 /* PWA: update bar above the tab bar, install steps, onboarding (spec §4.1, §6.2). */
 .update-banner {
