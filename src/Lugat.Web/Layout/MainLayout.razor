@@ -14,6 +14,12 @@
     return;
 }
 
+@if (IsPublicPage)
+{
+    <main class="content">@Body</main>
+    return;
+}
+
 @if (_state.Status != SessionStatus.SignedIn)
 {
     <main class="content signin-page">
@@ -31,7 +37,7 @@
                 <SignIn />
             </section>
         }
-        <p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1).</p>
+        <p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1). <a href="maxfiylik">Maxfiylik siyosati</a></p>
     </main>
     <UpdateBanner />
     return;
@@ -61,6 +67,9 @@
 
 @code {
     private SessionState? _state;
+
+    // Pages anyone may open without signing in (the privacy policy is linked from the sign-in screen).
+    private bool IsPublicPage => Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0] == "maxfiylik";
     private bool _onboarding;
     private bool _onboardingChecked;
 

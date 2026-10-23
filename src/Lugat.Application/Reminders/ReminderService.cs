@@ -20,7 +20,10 @@ public sealed class ReminderService(
     TimeProvider time,
     ILogger<ReminderService> logger)
 {
-    public const string OpenAppButton = "Mashqni ochish";
+    public const string OpenAppButton = "Takrorlashni ochish";
+
+    /// <summary>The app page a reminder opens (spec §8: "Havola ilovani takrorlash sahifasida ochadi").</summary>
+    public const string ReviewPath = "takrorlash";
 
     public async Task<int> RunDueAsync(CancellationToken ct)
     {
@@ -65,7 +68,7 @@ public sealed class ReminderService(
             return new SendResult(SendOutcome.Failed, Error: "Telegram hisobi bog‘lanmagan.");
         }
 
-        var result = await telegram.SendAsync(ChatId(login), "Sinov xabari: eslatmalar shu yerga keladi.", OpenAppButton, ct);
+        var result = await telegram.SendAsync(ChatId(login), "Sinov xabari: eslatmalar shu yerga keladi.", OpenAppButton, ct, ReviewPath);
         await RecordBotAccessAsync(user, result, ct);
         return result;
     }
@@ -82,16 +85,16 @@ public sealed class ReminderService(
         }
 
         var today = await study.TodayAsync(user.Id, ct);
-        var text = Compose(today);
+        var text = Compose(await study.DueWordsAsync(user.Id, ct), today.DueNow, today.SecondsPerCard);
         if (text is null)
         {
             delivery.Status = DeliveryStatus.Skipped;
-            delivery.Error = "Mashq qilinadigan kartochka yo‘q.";
+            delivery.Error = "Muddati kelgan kartochka yo‘q.";
             await db.SaveChangesAsync(ct);
             return false;
         }
 
-        var result = await telegram.SendAsync(chatId, text, OpenAppButton, ct);
+        var result = await telegram.SendAsync(chatId, text, OpenAppButton, ct, ReviewPath);
         delivery.Attempts++;
         switch (result.Outcome)
         {
@@ -186,21 +189,17 @@ public sealed class ReminderService(
     }
 
     /// <summary>
-    /// Short and polite: what is ready and roughly how long it takes; no blame or pressure (spec NOT04).
-    /// Returns null when there is nothing to practise, so no empty reminder is sent.
+    /// Spec §8: "Bugun N ta so‘zni takrorlash vaqti. ~M daqiqa." Short and polite, no blame or pressure (spec NOT04).
+    /// Only cards that are due count: new words alone are no reason to write, so then nothing is sent (null).
     /// </summary>
-    public static string? Compose(TodayDto today)
+    public static string? Compose(int dueWords, int dueCards, int secondsPerCard)
     {
-        var cards = today.DueNow + today.NewAvailable;
-        if (cards == 0)
+        if (dueWords == 0 || dueCards == 0)
         {
             return null;
         }
 
-        var minutes = Math.Max(1, (int)Math.Ceiling(Math.Min(cards, 200) * today.SecondsPerCard / 60.0));
-        var ready = today.NewAvailable > 0
-            ? $"{today.DueNow} ta takrorlash va {today.NewAvailable} ta yangi kartochka"
-            : $"{today.DueNow} ta takrorlash";
-        return $"Bugungi mashq tayyor: {ready}. Taxminan {minutes} daqiqa.";
+        var minutes = Math.Max(1, (int)Math.Ceiling(Math.Min(dueCards, 200) * secondsPerCard / 60.0));
+        return $"Bugun {dueWords} ta so‘zni takrorlash vaqti. ~{minutes} daqiqa.";
     }
 }

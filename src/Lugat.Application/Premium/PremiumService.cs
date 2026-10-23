@@ -386,7 +386,7 @@ public sealed class PremiumService(
 
         try
         {
-            await telegram.SendAsync(chatId, text, "Premium", ct);
+            await telegram.SendAsync(chatId, text, "Premium", ct, "premium");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

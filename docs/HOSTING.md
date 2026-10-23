@@ -1,6 +1,25 @@
 # Hosting
 
-**Holat (2026-10-22):** hali deploy qilinmagan. Railway’da Lug‘at uchun **alohida loyiha** (KoreanAiTeacher’dan alohida servis va baza) 8-bosqichda ochiladi (spec §6.1, §13.9). Quyidagilar KoreanAiTeacher’ning ishlab turgan sozlamasiga asoslangan reja.
+**Holat (2026-10-23):** hali deploy qilinmagan. Kod deployga tayyor (8-bosqich); Railway’da Lug‘at uchun **alohida loyiha** (KoreanAiTeacher’dan alohida servis va baza) Railway connector ulangan sessiyada ochiladi (spec §6.1, §13.9).
+
+## Deploy qadamlari (Railway)
+
+1. Yangi loyiha "Lugat" → **PostgreSQL** servisi (18).
+2. **app** servisi: GitHub `JohnnySenior/LearnKoreanWordsEasly`, branch `main`, Dockerfile bo‘yicha build. Settings → Source → "Wait for CI" yoqiladi.
+3. **Volume** `/data` ga ulanadi. Image root bo‘lmagan foydalanuvchi bilan ishlaydi, Railway volume’i esa root’niki: `RAILWAY_RUN_UID=0` o‘zgaruvchisi qo‘yiladi, aks holda ovoz keshi, sessiya kalitlari va zaxira yozilmaydi.
+4. Healthcheck path `/health`; Serverless (uxlash) o‘chiq.
+5. **Birinchi deploydan oldin shart bo‘lgan o‘zgaruvchilar:**
+   - `ConnectionStrings__Default=Host=${{Postgres.PGHOST}};Port=${{Postgres.PGPORT}};Database=${{Postgres.PGDATABASE}};Username=${{Postgres.PGUSER}};Password=${{Postgres.PGPASSWORD}};Gss Encryption Mode=Disable`
+   - `Storage__Root=/data/files`, `DataProtection__KeysPath=/data/keys`, `Backup__Directory=/data/backups`, `ASPNETCORE_ENVIRONMENT=Production`.
+6. Public domain yaratiladi (`*.up.railway.app`). `Telegram__AppUrl` bo‘sh bo‘lsa `https://$RAILWAY_PUBLIC_DOMAIN` olinadi.
+7. **Kirish uchun kamida bittasi** (keyin qo‘shsa ham bo‘ladi, o‘zgaruvchi o‘zgarsa servis qayta deploy bo‘ladi): Telegram (`Telegram__BotToken`, `Telegram__BotUsername`, BotFather `/setdomain`) yoki Google (`Google__ClientId`, origin’ga domen). `Auth__Admins__TelegramUserIds__0` — Johnny admin bo‘lishi uchun.
+8. Keyin: AI kalitlari, Azure ovoz, `Ai__Budget__*` tariflari, `Payments__*`, `Backup__TelegramChatId`. Ularsiz ilova ishlaydi: tegishli funksiya "ulanmagan" yoki "Tez orada" deydi.
+9. Workspace → Usage → hard spend limit (masalan $10/oy).
+10. Tekshiruv: `/health` → `ready`; kirish; admin; `/admin/korsatkichlar`; Sozlamalar → "Sinov xabari"; ertasi kuni zaxira yozilganini Sozlamalar → "Zaxira nusxa" da ko‘rish.
+
+Proksi: Railway’da `RAILWAY_ENVIRONMENT_NAME` bor bo‘lsa `X-Forwarded-For` ning oxirgi (proksi qo‘shgan) qiymati mijoz IP’si hisoblanadi (L-33); boshqa joyda `ForwardedHeaders__Enabled=true` bilan yoqiladi.
+
+Quyidagilar KoreanAiTeacher’ning ishlab turgan sozlamasiga asoslangan.
 
 ## Rejadagi tuzilma
 
@@ -32,7 +51,7 @@ Real nusxadan yangi Railway muhitiga tiklash mashqi hali bajarilmagan.
 
 - `Ai__Anthropic__ApiKey` va/yoki `Ai__OpenAi__ApiKey` (KAT D-21). Ilovada Sozlamalar → "AI xizmati" → "Ulanishni tekshirish".
 - Azure Speech: `Ai__Tts__Azure__Key`, `Ai__Tts__Azure__Region` (KAT D-31, D-32).
-- Oylik byudjet va tariflar: `Ai__Budget__*` (KAT D-50). Tarif kiritilmasa, sarf "noma’lum" deb ko‘rsatiladi va limit to‘liq ishlamaydi.
+- Oylik byudjet va tariflar: `Ai__Budget__*` (KAT D-50). `MonthlyLimitUsd` (standart $25) — qattiq chegara: oshsa AI va ovoz chaqiruvlari to‘xtaydi, tayyor kontent ishlayveradi. Tarif kiritilmagan model sarfi "noma’lum" deb ko‘rsatiladi va dollar chegarasiga qo‘shilmaydi; bunday chaqiruvlar oyiga `Ai__Budget__MonthlyUnpricedCalls` (standart 2000) ta bilan to‘xtatiladi (L-33). Aniq hisob uchun tariflarni kiriting. Ovoz (Azure, OpenAI TTS) ham shu hisobga kiradi: butun katalog ovozini oldindan yaratishdan oldin Azure uchun tarif yozing (Free F0 bo‘lsa narx `0`), aks holda 2000 ta chaqiruvdan keyin to‘xtaydi.
 
 ## Kirish (Telegram va Google)
 
@@ -51,5 +70,5 @@ Ikkalasi ham ixtiyoriy: sozlanmagani kirish sahifasida ko‘rinmaydi (`GET /api/
 
 **Birinchi admin** (L-14): `Auth__Admins__TelegramUserIds__0=<Telegram ID>` yoki `Auth__Admins__GoogleSubjects__0=<Google sub>`. Shu hisob bilan kirilganda `Admin` roli beriladi.
 
-**Proksi:** Railway ortida haqiqiy IP `X-Forwarded-For` da; rate limit to‘g‘ri ishlashi uchun deployda `ForwardedHeaders` yoqiladi (L-16, 8-bosqich).
+**Proksi:** Railway ortida haqiqiy IP `X-Forwarded-For` da; `ForwardedHeaders` Railway’da avtomatik yoqiladi (L-33), rate limit mijoz IP’si bo‘yicha.
 

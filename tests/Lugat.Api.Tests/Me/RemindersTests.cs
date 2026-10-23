@@ -15,15 +15,18 @@ internal sealed class FakeMessenger : ITelegramMessenger
 {
     public List<(long ChatId, string Text)> Sent { get; } = [];
 
+    public List<string> Paths { get; } = [];
+
     public SendOutcome NextOutcome { get; set; } = SendOutcome.Sent;
 
     public bool IsConfigured => true;
 
-    public Task<SendResult> SendAsync(long chatId, string text, string openAppButton, CancellationToken ct)
+    public Task<SendResult> SendAsync(long chatId, string text, string openAppButton, CancellationToken ct, string path = "")
     {
         if (NextOutcome == SendOutcome.Sent)
         {
             Sent.Add((chatId, text));
+            Paths.Add(path);
             return Task.FromResult(new SendResult(SendOutcome.Sent, Sent.Count));
         }
 
@@ -48,8 +51,8 @@ public class RemindersTests
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
 
-    /// <summary>Monday 5 October 2026, 09:31 in Seoul.</summary>
-    private static readonly DateTimeOffset MondayMorning = new DateTimeOffset(2026, 10, 5, 9, 31, 0, TimeSpan.FromHours(9)).ToUniversalTime();
+    /// <summary>Monday 5 October 2026, 20:01 in Seoul: just after the default daily reminder (spec §8).</summary>
+    private static readonly DateTimeOffset MondayEvening = new DateTimeOffset(2026, 10, 5, 20, 1, 0, TimeSpan.FromHours(9)).ToUniversalTime();
 
     private readonly FakeMessenger _telegram = new();
 
@@ -61,7 +64,7 @@ public class RemindersTests
             Messenger = _telegram,
         };
         factory.Settings["Reminders:PollInterval"] = "01:00:00"; // tests drive the service directly
-        factory.Time.SetUtcNow(MondayMorning.AddHours(-1));
+        factory.Time.SetUtcNow(MondayEvening.AddHours(-1));
         return factory;
     }
 
@@ -76,13 +79,26 @@ public class RemindersTests
         (await client.PostAsync(ApiFactory.TestWordsPath, null)).EnsureSuccessStatusCode();
     }
 
+    /// <summary>Opens the unit and answers its first <paramref name="cards"/> cards "Eslay olmadim": due again in 15 minutes.</summary>
+    private static async Task StudyAsync(HttpClient client, int cards)
+    {
+        await ApproveOneTableAsync(client);
+        var session = (await (await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, false), Json))
+            .Content.ReadFromJsonAsync<StartSessionResponse>(Json))!.Session!;
+        for (var i = 0; i < cards; i++)
+        {
+            session = (await (await client.PostAsJsonAsync($"/api/sessions/{session.Id}/answers", new AnswerRequest(Guid.NewGuid(), session.Position, ReviewAnswer.Forgot, false, 2000), Json))
+                .Content.ReadFromJsonAsync<AnswerResultDto>(Json))!.Session;
+        }
+    }
+
     [Fact]
-    public async Task Morning_reminder_is_sent_once_even_if_the_worker_runs_again()
+    public async Task The_evening_reminder_names_the_due_words_and_is_sent_once()
     {
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        await ApproveOneTableAsync(client);
-        factory.Time.SetUtcNow(MondayMorning);
+        await StudyAsync(client, 3); // 3 cards of 3 words due again, the other 7 still new
+        factory.Time.SetUtcNow(MondayEvening);
 
         var first = await RunAsync(factory);
         var second = await RunAsync(factory); // e.g. after a restart
@@ -91,8 +107,46 @@ public class RemindersTests
         Assert.Equal(0, second);
         var (chat, text) = Assert.Single(_telegram.Sent);
         Assert.Equal(ApiFactory.UserA, chat);
-        Assert.Contains("10 ta yangi kartochka", text);
-        Assert.Contains("daqiqa", text);
+        Assert.StartsWith("Bugun 3 ta so‘zni takrorlash vaqti. ~", text);
+        Assert.EndsWith("daqiqa.", text);
+        Assert.Equal("takrorlash", Assert.Single(_telegram.Paths)); // the button opens the review page
+    }
+
+    [Fact]
+    public async Task New_words_alone_are_no_reason_to_write()
+    {
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await ApproveOneTableAsync(client); // 10 new cards, nothing due
+        factory.Time.SetUtcNow(MondayEvening);
+
+        Assert.Equal(0, await RunAsync(factory));
+        Assert.Empty(_telegram.Sent);
+    }
+
+    [Fact]
+    public async Task The_reminder_comes_at_the_chosen_time_on_the_chosen_days_only()
+    {
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await StudyAsync(client, 1);
+        var saved = await client.PatchAsJsonAsync("/api/me/preferences",
+            new UpdatePreferencesRequest(null, new TimeOnly(7, 30), [DayOfWeek.Tuesday, DayOfWeek.Saturday]), Json);
+        var prefs = (await saved.Content.ReadFromJsonAsync<PreferencesDto>(Json))!;
+        Assert.Equal(new TimeOnly(7, 30), prefs.ReminderTime);
+        Assert.Equal([DayOfWeek.Tuesday, DayOfWeek.Saturday], prefs.ReminderDays);
+
+        factory.Time.SetUtcNow(MondayEvening); // Monday: not chosen
+        Assert.Equal(0, await RunAsync(factory));
+        factory.Time.SetUtcNow(new DateTimeOffset(2026, 10, 6, 7, 30, 0, TimeSpan.FromHours(9)).ToUniversalTime()); // Tuesday 07:30
+        Assert.Equal(1, await RunAsync(factory));
+        factory.Time.SetUtcNow(new DateTimeOffset(2026, 10, 7, 7, 30, 0, TimeSpan.FromHours(9)).ToUniversalTime()); // Wednesday
+        Assert.Equal(0, await RunAsync(factory));
+        Assert.Single(_telegram.Sent);
+
+        client = await factory.SignedInClientAsync(ApiFactory.UserA); // two days later: a fresh token
+        var none = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(null, null, []), Json);
+        Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, none.StatusCode);
     }
 
     [Fact]
@@ -100,7 +154,7 @@ public class RemindersTests
     {
         await using var factory = NewFactory();
         await factory.SignedInClientAsync(ApiFactory.UserA); // user exists, no approved words
-        factory.Time.SetUtcNow(MondayMorning);
+        factory.Time.SetUtcNow(MondayEvening);
 
         Assert.Equal(0, await RunAsync(factory));
         Assert.Empty(_telegram.Sent);
@@ -111,8 +165,8 @@ public class RemindersTests
     {
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        await ApproveOneTableAsync(client);
-        factory.Time.SetUtcNow(MondayMorning.AddMinutes(40)); // 10:11, the server was down at 09:30
+        await StudyAsync(client, 1);
+        factory.Time.SetUtcNow(MondayEvening.AddMinutes(40)); // 20:41, the server was down at 20:00
 
         Assert.Equal(0, await RunAsync(factory));
         Assert.Empty(_telegram.Sent);
@@ -123,14 +177,15 @@ public class RemindersTests
     {
         await using var factory = NewFactory();
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
-        await ApproveOneTableAsync(client);
+        await StudyAsync(client, 1);
 
-        var saved = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(false, new TimeOnly(8, 15)), Json);
+        var saved = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(false, new TimeOnly(20, 0)), Json);
         var prefs = (await saved.Content.ReadFromJsonAsync<PreferencesDto>(Json))!;
-        factory.Time.SetUtcNow(MondayMorning);
+        factory.Time.SetUtcNow(MondayEvening);
 
         Assert.False(prefs.RemindersEnabled);
-        Assert.Equal(new TimeOnly(8, 15), prefs.WeekdayReminderTime);
+        Assert.Equal(new TimeOnly(20, 0), prefs.ReminderTime);
+        Assert.Equal(7, prefs.ReminderDays.Count); // every day by default
         Assert.Equal("Asia/Seoul", prefs.TimeZone);
         Assert.Equal(0, await RunAsync(factory));
         Assert.Empty(_telegram.Sent);
@@ -161,8 +216,8 @@ public class RemindersTests
         await using var factory = NewFactory();
         var a = await factory.SignedInClientAsync(ApiFactory.UserA);
         await factory.SignedInClientAsync(ApiFactory.UserB); // no words yet
-        await ApproveOneTableAsync(a);
-        factory.Time.SetUtcNow(MondayMorning);
+        await StudyAsync(a, 1);
+        factory.Time.SetUtcNow(MondayEvening);
 
         await RunAsync(factory);
 
@@ -182,8 +237,8 @@ public class RemindersTests
         }
 
         var a = await factory.SignedInClientAsync(ApiFactory.UserA);
-        await ApproveOneTableAsync(a);
-        factory.Time.SetUtcNow(MondayMorning);
+        await StudyAsync(a, 1);
+        factory.Time.SetUtcNow(MondayEvening);
 
         await RunAsync(factory);
 

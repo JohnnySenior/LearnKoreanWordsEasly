@@ -235,4 +235,22 @@ Bosqichlar spec §13 bo‘yicha.
 
 ## Bosqich 8 · Eslatmalar, ishga tushirish
 
-- [ ] Telegram eslatmalari (spec §8), maxfiylik siyosati, Railway alohida loyiha, backup, hard spend limit, real qurilmada to‘liq oqim.
+**Kod qismi (2026-10-23):**
+- [x] Telegram eslatmalari spec §8 bo‘yicha: har kuni 20:00, kunlar tanlanadi, faqat muddati kelgan so‘z bo‘lsa, tugma `/takrorlash` ni ochadi; migratsiya `DailyReminders` (L-33).
+- [x] Maxfiylik siyosati `/maxfiylik` (qoralama, kirishsiz ochiladi) va Profil → "Haqida" (manba, KOGL 1).
+- [x] Qattiq xarajat chegarasi: tarifsiz chaqiruvlar ham oylik son bilan to‘xtaydi.
+- [x] Railway proksisi ortida mijoz IP’si (`ForwardedHeaders`), deploy qadamlari `docs/HOSTING.md` da.
+
+**Tekshirildi:**
+- `dotnet build` toza; testlar 106 (Domain) + 32 (Application) + 191 (Api) = 329, JS testlar 10 — hammasi o‘tdi.
+- **Qabul (fake clock):** `ReminderPlannerTests` — 20:00 dan bir daqiqa oldin yo‘q, shanba/yakshanba/dushanba 20:00 da bor; tanlanmagan kunda yo‘q; 30 daqiqadan kech — yo‘q. `RemindersTests` — 3 ta so‘z muddati kelganda dushanba 20:01 da bitta xabar "Bugun 3 ta so‘zni takrorlash vaqti. ~… daqiqa.", tugma yo‘li `takrorlash`, qayta ishga tushirilganda ikkinchi xabar yo‘q; faqat yangi so‘zlar bo‘lsa xabar yo‘q; seshanba va shanba 07:30 tanlanganda dushanba yo‘q, seshanba 07:30 bor, chorshanba yo‘q; bo‘sh kunlar — 422; o‘chirilgan eslatma yuborilmaydi; Google bilan kirganga yuborilmaydi.
+- Xarajat: tarif kiritilmagan, chegara 1 ta → ikkinchi chaqiruv 429, provayderga bitta so‘rov.
+- Proksi: `X-Forwarded-For` bo‘yicha limit har mijozga alohida; `198.51.100.7, 203.0.113.2` dagi birinchi (mijoz yozgan) qiymat hisobga olinmaydi.
+- Chromium, 360px: kirish ekranida "Maxfiylik siyosati" → kirishsiz ochildi (6 bo‘lim); Sozlamalar → Eslatmalar: vaqt, 7 kun bir qatorda, Sh/Ya olib saqlandi; "Haqida" bor; gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+
+**Ochiq qoldi (Railway connector ulangan sessiyada):**
+- [ ] Railway’da alohida loyiha, volume, o‘zgaruvchilar, domen, "Wait for CI", workspace spend limit (`docs/HOSTING.md` → "Deploy qadamlari").
+- [ ] Production’da zaxira: birinchi kechki nusxa va tiklash tekshiruvi, haftalik Telegram nusxasi.
+- [ ] Haqiqiy bot bilan eslatma (BotFather `/setdomain`, "Sinov xabari", 20:00 dagi xabar).
+- [ ] **Real iPhone va Android’da to‘liq oqim** (spec §13.9): kirish → 1-bo‘lim → test → 2-bo‘lim ochildi → ertasi kuni takrorlash; PWA o‘rnatish, birinchi yuklanish vaqti (6-bosqichdagi ochiq bandlar).
+- [ ] Maxfiylik siyosati matnini Johnny tasdiqlaydi (Q7).

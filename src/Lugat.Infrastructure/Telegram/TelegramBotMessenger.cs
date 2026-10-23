@@ -70,15 +70,16 @@ public sealed class TelegramBotMessenger(HttpClient http, TelegramBotOptions opt
         return await ReadAsync(response, "sendDocument", ct);
     }
 
-    public async Task<SendResult> SendAsync(long chatId, string text, string openAppButton, CancellationToken ct)
+    public async Task<SendResult> SendAsync(long chatId, string text, string openAppButton, CancellationToken ct, string path = "")
     {
+        var url = path.Length == 0 ? options.AppUrl : $"{options.AppUrl.TrimEnd('/')}/{path.TrimStart('/')}";
         var body = new
         {
             chat_id = chatId,
             text,
             reply_markup = new
             {
-                inline_keyboard = new[] { new[] { new { text = openAppButton, url = options.AppUrl } } },
+                inline_keyboard = new[] { new[] { new { text = openAppButton, url } } },
             },
         };
 

@@ -120,6 +120,21 @@ public class AiConcurrencyTests
     }
 
     [Fact]
+    public async Task Calls_without_a_configured_price_stop_at_the_monthly_count()
+    {
+        var ai = new FakeAiProvider(AiProviderKind.OpenAi);
+        await using var factory = new ApiFactory { AiProviders = [ai], AdminTelegramIds = [ApiFactory.UserA, ApiFactory.UserB] };
+        factory.Settings["Ai:Budget:MonthlyUnpricedCalls"] = "1"; // no price configured at all
+        var a = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var b = await factory.SignedInClientAsync(ApiFactory.UserB);
+
+        Assert.Equal(HttpStatusCode.OK, (await a.PostAsync("/api/ai/ping/OpenAi", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await b.PostAsync("/api/ai/ping/OpenAi", null)).StatusCode);
+        Assert.Single(ai.Requests);
+        Assert.Equal(1, (await a.GetFromJsonAsync<AiBudgetDto>("/api/ai/budget", Json))!.UnknownPriceCalls);
+    }
+
+    [Fact]
     public async Task Observed_usage_replaces_the_reservation_and_missing_rates_are_visible()
     {
         var ai = new FakeAiProvider(AiProviderKind.OpenAi);
