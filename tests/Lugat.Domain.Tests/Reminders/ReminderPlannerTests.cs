@@ -13,45 +13,53 @@ public class ReminderPlannerTests
         ReminderPlanner.Due(User, now.ToUniversalTime(), Seoul, prefs ?? ReminderPreferences.Default);
 
     [Fact]
-    public void Weekday_reminder_is_due_at_0930_kst()
+    public void The_reminder_is_due_every_day_at_2000_by_default()
     {
-        // 5 October 2026 is a Monday.
-        Assert.Null(Due(Kst(5, 9, 29)));
-
-        var due = Due(Kst(5, 9, 30));
-
-        Assert.NotNull(due);
-        Assert.Equal(ReminderSlot.Weekday, due.Slot);
-        Assert.Equal(Kst(5, 9, 30), due.ScheduledAt);
-        Assert.Equal($"{User:N}:2026-10-05:Weekday", due.Key);
+        // 5 October 2026 is a Monday, 3 October a Saturday, 4 October a Sunday.
+        Assert.Null(Due(Kst(5, 19, 59)));
+        foreach (var day in new[] { 3, 4, 5 })
+        {
+            var due = Due(Kst(day, 20, 0));
+            Assert.NotNull(due);
+            Assert.Equal(ReminderSlot.Daily, due.Slot);
+            Assert.Equal(Kst(day, 20, 0), due.ScheduledAt);
+            Assert.Equal($"{User:N}:2026-10-0{day}:Daily", due.Key);
+        }
     }
 
     [Fact]
     public void Reminder_later_than_30_minutes_is_not_sent()
     {
-        Assert.NotNull(Due(Kst(5, 10, 0)));
-        Assert.Null(Due(Kst(5, 10, 1)));
+        Assert.NotNull(Due(Kst(5, 20, 30)));
+        Assert.Null(Due(Kst(5, 20, 31)));
     }
 
     [Fact]
-    public void Weekend_has_no_reminder()
+    public void Only_the_chosen_days_get_a_reminder()
     {
-        Assert.Null(Due(Kst(4, 9, 30))); // Sunday
-        Assert.Null(Due(Kst(3, 9, 30))); // Saturday: the lesson evening slot went with the lessons (spec §3.1)
-        Assert.Null(Due(Kst(3, 22, 0)));
+        var weekdays = ReminderPreferences.Default with { Days = ReminderDays.Every & ~(ReminderDays.Saturday | ReminderDays.Sunday) };
+
+        Assert.NotNull(Due(Kst(5, 20, 0), weekdays));
+        Assert.Null(Due(Kst(3, 20, 0), weekdays));
+        Assert.Null(Due(Kst(4, 20, 0), weekdays));
+        Assert.Null(Due(Kst(5, 20, 0), ReminderPreferences.Default with { Days = ReminderDays.None }));
     }
 
     [Fact]
-    public void Weekdays_get_no_evening_reminder() => Assert.Null(Due(Kst(6, 22, 0)));
+    public void Days_go_to_and_from_a_list_monday_first()
+    {
+        Assert.Equal([DayOfWeek.Monday, DayOfWeek.Saturday, DayOfWeek.Sunday], (ReminderDays.Sunday | ReminderDays.Monday | ReminderDays.Saturday).ToList());
+        Assert.Equal(ReminderDays.Every, ReminderDaysExtensions.FromList(Enum.GetValues<DayOfWeek>()));
+    }
 
     [Fact]
     public void Disabled_reminders_are_never_due() =>
-        Assert.Null(Due(Kst(5, 9, 30), prefs: ReminderPreferences.Default with { Enabled = false }));
+        Assert.Null(Due(Kst(5, 20, 0), prefs: ReminderPreferences.Default with { Enabled = false }));
 
     [Fact]
     public void Custom_time_is_respected()
     {
-        var prefs = ReminderPreferences.Default with { WeekdayTime = new TimeOnly(23, 50) };
+        var prefs = ReminderPreferences.Default with { Time = new TimeOnly(23, 50) };
 
         Assert.NotNull(Due(Kst(5, 23, 55), prefs: prefs));
         Assert.NotNull(Due(Kst(6, 0, 10), prefs: prefs)); // just after midnight, still yesterday's reminder
@@ -60,5 +68,5 @@ public class ReminderPlannerTests
 
     [Fact]
     public void Same_occurrence_has_the_same_key_within_its_window() =>
-        Assert.Equal(Due(Kst(5, 9, 31))!.Key, Due(Kst(5, 9, 59))!.Key);
+        Assert.Equal(Due(Kst(5, 20, 1))!.Key, Due(Kst(5, 20, 29))!.Key);
 }

@@ -25,7 +25,8 @@ public interface ITelegramMessenger
     /// <summary>False when no bot token is configured; reminders are then not attempted at all.</summary>
     bool IsConfigured { get; }
 
-    Task<SendResult> SendAsync(long chatId, string text, string openAppButton, CancellationToken ct);
+    /// <param name="path">The app page the button opens, e.g. "takrorlash"; empty = the home page.</param>
+    Task<SendResult> SendAsync(long chatId, string text, string openAppButton, CancellationToken ct, string path = "");
 
     /// <summary>A file to the chat (Bot API sendDocument, up to 50 MB), e.g. the weekly backup (D-37).</summary>
     Task<SendResult> SendDocumentAsync(long chatId, string fileName, byte[] content, string caption, CancellationToken ct);

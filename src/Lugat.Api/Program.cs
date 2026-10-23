@@ -21,6 +21,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Lugat.Domain.Users;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -106,7 +107,28 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
         .PersistKeysToFileSystem(Directory.CreateDirectory(keysPath));
 }
 
+// Behind Railway's proxy every request comes from the proxy; the client is in X-Forwarded-For (L-16, L-33). Only the
+// last entry is taken, the one the proxy itself added, so a client cannot pick its own IP to dodge the rate limits.
+// On only behind a proxy: elsewhere the header would come straight from the client.
+var behindProxy = builder.Configuration.GetValue<bool?>("ForwardedHeaders:Enabled")
+    ?? !string.IsNullOrEmpty(builder.Configuration["RAILWAY_ENVIRONMENT_NAME"]);
+if (behindProxy)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        o.ForwardLimit = 1;
+        o.KnownIPNetworks.Clear();
+        o.KnownProxies.Clear();
+    });
+}
+
 var app = builder.Build();
+
+if (behindProxy)
+{
+    app.UseForwardedHeaders();
+}
 
 // Single small instance: applying migrations at startup keeps deploys one step (see docs/DECISIONS.md D-08).
 if (app.Configuration.GetValue("Database:MigrateOnStartup", true))

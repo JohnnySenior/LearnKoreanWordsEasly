@@ -12,6 +12,12 @@ public sealed class AiBudgetOptions
     public decimal MonthlyLimitUsd { get; set; } = 25;
     public decimal WarningUsd { get; set; } = 20;
     public decimal HostingMonthlyUsd { get; set; }
+
+    /// <summary>
+    /// The hard stop for calls whose price is not configured (spec §13.9 "hard spend limit"): an unknown price cannot
+    /// be added to the dollar budget, so such calls are capped by count per month instead. 0 = none allowed.
+    /// </summary>
+    public int MonthlyUnpricedCalls { get; set; } = 2000;
     public List<AiPrice> Prices { get; set; } = [];
 }
 
@@ -43,7 +49,7 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
         var rate = options.Value.Prices.FirstOrDefault(p => p.Provider == provider && p.Model == model && p.Unit == unit && p.AsOf != default);
         var cost = rate is null ? (decimal?)null : (input * rate.InputPerMillionUsd + output * rate.OutputPerMillionUsd) / 1_000_000m;
         var status = await BudgetAsync(ct);
-        if (status.EstimatedUsd + (cost ?? 0) > status.LimitUsd)
+        if (status.EstimatedUsd + (cost ?? 0) > status.LimitUsd || (cost is null && status.UnknownPriceCalls >= options.Value.MonthlyUnpricedCalls))
             throw new TooManyRequestsException("Oylik xarajat chegarasiga yetildi. Tayyor materiallar ishlaydi; limitni server sozlamalarida ongli ravishda oshirish mumkin.");
 
         var row = new AiUsage

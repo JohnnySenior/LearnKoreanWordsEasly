@@ -1223,6 +1223,12 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("PromoCodeId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("ReminderDays")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeOnly>("ReminderTime")
+                        .HasColumnType("time without time zone");
+
                     b.Property<bool>("RemindersEnabled")
                         .HasColumnType("boolean");
 
@@ -1250,9 +1256,6 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
-
-                    b.Property<TimeOnly>("WeekdayReminderTime")
-                        .HasColumnType("time without time zone");
 
                     b.HasKey("Id");
 

@@ -275,9 +275,16 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
             user.RemindersEnabled = enabled;
         }
 
-        if (request.WeekdayReminderTime is { } weekday)
+        if (request.ReminderTime is { } at)
         {
-            user.WeekdayReminderTime = new TimeOnly(weekday.Hour, weekday.Minute);
+            user.ReminderTime = new TimeOnly(at.Hour, at.Minute);
+        }
+
+        if (request.ReminderDays is { } days)
+        {
+            user.ReminderDays = days.Count > 0
+                ? Domain.Reminders.ReminderDaysExtensions.FromList(days)
+                : throw new ValidationException("Kamida bitta kunni tanlang yoki eslatmalarni o‘chiring.");
         }
 
         await db.SaveChangesAsync(ct);
@@ -287,7 +294,8 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
     private async Task<PreferencesDto> ToDtoAsync(User u, bool remindersAvailable, CancellationToken ct) => new(
         u.TimeZone,
         u.RemindersEnabled,
-        u.WeekdayReminderTime,
+        u.ReminderTime,
+        Domain.Reminders.ReminderDaysExtensions.ToList(u.ReminderDays),
         remindersAvailable,
         u.BotBlockedAt is not null,
         await db.UserLogins.AnyAsync(l => l.UserId == u.Id && l.Provider == LoginProvider.Telegram, ct));

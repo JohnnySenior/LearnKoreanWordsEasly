@@ -105,10 +105,17 @@ else
             </label>
 
             <div class="field">
-                Dushanba–juma (Koreya vaqti)
-                <TimeSelect @bind-Value="_weekday" Disabled="@(!_enabled)" Label="Dushanba–juma" />
+                Vaqt (@_prefs.TimeZone)
+                <TimeSelect @bind-Value="_time" Disabled="@(!_enabled)" Label="Eslatma vaqti" />
             </div>
-            <p class="muted small-text">Dam olish kunlari eslatma yuborilmaydi. Mashq qilinadigan so‘z bo‘lmasa, xabar ham kelmaydi.</p>
+            <div class="chips days" role="group" aria-label="Kunlar">
+                @foreach (var (day, label) in WeekDays)
+                {
+                    var d = day;
+                    <button class="chip @(_days.Contains(d) ? "selected" : "")" aria-pressed="@(_days.Contains(d) ? "true" : "false")" disabled="@(!_enabled)" @onclick="() => ToggleDay(d)">@label</button>
+                }
+            </div>
+            <p class="muted small-text">Takrorlash vaqti kelgan so‘z bo‘lmasa, xabar kelmaydi. Kech qolgan eslatmalar to‘planib yuborilmaydi.</p>
 
             <button class="button primary" disabled="@_busy" @onclick="SaveAsync">Saqlash</button>
             <button class="button" disabled="@_busy" @onclick="TestAsync">Sinov xabari</button>
@@ -277,6 +284,13 @@ else
         <p>@_prefs.TimeZone <span class="muted">(eslatmalar shu vaqt bo‘yicha)</span></p>
     </section>
 
+    <section class="card">
+        <h2>Haqida</h2>
+        <p class="small-text">So‘zlar manbasi: 국립국어원 «한국어 학습용 어휘 목록» — Koreya Milliy til instituti, KOGL 1-tur litsenziyasi (manba ko‘rsatilgan holda erkin foydalanish).</p>
+        <p class="small-text">O‘zbekcha tarjima, misollar va izohlar — Lug‘at jamoasi; AI qoralamalari muharrir tekshiruvidan o‘tgan.</p>
+        <a class="button block" href="maxfiylik"><span>Maxfiylik siyosati</span><span class="aside">qanday ma’lumot saqlanadi →</span></a>
+    </section>
+
     <section class="card danger-zone">
         <h2>Hisobni o‘chirish</h2>
         <p class="muted small-text">Kirish usullari, so‘zlaringiz, kartochkalar, javoblar va sinov natijalari butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.</p>
@@ -300,7 +314,14 @@ else
 @code {
     private PreferencesDto? _prefs;
     private bool _enabled;
-    private TimeOnly _weekday;
+    private TimeOnly _time;
+    private HashSet<DayOfWeek> _days = [];
+
+    private static readonly (DayOfWeek Day, string Label)[] WeekDays =
+    [
+        (DayOfWeek.Monday, "Du"), (DayOfWeek.Tuesday, "Se"), (DayOfWeek.Wednesday, "Ch"), (DayOfWeek.Thursday, "Pa"),
+        (DayOfWeek.Friday, "Ju"), (DayOfWeek.Saturday, "Sh"), (DayOfWeek.Sunday, "Ya"),
+    ];
     private bool _busy;
     private string? _error;
     private string? _status;
@@ -450,13 +471,22 @@ else
 
         _prefs = prefs;
         _enabled = prefs.RemindersEnabled;
-        _weekday = prefs.WeekdayReminderTime;
+        _time = prefs.ReminderTime;
+        _days = prefs.ReminderDays.ToHashSet();
+    }
+
+    private void ToggleDay(DayOfWeek day)
+    {
+        if (!_days.Remove(day))
+        {
+            _days.Add(day);
+        }
     }
 
     private async Task SaveAsync()
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<PreferencesDto>(HttpMethod.Patch, "api/me/preferences", new UpdatePreferencesRequest(_enabled, _weekday));
+        var result = await Api.SendJsonAsync<PreferencesDto>(HttpMethod.Patch, "api/me/preferences", new UpdatePreferencesRequest(_enabled, _time, WeekDays.Select(w => w.Day).Where(_days.Contains).ToList()));
         _busy = false;
         _status = result.Ok ? "Saqlandi." : result.Error;
         Apply(result.Value);

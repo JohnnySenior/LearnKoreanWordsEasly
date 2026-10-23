@@ -2,15 +2,57 @@ namespace Lugat.Domain.Reminders;
 
 public enum ReminderSlot
 {
-    /// <summary>Monday–Friday morning practice reminder.</summary>
+    /// <summary>The Monday–Friday morning reminder of KoreanAiTeacher (D-16); only in old outbox rows.</summary>
     Weekday,
+
+    /// <summary>The daily reminder at the learner's time, on the days they chose (spec §8).</summary>
+    Daily,
 }
 
-/// <summary>Per-user reminder settings (spec NOT01, NOT04: the learner controls schedule and can switch them off).</summary>
-public sealed record ReminderPreferences(bool Enabled, TimeOnly WeekdayTime)
+/// <summary>Days a reminder may come. Stored as flags; every day by default (spec §8).</summary>
+[Flags]
+public enum ReminderDays
 {
-    /// <summary>Defaults kept from KoreanAiTeacher (D-16): Mon–Fri 09:30, nothing at the weekend. Spec §8 changes this in stage 8.</summary>
-    public static readonly ReminderPreferences Default = new(true, new TimeOnly(9, 30));
+    None = 0,
+    Monday = 1,
+    Tuesday = 2,
+    Wednesday = 4,
+    Thursday = 8,
+    Friday = 16,
+    Saturday = 32,
+    Sunday = 64,
+    Every = 127,
+}
+
+public static class ReminderDaysExtensions
+{
+    public static ReminderDays Flag(this DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => ReminderDays.Monday,
+        DayOfWeek.Tuesday => ReminderDays.Tuesday,
+        DayOfWeek.Wednesday => ReminderDays.Wednesday,
+        DayOfWeek.Thursday => ReminderDays.Thursday,
+        DayOfWeek.Friday => ReminderDays.Friday,
+        DayOfWeek.Saturday => ReminderDays.Saturday,
+        _ => ReminderDays.Sunday,
+    };
+
+    public static bool Includes(this ReminderDays days, DayOfWeek day) => (days & day.Flag()) != 0;
+
+    /// <summary>Monday first, as Uzbek calendars show the week.</summary>
+    public static IReadOnlyList<DayOfWeek> ToList(this ReminderDays days) =>
+        [.. new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday }
+            .Where(d => days.Includes(d))];
+
+    public static ReminderDays FromList(IEnumerable<DayOfWeek> days) =>
+        days.Aggregate(ReminderDays.None, (all, d) => all | d.Flag());
+}
+
+/// <summary>Per-user reminder settings (spec §8, NOT04: the learner controls time and days and can switch them off).</summary>
+public sealed record ReminderPreferences(bool Enabled, TimeOnly Time, ReminderDays Days)
+{
+    /// <summary>Spec §8: every day at 20:00 in the learner's time.</summary>
+    public static readonly ReminderPreferences Default = new(true, new TimeOnly(20, 0), ReminderDays.Every);
 }
 
 /// <param name="Key">Unique per user and occurrence, so one reminder is never sent twice (spec NOT03, AC10).</param>
@@ -51,13 +93,13 @@ public static class ReminderPlanner
 
     private static ReminderOccurrence? Slot(Guid userId, DateOnly date, TimeZoneInfo zone, ReminderPreferences p)
     {
-        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        if (!p.Days.Includes(date.DayOfWeek))
         {
             return null;
         }
 
-        const ReminderSlot slot = ReminderSlot.Weekday;
-        var local = date.ToDateTime(p.WeekdayTime);
+        const ReminderSlot slot = ReminderSlot.Daily;
+        var local = date.ToDateTime(p.Time);
         var at = new DateTimeOffset(local, zone.GetUtcOffset(local)).ToUniversalTime();
         return new ReminderOccurrence(slot, date, at, $"{userId:N}:{date:yyyy-MM-dd}:{slot}");
     }

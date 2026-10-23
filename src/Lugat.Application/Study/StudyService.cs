@@ -41,6 +41,14 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             current);
     }
 
+    /// <summary>Words with at least one card due now, counted as on the home page (the reminder's "N ta so‘z", spec §8).</summary>
+    public async Task<int> DueWordsAsync(Guid ownerId, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        return await ActiveCards(ownerId).Where(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt <= now)
+            .Select(c => c.Card.LearningItemId).Distinct().CountAsync(ct);
+    }
+
     public async Task<SessionDto?> CurrentAsync(Guid ownerId, CancellationToken ct)
     {
         var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)

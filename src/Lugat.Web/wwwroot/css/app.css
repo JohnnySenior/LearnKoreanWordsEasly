@@ -710,3 +710,5 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
 .figures span { font-size: 13px; color: var(--color-muted); }
 .invite-link { display: block; word-break: break-all; font: 600 15px var(--font-body); padding: 10px 0; }
 .card > .figures:first-child { border-top: 0; margin-top: 0; }
+.chips.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.chips.days .chip { min-width: 0; padding: 0; }

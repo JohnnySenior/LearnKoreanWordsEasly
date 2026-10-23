@@ -268,6 +268,31 @@ public class AuthEndpointsTests
     }
 
     [Fact]
+    public async Task Behind_the_proxy_the_limit_counts_the_client_ip_the_proxy_added()
+    {
+        await using var factory = Factory();
+        factory.Settings["Auth:SignInPerMinute"] = "1";
+        factory.Settings["ForwardedHeaders:Enabled"] = "true";
+        var client = factory.CreateClient();
+
+        async Task<HttpStatusCode> FromAsync(string forwardedFor)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/telegram-login")
+            {
+                Content = JsonContent.Create(new TelegramLoginRequest(TelegramWidget.Build(User, _time.GetUtcNow(), TelegramWidget.BotToken)), options: Json),
+            };
+            request.Headers.Add("X-Forwarded-For", forwardedFor);
+            return (await client.SendAsync(request)).StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.OK, await FromAsync("203.0.113.1"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, await FromAsync("203.0.113.1"));
+        Assert.Equal(HttpStatusCode.OK, await FromAsync("203.0.113.2")); // another learner is not blocked
+        // A client cannot pick its own address: only the entry the proxy added counts.
+        Assert.Equal(HttpStatusCode.TooManyRequests, await FromAsync("198.51.100.7, 203.0.113.2"));
+    }
+
+    [Fact]
     public async Task A_class_on_one_network_can_refresh_after_the_sign_in_limit_is_used_up()
     {
         await using var factory = Factory();

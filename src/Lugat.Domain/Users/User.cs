@@ -45,7 +45,10 @@ public sealed class User
 
     public bool RemindersEnabled { get; set; } = true;
 
-    public TimeOnly WeekdayReminderTime { get; set; } = new(9, 30);
+    /// <summary>When the daily reminder comes, in the user's time zone (spec §8: 20:00 by default).</summary>
+    public TimeOnly ReminderTime { get; set; } = new(20, 0);
+
+    public Reminders.ReminderDays ReminderDays { get; set; } = Reminders.ReminderDays.Every;
 
     /// <summary>Set when Telegram refused a message because the bot was not started or was blocked (spec NOT02).</summary>
     public DateTimeOffset? BotBlockedAt { get; set; }
@@ -80,7 +83,7 @@ public sealed class User
         TimeZoneInfo.TryFindSystemTimeZoneById(TimeZone, out var zone) ? zone : TimeZoneInfo.Utc;
 
     public Reminders.ReminderPreferences ReminderPreferences() =>
-        new(RemindersEnabled, WeekdayReminderTime);
+        new(RemindersEnabled, ReminderTime, ReminderDays);
 }
 
 public enum LoginProvider
