@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&amp;family=Noto+Sans+KR:wght@400;500;700;900&amp;display=swap">
+<link rel="stylesheet" href="_ds/modernist-29963d3b-8081-4fa6-9011-09e9b5d6b808/styles.css">
+<script src="_ds/modernist-29963d3b-8081-4fa6-9011-09e9b5d6b808/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--color-neutral-300)}
+a{color:var(--color-accent)}a:hover{color:var(--color-accent-600)}
+.dv-turn{padding:40px 44px 32px;border-bottom:2px solid var(--color-divider);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:var(--color-text);color:#fff;text-decoration:none}
+.dv-tname{font:700 13px/1.2 var(--font-body);color:var(--color-text)}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:var(--color-text);text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-body);color:var(--color-neutral-700)}
+.dv-card{max-width:100%;background:var(--color-bg);border:2px solid var(--color-text);overflow:hidden}
+.dv-opt:target .dv-oid{background:var(--color-accent);color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-body);color:var(--color-neutral-700)}
+</style>
+</helmet>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Profil — tartibga keltirilgan</span></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,280px));gap:0;border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider);margin:0 0 24px;max-width:840px">
+  <div style="padding:14px 16px 14px 0;font-size:13px"><b style="display:block;margin-bottom:4px">Muammo</b>KoreanAiTeacher’dagi “Profil va sozlamalar” sahifasida shaxsiy sozlamalar (eslatma, vaqt zonasi) bilan tizim boshqaruvi (AI provayder, oylik sarf, zaxira nusxa) bitta uzun ro‘yxatda aralashgan.</div>
+  <div style="padding:14px 16px;font-size:13px;border-left:2px solid var(--color-divider)"><b style="display:block;margin-bottom:4px">Yechim</b>Profil — faqat o‘quvchiga tegishli narsalar. Admin uchun yuqorida bitta “Boshqaruv” bloki; tizim sozlamalari Admin panel → Tizim’ga ko‘chdi.</div>
+  <div style="padding:14px 0 14px 16px;font-size:13px;border-left:2px solid var(--color-divider)"><b style="display:block;margin-bottom:4px">Qoida</b>Har guruh 2px chiziq bilan ajraladi, har qator bitta amal (≥ 52 px). Xavfli amallar eng pastda, alohida.</div>
+</div>
+<div class="dv-opts">
+
+<!-- 2a Profil (o'quvchi) -->
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Profil — o‘quvchi</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="flex:1;overflow-y:auto">
+    <div style="padding:16px 20px;border-bottom:2px solid var(--color-divider);display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:center">
+      <div style="width:56px;height:56px;background:var(--color-text);color:var(--color-bg);display:flex;align-items:flex-end;padding:6px 8px;font-family:var(--font-heading);font-weight:900;font-size:22px">DA</div>
+      <div><div style="font-family:var(--font-heading);font-weight:800;font-size:20px;line-height:1.15">Dilshod Aliyev</div><div style="display:flex;gap:6px;margin-top:6px"><span class="tag tag-neutral">Telegram</span><span class="tag tag-neutral">Google</span></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 20px;border-bottom:2px solid var(--color-divider)">
+      <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Tarif</div><div style="font-weight:700;font-size:15px">Bepul</div></div>
+      <button class="btn btn-primary" style="min-height:44px">Premium</button>
+    </div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">O‘qish</div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Statistika</span><span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--color-neutral-700)">50 so‘z<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></span></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">O‘qituvchi guruhi</span><span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--color-neutral-700)">Aziza ustoz<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></span></div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">Sozlamalar</div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Mavzu</span>
+      <div style="display:flex;border:1px solid var(--color-divider);font-size:12px"><span style="padding:6px 10px;background:var(--color-accent);color:var(--color-bg)">Yorug‘</span><span style="padding:6px 10px;border-left:1px solid var(--color-divider)">Qorong‘i</span><span style="padding:6px 10px;border-left:1px solid var(--color-divider)">Qurilma</span></div></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Lotincha o‘qilish</span><span style="width:40px;height:22px;background:var(--color-text);display:flex;justify-content:flex-end;padding:3px"><span style="width:16px;height:16px;background:var(--color-bg)"></span></span></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><div><div style="font-size:15px">Eslatma</div><div style="font-size:12px;color:var(--color-neutral-700)">Telegram · har kuni</div></div><span style="display:flex;align-items:center;gap:6px;font-size:13px;font-variant-numeric:tabular-nums">20:00<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></span></div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">Ilova</div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Telefonga o‘rnatish</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Hisobni bog‘lash</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><div><div style="font-size:15px">Haqida</div><div style="font-size:12px;color:var(--color-neutral-700)">Manba, litsenziya, maxfiylik</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:4px;border-top:2px solid var(--color-divider);margin-top:16px">
+      <button class="btn btn-secondary" style="min-height:44px;justify-content:flex-start">Chiqish</button>
+      <button class="btn btn-ghost" style="min-height:44px;justify-content:flex-start;color:var(--color-accent-700)">Hisobni o‘chirish</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--color-divider);height:64px">
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Bosh</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 10 5-10 5L2 7z"></path><path d="m2 17 10 5 10-5"></path><path d="m2 12 10 5 10-5"></path></svg>Bo‘limlar</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>Takror</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>Mashq</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px;color:var(--color-accent);font-weight:700;box-shadow:inset 0 3px 0 var(--color-accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>Profil</div>
+  </div>
+</div></div>
+
+<!-- 2b Profil (admin) -->
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Profil — admin (faqat “Boshqaruv” bloki qo‘shiladi)</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="flex:1;overflow-y:auto">
+    <div style="padding:16px 20px;border-bottom:2px solid var(--color-divider);display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:center">
+      <div style="width:56px;height:56px;background:var(--color-text);color:var(--color-bg);display:flex;align-items:flex-end;padding:6px 8px;font-family:var(--font-heading);font-weight:900;font-size:22px">JA</div>
+      <div><div style="font-family:var(--font-heading);font-weight:800;font-size:20px;line-height:1.15">Jamshidbek</div><div style="display:flex;gap:6px;margin-top:6px"><span class="tag tag-accent">Admin</span><span class="tag tag-neutral">Muharrir</span><span class="tag tag-neutral">O‘qituvchi</span></div></div>
+    </div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:700;border-bottom:2px solid var(--color-text)">Boshqaruv</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid var(--color-divider)">
+      <div style="padding:16px 20px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:10px;background:var(--color-surface)">
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:17px">Admin panel</span>
+        <span style="font-size:12px;color:var(--color-neutral-800)">3 ta to‘lov kutmoqda<br>2 bo‘lim tekshiruvda</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+      </div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:17px">O‘qituvchi paneli</span>
+        <span style="font-size:12px;color:var(--color-neutral-800)">2 guruh<br>41 o‘quvchi</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 20px;border-bottom:2px solid var(--color-divider)">
+      <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Tarif</div><div style="font-weight:700;font-size:15px">Premium · 14-dekabrgacha</div></div>
+    </div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">O‘qish</div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Statistika</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">Sozlamalar</div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Mavzu</span>
+      <div style="display:flex;border:1px solid var(--color-divider);font-size:12px"><span style="padding:6px 10px">Yorug‘</span><span style="padding:6px 10px;border-left:1px solid var(--color-divider)">Qorong‘i</span><span style="padding:6px 10px;border-left:1px solid var(--color-divider);background:var(--color-accent);color:var(--color-bg)">Qurilma</span></div></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Lotincha o‘qilish</span><span style="width:40px;height:22px;background:var(--color-neutral-400);display:flex;justify-content:flex-start;padding:3px"><span style="width:16px;height:16px;background:var(--color-bg)"></span></span></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Eslatma</span><span style="display:flex;align-items:center;gap:6px;font-size:13px">O‘chiq<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></span></div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">Ilova</div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:15px">Haqida</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:4px;border-top:2px solid var(--color-divider);margin-top:16px">
+      <button class="btn btn-secondary" style="min-height:44px;justify-content:flex-start">Chiqish</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--color-divider);height:64px">
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Bosh</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 10 5-10 5L2 7z"></path><path d="m2 17 10 5 10-5"></path><path d="m2 12 10 5 10-5"></path></svg>Bo‘limlar</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>Takror</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>Mashq</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px;color:var(--color-accent);font-weight:700;box-shadow:inset 0 3px 0 var(--color-accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>Profil</div>
+  </div>
+</div></div>
+
+<!-- 2c Admin panel hub -->
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Admin panel — bosh sahifa</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--color-divider)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+    <span style="font-family:var(--font-heading);font-weight:800;font-size:18px">Admin panel</span>
+  </div>
+  <div style="flex:1;overflow-y:auto">
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:700;border-bottom:2px solid var(--color-divider)">Diqqat talab qiladi</div>
+    <div style="display:grid;grid-template-columns:40px 1fr auto;align-items:center;min-height:56px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-family:var(--font-heading);font-weight:900;font-size:20px;color:var(--color-accent)">3</span><span style="font-size:14px">To‘lov tasdiqlanishi kerak</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="display:grid;grid-template-columns:40px 1fr auto;align-items:center;min-height:56px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-family:var(--font-heading);font-weight:900;font-size:20px;color:var(--color-accent)">2</span><span style="font-size:14px">Bo‘lim tekshiruvda (A-3, A-4)</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="display:grid;grid-template-columns:40px 1fr auto;align-items:center;min-height:56px;padding:0 20px;border-bottom:2px solid var(--color-divider)"><span style="font-family:var(--font-heading);font-weight:900;font-size:20px;color:var(--color-accent)">1</span><span style="font-size:14px">Komissiya to‘lanmagan</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr">
+      <div style="padding:16px 20px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);min-height:104px;display:flex;flex-direction:column;justify-content:space-between"><span style="font-size:11px;color:var(--color-neutral-700)">01</span><div><div style="font-weight:800;font-size:16px">Kontent</div><div style="font-size:12px;color:var(--color-neutral-700)">Import, AI qoralama, nashr</div></div></div>
+      <div style="padding:16px 20px;border-bottom:1px solid var(--color-divider);min-height:104px;display:flex;flex-direction:column;justify-content:space-between"><span style="font-size:11px;color:var(--color-neutral-700)">02</span><div><div style="font-weight:800;font-size:16px">Foydalanuvchilar</div><div style="font-size:12px;color:var(--color-neutral-700)">Qidirish, rollar</div></div></div>
+      <div style="padding:16px 20px;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);min-height:104px;display:flex;flex-direction:column;justify-content:space-between"><span style="font-size:11px;color:var(--color-neutral-700)">03</span><div><div style="font-weight:800;font-size:16px">To‘lovlar</div><div style="font-size:12px;color:var(--color-neutral-700)">Qayd etish, qaytarish</div></div></div>
+      <div style="padding:16px 20px;border-bottom:1px solid var(--color-divider);min-height:104px;display:flex;flex-direction:column;justify-content:space-between"><span style="font-size:11px;color:var(--color-neutral-700)">04</span><div><div style="font-weight:800;font-size:16px">Promo va o‘qituvchilar</div><div style="font-size:12px;color:var(--color-neutral-700)">Kodlar, komissiya</div></div></div>
+      <div style="padding:16px 20px;border-right:1px solid var(--color-divider);min-height:104px;display:flex;flex-direction:column;justify-content:space-between"><span style="font-size:11px;color:var(--color-neutral-700)">05</span><div><div style="font-weight:800;font-size:16px">Ko‘rsatkichlar</div><div style="font-size:12px;color:var(--color-neutral-700)">Faollik, tushum</div></div></div>
+      <div style="padding:16px 20px;min-height:104px;display:flex;flex-direction:column;justify-content:space-between;background:var(--color-surface)"><span style="font-size:11px;color:var(--color-accent-700)">06</span><div><div style="font-weight:800;font-size:16px">Tizim</div><div style="font-size:12px;color:var(--color-neutral-700)">AI, sarf, zaxira</div></div></div>
+    </div>
+  </div>
+</div></div>
+
+<!-- 2d Admin → Tizim -->
+<div class="dv-opt" id="2d"><div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>Admin → Tizim (eski Sozlamalardan ko‘chirildi)</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--color-divider)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+    <span style="font-family:var(--font-heading);font-weight:800;font-size:18px">Tizim</span>
+  </div>
+  <div style="flex:1;overflow-y:auto">
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">AI xizmati</div>
+    <div style="padding:12px 20px;border-bottom:1px solid var(--color-divider)">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider);font-size:13px"><span style="padding:8px 10px;background:var(--color-accent);color:var(--color-bg)">Standart</span><span style="padding:8px 10px;border-left:1px solid var(--color-divider)">Anthropic</span><span style="padding:8px 10px;border-left:1px solid var(--color-divider)">OpenAI</span></div>
+      <div style="font-size:12px;color:var(--color-neutral-700);margin-top:6px">Tanlangani javob bermasa, ikkinchisi ishlatiladi.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><div><div style="font-size:14px;font-weight:600">Anthropic</div><div style="font-size:12px;color:var(--color-neutral-700)">Ulangan · 412 ms</div></div><button class="btn btn-ghost" style="font-size:13px;min-height:44px">Tekshirish</button></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:2px solid var(--color-divider)"><div><div style="font-size:14px;font-weight:600">OpenAI</div><div style="font-size:12px;color:var(--color-accent-700)">API kaliti qo‘shilmagan</div></div><span style="font-size:12px;color:var(--color-neutral-600)">—</span></div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">Oylik sarf</div>
+    <div style="padding:14px 20px;border-bottom:2px solid var(--color-divider)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--font-heading);font-weight:900;font-size:28px">$18.40</span><span style="font-size:13px;color:var(--color-neutral-700)">/ $50.00</span></div>
+      <div style="height:6px;background:var(--color-neutral-300);margin:8px 0"><div style="height:6px;width:37%;background:var(--color-text)"></div></div>
+      <div style="font-size:12px;color:var(--color-neutral-700)">24 soatda 312 AI so‘rov · taxminiy hisob</div>
+    </div>
+    <div style="padding:16px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600;border-bottom:2px solid var(--color-divider)">Zaxira nusxa</div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:56px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><div><div style="font-size:14px;font-weight:600">Har kecha 04:00</div><div style="font-size:12px;color:var(--color-neutral-700)">Oxirgi tekshirilgan: bugun · 14 ta nusxa</div></div><button class="btn btn-secondary" style="font-size:13px;min-height:44px">Hozir</button></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:56px;padding:0 20px;border-bottom:2px solid var(--color-divider)"><div><div style="font-size:14px;font-weight:600">Telegram’ga haftalik</div><div style="font-size:12px;color:var(--color-neutral-700)">Oxirgi yuborilgan: 20-oktabr</div></div><button class="btn btn-secondary" style="font-size:13px;min-height:44px">Yuborish</button></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px;border-bottom:1px solid var(--color-divider)"><span style="font-size:14px">Vaqt zonasi</span><span style="font-size:13px;color:var(--color-neutral-700)">Asia/Seoul</span></div>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;min-height:52px;padding:0 20px"><span style="font-size:14px">Qurilmani tekshirish</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></div>
+  </div>
+</div></div>
+
+</div>
+<p class="dv-next">Try next: "Kontent tekshiruv sahifasini chiz (<a class="dv-oid" href="#2c">2c</a> → 01)" · "To‘lovni qayd etish oqimi" · "<a class="dv-oid" href="#2a">2a</a> qorong‘i rejimda"</p>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Lug‘at — asosiy oqim (360 px, spec §12)</span><span style="font-size:12px;color:var(--color-neutral-700)">Kirish → Bosh sahifa → Bo‘limlar → Jadval → Kartochka → Test → Natija · Mashq · Premium</span></div>
+<div class="dv-opts">
+
+<!-- 1a Kirish -->
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Kirish</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--color-divider)">
+    <span style="font-family:var(--font-heading);font-weight:800;font-size:18px">Lug‘at</span><span class="tag tag-neutral">A · B · C</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid var(--color-divider)">
+    <div style="padding:20px;border-right:2px solid var(--color-divider);font-family:'Noto Sans KR',sans-serif;font-weight:900;font-size:56px;line-height:1">하다</div>
+    <div style="padding:20px;font-family:'Noto Sans KR',sans-serif;font-weight:900;font-size:56px;line-height:1;color:var(--color-accent)">있다</div>
+    <div style="padding:6px 20px 14px;border-right:2px solid var(--color-divider);font-size:13px">qilmoq</div>
+    <div style="padding:6px 20px 14px;font-size:13px">bor bo‘lmoq</div>
+  </div>
+  <div style="padding:24px 20px;flex:1;display:flex;flex-direction:column;gap:12px">
+    <h2 style="margin:0;font-size:30px;text-wrap:pretty">Koreys tili so‘zlari — o‘zbek tilida.</h2>
+    <p style="margin:0;font-size:15px;color:var(--color-neutral-800);text-wrap:pretty">Eng ko‘p ishlatiladigan so‘zlardan boshlab, 25 talik bo‘limlarda. Bo‘lim faqat testdan 80% bilan tugaydi.</p>
+  </div>
+  <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-primary" style="height:52px;justify-content:space-between;font-size:15px;padding:0 16px">Telegram orqali kirish<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+    <button class="btn btn-secondary" style="height:52px;justify-content:space-between;font-size:15px;padding:0 16px">Google orqali kirish<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+  </div>
+  <div style="padding:12px 20px 18px;border-top:2px solid var(--color-divider);font-size:11px;color:var(--color-neutral-700)">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1)</div>
+</div></div>
+
+<!-- 1b Bosh sahifa -->
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Bosh sahifa</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--color-divider)">
+    <span style="font-family:var(--font-heading);font-weight:800;font-size:18px">Lug‘at</span><span style="font-size:13px;color:var(--color-neutral-700)">Payshanba, 23-oktabr</span>
+  </div>
+  <div style="flex:1;overflow:hidden">
+    <div style="padding:20px;border-bottom:2px solid var(--color-divider)">
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Bugun takrorlash</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin:6px 0 4px"><span style="font-family:var(--font-heading);font-weight:900;font-size:88px;line-height:.9;letter-spacing:-.04em">18</span><span style="font-size:15px">ta karta<br>~6 daqiqa</span></div>
+      <p style="margin:8px 0 14px;font-size:13px;color:var(--color-neutral-700)">1- va 2-bo‘limdan muddati kelgan so‘zlar.</p>
+      <button class="btn btn-primary" style="width:100%;height:52px;justify-content:space-between;font-size:15px;padding:0 16px">Boshlash<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+    </div>
+    <div style="padding:20px 20px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600">Joriy bo‘lim</span><span style="font-size:12px;color:var(--color-neutral-700)">12 / 25</span></div>
+      <h3 style="margin:6px 0 4px">2-bo‘lim</h3>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag tag-neutral">Asosiy fe’l</span><span class="tag tag-neutral">Ish</span><span class="tag tag-neutral">Joy</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+      <div style="padding:12px 10px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;color:var(--color-neutral-700)">1</span><span style="font-size:13px;font-weight:600">Jadval</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"></path></svg></div>
+      <div style="padding:12px 10px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px;background:var(--color-surface)"><span style="font-size:11px;color:var(--color-accent-700)">2</span><span style="font-size:13px;font-weight:600">Karta</span><span style="height:3px;background:var(--color-accent);width:48%;margin-top:6px"></span></div>
+      <div style="padding:12px 10px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px;color:var(--color-neutral-700)"><span style="font-size:11px">3</span><span style="font-size:13px;font-weight:600">Mashq</span></div>
+      <div style="padding:12px 10px;display:flex;flex-direction:column;gap:6px;color:var(--color-neutral-700)"><span style="font-size:11px">4</span><span style="font-size:13px;font-weight:600">Test</span></div>
+    </div>
+    <div style="padding:16px 20px"><button class="btn btn-secondary" style="width:100%;height:48px;justify-content:space-between;padding:0 16px">Davom etish — kartochka<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--color-divider);height:64px">
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px;color:var(--color-accent);font-weight:700;box-shadow:inset 0 3px 0 var(--color-accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Bosh</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 10 5-10 5L2 7z"></path><path d="m2 17 10 5 10-5"></path><path d="m2 12 10 5 10-5"></path></svg>Bo‘limlar</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>Takror</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>Mashq</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>Profil</div>
+  </div>
+</div></div>
+
+<!-- 1c Bo'limlar -->
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Bo‘limlar</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:16px 20px 12px;border-bottom:2px solid var(--color-divider)">
+    <h3 style="margin:0 0 12px">Bo‘limlar</h3>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--color-divider)">
+      <div style="padding:8px 12px;background:var(--color-accent);color:var(--color-bg);font-weight:700;font-size:14px">A<span style="display:block;font-size:10px;font-weight:400">33 bo‘lim</span></div>
+      <div style="padding:8px 12px;border-left:1px solid var(--color-divider);font-weight:700;font-size:14px;color:var(--color-neutral-600)">B<span style="display:block;font-size:10px;font-weight:400">Tez orada</span></div>
+      <div style="padding:8px 12px;border-left:1px solid var(--color-divider);font-weight:700;font-size:14px;color:var(--color-neutral-600)">C<span style="display:block;font-size:10px;font-weight:400">Tez orada</span></div>
+    </div>
+  </div>
+  <div style="flex:1;overflow:hidden">
+    <div style="display:grid;grid-template-columns:64px 1fr auto;align-items:center;border-bottom:1px solid var(--color-divider);min-height:64px">
+      <span style="font-family:var(--font-heading);font-weight:900;font-size:24px;padding-left:20px">01</span>
+      <div><div style="font-weight:600;font-size:14px">1-bo‘lim · 25 ta so‘z</div><div style="font-size:12px;color:var(--color-neutral-700)">Asosiy fe’l · Olmosh</div></div>
+      <div style="display:flex;align-items:center;gap:6px;padding-right:20px;font-weight:700"><span>92%</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"></path></svg></div>
+    </div>
+    <div style="display:grid;grid-template-columns:64px 1fr auto;align-items:center;border-bottom:1px solid var(--color-divider);min-height:76px;background:var(--color-surface)">
+      <span style="font-family:var(--font-heading);font-weight:900;font-size:24px;padding-left:20px;color:var(--color-accent)">02</span>
+      <div><div style="font-weight:600;font-size:14px">2-bo‘lim · 25 ta so‘z</div><div style="font-size:12px;color:var(--color-neutral-700)">12/25 boshlangan</div><div style="height:3px;background:var(--color-neutral-300);margin-top:8px;width:150px"><div style="height:3px;width:48%;background:var(--color-accent)"></div></div></div>
+      <div style="padding-right:20px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></div>
+    </div>
+    <div style="display:grid;grid-template-columns:64px 1fr;border-bottom:1px solid var(--color-divider);padding:14px 0">
+      <span style="font-family:var(--font-heading);font-weight:900;font-size:24px;padding-left:20px;color:var(--color-neutral-500)">03</span>
+      <div style="padding-right:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:14px;color:var(--color-neutral-700)">3-bo‘lim · 25 ta so‘z</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-600)" stroke-width="2"><rect x="3" y="11" width="18" height="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+        <div style="font-size:12px;color:var(--color-neutral-700);margin:2px 0 8px">Avval 2-bo‘limni tugating</div>
+        <button class="btn btn-secondary" style="height:40px;width:100%;justify-content:space-between;padding:0 12px;font-size:13px">Bilaman — testni topshirish<span style="font-size:11px;font-weight:400">3/3 urinish</span></button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:64px 1fr auto;align-items:center;border-bottom:1px solid var(--color-divider);min-height:56px;color:var(--color-neutral-500)"><span style="font-family:var(--font-heading);font-weight:900;font-size:24px;padding-left:20px">04</span><span style="font-size:14px">4-bo‘lim · 25 ta so‘z</span><svg style="margin-right:20px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+    <div style="display:grid;grid-template-columns:64px 1fr auto;align-items:center;border-bottom:1px solid var(--color-divider);min-height:56px;color:var(--color-neutral-500)"><span style="font-family:var(--font-heading);font-weight:900;font-size:24px;padding-left:20px">05</span><span style="font-size:14px">5-bo‘lim · 25 ta so‘z</span><svg style="margin-right:20px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+    <div style="display:grid;grid-template-columns:64px 1fr auto;align-items:center;border-bottom:1px solid var(--color-divider);min-height:56px;color:var(--color-neutral-500)"><span style="font-family:var(--font-heading);font-weight:900;font-size:24px;padding-left:20px">06</span><span style="font-size:14px">6-bo‘lim · 25 ta so‘z</span><svg style="margin-right:20px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+    <div style="display:grid;grid-template-columns:64px 1fr auto;align-items:center;min-height:56px;color:var(--color-neutral-500)"><span style="font-family:var(--font-heading);font-weight:900;font-size:24px;padding-left:20px">07</span><span style="font-size:14px">7-bo‘lim · 25 ta so‘z</span><svg style="margin-right:20px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--color-divider);height:64px">
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Bosh</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px;color:var(--color-accent);font-weight:700;box-shadow:inset 0 3px 0 var(--color-accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 10 5-10 5L2 7z"></path><path d="m2 17 10 5 10-5"></path><path d="m2 12 10 5 10-5"></path></svg>Bo‘limlar</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>Takror</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>Mashq</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>Profil</div>
+  </div>
+</div></div>
+
+<!-- 1d Jadval -->
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Bo‘lim · 1-qadam Jadval (ustunni yopish — bosib ko‘ring)</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--color-divider)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+    <span style="font-family:var(--font-heading);font-weight:800;font-size:18px;flex:1">2-bo‘lim</span>
+    <span style="font-size:13px;font-variant-numeric:tabular-nums;border:1px solid var(--color-divider);padding:4px 8px">10:00</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid var(--color-divider);font-size:12px;font-weight:600">
+    <div style="padding:10px;box-shadow:inset 0 -3px 0 var(--color-accent);color:var(--color-accent-700)">1 Jadval</div>
+    <div style="padding:10px;border-left:1px solid var(--color-divider)">2 Karta</div>
+    <div style="padding:10px;border-left:1px solid var(--color-divider)">3 Mashq</div>
+    <div style="padding:10px;border-left:1px solid var(--color-divider)">4 Test</div>
+  </div>
+  <div style="padding:12px 20px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:12px;color:var(--color-neutral-700)">Yopish:</span>
+    <div style="display:flex;border:1px solid var(--color-divider)">
+      <sc-for list="{{ coverOpts }}" as="o" hint-placeholder-count="3">
+        <button onClick="{{ o.on }}" style="font:inherit;font-size:13px;padding:7px 12px;border:0;border-right:1px solid var(--color-divider);cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+  <div style="flex:1;overflow:hidden;border-top:2px solid var(--color-divider)">
+    <div style="display:grid;grid-template-columns:36px 1fr 1fr;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-700);border-bottom:2px solid var(--color-divider)">
+      <span style="padding:8px 0 8px 20px">№</span><span style="padding:8px 8px 8px 12px">한국어</span><span style="padding:8px 20px 8px 8px">O‘zbekcha</span>
+    </div>
+    <sc-for list="{{ words }}" as="w" hint-placeholder-count="10">
+      <div style="display:grid;grid-template-columns:36px 1fr 1fr;align-items:center;border-bottom:1px solid var(--color-divider);min-height:50px">
+        <span style="padding-left:20px;font-size:12px;color:var(--color-neutral-700)">{{ w.n }}</span>
+        <div style="padding:6px 8px 6px 12px">
+          <sc-if value="{{ showKo }}" hint-placeholder-val="{{ true }}">
+            <div style="font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:17px;line-height:1.2">{{ w.ko }}</div>
+            <sc-if value="{{ showRom }}" hint-placeholder-val="{{ true }}"><div style="font-size:11px;color:var(--color-neutral-700)">{{ w.rom }}</div></sc-if>
+          </sc-if>
+          <sc-if value="{{ hideKo }}" hint-placeholder-val="{{ false }}"><div style="height:24px;background:var(--color-neutral-300)"></div></sc-if>
+        </div>
+        <div style="padding:6px 20px 6px 8px;font-size:14px">
+          <sc-if value="{{ showUz }}" hint-placeholder-val="{{ true }}">{{ w.uz }}</sc-if>
+          <sc-if value="{{ hideUz }}" hint-placeholder-val="{{ false }}"><div style="height:24px;background:var(--color-neutral-300)"></div></sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="padding:12px 20px 16px;border-top:2px solid var(--color-divider)"><button class="btn btn-primary" style="width:100%;height:48px;justify-content:space-between;padding:0 16px">Kartochkaga o‘tish<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></div>
+</div></div>
+
+<!-- 1e Kartochka -->
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Kartochka (javobni ochish — bosib ko‘ring)</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:12px 20px;display:flex;align-items:center;gap:12px">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+    <div style="flex:1;height:4px;background:var(--color-neutral-300)"><div style="height:4px;width:28%;background:var(--color-text)"></div></div>
+    <span style="font-size:13px;font-variant-numeric:tabular-nums">7 / 25</span>
+  </div>
+  <div style="padding:20px 20px 16px;border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="tag tag-outline">KO → UZ</span><span style="font-size:12px;color:var(--color-neutral-700)">fe’l · 2-bo‘lim</span></div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:28px">
+      <div>
+        <div style="font-family:'Noto Sans KR',sans-serif;font-weight:900;font-size:64px;line-height:1;letter-spacing:-.02em">모르다</div>
+        <sc-if value="{{ showRom }}" hint-placeholder-val="{{ true }}"><div style="font-size:15px;color:var(--color-neutral-700);margin-top:8px">moreuda</div></sc-if>
+      </div>
+      <button class="btn btn-secondary btn-icon" style="width:48px;height:48px" aria-label="Eshitish"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg></button>
+    </div>
+  </div>
+  <sc-if value="{{ revealed }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--color-divider)">
+        <div style="font-family:var(--font-heading);font-weight:800;font-size:28px;line-height:1.1">bilmaslik</div>
+      </div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-divider)">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);margin-bottom:4px">Misol</div>
+        <div style="font-family:'Noto Sans KR',sans-serif;font-size:17px;font-weight:500">잘 모르겠어요.</div>
+        <div style="font-size:14px;color:var(--color-neutral-800)">Unchalik bilmayman / tushunmadim.</div>
+      </div>
+      <div style="padding:14px 20px;background:var(--color-accent-100);flex:1">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:700;margin-bottom:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>O‘zbekcha tuzoq</div>
+        <p style="margin:0;font-size:14px;color:var(--color-accent-900);text-wrap:pretty">“Bilmayman”ni 안 알아요 deb aytmang — xato. To‘g‘risi: 몰라요. Sajangga: 잘 모르겠습니다.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:2px solid var(--color-divider)">
+        <button onClick="{{ hide }}" style="font:inherit;border:0;background:transparent;text-align:left;padding:14px 16px;cursor:pointer;color:var(--color-text)"><div style="font-weight:800;font-size:15px">Qiyin</div><div style="font-size:11px;color:var(--color-neutral-700)">10 daq</div></button>
+        <button onClick="{{ hide }}" style="font:inherit;border:0;border-left:1px solid var(--color-divider);background:var(--color-text);color:var(--color-bg);text-align:left;padding:14px 16px;cursor:pointer"><div style="font-weight:800;font-size:15px">Yaxshi</div><div style="font-size:11px;opacity:.75">1 kun</div></button>
+        <button onClick="{{ hide }}" style="font:inherit;border:0;border-left:1px solid var(--color-divider);background:transparent;text-align:left;padding:14px 16px;cursor:pointer;color:var(--color-text)"><div style="font-weight:800;font-size:15px">Oson</div><div style="font-size:11px;color:var(--color-neutral-700)">3 kun</div></button>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ notRevealed }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:20px">
+      <p style="font-size:14px;color:var(--color-neutral-700);margin:0 0 12px">Ma’nosini eslang, keyin tekshiring.</p>
+      <button onClick="{{ reveal }}" class="btn btn-primary" style="width:100%;height:56px;justify-content:space-between;padding:0 16px;font-size:15px">Javobni ko‘rsatish<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+    </div>
+  </sc-if>
+</div></div>
+
+<!-- 1f Test -->
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Bo‘lim yakuniy testi (variantni tanlang)</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:12px 20px;display:flex;align-items:center;gap:12px;border-bottom:2px solid var(--color-divider)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+    <span style="font-weight:700;font-size:15px;flex:1">2-bo‘lim · Yakuniy test</span>
+    <span style="font-size:13px;font-variant-numeric:tabular-nums">14 / 25</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(25,1fr);gap:2px;padding:12px 20px 0">
+    <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="25"><span style="height:6px;background:{{ t.bg }}"></span></sc-for>
+  </div>
+  <div style="padding:28px 20px 20px">
+    <div style="font-size:13px;color:var(--color-neutral-700)">Bu so‘z nimani bildiradi?</div>
+    <div style="font-family:'Noto Sans KR',sans-serif;font-weight:900;font-size:72px;line-height:1.05;margin-top:10px">살다</div>
+  </div>
+  <div style="flex:1;border-top:2px solid var(--color-divider)">
+    <sc-for list="{{ options }}" as="o" hint-placeholder-count="4">
+      <button onClick="{{ o.on }}" style="font:inherit;width:100%;display:grid;grid-template-columns:44px 1fr;align-items:center;text-align:left;border:0;border-bottom:1px solid var(--color-divider);min-height:60px;cursor:pointer;background:{{ o.bg }};color:{{ o.fg }}">
+        <span style="padding-left:20px;font-weight:800;font-size:13px">{{ o.letter }}</span><span style="font-size:17px;font-weight:600">{{ o.label }}</span>
+      </button>
+    </sc-for>
+  </div>
+  <div style="padding:12px 20px 16px;border-top:2px solid var(--color-divider)">
+    <div style="font-size:12px;color:var(--color-neutral-700);margin-bottom:8px">O‘tish uchun 20 ta to‘g‘ri javob kerak. Javoblar oxirida ko‘rsatiladi.</div>
+    <button class="btn btn-primary" style="width:100%;height:52px;justify-content:space-between;padding:0 16px;font-size:15px">Keyingisi<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+  </div>
+</div></div>
+
+<!-- 1g Natija -->
+<div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Test natijasi — o‘tdi</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:12px 20px;border-bottom:2px solid var(--color-divider);font-weight:700;font-size:15px">2-bo‘lim · Natija</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid var(--color-divider)">
+    <div style="padding:20px;border-right:2px solid var(--color-divider)"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">To‘g‘ri</div><div style="font-family:var(--font-heading);font-weight:900;font-size:56px;line-height:1;letter-spacing:-.03em">22<span style="font-size:24px;color:var(--color-neutral-600)">/25</span></div></div>
+    <div style="padding:20px;background:var(--color-accent);color:var(--color-bg)"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase">Ball</div><div style="font-family:var(--font-heading);font-weight:900;font-size:56px;line-height:1;letter-spacing:-.03em">88%</div></div>
+  </div>
+  <div style="padding:18px 20px;border-bottom:2px solid var(--color-divider)">
+    <h4 style="margin:0 0 4px">Bo‘lim tugadi. 3-bo‘lim ochildi.</h4>
+    <p style="margin:0;font-size:13px;color:var(--color-neutral-700)">Bu so‘zlar takrorlash jadvalida qoladi va vaqti kelganda qaytadi.</p>
+  </div>
+  <div style="flex:1;overflow:hidden">
+    <div style="padding:14px 20px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Xato javoblar · 3</div>
+    <sc-for list="{{ mistakes }}" as="m" hint-placeholder-count="3">
+      <div style="display:grid;grid-template-columns:96px 1fr;gap:8px;padding:10px 20px;border-top:1px solid var(--color-divider)">
+        <span style="font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:17px">{{ m.ko }}</span>
+        <div><div style="font-size:14px;font-weight:600">{{ m.right }}</div><div style="font-size:12px;color:var(--color-neutral-700);text-decoration:line-through">{{ m.wrong }}</div></div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="padding:12px 20px 16px;border-top:2px solid var(--color-divider);display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-primary" style="width:100%;height:52px;justify-content:space-between;padding:0 16px;font-size:15px">3-bo‘limni boshlash<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+    <button class="btn btn-secondary" style="width:100%;height:48px;justify-content:space-between;padding:0 16px">Xato 3 ta so‘zni takrorlash<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button>
+  </div>
+</div></div>
+
+<!-- 1h Mashq -->
+<div class="dv-opt" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Mashq menyusi</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:16px 20px 14px;border-bottom:2px solid var(--color-divider)"><h3 style="margin:0">Mashq</h3><div style="font-size:13px;color:var(--color-neutral-700)">Ochilgan bo‘limlar so‘zlari bilan</div></div>
+  <div style="flex:1;overflow:hidden">
+    <sc-for list="{{ drills }}" as="d" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:56px 1fr auto;align-items:center;min-height:72px;border-bottom:1px solid var(--color-divider)">
+        <span style="padding-left:20px;font-family:var(--font-heading);font-weight:900;font-size:15px;color:var(--color-neutral-600)">{{ d.n }}</span>
+        <div><div style="font-weight:700;font-size:15px">{{ d.title }}</div><div style="font-size:12px;color:var(--color-neutral-700)">{{ d.sub }}</div></div>
+        <div style="padding-right:20px;display:flex;align-items:center;gap:6px">
+          <sc-if value="{{ d.locked }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent">Premium</span></sc-if>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--color-divider);height:64px">
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Bosh</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 10 5-10 5L2 7z"></path><path d="m2 17 10 5 10-5"></path><path d="m2 12 10 5 10-5"></path></svg>Bo‘limlar</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>Takror</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px;color:var(--color-accent);font-weight:700;box-shadow:inset 0 3px 0 var(--color-accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>Mashq</div>
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding-left:12px;font-size:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>Profil</div>
+  </div>
+</div></div>
+
+<!-- 1i Premium -->
+<div class="dv-opt" id="1i"><div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>Premium · qo‘lda to‘lov</div>
+<div class="dv-card" style="width:360px;height:760px;display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;padding:10px 20px 6px;font-size:12px;font-weight:600"><span>9:41</span><span>100%</span></div>
+  <div style="padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--color-divider)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+    <span style="font-family:var(--font-heading);font-weight:800;font-size:18px">Premium</span>
+  </div>
+  <div style="padding:16px 20px;border-bottom:2px solid var(--color-divider)">
+    <p style="margin:0;font-size:14px;text-wrap:pretty">Barcha bo‘limlar, testlar va takrorlash <b>bepul</b>. Premium — talaffuz baholash, xatolar daftari va AI mashqlari.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid var(--color-divider)">
+    <div style="padding:16px 20px;border-right:2px solid var(--color-divider)"><div style="font-size:12px;color:var(--color-neutral-700)">Oylik</div><div style="font-family:var(--font-heading);font-weight:900;font-size:28px">₩5,000</div><div style="font-size:12px;color:var(--color-neutral-700)">30 kun</div></div>
+    <div style="padding:16px 20px;background:var(--color-text);color:var(--color-bg)"><div style="font-size:12px;display:flex;justify-content:space-between"><span>3 oylik</span><span style="color:var(--color-accent-400)">−20%</span></div><div style="font-family:var(--font-heading);font-weight:900;font-size:28px">₩12,000</div><div style="font-size:12px;opacity:.75">₩4,000 / oy</div></div>
+  </div>
+  <div style="padding:16px 20px;border-bottom:1px solid var(--color-divider)">
+    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">To‘lov kodi — o‘tkazma izohiga yozing</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:30px;letter-spacing:.06em">L-7K3Q</span><button class="btn btn-ghost" style="font-size:13px">Nusxalash</button></div>
+  </div>
+  <div style="padding:14px 20px;border-bottom:1px solid var(--color-divider);font-size:13px;display:grid;grid-template-columns:96px 1fr;row-gap:4px">
+    <span style="color:var(--color-neutral-700)">Bank</span><span>Tez orada</span>
+    <span style="color:var(--color-neutral-700)">Hisob</span><span>Tez orada</span>
+  </div>
+  <div style="padding:14px 20px;flex:1" class="field">
+    <label>Promo-kod</label>
+    <div style="display:flex;gap:8px"><input class="input" value="USTOZ-AZIZA" style="min-height:44px"><button class="btn btn-secondary" style="min-height:44px">Tekshirish</button></div>
+    <div style="font-size:12px;color:var(--color-accent-700);margin-top:6px">Chegirma 10% · ₩10,800</div>
+  </div>
+  <div style="padding:12px 20px 16px;border-top:2px solid var(--color-divider)"><button class="btn btn-primary" style="width:100%;height:52px;justify-content:space-between;padding:0 16px;font-size:15px">Chekni Telegramda yuborish<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></div>
+</div></div>
+
+</div>
+<p class="dv-next">Try next: "add Profil/Sozlamalar and o‘qituvchi paneli" · "dark mode version of <a class="dv-oid" href="#1e">1e</a>" · "failed-test state for <a class="dv-oid" href="#1g">1g</a>"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showRomanization&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Sozlamalar&quot;},&quot;isPremium&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Sozlamalar&quot;}}">
+class Component extends DCLogic {
+  state = { cover: 'none', revealed: true, picked: 0 };
+  renderVals() {
+    const { cover, revealed, picked } = this.state;
+    const showRom = this.props.showRomanization ?? true;
+    const premium = this.props.isPremium ?? false;
+    const ink = 'var(--color-text)', bg = 'transparent', inv = 'var(--color-bg)';
+    const coverOpts = [['none', 'Hech'], ['ko', '한국어'], ['uz', 'O‘zbekcha']].map(([k, label]) => ({
+      label, bg: cover === k ? 'var(--color-accent)' : bg, fg: cover === k ? inv : ink,
+      on: () => this.setState({ cover: k })
+    }));
+    const words = [
+      ['나오다','naoda','chiqmoq (bu tomonga)'],['그리고','geurigo','va; keyin'],['문제','munje','muammo; savol'],
+      ['살다','salda','yashamoq'],['저','jeo','men (hurmat bilan)'],['생각하다','saenggakhada','o‘ylamoq'],
+      ['모르다','moreuda','bilmaslik'],['속','sok','ich, ichki qism'],['만들다','mandeulda','yasamoq, tayyorlamoq'],['앞','ap','old, oldi']
+    ].map(([ko, rom, uz], i) => ({ n: i + 1, ko, rom, uz }));
+    const opts = ['yashamoq', 'sotib olmoq', 'chiqmoq', 'o‘ylamoq'];
+    const options = opts.map((label, i) => ({
+      label, letter: 'ABCD'[i],
+      bg: picked === i ? ink : bg, fg: picked === i ? inv : ink,
+      on: () => this.setState({ picked: i })
+    }));
+    const ticks = Array.from({ length: 25 }, (_, i) => ({ bg: i < 13 ? ink : i === 13 ? 'var(--color-accent)' : 'var(--color-neutral-300)' }));
+    const mistakes = [
+      { ko: '나오다', right: 'chiqmoq (bu tomonga)', wrong: 'kirmoq' },
+      { ko: '함께', right: 'birga', wrong: 'yana' },
+      { ko: '시간', right: 'vaqt; soat (davomiylik)', wrong: 'payt, vaqt' }
+    ];
+    const drills = [
+      ['01', 'Yozma mashq', 'O‘zbekchadan koreyschaga yozing', false],
+      ['02', 'Qaysi so‘z to‘g‘ri?', 'Gapdagi bo‘sh joyni to‘ldiring', false],
+      ['03', 'Talaffuz', 'Ayting — Azure baholaydi', true],
+      ['04', 'Gap zinapoyasi', 'So‘zdan gapgacha, AI bilan', true],
+      ['05', 'Zaif joylar', 'Ko‘p adashgan so‘zlaringiz', true],
+      ['06', 'Xatolar daftari', 'Barcha xato javoblar', true]
+    ].map(([n, title, sub, p]) => ({ n, title, sub, locked: p && !premium }));
+    return {
+      coverOpts, words, options, ticks, mistakes, drills, showRom,
+      showKo: cover !== 'ko', hideKo: cover === 'ko', showUz: cover !== 'uz', hideUz: cover === 'uz',
+      revealed, notRevealed: !revealed,
+      reveal: () => this.setState({ revealed: true }),
+      hide: () => this.setState({ revealed: false })
+    };
+  }
+}
+</script>
+</body>
+</html>
