@@ -1,0 +1,68 @@
+@inject BrowserInterop Browser
+
+@* First sign-in on this device (spec §4.1 steps 2–3): three short screens, then installing the app. Skippable; the
+   flag is kept on the device because installing is per device too. *@
+<main class="content onboarding">
+    <div class="onboarding-dots" aria-hidden="true">
+        @for (var i = 0; i < Screens; i++)
+        {
+            <span class="@(i == _screen ? "current" : "")"></span>
+        }
+    </div>
+
+    <div class="onboarding-body">
+        @switch (_screen)
+        {
+            case 0:
+                <div class="big-number">25</div>
+                <h1>So‘zlar bo‘limlarga bo‘lingan</h1>
+                <p class="lead-text">Eng ko‘p ishlatiladigan so‘zlardan boshlab, har bo‘limda 25 ta so‘z. Avval A darajaning 1-bo‘limi ochiq.</p>
+                <p class="muted">Bo‘limda so‘zlarni jadvalda ko‘rasiz, kartochkada yodlaysiz va yozib mashq qilasiz.</p>
+                break;
+            case 1:
+                <div class="big-number">✓</div>
+                <h1>Test keyingi bo‘limni ochadi</h1>
+                <p class="lead-text">Bo‘lim oxiridagi testdan o‘tsangiz, keyingi bo‘lim ochiladi.</p>
+                <p class="muted">So‘zlarni oldindan bilsangiz, «Bilaman» testini topshirib bo‘limdan o‘tib ketishingiz mumkin.</p>
+                break;
+            case 2:
+                <div class="big-number">↻</div>
+                <h1>Har kuni takrorlash</h1>
+                <p class="lead-text">O‘rgangan so‘zlaringiz unutila boshlaganda «Takrorlash»ga qaytadi.</p>
+                <p class="muted">Kuniga bir necha daqiqa yetarli: so‘zlar uzoq xotiraga o‘tadi.</p>
+                break;
+            default:
+                <h1>Ilovani telefonga o‘rnating</h1>
+                <InstallGuide />
+                <p class="muted small-text">Buni keyinroq Profil → «Ilovani o‘rnatish»dan ham qilish mumkin.</p>
+                break;
+        }
+    </div>
+
+    <div class="onboarding-actions">
+        @if (_screen < Screens - 1)
+        {
+            <button class="link-btn muted" @onclick="FinishAsync">O‘tkazib yuborish</button>
+            <button class="button primary" @onclick="() => _screen++">Keyingi</button>
+        }
+        else
+        {
+            <span></span>
+            <button class="button primary" @onclick="FinishAsync">Boshlash</button>
+        }
+    </div>
+</main>
+
+@code {
+    public const string SeenKey = "lugat.onboarded";
+    private const int Screens = 4;
+    private int _screen;
+
+    [Parameter] public EventCallback Done { get; set; }
+
+    private async Task FinishAsync()
+    {
+        await Browser.StorageSetAsync(SeenKey, "1");
+        await Done.InvokeAsync();
+    }
+}

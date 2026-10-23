@@ -33,6 +33,14 @@
         }
         <p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1).</p>
     </main>
+    <UpdateBanner />
+    return;
+}
+
+@if (_onboarding)
+{
+    <Onboarding Done="() => _onboarding = false" />
+    <UpdateBanner />
     return;
 }
 
@@ -48,10 +56,13 @@
         <NavLink href="mashq" class="tab"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="15" rx="2" /><path d="M8 3h11a2 2 0 0 1 2 2v13" /></svg><span>Mashq</span></NavLink>
         <NavLink href="sozlamalar" class="tab"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg><span>Profil</span></NavLink>
     </nav>
+    <UpdateBanner />
 </div>
 
 @code {
     private SessionState? _state;
+    private bool _onboarding;
+    private bool _onboardingChecked;
 
     protected override async Task OnInitializedAsync()
     {
@@ -59,6 +70,19 @@
         Api.PremiumRequired += OnPremiumRequired;
         _state = await Api.EnsureSignedInAsync();
         await ApplyThemeAsync();
+        await CheckOnboardingAsync();
+    }
+
+    // Once per device, right after the first sign-in (spec §4.1).
+    private async Task CheckOnboardingAsync()
+    {
+        if (_onboardingChecked || _state?.Status != SessionStatus.SignedIn)
+        {
+            return;
+        }
+
+        _onboardingChecked = true;
+        _onboarding = await Browser.StorageGetAsync(Onboarding.SeenKey) is null;
     }
 
     private async Task RetryAsync()
@@ -66,12 +90,14 @@
         _state = null;
         StateHasChanged();
         _state = await Api.EnsureSignedInAsync();
+        await CheckOnboardingAsync();
     }
 
     private void OnChanged() => InvokeAsync(async () =>
     {
         _state = Api.State;
         await ApplyThemeAsync();
+        await CheckOnboardingAsync();
         StateHasChanged();
     });
 

@@ -50,6 +50,19 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
     public async Task<bool> GoogleButtonAsync<T>(string elementId, string clientId, DotNetObjectReference<T> target) where T : class =>
         await (await App()).InvokeAsync<bool>("googleButton", elementId, clientId, target);
 
+    /// <summary>"installed", "prompt", "ios" or "manual" — see installState in app.js.</summary>
+    public async Task<string> InstallStateAsync() => await (await App()).InvokeAsync<string>("installState");
+
+    /// <summary>Opens Chrome's install dialog; true when the learner accepted.</summary>
+    public async Task<bool> PromptInstallAsync() => await (await App()).InvokeAsync<bool>("promptInstall");
+
+    /// <summary>Calls the target's <c>OnUpdateReady</c> when a new version is waiting; false without a service worker.</summary>
+    public async Task<bool> WatchUpdatesAsync<T>(DotNetObjectReference<T> target) where T : class =>
+        await (await App()).InvokeAsync<bool>("watchUpdates", target);
+
+    /// <summary>Switches to the waiting version and reloads the page.</summary>
+    public async Task ApplyUpdateAsync() => await (await App()).InvokeVoidAsync("applyUpdate");
+
     public async Task<string[]> SupportedRecordingTypesAsync() => await (await Audio()).InvokeAsync<string[]>("supportedMimeTypes");
 
     public async Task<AudioResult> PlayToneAsync() => await (await Audio()).InvokeAsync<AudioResult>("playTone");

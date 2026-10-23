@@ -171,9 +171,41 @@ Bosqichlar spec §13 bo‘yicha.
 - Telegram orqali "Premium faollashdi" xabari haqiqiy bot bilan sinalmadi (bot domeni/deploy 8-bosqich).
 - Obuna muddatini qo‘lda o‘zgartirish (sabab bilan), promo-kodni o‘chirish, komissiya hisoboti — 7-bosqich (admin va o‘qituvchi paneli).
 
-## Bosqich 6 · PWA
+## Bosqich 6 · PWA (2026-10-23)
 
-- [ ] Manifest, ikonkalar, service worker, yangilanish xabari, o‘rnatish oqimi, yuklanish vaqti o‘lchovi.
+- [x] `manifest.webmanifest`, brend ikonkalari (192, 512, maskable, apple-touch, favicon), iOS meta (L-31).
+- [x] Service worker (Blazor PWA shabloni): ilova qobig‘i va `_framework` keshi, `/api` keshlanmaydi, eski kesh o‘chiriladi.
+- [x] "Yangilanish tayyor · Qayta yuklash" xabari.
+- [x] O‘rnatish: Android "O‘rnatish" tugmasi (`beforeinstallprompt`), iPhone uchun 3 qadamli ko‘rsatma, `/ornatish`, Profil’da havola.
+- [x] Onboarding: 3 ekran + o‘rnatish, o‘tkazib yuborsa bo‘ladi.
+- [x] Offline javob navbati — mavjud REL03 mexanizmi (L-31); service worker unga tegmaydi.
+- [x] Yuklanish vaqti o‘lchandi (Chromium, tarmoq/CPU cheklovi bilan) — quyida.
+
+**Tekshirildi:**
+- `dotnet build` toza; testlar 104 (Domain) + 32 (Application) + 174 (Api) = 310, JS testlar 10 — hammasi o‘tdi.
+- `PwaTests`: manifest `application/manifest+json`, majburiy maydonlar, uchala ikonka bor; sahifada manifest va apple-touch-icon havolasi, Telegram SDK yo‘q; `service-worker.js` `no-cache`.
+- `tests/web/service-worker.test.mjs`: o‘rnatishda xeshli kesh (service-worker.js va ICU fayllarisiz); `/api` GET, POST va navigatsiya hamda boshqa domenlarga javob bermaydi; istalgan sahifa keshdagi `index.html`; aktivlashganda faqat eski `lugat-shell-*` o‘chadi; `SKIP_WAITING` faqat so‘ralganda. `install.test.mjs`: installed/prompt/ios (iPadOS ham)/manual holatlari, Chrome taklifi bir marta ishlatiladi.
+- **Publish natijasi** (`dotnet publish src/Lugat.Api -c Release`, Dockerfile bilan bir xil): trimming yoqilgan, har fayl `.br`/`.gz` bilan; `service-worker.js` (published varianti) va `service-worker-assets.js` (56 fayl, versiya) chiqishda bor.
+- **Chromium (Playwright), published ilova:**
+  - O‘rnatiladiganlik: CDP `Page.getInstallabilityErrors` → `[]`, `Page.getAppManifest` xatosiz (Lighthouse 12 da alohida "PWA" bo‘limi olib tashlangan — o‘sha tekshiruvning o‘zi shu CDP chaqiruvi).
+  - Kesh: `lugat-shell-…` da 53 fayl. Internet o‘chirilib `/bolimlar` ochildi → ilova qobig‘i keshdan chiqdi, "Server bilan aloqa yo‘q" xabari, sahifa xatosi yo‘q.
+  - **Yangi deploy:** eski versiya keshlangan profil bilan yangi publish (CSS o‘zgargan) ishga tushirildi → avval eski CSS keshdan → "Yangilanish tayyor" chiqdi → "Qayta yuklash" → keshlar `[eski, yangi]` dan `[yangi]` ga, yangi CSS, xabar yo‘qoldi, sahifa xatosi yo‘q.
+  - Onboarding: kirishdan keyin 4 ekran, "Boshlash" → bosh sahifa; qayta yuklanganda qayta chiqmaydi. iPhone UA da `/ornatish` 3 qadam; `beforeinstallprompt` bo‘lganda "O‘rnatish" → "Ilova o‘rnatilgan".
+- **Birinchi yuklanish o‘lchovi** (Chromium emulyatsiyasi, 360px, Google Fonts o‘chirilgan, kirish ekrani chiqquncha; uzatilgan hajm 2.6 MB Brotli):
+
+  | Tarmoq va CPU | Birinchi | Keyingi (service worker keshidan) |
+  |---|---|---|
+  | 4G (9 Mbit/s, RTT 60 ms), CPU ×6 | 5.2 s | 2.4 s |
+  | Slow 4G (1.6 Mbit/s, RTT 150 ms), CPU ×4 | 16.2 s | 1.6 s |
+  | Slow 4G (1.6 Mbit/s, RTT 150 ms), CPU ×6 | 16.9 s | 2.6 s |
+
+  Maqsad (spec §6.2: birinchi ≤ 6 s, keyingi ≤ 2 s) oddiy 4G’da birinchi yuklanish uchun bajarildi; sekin 4G’da 2.6 MB ning o‘zi ~13 s. Keyingi yuklanish tarmoqsiz, faqat CPU’ga bog‘liq: o‘rta telefon (×4) 1.6 s, juda zaif (×6) 2.4–2.6 s.
+
+**Ochiq qoldi:**
+- **Haqiqiy arzon Android telefonda 4G orqali o‘lchash** (spec §6.2 "TEKSHIRILADI") — deploy’dan keyin (8-bosqich) Johnny telefonida; natija shu jadvalga.
+- **iPhone Safari’da bosh ekranga qo‘shib standalone ochilishi** — bu konteynerda iOS yo‘q; deploy’dan keyin haqiqiy iPhone’da tekshiriladi (manifest, apple-touch-icon va meta teglar tayyor).
+- Android’dagi haqiqiy `beforeinstallprompt` oynasi ham deploy’dan keyin (HTTPS domen kerak).
+- Yakuniy ikonka dizayni — Johnny.
 
 ## Bosqich 7 · O‘qituvchilar va admin
 

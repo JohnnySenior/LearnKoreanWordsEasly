@@ -105,3 +105,73 @@ export async function googleButton(elementId, clientId, dotnet) {
         return false;
     }
 }
+
+// ---- PWA (spec §6.2) ----
+
+// How this device installs the app: "installed" (opened from the home screen), "prompt" (Chrome's install offer is
+// waiting), "ios" (Safari: Share → Add to Home Screen), or "manual" (browser menu).
+export function installState() {
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) return 'installed';
+    if (window.__installPrompt) return 'prompt';
+    const ua = navigator.userAgent;
+    const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return ios ? 'ios' : 'manual';
+}
+
+// Shows Chrome's install dialog; true when the learner accepted. The offer can be used once.
+export async function promptInstall() {
+    const prompt = window.__installPrompt;
+    if (!prompt) return false;
+    window.__installPrompt = null;
+    try {
+        await prompt.prompt();
+        const choice = await prompt.userChoice;
+        return choice.outcome === 'accepted';
+    } catch {
+        return false;
+    }
+}
+
+// Calls dotnet.OnUpdateReady() once a new version is installed and waiting. Checks for one now and when the app
+// comes back to the screen (an installed app can stay open for days), at most every 30 minutes.
+export async function watchUpdates(dotnet) {
+    const registration = await (window.__swRegistration || Promise.resolve(null));
+    if (!registration) return false;
+    let notified = false;
+    const notify = () => {
+        if (!notified && registration.waiting && navigator.serviceWorker.controller) {
+            notified = true;
+            dotnet.invokeMethodAsync('OnUpdateReady');
+        }
+    };
+    const track = worker => worker && worker.addEventListener('statechange', () => { if (worker.state === 'installed') notify(); });
+    registration.addEventListener('updatefound', () => track(registration.installing));
+    track(registration.installing);
+    notify();
+
+    let lastCheck = Date.now();
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && Date.now() - lastCheck > 30 * 60 * 1000) {
+            lastCheck = Date.now();
+            registration.update().catch(() => { });
+        }
+    });
+    return true;
+}
+
+// Moves the waiting version in and reloads once it controls the page; the old cache is deleted on activate.
+export async function applyUpdate() {
+    const registration = await (window.__swRegistration || Promise.resolve(null));
+    if (!registration || !registration.waiting) {
+        window.location.reload();
+        return;
+    }
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!reloading) {
+            reloading = true;
+            window.location.reload();
+        }
+    });
+    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+}
