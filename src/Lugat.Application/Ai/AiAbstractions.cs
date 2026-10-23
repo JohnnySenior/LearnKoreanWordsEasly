@@ -43,6 +43,13 @@ public sealed class AiProviderOptions
     public string BaseUrl { get; set; } = "";
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(Model);
+
+    /// <summary>
+    /// A value pasted into hosting variables with a space, a line break or quotes around it. Such a key is not a valid
+    /// header value, so every call failed before reaching the service; empty becomes null.
+    /// </summary>
+    public static string? Clean(string? value) =>
+        value?.Trim().Trim('"', '\'').Trim() is { Length: > 0 } v ? v : null;
 }
 
 /// <summary>

@@ -2,7 +2,17 @@ using Lugat.Domain.Ai;
 
 namespace Lugat.Contracts;
 
-public sealed record AiProviderStatusDto(AiProviderKind Kind, string Label, bool Configured, string? Model);
+/// <param name="Configured">A key and a model are set; it says nothing about whether the key works.</param>
+/// <param name="LastOk">Outcome of the latest finished call to this service (any feature, any user); null = none yet.</param>
+/// <param name="LastError">Short reason of that call when it failed; never contains keys.</param>
+public sealed record AiProviderStatusDto(
+    AiProviderKind Kind,
+    string Label,
+    bool Configured,
+    string? Model,
+    bool? LastOk = null,
+    string? LastError = null,
+    DateTimeOffset? LastAt = null);
 
 /// <param name="Chosen">The learner's choice; null = server default.</param>
 /// <param name="Effective">The service that will actually be tried first; null when no key is configured.</param>

@@ -153,7 +153,18 @@ else
                         <strong>@p.Label</strong>:
                         @if (p.Configured)
                         {
-                            <span>ulangan <span class="muted">(@p.Model)</span></span>
+                            @if (p.LastOk == true)
+                            {
+                                <span>ishlayapti <span class="muted">(@p.Model, oxirgi so‘rov @When(p.LastAt))</span></span>
+                            }
+                            else if (p.LastOk == false)
+                            {
+                                <strong>ishlamayapti:</strong> <span>@p.LastError</span> <span class="muted">(@p.Model, @When(p.LastAt))</span>
+                            }
+                            else
+                            {
+                                <span>kalit qo‘shilgan, hali tekshirilmagan <span class="muted">(@p.Model)</span></span>
+                            }
                             @if (IsAdmin)
                             {
                                 <button class="button small" disabled="@_busy" @onclick="() => PingAsync(p.Kind)">Ulanishni tekshirish</button>
@@ -438,6 +449,8 @@ else
             : result.Error;
         _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
     }
+
+    private static string When(DateTimeOffset? at) => at?.ToLocalTime().ToString("dd.MM HH:mm") ?? "";
 
     private string Label(AiProviderKind kind) => _ai?.Providers.FirstOrDefault(p => p.Kind == kind)?.Label ?? kind.ToString();
 

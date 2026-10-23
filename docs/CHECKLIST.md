@@ -254,3 +254,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Haqiqiy bot bilan eslatma (BotFather `/setdomain`, "Sinov xabari", 20:00 dagi xabar).
 - [ ] **Real iPhone va Android’da to‘liq oqim** (spec §13.9): kirish → 1-bo‘lim → test → 2-bo‘lim ochildi → ertasi kuni takrorlash; PWA o‘rnatish, birinchi yuklanish vaqti (6-bosqichdagi ochiq bandlar).
 - [ ] Maxfiylik siyosati matnini Johnny tasdiqlaydi (Q7).
+
+**AI holati va kalitlar (L-34, 2026-10-23):**
+- [x] Sozlamalar → AI xizmati endi kalit borligini emas, oxirgi haqiqiy chaqiruv natijasini ko‘rsatadi: "ishlayapti" / "ishlamayapti: sabab" / "hali tekshirilmagan". Sabab — production’da Anthropic kaliti ortiqcha belgi bilan kiritilganda ham "ulangan" deb ko‘rsatgani (Johnny topdi).
+- [x] AI va Azure kalitlari, model va region chetidagi bo‘sh joy/qator oxiri/qo‘shtirnoq avtomatik olib tashlanadi; muvaffaqiyatsiz chaqiruv logida xato turi bor.
+- Testlar: `Status_shows_how_the_last_call_ended_not_only_that_a_key_is_set` (kalit bor → tekshirilmagan; ping natijasi → ishlayapti/ishlamayapti sababi bilan; tuzatilgach keyingi chaqiruvdan so‘ng ishlayapti), `Keys_pasted_with_spaces_line_breaks_or_quotes_are_cleaned`.
