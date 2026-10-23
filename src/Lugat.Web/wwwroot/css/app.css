@@ -1025,3 +1025,26 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .practice-text b { display: block; font: 800 16px/1.25 var(--font-heading); }
 .practice-text span { display: block; font-size: 13px; color: var(--color-muted); margin-top: 2px; }
 .practice-end { display: inline-flex; align-items: center; gap: 10px; }
+
+/* 1i Premium. */
+.premium-intro { padding: 16px 0; }
+.premium-intro p { margin: 0 0 8px; font-size: 15px; }
+.plan-grid { display: grid; grid-template-columns: 1fr 1fr; margin: 0 calc(-1 * var(--gutter)); border-top: 2px solid var(--color-divider); border-bottom: 2px solid var(--color-divider); }
+.plan { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 112px; padding: 16px var(--gutter); border: 0; border-right: 2px solid var(--color-divider); background: transparent; color: var(--color-text); text-align: left; cursor: pointer; }
+.plan:last-child { border-right: 0; }
+.plan-head { display: flex; justify-content: space-between; width: 100%; font-size: 13px; }
+.plan-save { color: var(--color-accent-400); }
+.plan b { font: 900 26px/1 var(--font-heading); letter-spacing: -0.02em; }
+.plan-note { font-size: 12px; color: var(--color-muted); }
+.plan.selected { background: var(--color-text); color: var(--color-bg); }
+.plan.selected .plan-note { color: color-mix(in srgb, var(--color-bg) 70%, transparent); }
+.pay-code { padding: 16px 0; border-bottom: 1px solid var(--color-divider); margin: 0 calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+.pay-code-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.pay-code code { font: 700 30px/1 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: .04em; }
+.bank-facts { display: grid; grid-template-columns: 96px 1fr; gap: 8px 12px; margin: 0 calc(-1 * var(--gutter)); padding: 16px var(--gutter); border-bottom: 1px solid var(--color-divider); font-size: 15px; }
+.bank-facts dt { color: var(--color-muted); }
+.bank-facts dd { margin: 0; overflow-wrap: anywhere; }
+.promo { padding: 16px 0; }
+.promo-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 6px; }
+.promo-row .input { min-height: 48px; }
+.promo-result { margin: 8px 0 0; font-size: 12px; color: var(--color-accent-700); }

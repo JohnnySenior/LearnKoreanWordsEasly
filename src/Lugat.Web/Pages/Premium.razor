@@ -2,95 +2,95 @@
 @using Lugat.Contracts
 @using Lugat.Domain.Premium
 @inject SessionService Api
+@inject BrowserInterop Browser
 
 <PageTitle>Premium — Lug‘at</PageTitle>
 
 @* Premium (spec §7): what it gives, the plans, how to pay by bank transfer, the learner's payment code. Whether the
    learner has Premium is decided by the server only. *@
-<a class="back" href="profil">← Profil</a>
-<h1>Premium</h1>
+<AppHeader Title="Premium" Back="profil" />
 
 @if (_status is null || _plans is null)
 {
-    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
-    return;
-}
-
-<section class="card" style="border-top:0">
-    @if (_status.IsPremium)
+    @if (_error is not null)
     {
-        <span class="kicker accent">Premium faol</span>
-        <p><strong>@Format.DayMonth(_status.EndsAt!.Value) gacha</strong>@(_status.Plan == SubscriptionPlan.Trial ? " (sinov muddati)" : "")</p>
-        <p class="muted small-text">Muddatni uzaytirish uchun yana to‘lashingiz mumkin: yangi muddat hozirgisi tugagan kundan boshlanadi.</p>
+        <div class="notice" role="alert">@_error</div>
     }
     else
     {
-        <span class="kicker">Hozir: bepul</span>
-        <p>Barcha bo‘limlar, jadval, kartochka, takrorlash, bo‘lim testlari, yozma mashq va «Qaysi so‘z to‘g‘ri?» bepul.</p>
+        <div aria-busy="true" style="margin-top:16px"><span class="skeleton" style="width:80%"></span><span class="skeleton" style="width:60%;margin-top:10px"></span></div>
     }
-</section>
+    return;
+}
 
-<section class="card">
-    <h2>Premium’da</h2>
-    <ul class="plain-list">
-        <li>Talaffuzni baholash (mikrofon)</li>
-        <li>Xatolar daftari va zaif joylar</li>
-        <li>Gap zinapoyasi, AI gap tekshiruvi, tuzoqlar daftari</li>
-        <li>Og‘zaki sinov</li>
-    </ul>
+<section class="premium-intro">
+    @if (_status.IsPremium)
+    {
+        <span class="kicker accent">Premium faol</span>
+        <p><strong>@Format.DayMonth(_status.EndsAt!.Value) gacha</strong>@(_status.Plan == SubscriptionPlan.Trial ? " (sinov muddati)" : ""). Muddatni uzaytirish uchun yana to‘lashingiz mumkin: yangi muddat hozirgisi tugagan kundan boshlanadi.</p>
+    }
+    else
+    {
+        <p>Barcha bo‘limlar, testlar va takrorlash <strong>bepul</strong>. Premium — talaffuz baholash, xatolar daftari va AI mashqlari.</p>
+    }
     @if (_status.TrapNotesFree)
     {
         <p class="muted small-text">So‘z kartasidagi tayyor «o‘zbekcha tuzoq» izohi hammaga bepul.</p>
     }
 </section>
 
-<section class="card">
-    <h2>Tariflar</h2>
-    <div class="chips" role="radiogroup" aria-label="Tarif">
-        @foreach (var p in _plans.Plans)
-        {
-            var plan = p;
-            <button class="chip wide @(_plan == plan.Plan ? "selected" : "")" role="radio" aria-checked="@(_plan == plan.Plan)" @onclick="() => SelectAsync(plan.Plan)">
-                @plan.Title · ₩@plan.PriceKrw.ToString("N0")
-            </button>
-        }
-    </div>
-
-    <label class="field" style="margin-top:12px">
-        Promo-kod (bo‘lsa)
-        <input class="input" maxlength="32" autocapitalize="characters" @bind="_promo" @bind:event="oninput" />
-    </label>
-    <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_promo))" @onclick="CheckPromoAsync">Tekshirish</button>
-    @if (_check is { } c)
+<div class="plan-grid" role="radiogroup" aria-label="Tarif">
+    @foreach (var p in _plans.Plans)
     {
-        <p role="status">@(c.Valid ? $"Chegirma {c.DiscountPercent}%: ₩{c.PriceKrw:N0} o‘rniga ₩{c.FinalPriceKrw:N0}" : c.Message)</p>
+        var plan = p;
+        var monthly = _plans.Plans.FirstOrDefault(x => x.Months == 1)?.PriceKrw;
+        var saving = monthly is { } m && plan.Months > 1 && m * plan.Months > plan.PriceKrw ? 100 - plan.PriceKrw * 100 / (m * plan.Months) : 0;
+        <button class="plan @(_plan == plan.Plan ? "selected" : "")" role="radio" aria-checked="@(_plan == plan.Plan)" @onclick="() => SelectAsync(plan.Plan)">
+            <span class="plan-head"><span>@plan.Title</span>@if (saving > 0) {<span class="plan-save">−@saving%</span>}</span>
+            <b>@Format.Won(plan.PriceKrw)</b>
+            <span class="plan-note">@(plan.Months == 1 ? "30 kun" : $"{Format.Won(plan.PriceKrw / plan.Months)} / oy")</span>
+        </button>
     }
+</div>
 
-    <p style="margin-top:12px">To‘lov: <strong>₩@Price.ToString("N0")</strong></p>
+<section class="pay-code">
+    <span class="kicker">To‘lov kodi — o‘tkazma izohiga yozing</span>
+    <div class="pay-code-row">
+        <code>@_status.PaymentCode</code>
+        <button class="btn btn-ghost" @onclick="CopyAsync">@(_copied ? "Nusxalandi" : "Nusxalash")</button>
+    </div>
 </section>
 
-<section class="card">
-    <h2>Qanday to‘lanadi</h2>
+<dl class="bank-facts">
+    <dt>Bank</dt><dd>@(_plans.Bank?.BankName ?? "Tez orada")</dd>
+    <dt>Hisob</dt><dd>@(_plans.Bank?.AccountNumber ?? "Tez orada")</dd>
     @if (_plans.Bank is { } bank)
     {
-        <ol class="plain-list">
-            <li>Bank o‘tkazmasi: <strong>@bank.BankName</strong>, hisob <strong>@bank.AccountNumber</strong>, egasi <strong>@bank.AccountHolder</strong>.</li>
-            <li>O‘tkazma izohiga to‘lov kodingizni yozing: <strong class="pill">@_status.PaymentCode</strong></li>
-            <li>Chekni yuboring@(_plans.ContactTelegram is null ? "." : ":")
-                @if (_plans.ContactTelegram is { } contact)
-                {
-                    <a href="@($"https://t.me/{contact}")" target="_blank" rel="noopener">Telegram’da yuborish</a>
-                }
-            </li>
-        </ol>
-        <p class="muted small-text">To‘lov tekshirilgach Premium yoqiladi va shu sahifada ko‘rinadi@(_plans.ContactTelegram is null ? "" : "; Telegram orqali kirgan bo‘lsangiz, bot ham xabar beradi").</p>
+        <dt>Egasi</dt><dd>@bank.AccountHolder</dd>
+        <dt>Summa</dt><dd><strong>@Format.Won(Price)</strong></dd>
     }
-    else
+</dl>
+
+<section class="promo">
+    <label class="muted small-text" for="promo">Promo-kod</label>
+    <div class="promo-row">
+        <input id="promo" class="input" maxlength="32" autocapitalize="characters" @bind="_promo" @bind:event="oninput" />
+        <button class="btn btn-secondary" disabled="@(_busy || string.IsNullOrWhiteSpace(_promo))" @onclick="CheckPromoAsync"><span>Tekshirish</span></button>
+    </div>
+    @if (_check is { } c)
     {
-        <p><strong>Tez orada.</strong> To‘lov rekvizitlari hali e’lon qilinmagan.</p>
-        <p class="muted small-text">Sizning to‘lov kodingiz: <strong>@_status.PaymentCode</strong></p>
+        <p class="promo-result" role="status">@(c.Valid ? $"Chegirma {c.DiscountPercent}% · {Format.Won(c.FinalPriceKrw)}" : c.Message)</p>
     }
 </section>
+
+@if (_plans.Bank is not null && _plans.ContactTelegram is { } contact)
+{
+    <div class="sticky-space"></div>
+    <div class="sticky-action">
+        <a class="btn btn-primary block big" href="@($"https://t.me/{contact}")" target="_blank" rel="noopener"><span>Chekni Telegramda yuborish</span><Icon Name="arrow-right" /></a>
+    </div>
+    <p class="muted small-text">To‘lov tekshirilgach Premium yoqiladi va shu sahifada ko‘rinadi; Telegram orqali kirgan bo‘lsangiz, bot ham xabar beradi.</p>
+}
 
 @code {
     private PremiumStatusDto? _status;
@@ -100,6 +100,9 @@
     private PromoCheckDto? _check;
     private string? _error;
     private bool _busy;
+    private bool _copied;
+
+    private async Task CopyAsync() => _copied = await Browser.CopyTextAsync(_status!.PaymentCode);
 
     private int Price => _check is { Valid: true } c ? c.FinalPriceKrw : _plans?.Plans.FirstOrDefault(p => p.Plan == _plan)?.PriceKrw ?? 0;
 
