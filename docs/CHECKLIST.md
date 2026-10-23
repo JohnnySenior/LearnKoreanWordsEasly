@@ -276,3 +276,8 @@ Bosqichlar spec §13 bo‘yicha.
 **Bo‘lim jadvali uslubi (2026-10-23):**
 - [x] Johnny iPhone’da topdi: bo‘limdagi so‘z jadvali chiziqsiz, ustunlar tekislanmagan, uzun koreyscha so‘z (아니다) ikki qatorga bo‘linardi. Sabab — `Unit.razor` jadvali KoreanAiTeacher’dan olingan, lekin `.word-table`, `.covered`, `.study-bar` uslublari ko‘chmay qolgan edi. KAT’dagi uslublar qo‘shildi (D-36).
 - Chromium, 390px, qorong‘i va yorug‘ mavzu: ustunlar №/한국어/O‘zbekcha, sarlavha ostida qalin chiziq, qatorlar orasida ingichka chiziq, koreyscha so‘z bo‘linmaydi; "한국어 yopiq" — chiziqli yopiq katak, bosilgan so‘z ochiladi va ostida ovoz va qo‘llanish chiqadi. Gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+
+**Ovoz birinchi bosishda (L-35, 2026-10-23):**
+- [x] Birinchi bosishda telefonning sun’iy ovozi, ikkinchisida Azure chiqishi tuzatildi: yozuv kelguncha kutiladi va bosish boshlagan elementda o‘ynatiladi.
+- Chromium (`--autoplay-policy=user-gesture-required`, `/api/tts` 1.5 s kechiktirilgan): eski kod — birinchi bosish `speechSynthesis`, ikkinchisi yozuv (xato takrorlandi); yangi kod — birinchi bosishda "Ovoz yuklanmoqda…", keyin yozuv, telefon ovozi yo‘q; server 503 qaytarsa telefon ovozi zaxira bo‘lib qoladi. JS test: tayyorlangan element yozuvni o‘ynatadi (11/11).
+- [ ] Haqiqiy iPhone’da tasdiqlash — Johnny (bu konteynerda iOS yo‘q).

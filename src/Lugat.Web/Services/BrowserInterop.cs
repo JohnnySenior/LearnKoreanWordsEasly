@@ -76,6 +76,8 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
 
     public async Task<bool> HasSpeechAsync(string key) => await (await Audio()).InvokeAsync<bool>("hasSpeech", key);
 
+    public async Task<bool> PrimeSpeechAsync() => await (await Audio()).InvokeAsync<bool>("primeSpeech");
+
     public async Task<AudioResult> PlaySpeechAsync(string key, double rate) => await (await Audio()).InvokeAsync<AudioResult>("playSpeech", key, rate);
 
     public async Task<AudioResult> SpeakWithDeviceAsync(string text, double rate) => await (await Audio()).InvokeAsync<AudioResult>("speakWithDevice", text, rate);

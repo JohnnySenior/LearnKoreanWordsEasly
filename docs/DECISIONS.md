@@ -302,3 +302,9 @@ Production’dagi birinchi sinovda topilgan (Bosqich 8, deploy). `Ai__Anthropic_
 - **Holat:** `AiProviderStatusDto` ga `LastOk`, `LastError`, `LastAt` qo‘shildi — shu xizmatga oxirgi **tugagan** matnli chaqiruv natijasi (istalgan funksiya va foydalanuvchi; ovoz `tts`/`stt` hisobga olinmaydi, davom etayotgan rezerv ham). Sozlamalarda: "ishlayapti (model, oxirgi so‘rov …)", "**ishlamayapti:** sabab" yoki "kalit qo‘shilgan, hali tekshirilmagan". "Ulangan" so‘zi endi ishlatilmaydi. Xato holati rang bilan emas, qalin matn bilan (D-25).
 - **Tozalash:** `Ai:Anthropic`, `Ai:OpenAi` kaliti va modeli, `Ai:Tts:Azure` kaliti va regioni chetidagi bo‘sh joy, qator oxiri va `"`/`'` dan tozalanadi (`AiProviderOptions.Clean`, `PostConfigure`); faqat bo‘sh joydan iborat qiymat — kiritilmagan.
 - **Log:** muvaffaqiyatsiz AI chaqiruvi logida xato **turi** ham yoziladi (`FormatException` va h.k.). Xabarning o‘zi yozilmaydi: noto‘g‘ri header xabari kalitni o‘z ichiga oladi (SEC05).
+
+## L-35 · 2026-10-23 · Ovoz: birinchi bosishda ham haqiqiy yozuv
+
+Johnny iPhone’da topdi: so‘zning ovoz tugmasini birinchi bosganda telefonning sun’iy ovozi, ikkinchisida Azure ovozi chiqardi. Sabab — yozuv so‘z ochilganda yuklana boshlaydi, birinchi Azure chaqiruvi esa 0.4–1.5 s (production loglari); shu vaqt ichida bosilsa `Speak` telefon ovoziga (`speechSynthesis`) o‘tardi. KoreanAiTeacher’da ham shunday.
+- Yozuv hali yuklanayotganda bosilsa, telefon ovozi ishlatilmaydi: bosish ichida `primeSpeech` bitta audio elementni qisqa jimlik bilan boshlaydi (iOS ovozni faqat bosish boshlagan elementga ruxsat beradi), "Ovoz yuklanmoqda…" chiqadi, yozuv kelgach `playSpeech` aynan shu elementda uni o‘ynatadi.
+- Telefon ovozi faqat server ovoz bera olmaganda (kalit yo‘q, xato) zaxira bo‘lib qoladi.
