@@ -1,3 +1,4 @@
+using Lugat.Api.Premium;
 using System.Security.Claims;
 using Lugat.Api.Auth;
 using Lugat.Application.Ladder;
@@ -11,7 +12,7 @@ public static class LadderEndpoints
 {
     public static IEndpointRouteBuilder MapLadderEndpoints(this IEndpointRouteBuilder app, IConfiguration config)
     {
-        var ladders = app.MapGroup("/api/ladders").RequireAuthorization();
+        var ladders = app.MapGroup("/api/ladders").RequireAuthorization().RequirePremium();
         ladders.MapGet("/", (ClaimsPrincipal user, LadderService s, CancellationToken ct) => s.ListAsync(user.GetUserId(), ct));
         ladders.MapPost("/", async (CreateLadderRequest body, ClaimsPrincipal user, LadderService s, CancellationToken ct) =>
         {
@@ -22,7 +23,7 @@ public static class LadderEndpoints
         ladders.MapPost("/{id:guid}/answers", (Guid id, LadderAnswerRequest body, ClaimsPrincipal user, LadderService s, CancellationToken ct) =>
             s.AnswerAsync(user.GetUserId(), id, body, ct));
 
-        var traps = app.MapGroup("/api/traps").RequireAuthorization();
+        var traps = app.MapGroup("/api/traps").RequireAuthorization().RequirePremium();
         traps.MapGet("/", (ClaimsPrincipal user, LadderService s, CancellationToken ct) => s.TrapsAsync(user.GetUserId(), ct));
         traps.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, LadderService s, CancellationToken ct) =>
         {
@@ -36,7 +37,7 @@ public static class LadderEndpoints
         }
 
         // The passage is heard through its own audio and shown only after the answer.
-        var listening = app.MapGroup("/api/listening").RequireAuthorization();
+        var listening = app.MapGroup("/api/listening").RequireAuthorization().RequirePremium();
         listening.MapGet("/", (ClaimsPrincipal user, ListeningService s, CancellationToken ct) => s.ListAsync(user.GetUserId(), ct));
         listening.MapPost("/", async (CreateListeningRequest body, ClaimsPrincipal user, ListeningService s, CancellationToken ct) =>
         {

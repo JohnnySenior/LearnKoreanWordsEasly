@@ -20,7 +20,8 @@ public sealed class AiGateway(
     IOptions<AiOptions> options,
     TimeProvider time,
     ILogger<AiGateway> logger,
-    AiUsageService usage)
+    AiUsageService usage,
+    Premium.PremiumService premium)
 {
     private AiOptions Options => options.Value;
 
@@ -31,7 +32,7 @@ public sealed class AiGateway(
             .Select(p => new AiProviderStatusDto(p.Kind, Label(p.Kind), p.IsConfigured, p.IsConfigured ? p.Model : null))
             .ToList();
         var effective = Order(chosen).FirstOrDefault(p => p.IsConfigured)?.Kind;
-        return new AiStatusDto(list, chosen, Options.DefaultProvider, effective, await CallsTodayAsync(ownerId, ct), Options.MaxCallsPerUserPerDay);
+        return new AiStatusDto(list, chosen, Options.DefaultProvider, effective, await CallsTodayAsync(ownerId, ct), await DailyLimitAsync(ownerId, ct));
     }
 
     public async Task<AiStatusDto> ChooseAsync(Guid ownerId, AiProviderKind? provider, CancellationToken ct)
@@ -45,6 +46,13 @@ public sealed class AiGateway(
     /// <summary>Calls the chosen service, or only <paramref name="only"/> when given (used by "check the connection").</summary>
     public async Task<AiCallResult> CompleteJsonAsync(Guid ownerId, AiJsonRequest request, CancellationToken ct, AiProviderKind? only = null)
     {
+        // Every AI call costs money (spec §7.4): Premium learners, editors and admins only.
+        if (!await premium.CanUseAiAsync(ownerId, ct))
+        {
+            throw new PremiumRequiredException();
+        }
+
+        var limit = await DailyLimitAsync(ownerId, ct);
         var chosen = await db.Users.Where(u => u.Id == ownerId).Select(u => u.AiProvider).SingleAsync(ct);
         var candidates = only is { } single
             ? providers.Where(p => p.Kind == single).ToList()
@@ -71,7 +79,7 @@ public sealed class AiGateway(
             AiUsage reservation;
             try
             {
-                reservation = await usage.ReserveAsync(ownerId, request.Feature, provider.Kind, provider.Model, input, output, Options.MaxCallsPerUserPerDay, deadline.Token);
+                reservation = await usage.ReserveAsync(ownerId, request.Feature, provider.Kind, provider.Model, input, output, limit, deadline.Token);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -107,6 +115,12 @@ public sealed class AiGateway(
         }
 
         throw new ServiceUnavailableException($"AI xizmati hozir javob bermadi ({lastError}). Yozganingiz saqlandi, birozdan keyin qayta urinib ko‘ring.");
+    }
+
+    private async Task<int> DailyLimitAsync(Guid ownerId, CancellationToken ct)
+    {
+        var roles = await db.Users.Where(u => u.Id == ownerId).Select(u => u.Roles).SingleAsync(ct);
+        return (roles & (Domain.Users.UserRoles.Admin | Domain.Users.UserRoles.Editor)) != 0 ? Options.MaxCallsPerEditorPerDay : Options.MaxCallsPerUserPerDay;
     }
 
     public static string Label(AiProviderKind kind) => kind == AiProviderKind.Anthropic ? "Claude (Anthropic)" : "ChatGPT (OpenAI)";

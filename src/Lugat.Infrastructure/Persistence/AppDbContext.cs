@@ -23,6 +23,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<UserLogin> UserLogins => Set<UserLogin>();
 
+    public DbSet<Domain.Premium.Subscription> Subscriptions => Set<Domain.Premium.Subscription>();
+
+    public DbSet<Domain.Premium.Payment> Payments => Set<Domain.Premium.Payment>();
+
+    public DbSet<Domain.Premium.PromoCode> PromoCodes => Set<Domain.Premium.PromoCode>();
+
     public DbSet<Domain.Catalog.CatalogWord> CatalogWords => Set<Domain.Catalog.CatalogWord>();
 
     public DbSet<Domain.Catalog.CatalogUsage> CatalogUsages => Set<Domain.Catalog.CatalogUsage>();
@@ -74,6 +80,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         configurationBuilder.Properties<Domain.Catalog.UnitStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Catalog.UnitProgressStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Catalog.UnitPassedBy>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Premium.SubscriptionPlan>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Premium.SubscriptionSource>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Premium.PaymentMethod>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Premium.PaymentStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<LearningItemKind>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ReviewDirection>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<LearningPhase>().HaveConversion<string>().HaveMaxLength(32);
@@ -96,6 +106,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(u => u.DisplayName).HasMaxLength(100);
             e.Property(u => u.TimeZone).HasMaxLength(64);
             e.Property(u => u.Roles).HasConversion<int>(); // flags
+            e.Property(u => u.PaymentCode).HasMaxLength(8);
+            e.HasIndex(u => u.PaymentCode).IsUnique();
             e.Property(u => u.Version).IsRowVersion();
         });
 
@@ -107,6 +119,38 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.ProviderUserId).HasMaxLength(128);
             e.Property(x => x.Display).HasMaxLength(256);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Premium (spec §5.1, §7). Payments stay for bookkeeping when an account is deleted (the user row stays).
+        b.Entity<Domain.Premium.Subscription>(e =>
+        {
+            e.ToTable("subscriptions");
+            e.HasIndex(x => new { x.UserId, x.EndsAt });
+            e.HasIndex(x => x.PaymentId).IsUnique();
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Premium.Payment>().WithMany().HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Premium.Payment>(e =>
+        {
+            e.ToTable("payments");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.HasIndex(x => new { x.UserId, x.PaidAt });
+            e.HasIndex(x => x.PromoCodeId);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.RefundNote).HasMaxLength(500);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Premium.PromoCode>().WithMany().HasForeignKey(x => x.PromoCodeId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Premium.PromoCode>(e =>
+        {
+            e.ToTable("promo_codes");
+            e.HasIndex(x => x.Code).IsUnique(); // stored in upper case: unique regardless of case (spec DATA01)
+            e.Property(x => x.Code).HasMaxLength(32);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.TeacherUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // The shared catalog (spec §2, §5.1): one copy for everyone, no owner.

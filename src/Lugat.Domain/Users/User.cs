@@ -59,6 +59,12 @@ public sealed class User
     /// </summary>
     public int SessionVersion { get; set; }
 
+    /// <summary>
+    /// Short code for the bank transfer note, e.g. "L-7K3Q" (spec §7.3), so the admin finds the payer. Made when the
+    /// learner first opens the Premium page.
+    /// </summary>
+    public string? PaymentCode { get; set; }
+
     /// <summary>The account was deleted: personal data is gone, the row stays only for anonymous records (spec §5.3).</summary>
     public DateTimeOffset? DeletedAt { get; set; }
 

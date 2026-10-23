@@ -12,6 +12,9 @@ public sealed class NotFoundException(string userMessage = "Topilmadi.") : AppEx
 /// <summary>The caller may see that the thing exists but may not use it yet, e.g. a locked unit (spec §13.4).</summary>
 public sealed class ForbiddenException(string userMessage) : AppException(userMessage);
 
+/// <summary>A Premium feature for a learner without Premium (spec §11): 403 with type "premium-required".</summary>
+public sealed class PremiumRequiredException() : AppException("Bu funksiya Premium’da.");
+
 public sealed class ConflictException(string userMessage) : AppException(userMessage);
 
 public sealed class ValidationException(string userMessage) : AppException(userMessage);

@@ -118,10 +118,12 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
             return (gaps, AiGateway.Label(call.Provider),
                 missing == 0 ? null : $"{missing} ta gapli savol tekshiruvdan o‘tmadi, ular oddiy variantli savolga almashtirildi.");
         }
-        catch (Exception ex) when (ex is ServiceUnavailableException or TooManyRequestsException)
+        catch (Exception ex) when (ex is ServiceUnavailableException or TooManyRequestsException or PremiumRequiredException)
         {
             logger.LogWarning("Test gaps not made: {Error}", ex.Message);
-            return ([], null, "AI hozir ishlamadi, shuning uchun gapli savollar o‘rniga variantli savollar tuzildi.");
+            return ([], null, ex is PremiumRequiredException
+                ? "Gapli (AI) savollar Premium’da, shuning uchun variantli savollar tuzildi."
+                : "AI hozir ishlamadi, shuning uchun gapli savollar o‘rniga variantli savollar tuzildi.");
         }
     }
 

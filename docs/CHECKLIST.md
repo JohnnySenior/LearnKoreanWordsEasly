@@ -150,9 +150,26 @@ Bosqichlar spec §13 bo‘yicha.
 - Tinglash savoli haqiqiy ovoz bilan brauzerda eshitib ko‘rilmadi (dev’da TTS kaliti yo‘q; serverdagi yo‘l testlarda fake ovoz bilan sinalgan).
 - Katalogda hali "Qaysi so‘z to‘g‘ri?" savollari yo‘q (namuna faylda yo‘q; AI qoralama bilan yoziladi va muharrir tekshiradi).
 
-## Bosqich 5 · Premium va to‘lov
+## Bosqich 5 · Premium va to‘lov (2026-10-23)
 
-- [ ] `Subscription`, `Payment`, `PromoCode`, entitlement, 403 `premium-required`, admin to‘lov qayd etish.
+- [x] `Subscription`, `Payment`, `PromoCode`, `User.PaymentCode`; migratsiya `Premium` (L-30).
+- [x] Entitlement (`PremiumService`), premium endpoint’larda 403 `premium-required` (L-30).
+- [x] AI faqat Premium (muharrir/admin uchun ham), kunlik limitlar tarif bo‘yicha (spec §7.4).
+- [x] `GET /api/me/premium`, `GET /api/premium/plans`, `POST /api/premium/promo/check`.
+- [x] Admin: foydalanuvchi qidirish, to‘lovni qayd etish (muddatlar ketma-ket), qaytarish, promo-kodlar.
+- [x] Premium sahifasi, Mashq menyusidagi Premium belgilari, `premium-required` da Premium sahifasiga o‘tish, admin to‘lovlar sahifasi.
+- [x] Sinov muddati (`Premium:TrialDays`, standart 0), `IPaymentGateway` interfeysi.
+
+**Tekshirildi:**
+- `dotnet build` toza; testlar 104 (Domain) + 32 (Application) + 171 (Api) = 307, hammasi o‘tdi.
+- Qabul mezonlari (`Premium/PremiumTests`): premiumsiz foydalanuvchi talaffuz, xatolar daftari, zinapoya (va zaif joylar, tuzoqlar, gap tekshiruvi, og‘zaki sinov, shaxsiy AI qo‘llanish) endpoint’larida 403 `premium-required`; bepul qismlar ishlaydi; AI bir marta ham chaqirilmaydi. To‘lov qayd etilgach darhol premium; 31 kundan keyin (FakeTimeProvider) yopiladi. Ikki to‘lov: 1 oy + 3 oy, ikkinchisi birinchisi tugagan kundan. Bir xil to‘lovni ikki marta yuborish — bitta to‘lov. Promo `ustoz10` (10%, o‘qituvchi, 30%): 12,000 → 10,800, komissiya 3,240; kod katta-kichik harfga qaramay unikal; o‘quvchi promo yarata olmaydi. Qaytarish: muddat bugun tugaydi, keyingi chorak shu kundan to‘liq 92 kun. To‘lov kodi bo‘yicha qidirish ("l7k3q" ham), rekvizitlarsiz `Bank = null`. Sinov muddati 7 kun.
+- `PremiumMathTests`: chegirma, komissiya yaxlitlash, muddat boshlanishi.
+- Chromium, 360px (Development): Mashq → 5 ta "Premium" belgisi → Xatolar daftari → Premium sahifasi ("Tez orada", kod `L-…`); `/xatolar` ga to‘g‘ridan-to‘g‘ri kirish ham Premium sahifasiga; admin `/admin/tolovlar` da kod bo‘yicha topib to‘lovni qayd etdi → Premium faol → Xatolar daftari ochildi. Gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+
+**Ochiq qoldi:**
+- Bank rekvizitlari va kontakt Telegram (spec §15 Q4) — Johnny kiritadi (`Payments__*`).
+- Telegram orqali "Premium faollashdi" xabari haqiqiy bot bilan sinalmadi (bot domeni/deploy 8-bosqich).
+- Obuna muddatini qo‘lda o‘zgartirish (sabab bilan), promo-kodni o‘chirish, komissiya hisoboti — 7-bosqich (admin va o‘qituvchi paneli).
 
 ## Bosqich 6 · PWA
 

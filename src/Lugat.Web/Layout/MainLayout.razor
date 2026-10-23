@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject SessionService Api
+@inject NavigationManager Nav
 @inject BrowserInterop Browser
 
 @* The app shows only after sign-in (spec §4.1, §6.3); without a session the sign-in screen takes its place. *@
@@ -55,6 +56,7 @@
     protected override async Task OnInitializedAsync()
     {
         Api.Changed += OnChanged;
+        Api.PremiumRequired += OnPremiumRequired;
         _state = await Api.EnsureSignedInAsync();
         await ApplyThemeAsync();
     }
@@ -75,5 +77,11 @@
 
     private Task ApplyThemeAsync() => Browser.SetThemeAsync(_state?.Me?.Theme ?? Lugat.Domain.Users.ThemeChoice.Device);
 
-    public void Dispose() => Api.Changed -= OnChanged;
+    private void OnPremiumRequired() => InvokeAsync(() => Nav.NavigateTo("premium"));
+
+    public void Dispose()
+    {
+        Api.Changed -= OnChanged;
+        Api.PremiumRequired -= OnPremiumRequired;
+    }
 }

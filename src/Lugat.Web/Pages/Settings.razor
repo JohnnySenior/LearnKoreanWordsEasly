@@ -10,6 +10,11 @@
 <a class="back" href="">← Bugun</a>
 <h1>Profil va sozlamalar</h1>
 <a class="button block" href="natijalar"><span>Natijalar</span><span class="aside">o‘rganilgan so‘zlar va xatolar →</span></a>
+<a class="button block" href="premium"><span>Premium</span><span class="aside">tariflar va to‘lov →</span></a>
+@if (IsAdmin)
+{
+    <a class="button block" href="admin/tolovlar"><span>To‘lovlar</span><span class="aside">to‘lovni qayd etish, promo-kodlar →</span></a>
+}
 @if (IsEditor)
 {
     <a class="button block" href="kontent"><span>Kontent</span><span class="aside">import, AI qoralama, tekshirish, nashr →</span></a>
