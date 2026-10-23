@@ -1,0 +1,118 @@
+@page "/admin/sarf"
+@using Lugat.Contracts
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Sarf — Lug‘at</PageTitle>
+
+@* AI and voice spending (spec §10 "Sarf"), from ai_usage. Prices come from configuration; a missing price is "noma’lum". *@
+<a class="back" href="admin">← Admin panel</a>
+<h1>Sarf</h1>
+
+@if (!IsAdmin)
+{
+    <p class="muted">Bu sahifa admin uchun.</p>
+    return;
+}
+
+<div class="chips" role="radiogroup" aria-label="Davr">
+    @foreach (var d in new[] { 7, 30, 90 })
+    {
+        var days = d;
+        <button class="chip @(_days == d ? "selected" : "")" role="radio" aria-checked="@(_days == d)" @onclick="() => LoadAsync(days)">@d kun</button>
+    }
+</div>
+
+@if (_report is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<section class="card">
+    <h2>Shu oy</h2>
+    <div class="figures">
+        <div><strong>$@_report.Month.EstimatedUsd.ToString("0.00")</strong><span>taxminiy sarf (hosting bilan)</span></div>
+        <div><strong>$@_report.Month.LimitUsd.ToString("0.00")</strong><span>oylik chegara</span></div>
+        <div><strong>@_report.Month.UnknownPriceCalls</strong><span>narxi noma’lum chaqiruv</span></div>
+    </div>
+    @if (_report.Month.Warning)
+    {
+        <div class="notice" role="alert">Sarf ogohlantirish chegarasidan oshdi.</div>
+    }
+</section>
+
+<section class="card">
+    <h2>Funksiyalar bo‘yicha</h2>
+    @if (_report.ByFeature.Count == 0)
+    {
+        <p class="muted">Bu davrda chaqiruv yo‘q.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Funksiya</th><th class="num">Chaqiruv</th><th class="num">Hajm</th><th class="num">$</th></tr></thead>
+                <tbody>
+                    @foreach (var f in _report.ByFeature)
+                    {
+                        <tr>
+                            <td>@f.Feature</td>
+                            <td class="num">@f.Calls</td>
+                            <td class="num">@f.Amount.ToString("N0") @Unit(f.Unit)</td>
+                            <td class="num">@f.Usd.ToString("0.000")@(f.UnknownPrice > 0 ? $" (+{f.UnknownPrice} noma’lum)" : "")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="card">
+    <h2>Kunlar bo‘yicha</h2>
+    @if (_report.ByDay.Count > 0)
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Kun</th><th class="num">Chaqiruv</th><th class="num">Xato</th><th class="num">$</th></tr></thead>
+                <tbody>
+                    @foreach (var d in _report.ByDay)
+                    {
+                        <tr><td>@Format.Day(d.Day)</td><td class="num">@d.Calls</td><td class="num">@d.Failed</td><td class="num">@d.Usd.ToString("0.000")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    private UsageReportDto? _report;
+    private int _days = 30;
+    private string? _error;
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsAdmin)
+        {
+            await LoadAsync(30);
+        }
+    }
+
+    private async Task LoadAsync(int days)
+    {
+        _days = days;
+        var result = await Api.GetAsync<UsageReportDto>($"api/admin/usage?days={days}");
+        (_report, _error) = (result.Value ?? _report, result.Error);
+    }
+
+    private static string Unit(string unit) => unit switch
+    {
+        "characters" => "belgi",
+        "audio-ms" => "ms",
+        _ => "token",
+    };
+}

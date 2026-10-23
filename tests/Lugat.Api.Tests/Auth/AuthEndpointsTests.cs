@@ -268,6 +268,26 @@ public class AuthEndpointsTests
     }
 
     [Fact]
+    public async Task A_class_on_one_network_can_refresh_after_the_sign_in_limit_is_used_up()
+    {
+        await using var factory = Factory();
+        factory.Settings["Auth:SignInPerMinute"] = "3";
+        var client = factory.CreateClient();
+        var tokens = new List<AccessTokenResponse>();
+        for (var i = 0; i < 3; i++)
+        {
+            tokens.Add((await (await TelegramAsync(client, User + i)).Content.ReadFromJsonAsync<AccessTokenResponse>())!);
+        }
+
+        // Sign-in is used up for this IP, yet all three learners still refresh their sessions (twice each).
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await TelegramAsync(client, User + 9)).StatusCode);
+        foreach (var t in tokens.Concat(tokens))
+        {
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(t.RefreshToken))).StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task Sign_in_is_rate_limited_per_ip()
     {
         await using var factory = Factory();

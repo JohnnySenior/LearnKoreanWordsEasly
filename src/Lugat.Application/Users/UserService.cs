@@ -1,6 +1,7 @@
 using System.Globalization;
 using Lugat.Application.Abstractions;
 using Lugat.Contracts;
+using Lugat.Domain;
 using Lugat.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -34,7 +35,8 @@ public sealed class AdminOptions
 }
 
 /// <summary>What a request's token is checked against on every call (L-13).</summary>
-public sealed record SessionCheck(int SessionVersion, UserRoles Roles);
+/// <param name="LastSeenAt">When the user was last marked active (<see cref="UserService.NeedsTouch"/>).</param>
+public sealed record SessionCheck(int SessionVersion, UserRoles Roles, DateTimeOffset LastSeenAt);
 
 public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationLock operations, IOptionsMonitor<AdminOptions> admins, IOptionsMonitor<Premium.PremiumOptions> premium)
 {
@@ -90,6 +92,7 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         }
 
         await db.SaveChangesAsync(ct);
+        await RecordDayAsync(user.Id, now, ct);
         return user;
     }
 
@@ -129,8 +132,42 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
     public async Task<SessionCheck?> CheckSessionAsync(Guid userId, CancellationToken ct) =>
         await db.Users.AsNoTracking()
             .Where(u => u.Id == userId && u.DeletedAt == null)
-            .Select(u => new SessionCheck(u.SessionVersion, u.Roles))
+            .Select(u => new SessionCheck(u.SessionVersion, u.Roles, u.LastSeenAt))
             .SingleOrDefaultAsync(ct);
+
+    /// <summary>"Last seen" and the day's activity are written at most about once an hour, not on every request.</summary>
+    public bool NeedsTouch(DateTimeOffset lastSeenAt)
+    {
+        var now = time.GetUtcNow();
+        return now - lastSeenAt >= TimeSpan.FromHours(1) || KoreaTime.Day(lastSeenAt) != KoreaTime.Day(now);
+    }
+
+    /// <summary>Marks the user active now: "oxirgi kirish" for the teacher, daily active and retention for the admin.</summary>
+    public async Task TouchAsync(Guid userId, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        await db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(x => x.SetProperty(u => u.LastSeenAt, now), ct);
+        await RecordDayAsync(userId, now, ct);
+    }
+
+    private async Task RecordDayAsync(Guid userId, DateTimeOffset now, CancellationToken ct)
+    {
+        var day = KoreaTime.Day(now);
+        if (await db.ActivityDays.AnyAsync(a => a.UserId == userId && a.Day == day, ct))
+        {
+            return;
+        }
+
+        db.ActivityDays.Add(new UserActivityDay { UserId = userId, Day = day });
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            db.DiscardChanges(); // a parallel request recorded the same day
+        }
+    }
 
     /// <summary>Signs out everywhere: every access and refresh token issued so far stops working (L-13).</summary>
     public async Task LogoutAsync(Guid userId, CancellationToken ct)
@@ -203,6 +240,11 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         await db.TrapNotes.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.ListeningSets.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.ReminderDeliveries.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.ActivityDays.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.GroupMembers.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        // A teacher's groups close with the account; their learners' own data stays theirs.
+        await db.Groups.Where(x => x.TeacherUserId == userId && x.ClosedAt == null)
+            .ExecuteUpdateAsync(x => x.SetProperty(g => g.ClosedAt, time.GetUtcNow()), ct);
         await db.UnitProgress.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
         await db.LearningItems.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct); // personal words only; catalog items are shared
         await db.UserLogins.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
@@ -210,6 +252,7 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
         user.DisplayName = null;
         user.PaymentCode = null;
+        user.PromoCodeId = null;
         user.Roles = UserRoles.None;
         user.RemindersEnabled = false;
         user.BotBlockedAt = null;

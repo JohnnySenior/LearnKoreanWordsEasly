@@ -1,0 +1,143 @@
+@page "/oqituvchi/guruh/{Id:guid}"
+@using Lugat.Contracts
+@inject SessionService Api
+@inject BrowserInterop Browser
+@inject NavigationManager Nav
+
+<PageTitle>Guruh — Lug‘at</PageTitle>
+
+@* One group (spec §9.2): the learners table and the group's hardest words. *@
+<a class="back" href="oqituvchi">← O‘qituvchi paneli</a>
+
+@if (_group is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<h1>@_group.Name</h1>
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+<section class="card">
+    <h2>Taklif havolasi</h2>
+    <p class="muted small-text">O‘quvchi havolani ochib, rozilik bersa guruhga qo‘shiladi.</p>
+    <span class="invite-link">@InviteUrl</span>
+    <button class="button small" @onclick="CopyAsync">@(_copied ? "Nusxa olindi" : "Nusxa olish")</button>
+    @if (_confirmRenew)
+    {
+        <button class="button small" disabled="@_busy" @onclick="RenewAsync">Ha, yangi havola</button>
+        <button class="link-btn muted" @onclick="() => _confirmRenew = false">Bekor</button>
+    }
+    else
+    {
+        <button class="link-btn muted" @onclick="() => _confirmRenew = true">Yangi havola</button>
+    }
+    @if (_confirmRenew)
+    {
+        <p class="muted small-text">Eski havola ishlamay qoladi; guruhdagilar qoladi.</p>
+    }
+</section>
+
+<section class="card">
+    <h2>O‘quvchilar (@_group.Students.Count)</h2>
+    @if (_group.Students.Count == 0)
+    {
+        <p class="muted">Hali hech kim qo‘shilmagan.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Ism</th><th>Joriy</th><th class="num">Tugallangan</th><th class="num">Oxirgi test</th><th class="num">7 kunda faol</th><th>Oxirgi kirish</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in _group.Students)
+                    {
+                        <tr>
+                            <td class="wrap"><a href="@($"oqituvchi/oquvchi/{s.UserId}")">@(s.Name ?? "—")</a></td>
+                            <td>@(s.CurrentUnit ?? "—")</td>
+                            <td class="num">@s.PassedUnits</td>
+                            <td class="num">@(s.LastTestPercent is { } p ? $"{p}%" : "—")</td>
+                            <td class="num">@s.ActiveDays7</td>
+                            <td>@Format.Ago(s.LastSeenAt, DateTimeOffset.UtcNow)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="card">
+    <h2>Eng qiyin 10 so‘z</h2>
+    @if (_group.HardestWords.Count == 0)
+    {
+        <p class="muted">Hali xato yo‘q.</p>
+    }
+    else
+    {
+        <MissedWords Words="_group.HardestWords" ShowLearners="true" />
+    }
+</section>
+
+<section class="card danger-zone">
+    @if (_confirmClose)
+    {
+        <p><strong>Guruhni yopasizmi?</strong> O‘quvchilar ro‘yxati sizga ko‘rinmay qoladi, havola ishlamaydi. O‘quvchilarning o‘z ma’lumotlari o‘zida qoladi.</p>
+        <button class="button" disabled="@_busy" @onclick="CloseAsync">Ha, yopish</button>
+        <button class="button" @onclick="() => _confirmClose = false">Bekor qilish</button>
+    }
+    else
+    {
+        <button class="button" @onclick="() => _confirmClose = true">Guruhni yopish</button>
+    }
+</section>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private GroupDetailDto? _group;
+    private string? _error;
+    private bool _busy;
+    private bool _copied;
+    private bool _confirmRenew;
+    private bool _confirmClose;
+
+    private string InviteUrl => Nav.ToAbsoluteUri($"join/{_group!.InviteCode}").ToString();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAsync<GroupDetailDto>($"api/teacher/groups/{Id}");
+        (_group, _error) = (result.Value, result.Error);
+    }
+
+    private async Task CopyAsync() => _copied = await Browser.CopyTextAsync(InviteUrl);
+
+    private async Task RenewAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TeacherGroupDto>(HttpMethod.Post, $"api/teacher/groups/{Id}/invite");
+        (_busy, _confirmRenew, _copied, _error) = (false, false, false, result.Error);
+        if (result.Value is { } renewed && _group is not null)
+        {
+            _group = _group with { InviteCode = renewed.InviteCode };
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/teacher/groups/{Id}");
+        _busy = false;
+        if (result.Ok)
+        {
+            Nav.NavigateTo("oqituvchi");
+        }
+
+        _error = result.Error;
+    }
+}

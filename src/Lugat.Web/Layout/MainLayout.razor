@@ -83,6 +83,23 @@
 
         _onboardingChecked = true;
         _onboarding = await Browser.StorageGetAsync(Onboarding.SeenKey) is null;
+        await ApplyReferralAsync();
+    }
+
+    // "/?ref=CODE" (spec §4.1): a teacher's promo code goes with the learner to the Premium page (spec §9.1).
+    private async Task ApplyReferralAsync()
+    {
+        var uri = new Uri(Nav.Uri);
+        var code = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => p.Split('=', 2))
+            .Where(p => p.Length == 2 && p[0] == "ref")
+            .Select(p => Uri.UnescapeDataString(p[1]))
+            .FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            await Api.SendJsonAsync<object>(HttpMethod.Post, "api/me/referral", new Lugat.Contracts.ReferralRequest(code));
+            Nav.NavigateTo(uri.AbsolutePath, replace: true);
+        }
     }
 
     private async Task RetryAsync()

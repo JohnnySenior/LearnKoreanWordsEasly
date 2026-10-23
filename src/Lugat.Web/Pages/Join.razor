@@ -1,0 +1,70 @@
+@page "/join/{Code}"
+@using Lugat.Contracts
+@inject SessionService Api
+
+<PageTitle>Guruhga qo‘shilish — Lug‘at</PageTitle>
+
+@* Joining a teacher's group (spec §9.1): the learner sees who will see what, and agrees. *@
+<h1>Guruhga qo‘shilish</h1>
+
+@if (_joined is not null)
+{
+    <section class="card">
+        <p role="status"><strong>Siz «@_joined.Name» guruhiga qo‘shildingiz.</strong></p>
+        <p class="muted">Guruhdan istalgan vaqtda Profil → «Guruhlarim» orqali chiqishingiz mumkin.</p>
+        <a class="button primary" href="">Bosh sahifaga</a>
+    </section>
+    return;
+}
+
+@if (_invite is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    @if (_error is not null)
+    {
+        <a class="button" href="">Bosh sahifaga</a>
+    }
+    return;
+}
+
+<section class="card">
+    @if (_invite.AlreadyMember)
+    {
+        <p>Siz allaqachon <strong>«@_invite.GroupName»</strong> guruhidasiz (o‘qituvchi: @(_invite.TeacherName ?? "—")).</p>
+        <a class="button primary" href="">Bosh sahifaga</a>
+    }
+    else
+    {
+        <p class="lead-text">Siz <strong>@(_invite.TeacherName ?? "o‘qituvchi")</strong>ning <strong>«@_invite.GroupName»</strong> guruhiga qo‘shilyapsiz.</p>
+        <p>O‘qituvchi sizning <strong>bo‘lim natijalaringiz</strong>, faolligingiz va <strong>xato so‘zlaringizni</strong> ko‘radi.</p>
+        <p class="muted small-text">Javoblaringiz tarixi, to‘lovlaringiz va kirish ma’lumotlaringiz ko‘rinmaydi. Guruhdan istalgan vaqtda chiqishingiz mumkin.</p>
+        @if (_error is not null)
+        {
+            <div class="notice" role="alert">@_error</div>
+        }
+        <button class="button primary" disabled="@_busy" @onclick="JoinAsync">Roziman, qo‘shilish</button>
+        <a class="button" href="">Yo‘q</a>
+    }
+</section>
+
+@code {
+    [Parameter] public string Code { get; set; } = "";
+
+    private GroupInviteDto? _invite;
+    private MyGroupDto? _joined;
+    private string? _error;
+    private bool _busy;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAsync<GroupInviteDto>($"api/groups/invite/{Uri.EscapeDataString(Code)}");
+        (_invite, _error) = (result.Value, result.Error);
+    }
+
+    private async Task JoinAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<MyGroupDto>(HttpMethod.Post, $"api/groups/join/{Uri.EscapeDataString(Code)}");
+        (_joined, _error, _busy) = (result.Value, result.Error, false);
+    }
+}

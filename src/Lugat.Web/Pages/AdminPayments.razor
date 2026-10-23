@@ -6,9 +6,9 @@
 
 <PageTitle>To‘lovlar — Lug‘at</PageTitle>
 
-@* The owner's manual payment flow (spec §7.3, §10): find the payer by code or name, record the transfer, refund.
-   The full admin panel comes in stage 7. *@
-<a class="back" href="sozlamalar">← Sozlamalar</a>
+@* The owner's manual payment flow (spec §7.3, §10): find the payer by code or name, record the transfer, refund;
+   promo codes made and turned off. *@
+<a class="back" href="admin">← Admin panel</a>
 <h1>To‘lovlar</h1>
 
 @if (!IsAdmin)
@@ -116,7 +116,11 @@
         <ul class="plain-list small-text" style="margin-top:8px">
             @foreach (var p in _promos)
             {
-                <li><strong>@p.Code</strong> −@p.DiscountPercent% · komissiya @p.CommissionPercent%@(p.Teacher is null ? "" : $" · {p.Teacher}") · @p.Payments ta to‘lov@(p.IsActive ? "" : " · o‘chirilgan")</li>
+                var promo = p;
+                <li>
+                    <span><strong>@p.Code</strong> −@p.DiscountPercent% · komissiya @p.CommissionPercent%@(p.Teacher is null ? "" : $" · {p.Teacher}") · @p.Payments ta to‘lov@(p.IsActive ? "" : " · o‘chirilgan")</span>
+                    <button class="link-btn muted" disabled="@_busy" @onclick="() => SetActiveAsync(promo, !promo.IsActive)">@(p.IsActive ? "O‘chirish" : "Yoqish")</button>
+                </li>
             }
         </ul>
     }
@@ -172,6 +176,8 @@
     {
         _user = user;
         _paymentId = Guid.NewGuid();
+        // The teacher's code the learner came with (spec §9.1), so the commission is not forgotten.
+        _promo = (await Api.GetAsync<AdminUserDetailDto>($"api/admin/users/{user.Id}")).Value?.PromoCode ?? _promo;
         _payments = (await Api.GetAsync<List<PaymentDto>>($"api/admin/payments?userId={user.Id}")).Value;
     }
 
@@ -207,6 +213,16 @@
             _status = "To‘lov qaytarildi: muddat bugundan tugadi.";
             _payments = (await Api.GetAsync<List<PaymentDto>>(_user is null ? "api/admin/payments" : $"api/admin/payments?userId={_user.Id}")).Value;
         }
+    }
+
+    // A code is never deleted (payments point to it), only turned off (spec §10).
+    private async Task SetActiveAsync(PromoCodeDto promo, bool active)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Put, $"api/admin/promo-codes/{promo.Id}/active", new SetPromoActiveRequest(active));
+        _busy = false;
+        _error = result.Error;
+        _promos = (await Api.GetAsync<List<PromoCodeDto>>("api/admin/promo-codes")).Value;
     }
 
     private async Task CreatePromoAsync()

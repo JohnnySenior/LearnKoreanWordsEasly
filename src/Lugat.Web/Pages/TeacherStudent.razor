@@ -1,0 +1,77 @@
+@page "/oqituvchi/oquvchi/{Id:guid}"
+@using Lugat.Contracts
+@using Lugat.Domain.Catalog
+@inject SessionService Api
+
+<PageTitle>O‘quvchi — Lug‘at</PageTitle>
+
+@* One learner of the teacher's group (spec §9.2): scores by unit and the most-missed words. Nothing else. *@
+<a class="back" href="oqituvchi">← O‘qituvchi paneli</a>
+
+@if (_student is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<h1>@(_student.Name ?? "O‘quvchi")</h1>
+<p class="muted">Joriy bo‘lim: @(_student.CurrentUnit ?? "—")</p>
+
+<section class="card">
+    <h2>Bo‘limlar</h2>
+    @if (_student.Units.Count == 0)
+    {
+        <p class="muted">Hali bo‘lim boshlanmagan.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Bo‘lim</th><th>Holat</th><th class="num">Eng yaxshi</th><th class="num">Urinish</th></tr></thead>
+                <tbody>
+                    @foreach (var u in _student.Units)
+                    {
+                        <tr>
+                            <td>@u.Unit</td>
+                            <td>@Status(u)</td>
+                            <td class="num">@(u.BestScorePercent is { } p ? $"{p}%" : "—")</td>
+                            <td class="num">@u.Attempts</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="card">
+    <h2>Eng ko‘p xato qilgan so‘zlar</h2>
+    @if (_student.TopMistakes.Count == 0)
+    {
+        <p class="muted">Hali xato yo‘q.</p>
+    }
+    else
+    {
+        <MissedWords Words="_student.TopMistakes" />
+    }
+</section>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private StudentDetailDto? _student;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAsync<StudentDetailDto>($"api/teacher/students/{Id}");
+        (_student, _error) = (result.Value, result.Error);
+    }
+
+    private static string Status(StudentUnitDto u) => u.Status switch
+    {
+        UnitProgressStatus.Passed when u.PassedBy == UnitPassedBy.SkipTest => "O‘tdi («Bilaman»)",
+        UnitProgressStatus.Passed => "O‘tdi",
+        _ => "Ochiq",
+    };
+}

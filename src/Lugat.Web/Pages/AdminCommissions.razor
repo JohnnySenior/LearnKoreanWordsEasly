@@ -1,0 +1,99 @@
+@page "/admin/komissiya"
+@using Lugat.Contracts
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Komissiya — Lug‘at</PageTitle>
+
+@* Teachers' commissions by month (spec §9.3): paid outside the app, marked here. *@
+<a class="back" href="admin">← Admin panel</a>
+<h1>Komissiya</h1>
+
+@if (!IsAdmin)
+{
+    <p class="muted">Bu sahifa admin uchun.</p>
+    return;
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_rows is null)
+{
+    <p class="muted">Yuklanmoqda…</p>
+}
+else if (_rows.Count == 0)
+{
+    <p class="muted">O‘qituvchi promo-kodi bilan hali to‘lov yo‘q.</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Oy</th><th>O‘qituvchi</th><th class="num">To‘lov</th><th class="num">Summa</th><th class="num">Komissiya</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var r in _rows)
+                {
+                    var row = r;
+                    <tr>
+                        <td>@Format.Month(r.Month)</td>
+                        <td>@(r.Teacher ?? "—")</td>
+                        <td class="num">@r.Payments</td>
+                        <td class="num">@Format.Won(r.AmountKrw)</td>
+                        <td class="num">@Format.Won(r.CommissionKrw)</td>
+                        <td>
+                            @if (r.Paid)
+                            {
+                                <span class="pill">To‘landi</span>
+                            }
+                            else if (_confirm == (r.TeacherUserId, r.Month))
+                            {
+                                <button class="button small" disabled="@_busy" @onclick="() => MarkAsync(row)">Ha, to‘landi</button>
+                                <button class="link-btn muted" @onclick="() => _confirm = null">Bekor</button>
+                            }
+                            else
+                            {
+                                <button class="link-btn" @onclick="() => _confirm = (row.TeacherUserId, row.Month)">To‘landi deb belgilash</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="muted small-text">Qaytarilgan to‘lovlar hisobga olinmaydi. Oylar Koreya vaqti bo‘yicha.</p>
+}
+
+@code {
+    private List<TeacherCommissionDto>? _rows;
+    private (Guid, DateOnly)? _confirm;
+    private string? _error;
+    private bool _busy;
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsAdmin)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<List<TeacherCommissionDto>>("api/admin/commissions");
+        (_rows, _error) = (result.Value, result.Error);
+    }
+
+    private async Task MarkAsync(TeacherCommissionDto row)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TeacherCommissionDto>(HttpMethod.Post, "api/admin/commissions/paid", new MarkCommissionPaidRequest(row.TeacherUserId, row.Month));
+        (_busy, _confirm) = (false, null);
+        _error = result.Error;
+        await LoadAsync();
+    }
+}

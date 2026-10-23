@@ -29,6 +29,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Domain.Premium.PromoCode> PromoCodes => Set<Domain.Premium.PromoCode>();
 
+    public DbSet<UserActivityDay> ActivityDays => Set<UserActivityDay>();
+
+    public DbSet<Domain.Teaching.Group> Groups => Set<Domain.Teaching.Group>();
+
+    public DbSet<Domain.Teaching.GroupMember> GroupMembers => Set<Domain.Teaching.GroupMember>();
+
+    public DbSet<Domain.Teaching.CommissionPayout> CommissionPayouts => Set<Domain.Teaching.CommissionPayout>();
+
+    public DbSet<Domain.Operations.AdminAuditEntry> AdminAudit => Set<Domain.Operations.AdminAuditEntry>();
+
     public DbSet<Domain.Catalog.CatalogWord> CatalogWords => Set<Domain.Catalog.CatalogWord>();
 
     public DbSet<Domain.Catalog.CatalogUsage> CatalogUsages => Set<Domain.Catalog.CatalogUsage>();
@@ -109,6 +119,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(u => u.PaymentCode).HasMaxLength(8);
             e.HasIndex(u => u.PaymentCode).IsUnique();
             e.Property(u => u.Version).IsRowVersion();
+            e.HasOne<Domain.Premium.PromoCode>().WithMany().HasForeignKey(u => u.PromoCodeId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<UserLogin>(e =>
@@ -151,6 +162,50 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasIndex(x => x.Code).IsUnique(); // stored in upper case: unique regardless of case (spec DATA01)
             e.Property(x => x.Code).HasMaxLength(32);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.TeacherUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<UserActivityDay>(e =>
+        {
+            e.ToTable("user_activity_days");
+            e.HasKey(x => new { x.UserId, x.Day });
+            e.HasIndex(x => x.Day);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Teachers (spec §9).
+        b.Entity<Domain.Teaching.Group>(e =>
+        {
+            e.ToTable("groups");
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.Property(x => x.InviteCode).HasMaxLength(16);
+            e.HasIndex(x => x.InviteCode).IsUnique();
+            e.HasIndex(x => x.TeacherUserId);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.TeacherUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Teaching.GroupMember>(e =>
+        {
+            e.ToTable("group_members");
+            e.HasIndex(x => new { x.GroupId, x.UserId }).IsUnique();
+            e.HasIndex(x => x.UserId);
+            e.HasOne<Domain.Teaching.Group>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Teaching.CommissionPayout>(e =>
+        {
+            e.ToTable("commission_payouts");
+            e.HasIndex(x => new { x.TeacherUserId, x.Month }).IsUnique();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.TeacherUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Operations.AdminAuditEntry>(e =>
+        {
+            e.ToTable("admin_audit");
+            e.Property(x => x.Action).HasMaxLength(32);
+            e.Property(x => x.Detail).HasMaxLength(500);
+            e.HasIndex(x => new { x.TargetUserId, x.At });
         });
 
         // The shared catalog (spec §2, §5.1): one copy for everyone, no owner.
