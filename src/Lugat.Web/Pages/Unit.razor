@@ -9,31 +9,37 @@
 
 @* A unit (spec §4.3): 1 table, 2 cards, 3 exercises, 4 the unit test. The steps are a guide, not a forced order;
    only the test finishes a unit (stage 4). Opening the page the first time creates the unit's cards (spec §5.3). *@
-<a class="back" href="bolimlar">← Bo‘limlar</a>
-
 @if (_unit is null)
 {
-    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    <AppHeader Title="Bo‘lim" Back="bolimlar" />
+    @if (_error is not null)
+    {
+        <div class="notice" role="alert">@_error</div>
+    }
+    else
+    {
+        <div aria-busy="true" style="margin-top:16px"><span class="skeleton" style="width:60%"></span><span class="skeleton" style="width:80%;margin-top:12px"></span></div>
+    }
     return;
 }
 
-<header class="page-head">
-    <div>
-        <h1>@_unit.Unit.Number-bo‘lim</h1>
-        <span class="muted small-text">@_unit.Unit.Label · @_unit.Words.Count ta so‘z · @_unit.Words.Count(w => w.Started) tasi kartochkada boshlangan</span>
-    </div>
-    @if (_unit.Unit.State == UnitState.Passed)
-    {
-        <span class="pill pill-ok">Tugallangan@(_unit.Unit.BestScorePercent is { } best ? $" · {best}%" : "")</span>
-    }
-</header>
+<AppHeader Title="@($"{_unit.Unit.Number}-bo‘lim")" Back="bolimlar">
+    <Right>
+        @if (_step == 1)
+        {
+            @* Study time (UI handoff 1d): counts down from opening the table; a tap switches 5 → 10 → 15 minutes. *@
+            <button type="button" class="timer-box @(Left() is { } l && l <= TimeSpan.Zero ? "over" : "")" role="timer" aria-label="Yodlash vaqti. Bosib 5, 10 yoki 15 daqiqani tanlang" @onclick="NextMinutes">
+                @TimerText()
+            </button>
+        }
+        else if (_unit.Unit.State == UnitState.Passed)
+        {
+            <Tag Kind="accent">Tugallangan@(_unit.Unit.BestScorePercent is { } best ? $" · {best}%" : "")</Tag>
+        }
+    </Right>
+</AppHeader>
 
-<ol class="steps" aria-label="Bo‘lim qadamlari">
-    <li class="@(_step == 1 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 1">1. Jadval</button></li>
-    <li class="@(_step == 2 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 2">2. Kartochka</button></li>
-    <li class="@(_step == 3 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 3">3. Mashqlar</button></li>
-    <li class="@(_step == 4 ? "current" : "")"><button class="link-btn" @onclick="() => _step = 4">4. Test</button></li>
-</ol>
+<UnitStepper Current="_step" Compact="true" OnSelect="s => _step = s" />
 
 @if (_error is not null)
 {
@@ -42,90 +48,54 @@
 
 @if (_step == 2)
 {
-    <section class="card">
-        <h2>Kartochka</h2>
+    <section class="unit-step">
+        <h3>Kartochka</h3>
         <p class="muted small-text">Shu bo‘limning @_unit.Words.Count ta so‘zi ikki yo‘nalishda: avval o‘zingiz eslaysiz, keyin javobni ochib baholaysiz. Javoblar takrorlash jadvaliga yoziladi.</p>
-        <button class="button primary block" disabled="@_busy" @onclick="ToCardsAsync"><span>Kartochkani boshlash</span><span class="aside">@(_unit.Words.Count * 2) karta</span></button>
+        <button class="btn btn-primary block big" disabled="@_busy" @onclick="ToCardsAsync"><span>Kartochkani boshlash · @(_unit.Words.Count * 2) karta</span><Icon Name="arrow-right" /></button>
     </section>
     return;
 }
 
 @if (_step == 3)
 {
-    <section class="card">
-        <h2>Mashqlar</h2>
-        <nav class="menu compact">
-            <a href="@($"mashq/yozish?unit={Id}")"><span><span class="t">Yozma mashq</span><span class="s">So‘zni yozib tarjima qilish</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a>
-            <a href="mashq/qollanish"><span><span class="t">Qaysi so‘z to‘g‘ri?</span><span class="s">So‘zni gapda to‘g‘ri ishlatish</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a>
-        </nav>
+    <section class="unit-step">
+        <h3>Mashq</h3>
+        <ListRow Label="Yozma mashq" Note="So‘zni yozib tarjima qilish" Href="@($"mashq/yozish?unit={Id}")" />
+        <ListRow Label="Qaysi so‘z to‘g‘ri?" Note="So‘zni gapda to‘g‘ri ishlatish" Href="mashq/qollanish" />
     </section>
     return;
 }
 
 @if (_step == 4)
 {
-    <section class="card">
-        <h2>Bo‘lim testi</h2>
+    <section class="unit-step">
+        <h3>Bo‘lim testi</h3>
         <p class="muted small-text">Har so‘zdan bitta savol; 80% to‘g‘ri bo‘lsa (25 savolda 20 ta) bo‘lim tugaydi va keyingisi ochiladi.</p>
         <p class="muted small-text">Savollar: so‘z → ma’no, ma’no → so‘z va eshitib tanlash. Javoblar test oxirida ko‘rsatiladi; test kartochkalar jadvalini o‘zgartirmaydi. Qayta topshirish cheklanmagan.</p>
         @* Only the server's grading opens the next unit (spec §5.3). *@
-        <button class="button primary block" disabled="@_busy" @onclick="StartTestAsync">@(_unit.Unit.State == UnitState.Passed ? "Testni qayta topshirish" : "Testni boshlash")</button>
+        <button class="btn btn-primary block big" disabled="@_busy" @onclick="StartTestAsync"><span>@(_unit.Unit.State == UnitState.Passed ? "Testni qayta topshirish" : "Testni boshlash")</span><Icon Name="arrow-right" /></button>
     </section>
     return;
 }
 
-<div class="study-bar">
-    @if (_startedAt is null)
-    {
-        <div class="seg" role="radiogroup" aria-label="Yodlash vaqti">
-            @foreach (var m in Minutes)
-            {
-                var minutes = m;
-                <button class="@(_minutes == minutes ? "selected" : "")" role="radio" aria-checked="@(_minutes == minutes)" @onclick="() => _minutes = minutes">@minutes daq</button>
-            }
-        </div>
-        <button class="button primary block" @onclick="Start">Yodlashni boshlash</button>
-    }
-    else if (Left() is { } left && left > TimeSpan.Zero)
-    {
-        <div class="row-between">
-            <span class="muted small-text">Yodlash vaqti</span>
-            <span class="timer" role="timer" aria-label="Qolgan vaqt">@($"{(int)left.TotalMinutes:00}:{left.Seconds:00}")</span>
-        </div>
-    }
-    else
-    {
-        <p style="margin:0 0 8px"><strong>@_minutes daqiqa tugadi.</strong> Endi kartochkada eslab ko‘ring: avval o‘zingiz eslaysiz, keyin javobni ochasiz.</p>
-    }
-
-    @if (_startedAt is not null)
-    {
-        <button class="button @(Left() is { } l && l > TimeSpan.Zero ? "" : "primary") block" disabled="@_busy" @onclick="ToCardsAsync">
-            <span>Kartochkaga o‘tish</span><span class="aside">@_unit.Words.Count so‘z</span>
-        </button>
-    }
-</div>
-
-<div class="seg" role="radiogroup" aria-label="Ustunni yopish" style="margin-top:12px">
-    @foreach (var (mode, label) in Modes)
-    {
-        var m = mode;
-        <button class="@(_cover == m ? "selected" : "")" role="radio" aria-checked="@(_cover == m)" @onclick="() => Cover(m)">@label</button>
-    }
+<div class="cover-bar">
+    <span class="muted small-text">Yopish:</span>
+    <div class="seg" role="radiogroup" aria-label="Ustunni yopish">
+        @foreach (var (mode, label) in Modes)
+        {
+            var m = mode;
+            <button class="@(_cover == m ? "selected" : "")" role="radio" aria-checked="@(_cover == m)" lang="@(m == CoverMode.Korean ? "ko" : null)" @onclick="() => Cover(m)">@label</button>
+        }
+    </div>
 </div>
 @if (_cover != CoverMode.None)
 {
-    <p class="muted small-text">Yopiq katakni bossangiz, faqat o‘sha so‘z ochiladi. Avval o‘zingiz eslab ko‘ring.</p>
-}
-
-@if (_error is not null)
-{
-    <div class="notice" role="alert">@_error</div>
+    <p class="muted small-text cover-hint">Yopiq katakni bossangiz, faqat o‘sha so‘z ochiladi. Avval o‘zingiz eslab ko‘ring.</p>
 }
 
 <table class="word-table">
     <thead>
-        <tr><th class="n">№</th><th>한국어</th><th>O‘zbekcha</th></tr>
+        <tr><th class="n">№</th><th lang="ko">한국어</th><th>O‘zbekcha</th></tr>
     </thead>
     <tbody>
         @foreach (var w in _unit.Words)
@@ -172,7 +142,7 @@
                                 <p class="muted small-text">@w.PosUz@(w.Theme is null ? "" : $" · {w.Theme}")</p>
                                 @if (w.TrapUz is not null)
                                 {
-                                    <p class="usage-trap"><strong>O‘zbekcha tuzoq.</strong> @w.TrapUz</p>
+                                    <div class="trap"><span class="trap-title"><Icon Name="triangle-alert" Size="14" Stroke="2.2" /> O‘zbekcha tuzoq</span><p>@w.TrapUz</p></div>
                                 }
                                 @if (w.ExampleKo is not null)
                                 {
@@ -186,8 +156,13 @@
         }
     </tbody>
 </table>
-<p class="muted small-text">Koreyscha so‘zni bossangiz, talaffuzini, misol va tuzoqni ko‘rasiz. Jadval kartochkalarning takrorlash jadvalini o‘zgartirmaydi.</p>
+<p class="muted small-text" style="margin-top:12px">Koreyscha so‘zni bossangiz, talaffuzini, misol va tuzoqni ko‘rasiz. Jadval kartochkalarning takrorlash jadvalini o‘zgartirmaydi.</p>
 <p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1-tur).</p>
+
+<div class="sticky-space"></div>
+<div class="sticky-action">
+    <button class="btn btn-primary block big" disabled="@_busy" @onclick="ToCardsAsync"><span>Kartochkaga o‘tish</span><Icon Name="arrow-right" /></button>
+</div>
 
 @code {
     [Parameter] public Guid Id { get; set; }
@@ -203,9 +178,9 @@
 
     private static readonly (CoverMode Mode, string Label)[] Modes =
     [
-        (CoverMode.None, "Ochiq"),
-        (CoverMode.Korean, "한국어 yopiq"),
-        (CoverMode.Uzbek, "O‘zbek yopiq"),
+        (CoverMode.None, "Hech"),
+        (CoverMode.Korean, "한국어"),
+        (CoverMode.Uzbek, "O‘zbekcha"),
     ];
 
     private UnitDto? _unit;
@@ -240,7 +215,21 @@
 
         _unit = result.Value;
         _error = result.Ok ? null : result.Error;
+        if (_unit is not null && _startedAt is null)
+        {
+            Start();
+        }
     }
+
+    private void NextMinutes()
+    {
+        _minutes = Minutes[(Array.IndexOf(Minutes, _minutes) + 1) % Minutes.Length];
+        Start();
+    }
+
+    private string TimerText() => Left() is { } left && left > TimeSpan.Zero
+        ? $"{(int)left.TotalMinutes:00}:{left.Seconds:00}"
+        : "00:00";
 
     private void Start()
     {
