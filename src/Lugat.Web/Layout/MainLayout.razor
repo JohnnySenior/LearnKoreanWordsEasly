@@ -22,22 +22,27 @@
 
 @if (_state.Status != SessionStatus.SignedIn)
 {
+    @* UI handoff 1a: brand, two first words of level A, the promise, sign-in, the word list's source. *@
     <main class="content signin-page">
-        <h1>Lug‘at</h1>
-        <p class="lead-text">Koreys tili so‘zlarini o‘zbek tilida, eng ko‘p ishlatiladiganlaridan boshlab o‘rganing.</p>
+        <AppHeader><Right><Tag>A · B · C</Tag></Right></AppHeader>
+        <div class="signin-words">
+            <div><span lang="ko">하다</span><small>qilmoq</small></div>
+            <div class="accent"><span lang="ko">있다</span><small>bor bo‘lmoq</small></div>
+        </div>
+        <section class="signin-pitch">
+            <h2>Koreys tili so‘zlari — o‘zbek tilida.</h2>
+            <p>Eng ko‘p ishlatiladigan so‘zlardan boshlab, 25 talik bo‘limlarda. Bo‘lim faqat testdan 80% bilan tugaydi.</p>
+        </section>
         @if (_state.Status == SessionStatus.Unavailable)
         {
-            <div class="notice" role="alert">@_state.Message <button class="button small" @onclick="RetryAsync">Qayta urinish</button></div>
+            <div class="notice" role="alert">@_state.Message</div>
+            <button class="btn btn-secondary block" @onclick="RetryAsync"><span>Qayta urinish</span></button>
         }
         else
         {
-            <section class="card">
-                <h2>Kirish</h2>
-                <p class="muted small-text">Telegram yoki Google hisobingiz bilan kiring. Parol kerak emas.</p>
-                <SignIn />
-            </section>
+            <SignIn />
         }
-        <p class="muted small-text">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1). <a href="maxfiylik">Maxfiylik siyosati</a></p>
+        <footer class="signin-foot">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1) · <a href="maxfiylik">Maxfiylik siyosati</a></footer>
     </main>
     <UpdateBanner />
     return;

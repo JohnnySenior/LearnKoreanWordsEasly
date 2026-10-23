@@ -1048,3 +1048,19 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .promo-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 6px; }
 .promo-row .input { min-height: 48px; }
 .promo-result { margin: 8px 0 0; font-size: 12px; color: var(--color-accent-700); }
+
+/* 1a Kirish. */
+.signin-page { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: 20px; }
+.signin-words { display: grid; grid-template-columns: 1fr 1fr; margin: 0 calc(-1 * var(--gutter)); border-bottom: 2px solid var(--color-divider); }
+.signin-words > div { padding: 24px var(--gutter); }
+.signin-words > div + div { border-left: 2px solid var(--color-divider); }
+.signin-words span { display: block; font: 900 56px/1.05 var(--font-ko); }
+.signin-words small { display: block; font-size: 13px; color: var(--color-muted); margin-top: 6px; }
+.signin-words .accent span { color: var(--color-accent); }
+.signin-pitch { padding: 20px 0 8px; }
+.signin-pitch h2 { font: 800 30px/1.12 var(--font-heading); margin: 0 0 10px; }
+.signin-pitch p { font-size: 15px; margin: 0; }
+.signin-page.content { padding-top: 12px; }
+.signin-buttons { display: grid; gap: 10px; justify-items: stretch; padding: 16px 0; margin: 0; }
+.signin-buttons .signin-google { min-height: 44px; }
+.signin-foot { margin: auto calc(-1 * var(--gutter)) 0; padding: 14px var(--gutter) 0; border-top: 2px solid var(--color-divider); font-size: 11px; color: var(--color-muted); }

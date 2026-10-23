@@ -46,6 +46,13 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
     public async Task<bool> TelegramWidgetAsync<T>(string elementId, string botUsername, DotNetObjectReference<T> target) where T : class =>
         await (await App()).InvokeAsync<bool>("telegramWidget", elementId, botUsername, target);
 
+    /// <summary>Loads Telegram's login script ahead of the tap; false when it could not load.</summary>
+    public async Task<bool> PrepareTelegramAsync() => await (await App()).InvokeAsync<bool>("prepareTelegram");
+
+    /// <summary>Opens Telegram's login window (call it from the tap); the result comes to OnTelegram/OnTelegramCancelled.</summary>
+    public async Task<bool> TelegramAuthAsync<T>(long botId, DotNetObjectReference<T> target) where T : class =>
+        await (await App()).InvokeAsync<bool>("telegramAuth", botId, target);
+
     /// <summary>Puts the Google sign-in button into the element; false when Google's script could not load.</summary>
     public async Task<bool> GoogleButtonAsync<T>(string elementId, string clientId, DotNetObjectReference<T> target) where T : class =>
         await (await App()).InvokeAsync<bool>("googleButton", elementId, clientId, target);

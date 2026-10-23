@@ -355,9 +355,11 @@ public class AuthEndpointsTests
         await using var factory = Factory();
         factory.Settings["Telegram:BotUsername"] = "lugat_bot";
 
-        var config = (await factory.CreateClient().GetFromJsonAsync<AuthConfigDto>("/api/auth/config", Json))!;
+        var raw = await factory.CreateClient().GetStringAsync("/api/auth/config");
+        var config = JsonSerializer.Deserialize<AuthConfigDto>(raw, Json)!;
 
-        Assert.Equal(new AuthConfigDto("lugat_bot", FakeGoogle.ClientId, false), config);
+        Assert.Equal(new AuthConfigDto("lugat_bot", FakeGoogle.ClientId, false, 123456), config);
+        Assert.DoesNotContain("TEST-TOKEN", raw); // only the token's public id part leaves the server
     }
 
     [Fact]

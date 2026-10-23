@@ -86,6 +86,32 @@ export async function telegramWidget(elementId, botUsername, dotnet) {
     }
 }
 
+// Our own "Telegram orqali kirish" button (UI handoff 1a): Telegram's login window, opened from the tap. The widget
+// script is loaded ahead (prepareTelegram) because a popup opened after a network wait would be blocked.
+export async function prepareTelegram() {
+    if (window.Telegram && window.Telegram.Login) return true;
+    try {
+        await loadScript('https://telegram.org/js/telegram-widget.js?22');
+        return !!(window.Telegram && window.Telegram.Login);
+    } catch {
+        return false;
+    }
+}
+
+export function telegramAuth(botId, dotnet) {
+    if (!(window.Telegram && window.Telegram.Login)) return false;
+    window.Telegram.Login.auth({ bot_id: botId, request_access: 'write', lang: 'uz' }, user => {
+        if (!user) {
+            dotnet.invokeMethodAsync('OnTelegramCancelled');
+            return;
+        }
+        const data = {};
+        Object.entries(user).forEach(([k, v]) => { if (v !== null && v !== undefined) data[k] = String(v); });
+        dotnet.invokeMethodAsync('OnTelegram', data);
+    });
+    return true;
+}
+
 // Google Identity Services: the button returns a signed ID token (credential), which the server verifies.
 export async function googleButton(elementId, clientId, dotnet) {
     const host = document.getElementById(elementId);
@@ -99,7 +125,7 @@ export async function googleButton(elementId, clientId, dotnet) {
             callback: response => dotnet.invokeMethodAsync('OnGoogle', response.credential),
         });
         host.innerHTML = '';
-        window.google.accounts.id.renderButton(host, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', locale: 'uz', width: 280 });
+        window.google.accounts.id.renderButton(host, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', locale: 'uz', width: Math.min(400, Math.max(200, host.clientWidth || 280)) });
         return true;
     } catch {
         return false;
