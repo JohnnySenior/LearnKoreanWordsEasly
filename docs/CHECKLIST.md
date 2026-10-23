@@ -251,6 +251,7 @@ Bosqichlar spec §13 bo‘yicha.
 **Deploy (2026-10-23, Railway connector):**
 - [x] Alohida loyiha `Lugat` (region `sfo`): `Postgres` 18, `app` (GitHub `main`, Dockerfile), volume `app-data` → `/data`, healthcheck `/health`, uxlash o‘chiq, domen `app-production-d5ca.up.railway.app` (`docs/HOSTING.md`).
 - [x] Maxfiy bo‘lmagan o‘zgaruvchilar: connection string (Postgres reference), `/data/*` yo‘llari, `Production`, `RAILWAY_RUN_UID=0`, `PORT=8080`.
+- [x] Johnny bergan qiymatlar: `Google__ClientId`, `Auth__Admins__TelegramUserIds__0`, `Backup__TelegramChatId` — deploy `de3bfa78` SUCCESS.
 
 **Tekshirildi (Railway loglari):**
 - Deploy `c9c6ab1a` (`863d1e5`) — SUCCESS: build ~3 daqiqa, 9 ta migratsiya bo‘sh bazaga qo‘llandi, `Now listening on http://[::]:8080`, `Hosting environment: Production`, healthcheck `/health` o‘tdi (u bazaga ulanishni tekshiradi).
@@ -259,7 +260,7 @@ Bosqichlar spec §13 bo‘yicha.
 
 **Ochiq qoldi:**
 - [ ] **Johnny, dashboard’da:** `app` → Settings → Source → "Wait for CI" yoqish (connector bu sozlamani o‘zgartira olmaydi; hozir o‘chiq — CI qizil bo‘lsa ham `main` deploy bo‘ladi); Workspace → Usage → hard spend limit (masalan $10/oy).
-- [ ] **Johnny, o‘zgaruvchilar** (maxfiy qiymatlar, `docs/HOSTING.md` 7–8-band): `Telegram__BotToken`, `Telegram__BotUsername`, BotFather `/setdomain app-production-d5ca.up.railway.app`; yoki `Google__ClientId`; `Auth__Admins__TelegramUserIds__0`; AI va Azure kalitlari, `Ai__Budget__*` tariflari; `Payments__*`; `Backup__TelegramChatId`.
+- [ ] **Johnny, o‘zgaruvchilar** (maxfiy qiymatlar, `docs/HOSTING.md` 7–8-band): `Telegram__BotToken` (dashboard’da), bot username → `Telegram__BotUsername`, BotFather `/setdomain app-production-d5ca.up.railway.app`, botda `/start`; Google’da origin qo‘shilgani va consent screen “In production”; AI va Azure kalitlari, `Ai__Budget__*` tariflari; `Payments__*`.
 - [ ] Kontent: production’da `Catalog__SeedSample` o‘chiq — admin kirgach `/kontent` orqali rasmiy ro‘yxat importi va nashr.
 - [ ] Production’da kechki (04:00 KST) zaxira va tiklash mashqi, haftalik Telegram nusxasi.
 - [ ] Haqiqiy bot bilan eslatma (BotFather `/setdomain`, "Sinov xabari", 20:00 dagi xabar).
