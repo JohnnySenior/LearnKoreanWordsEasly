@@ -272,3 +272,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Sozlamalar → AI xizmati endi kalit borligini emas, oxirgi haqiqiy chaqiruv natijasini ko‘rsatadi: "ishlayapti" / "ishlamayapti: sabab" / "hali tekshirilmagan". Sabab — production’da Anthropic kaliti ortiqcha belgi bilan kiritilganda ham "ulangan" deb ko‘rsatgani (Johnny topdi).
 - [x] AI va Azure kalitlari, model va region chetidagi bo‘sh joy/qator oxiri/qo‘shtirnoq avtomatik olib tashlanadi; muvaffaqiyatsiz chaqiruv logida xato turi bor.
 - Testlar: `Status_shows_how_the_last_call_ended_not_only_that_a_key_is_set` (kalit bor → tekshirilmagan; ping natijasi → ishlayapti/ishlamayapti sababi bilan; tuzatilgach keyingi chaqiruvdan so‘ng ishlayapti), `Keys_pasted_with_spaces_line_breaks_or_quotes_are_cleaned`.
+
+**Bo‘lim jadvali uslubi (2026-10-23):**
+- [x] Johnny iPhone’da topdi: bo‘limdagi so‘z jadvali chiziqsiz, ustunlar tekislanmagan, uzun koreyscha so‘z (아니다) ikki qatorga bo‘linardi. Sabab — `Unit.razor` jadvali KoreanAiTeacher’dan olingan, lekin `.word-table`, `.covered`, `.study-bar` uslublari ko‘chmay qolgan edi. KAT’dagi uslublar qo‘shildi (D-36).
+- Chromium, 390px, qorong‘i va yorug‘ mavzu: ustunlar №/한국어/O‘zbekcha, sarlavha ostida qalin chiziq, qatorlar orasida ingichka chiziq, koreyscha so‘z bo‘linmaydi; "한국어 yopiq" — chiziqli yopiq katak, bosilgan so‘z ochiladi va ostida ovoz va qo‘llanish chiqadi. Gorizontal scroll yo‘q, sahifa xatosi yo‘q.
