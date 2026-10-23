@@ -1064,3 +1064,47 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .signin-buttons { display: grid; gap: 10px; justify-items: stretch; padding: 16px 0; margin: 0; }
 .signin-buttons .signin-google { min-height: 44px; }
 .signin-foot { margin: auto calc(-1 * var(--gutter)) 0; padding: 14px var(--gutter) 0; border-top: 2px solid var(--color-divider); font-size: 11px; color: var(--color-muted); }
+
+/* 2a/2b Profil. */
+.profile-head { display: flex; align-items: flex-start; gap: 16px; margin: 0 calc(-1 * var(--gutter)); padding: 20px var(--gutter); border-bottom: 2px solid var(--color-divider); }
+.profile-head h1 { font: 800 20px/1.2 var(--font-heading); margin: 2px 0 8px; }
+.profile-avatar { flex: none; display: flex; align-items: flex-end; width: 56px; height: 56px; padding: 0 0 6px 8px; background: var(--color-text); color: var(--color-bg); font: 900 22px/1 var(--font-heading); }
+.manage-grid { display: grid; grid-template-columns: 1fr 1fr; margin: 0 calc(-1 * var(--gutter)); border-bottom: 2px solid var(--color-divider); }
+.manage-cell { display: flex; flex-direction: column; gap: 8px; min-height: 104px; padding: 16px var(--gutter); color: var(--color-text); text-decoration: none; }
+.manage-cell + .manage-cell { border-left: 1px solid var(--color-divider); }
+.manage-cell.primary { background: var(--color-surface); }
+.manage-cell b { font: 800 18px/1.2 var(--font-heading); }
+.manage-cell span { font-size: 12px; color: var(--color-muted); }
+.manage-cell:hover { color: var(--color-text); background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+.profile-plan { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 calc(-1 * var(--gutter)); padding: 16px var(--gutter); border-bottom: 2px solid var(--color-divider); }
+.profile-plan b { font: 800 16px var(--font-heading); }
+.profile-plan .btn { min-height: 44px; }
+.list-row-control .seg > button { min-height: 44px; padding: 0 10px; font-size: 13px; }
+.manage-cell:only-child { grid-column: span 2; }
+.profile-bottom { display: grid; gap: 4px; margin: 16px calc(-1 * var(--gutter)) 0; padding: 20px var(--gutter) 0; border-top: 2px solid var(--color-divider); }
+.profile-bottom .btn-ghost { justify-self: start; }
+.btn.danger { color: var(--color-accent-700); }
+
+/* 2d Admin → Tizim. */
+.system-seg { margin: 12px 0 6px; }
+.system-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; margin: 0 calc(-1 * var(--gutter)); padding: 12px var(--gutter); border-bottom: 1px solid var(--color-divider); }
+.system-row-text b { display: block; font-size: 15px; font-weight: 600; }
+.system-row-text span { display: block; font-size: 12px; color: var(--color-muted); }
+.system-row-text .warn-text, .warn-text { color: var(--color-accent-700); }
+.spend { padding: 12px 0 16px; }
+.spend-figure { margin: 0 0 10px; }
+.spend-figure b { font: 900 28px var(--font-heading); }
+.spend-figure span { color: var(--color-muted); }
+.spend-bar { height: 6px; margin-bottom: 8px; }
+
+/* 2c Admin panel. */
+.attention-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; min-height: 52px; margin: 0 calc(-1 * var(--gutter)); padding: 8px var(--gutter); border-bottom: 1px solid var(--color-divider); color: var(--color-text); text-decoration: none; }
+.attention-row b { font: 900 20px var(--font-heading); color: var(--color-accent); }
+.attention-row span { font-size: 14px; }
+.admin-tiles { display: grid; grid-template-columns: 1fr 1fr; margin: 0 calc(-1 * var(--gutter)); border-top: 2px solid var(--color-divider); }
+.admin-tile { display: flex; flex-direction: column; justify-content: space-between; min-height: 104px; padding: 14px var(--gutter); border-bottom: 1px solid var(--color-divider); color: var(--color-text); text-decoration: none; }
+.admin-tile:nth-child(odd) { border-right: 1px solid var(--color-divider); }
+.admin-tile:hover { color: var(--color-text); background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.admin-tile-no { font-size: 11px; color: var(--color-muted); }
+.admin-tile b { display: block; font: 800 16px/1.2 var(--font-heading); }
+.admin-tile span span { display: block; font-size: 12px; color: var(--color-muted); margin-top: 2px; }

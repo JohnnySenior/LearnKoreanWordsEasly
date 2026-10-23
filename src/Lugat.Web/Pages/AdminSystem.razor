@@ -1,0 +1,219 @@
+@page "/admin/tizim"
+@using Lugat.Contracts
+@using Lugat.Domain.Ai
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Tizim — Lug‘at</PageTitle>
+
+@* UI handoff 2d: the system blocks that used to sit in the profile (AI service, the month's spend, backups) live here,
+   for the owner only (spec §6.4, §10). The server checks the role on every call. *@
+<AppHeader Title="Tizim" Back="admin" />
+
+@if (!IsAdmin)
+{
+    <p class="muted" style="margin-top:16px">Bu sahifa admin uchun.</p>
+    return;
+}
+
+<SectionLabel Text="AI xizmati" />
+@if (_ai is null)
+{
+    <span class="skeleton" style="width:70%;margin:16px 0"></span>
+}
+else
+{
+    <div class="seg system-seg" role="radiogroup" aria-label="AI xizmati">
+        <button class="@(_ai.Chosen is null ? "selected" : "")" role="radio" aria-checked="@(_ai.Chosen is null)" disabled="@_busy" @onclick="() => ChooseAsync(null)">Standart</button>
+        @foreach (var p in _ai.Providers)
+        {
+            var kind = p.Kind;
+            <button class="@(_ai.Chosen == kind ? "selected" : "")" role="radio" aria-checked="@(_ai.Chosen == kind)" disabled="@(_busy || !p.Configured)" @onclick="() => ChooseAsync(kind)">@(kind == AiProviderKind.Anthropic ? "Anthropic" : "OpenAI")</button>
+        }
+    </div>
+    <p class="muted small-text">Tanlangani javob bermasa, ikkinchisi ishlatiladi.</p>
+    @foreach (var p in _ai.Providers)
+    {
+        var kind = p.Kind;
+        <div class="system-row">
+            <span class="system-row-text">
+                <b>@p.Label</b>
+                @if (!p.Configured)
+                {
+                    <span class="warn-text">API kaliti qo‘shilmagan</span>
+                }
+                else if (p.LastOk == true)
+                {
+                    <span>Ishlayapti · @p.Model@(_latency.TryGetValue(kind, out var ms) ? $" · {ms} ms" : "") · @When(p.LastAt)</span>
+                }
+                else if (p.LastOk == false)
+                {
+                    <span class="warn-text">Ishlamayapti: @p.LastError</span>
+                }
+                else
+                {
+                    <span>Kalit qo‘shilgan, hali tekshirilmagan · @p.Model</span>
+                }
+            </span>
+            @if (p.Configured)
+            {
+                <button class="btn btn-ghost small" disabled="@_busy" @onclick="() => PingAsync(kind)">Tekshirish</button>
+            }
+        </div>
+    }
+    @if (_aiStatus is not null)
+    {
+        <p role="status" class="small-text">@_aiStatus</p>
+    }
+}
+
+<SectionLabel Text="Oylik sarf" />
+@if (_budget is { } budget)
+{
+    var percent = budget.LimitUsd <= 0 ? 0 : (int)Math.Min(100, budget.EstimatedUsd * 100 / budget.LimitUsd);
+    <div class="spend">
+        <p class="spend-figure"><b>$@budget.EstimatedUsd.ToString("0.00")</b> <span>/ $@budget.LimitUsd.ToString("0.00")</span></p>
+        <div class="progress spend-bar @(budget.Warning ? "" : "ink")"><span style="width:@percent%"></span></div>
+        <p class="muted small-text">24 soatda @(_ai?.CallsToday ?? 0) AI so‘rov (sizniki) · taxminiy hisob</p>
+        @if (budget.UnknownPriceCalls > 0)
+        {
+            <p class="warn-text small-text">@budget.UnknownPriceCalls ta so‘rov narxi noma’lum: summa to‘liq emas, provayder billingini tekshiring.</p>
+        }
+    </div>
+}
+else
+{
+    <span class="skeleton" style="width:50%;margin:16px 0"></span>
+}
+
+<SectionLabel Text="Zaxira nusxa" />
+@if (_backup is null)
+{
+    <span class="skeleton" style="width:60%;margin:16px 0"></span>
+}
+else if (!_backup.Enabled)
+{
+    <p class="muted" style="margin:12px 0">Bu serverda zaxiralash yoqilmagan.</p>
+}
+else
+{
+    <div class="system-row">
+        <span class="system-row-text">
+            <b>Har kecha 04:00</b>
+            <span>@(_backup.LastVerifiedAt is { } ok ? $"Oxirgi tekshirilgan: {Format.DayTime(ok)}" : "Hali tekshirilgan nusxa yo‘q") · @_backup.FilesKept ta saqlangan</span>
+            @if (_backup.Last is { Verified: false, Error: { } error })
+            {
+                <span class="warn-text">Oxirgi urinish muvaffaqiyatsiz: @error</span>
+            }
+        </span>
+        <button class="btn btn-secondary small" disabled="@_busy" @onclick="BackupNowAsync">Hozir</button>
+    </div>
+    <div class="system-row">
+        <span class="system-row-text">
+            <b>Telegram’ga haftalik</b>
+            @if (!_backup.TelegramReady)
+            {
+                <span>Sozlanmagan: bot yoki qabul qiluvchi yo‘q (<code>Backup__TelegramChatId</code>)</span>
+            }
+            else
+            {
+                <span>@(_backup.LastSentToTelegramAt is { } sent ? $"Oxirgi yuborilgan: {Format.DayTime(sent)}" : "Hali yuborilmagan") · Telegram ID @_backup.TelegramRecipient</span>
+                @if (_backup.TelegramError is { } sendError)
+                {
+                    <span class="warn-text">Oxirgi yuborish muvaffaqiyatsiz: @sendError</span>
+                }
+            }
+        </span>
+        @if (_backup.TelegramReady)
+        {
+            <button class="btn btn-secondary small" disabled="@_busy" @onclick="SendToTelegramAsync">Yuborish</button>
+        }
+    </div>
+    @if (_backupStatus is not null)
+    {
+        <p role="status" class="small-text">@_backupStatus</p>
+    }
+}
+
+<SectionLabel Text="Boshqa" />
+<ListRow Label="Vaqt zonasi" Value="@(_prefs?.TimeZone ?? "Asia/Seoul")" />
+<ListRow Label="Sarf tafsiloti" Note="Kunlar va funksiyalar bo‘yicha" Href="admin/sarf" />
+<ListRow Label="Qurilmani tekshirish" Note="Ovoz va mikrofon" Href="diagnostika" />
+
+@code {
+    private AiStatusDto? _ai;
+    private AiBudgetDto? _budget;
+    private BackupStatusDto? _backup;
+    private PreferencesDto? _prefs;
+    private string? _aiStatus;
+    private string? _backupStatus;
+    private bool _busy;
+    private readonly Dictionary<AiProviderKind, int> _latency = [];
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsAdmin)
+        {
+            return;
+        }
+
+        _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value;
+        _budget = (await Api.GetAsync<AiBudgetDto>("api/ai/budget")).Value;
+        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value;
+        _prefs = (await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value;
+    }
+
+    private static string When(DateTimeOffset? at) => at?.ToLocalTime().ToString("dd.MM HH:mm") ?? "";
+
+    private string Label(AiProviderKind kind) => _ai?.Providers.FirstOrDefault(p => p.Kind == kind)?.Label ?? kind.ToString();
+
+    private async Task ChooseAsync(AiProviderKind? provider)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<AiStatusDto>(HttpMethod.Put, "api/ai/provider", new ChooseAiProviderRequest(provider));
+        _busy = false;
+        _ai = result.Value ?? _ai;
+        _aiStatus = result.Ok ? "Saqlandi." : result.Error;
+    }
+
+    private async Task PingAsync(AiProviderKind provider)
+    {
+        _busy = true;
+        _aiStatus = "Tekshirilmoqda…";
+        var result = await Api.SendJsonAsync<AiPingResult>(HttpMethod.Post, $"api/ai/ping/{provider}", null, SessionService.AiTimeout);
+        _busy = false;
+        if (result.Value is { Ok: true, LatencyMs: { } ms })
+        {
+            _latency[provider] = ms;
+        }
+
+        _aiStatus = result.Value is { } r
+            ? r.Ok ? $"{Label(provider)}: {r.Message} ({r.LatencyMs} ms, {r.Model})" : $"{Label(provider)}: {r.Message}"
+            : result.Error;
+        _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value ?? _ai;
+    }
+
+    private async Task SendToTelegramAsync()
+    {
+        _busy = true;
+        _backupStatus = "Yuborilmoqda…";
+        var result = await Api.SendJsonAsync<BackupSendResult>(HttpMethod.Post, "api/backups/send", null, SessionService.UploadTimeout);
+        _busy = false;
+        _backupStatus = result.Value?.Message ?? result.Error;
+        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
+    }
+
+    private async Task BackupNowAsync()
+    {
+        _busy = true;
+        _backupStatus = "Nusxa olinmoqda va tekshirilmoqda…";
+        var result = await Api.SendJsonAsync<BackupRunDto>(HttpMethod.Post, "api/backups/run", null, SessionService.UploadTimeout);
+        _busy = false;
+        _backupStatus = result.Value is { } r
+            ? r.Verified ? "Nusxa olindi va tiklab tekshirildi." : $"Nusxa olinmadi: {r.Error}"
+            : result.Error;
+        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
+    }
+}

@@ -1,359 +1,158 @@
 @page "/profil"
 @page "/sozlamalar"
 @using Lugat.Contracts
-@using Lugat.Domain.Ai
+@using Lugat.Domain.Premium
 @using Lugat.Domain.Users
 @inject SessionService Api
 @inject BrowserInterop Browser
 
-<PageTitle>Sozlamalar — Lug‘at</PageTitle>
+<PageTitle>Profil — Lug‘at</PageTitle>
 
-<a class="back" href="">← Bugun</a>
-<h1>Profil va sozlamalar</h1>
-<a class="button block" href="natijalar"><span>Natijalar</span><span class="aside">o‘rganilgan so‘zlar va xatolar →</span></a>
-<a class="button block" href="premium"><span>Premium</span><span class="aside">tariflar va to‘lov →</span></a>
-<a class="button block" href="ornatish"><span>Ilovani o‘rnatish</span><span class="aside">bosh ekranga →</span></a>
-@if (IsTeacher)
+@* UI handoff 2a/2b: only what belongs to the learner. Admins, editors and teachers get a "Boshqaruv" block; the system
+   settings (AI, spend, backups) live in Admin → Tizim. Every group is closed by a 2px rule. *@
+@if (_me is null)
 {
-    <a class="button block" href="oqituvchi"><span>O‘qituvchi paneli</span><span class="aside">guruhlar, komissiya →</span></a>
-}
-@if (IsAdmin)
-{
-    <a class="button block" href="admin"><span>Admin panel</span><span class="aside">foydalanuvchilar, to‘lovlar, ko‘rsatkichlar →</span></a>
-}
-@if (IsEditor)
-{
-    <a class="button block" href="kontent"><span>Kontent</span><span class="aside">import, AI qoralama, tekshirish, nashr →</span></a>
+    <div class="profile-head" aria-busy="true"><span class="skeleton" style="width:56px;height:56px"></span><span class="skeleton" style="width:50%"></span></div>
+    return;
 }
 
-@if (_error is not null)
+<header class="profile-head">
+    <span class="profile-avatar" aria-hidden="true">@Initials</span>
+    <div>
+        <h1>@(_me.DisplayName ?? "Foydalanuvchi")</h1>
+        <div class="tags">
+            @if (IsAdmin)
+            {
+                <Tag Kind="accent">Admin</Tag>
+            }
+            @if (IsEditor && !IsAdmin)
+            {
+                <Tag>Muharrir</Tag>
+            }
+            @if (IsTeacher)
+            {
+                <Tag>O‘qituvchi</Tag>
+            }
+            @if (!IsAdmin && !IsEditor && !IsTeacher)
+            {
+                @foreach (var login in _me.Logins)
+                {
+                    <Tag>@login.Provider</Tag>
+                }
+            }
+        </div>
+    </div>
+</header>
+
+@if (IsAdmin || IsEditor || IsTeacher)
 {
-    <div class="notice" role="alert">@_error</div>
+    <SectionLabel Text="Boshqaruv" Accent="true" />
+    <div class="manage-grid">
+        @if (IsAdmin)
+        {
+            <a class="manage-cell primary" href="admin">
+                <b>Admin panel</b>
+                <span>Foydalanuvchilar, to‘lovlar, kontent, tizim</span>
+                <Icon Name="arrow-right" />
+            </a>
+        }
+        else if (IsEditor)
+        {
+            <a class="manage-cell primary" href="kontent">
+                <b>Kontent</b>
+                <span>Import, AI qoralama, tekshirish, nashr</span>
+                <Icon Name="arrow-right" />
+            </a>
+        }
+        @if (IsTeacher)
+        {
+            <a class="manage-cell" href="oqituvchi">
+                <b>O‘qituvchi paneli</b>
+                <span>@(_teacherGroups is { } g ? $"{g.Count} guruh · {g.Sum(x => x.Members)} o‘quvchi" : "Guruhlar, komissiya")</span>
+                <Icon Name="arrow-right" />
+            </a>
+        }
+    </div>
 }
 
-@if (_prefs is null)
-{
-    <p class="muted">Yuklanmoqda…</p>
-}
-else
-{
-    @if (_me is { } me)
+<div class="profile-plan">
+    <div>
+        <span class="kicker">Tarif</span>
+        <b>@PlanText</b>
+    </div>
+    @if (_premium is { IsPremium: false })
     {
-        <section class="card" id="profil">
-            <h2>Profil</h2>
-            <label class="field">
-                Ism
-                <input class="input" maxlength="100" @bind="_name" />
-            </label>
-            <label class="toggle">
-                <input type="checkbox" @bind="_romanization" /> Lotincha o‘qilishini ko‘rsatish
-            </label>
-            <span class="kicker" style="margin-top:12px">Mavzu</span>
-            <div class="chips" role="radiogroup" aria-label="Mavzu">
-                @foreach (var (value, label) in Themes)
-                {
-                    var v = value;
-                    <button class="chip wide @(_theme == v ? "selected" : "")" role="radio" aria-checked="@(_theme == v)" @onclick="() => _theme = v">@label</button>
-                }
-            </div>
-            <button class="button primary" disabled="@_busy" @onclick="SaveProfileAsync">Saqlash</button>
-            @if (_profileStatus is not null)
-            {
-                <p role="status">@_profileStatus</p>
-            }
-
-            <h3 style="margin-top:16px">Kirish usullari</h3>
-            <ul class="plain-list">
-                @foreach (var login in me.Logins)
-                {
-                    <li><strong>@login.Provider</strong> <span class="muted">@login.Display</span></li>
-                }
-            </ul>
-            @if (me.Logins.Count < 2)
-            {
-                <p class="muted small-text">Ikkinchi kirish usulini bog‘lasangiz, Telegram yoki Google’dan biri ishlamay qolsa ham hisobingizga kira olasiz.</p>
-                <SignIn Link="true" Have="@me.Logins.Select(l => l.Provider).ToList()" OnLinked="ReloadAsync" />
-            }
-
-            <div class="row-links" style="margin-top:16px">
-                <button class="button" disabled="@_busy" @onclick="Api.LogoutAsync">Chiqish</button>
-            </div>
-            <p class="muted small-text">Chiqish barcha qurilmalarda sessiyani tugatadi.</p>
-        </section>
+        <a class="btn btn-primary" href="premium">Premium</a>
     }
+</div>
 
-    <section class="card">
-        <h2>Eslatmalar</h2>
-        @if (!_prefs.RemindersAvailable)
-        {
-            <p class="muted">Eslatmalar hozircha serverda yoqilmagan.</p>
-        }
-        else if (!_prefs.HasTelegram)
-        {
-            <p class="muted">Eslatmalar Telegram bot orqali keladi. Ularni olish uchun yuqorida Telegram hisobini bog‘lang.</p>
-        }
-        else
-        {
-            @if (_prefs.BotBlocked)
-            {
-                <div class="notice" role="alert">
-                    Bot sizga xabar yubora olmadi. Telegram'da botni oching va «Start» (/start) tugmasini bosing.
-                </div>
-            }
-
-            <label class="toggle">
-                <input type="checkbox" @bind="_enabled" /> Telegram orqali eslatib turish
-            </label>
-
-            <div class="field">
-                Vaqt (@_prefs.TimeZone)
-                <TimeSelect @bind-Value="_time" Disabled="@(!_enabled)" Label="Eslatma vaqti" />
-            </div>
-            <div class="chips days" role="group" aria-label="Kunlar">
-                @foreach (var (day, label) in WeekDays)
-                {
-                    var d = day;
-                    <button class="chip @(_days.Contains(d) ? "selected" : "")" aria-pressed="@(_days.Contains(d) ? "true" : "false")" disabled="@(!_enabled)" @onclick="() => ToggleDay(d)">@label</button>
-                }
-            </div>
-            <p class="muted small-text">Takrorlash vaqti kelgan so‘z bo‘lmasa, xabar kelmaydi. Kech qolgan eslatmalar to‘planib yuborilmaydi.</p>
-
-            <button class="button primary" disabled="@_busy" @onclick="SaveAsync">Saqlash</button>
-            <button class="button" disabled="@_busy" @onclick="TestAsync">Sinov xabari</button>
-            @if (_status is not null)
-            {
-                <p role="status">@_status</p>
-            }
-        }
-    </section>
-
-    <section class="card">
-        <h2>AI xizmati</h2>
-        @if (_ai is null)
-        {
-            <p class="muted">Yuklanmoqda…</p>
-        }
-        else
-        {
-            <p class="muted small-text">Gap tekshirish va izohlar shu xizmat orqali ishlaydi. Tanlangan xizmat javob bermasa, ikkinchisi avtomatik ishlatiladi.</p>
-            <div class="chips" role="radiogroup" aria-label="AI xizmati">
-                <button class="chip wide @(_ai.Chosen is null ? "selected" : "")" role="radio" aria-checked="@(_ai.Chosen is null)" disabled="@_busy" @onclick="() => ChooseAsync(null)">
-                    Standart (@Label(_ai.Default))
-                </button>
-                @foreach (var p in _ai.Providers)
-                {
-                    <button class="chip wide @(_ai.Chosen == p.Kind ? "selected" : "")" role="radio" aria-checked="@(_ai.Chosen == p.Kind)" disabled="@(_busy || !p.Configured)" @onclick="() => ChooseAsync(p.Kind)">
-                        @p.Label
-                    </button>
-                }
-            </div>
-            <ul class="plain-list">
-                @foreach (var p in _ai.Providers)
-                {
-                    <li>
-                        <strong>@p.Label</strong>:
-                        @if (p.Configured)
-                        {
-                            @if (p.LastOk == true)
-                            {
-                                <span>ishlayapti <span class="muted">(@p.Model, oxirgi so‘rov @When(p.LastAt))</span></span>
-                            }
-                            else if (p.LastOk == false)
-                            {
-                                <strong>ishlamayapti:</strong> <span>@p.LastError</span> <span class="muted">(@p.Model, @When(p.LastAt))</span>
-                            }
-                            else
-                            {
-                                <span>kalit qo‘shilgan, hali tekshirilmagan <span class="muted">(@p.Model)</span></span>
-                            }
-                            @if (IsAdmin)
-                            {
-                                <button class="button small" disabled="@_busy" @onclick="() => PingAsync(p.Kind)">Ulanishni tekshirish</button>
-                            }
-                        }
-                        else
-                        {
-                            <span class="muted">API kaliti qo‘shilmagan</span>
-                        }
-                    </li>
-                }
-            </ul>
-            @if (_ai.Effective is null && IsAdmin)
-            {
-                <p class="notice">AI hali ulanmagan. Railway'da <code>Ai__Anthropic__ApiKey</code> yoki <code>Ai__OpenAi__ApiKey</code> o‘zgaruvchisini qo‘shing.</p>
-            }
-            else if (_ai.Effective is null)
-            {
-                <p class="muted small-text">AI xizmati hozircha ulanmagan.</p>
-            }
-            @if (_budget is { } budget)
-            {
-                <p class="@(budget.Warning ? "notice" : "muted small-text")">Bu oy hisoblangan sarf: @budget.EstimatedUsd.ToString("0.00") USD / @budget.LimitUsd.ToString("0.00") USD.</p>
-                @if (budget.UnknownPriceCalls > 0)
-                {
-                    <p class="notice">@budget.UnknownPriceCalls ta so‘rov narxi noma’lum. Ko‘rsatilgan summa to‘liq hisob emas; provayder billingini tekshiring.</p>
-                }
-                <p class="muted small-text">Taxminiy hisob. Narxlar va hosting sarfi sozlanmasa, ular summaga kirmaydi.</p>
-            }
-            <p class="muted small-text">Oxirgi 24 soatda @_ai.CallsToday / @_ai.DailyLimit ta AI so‘rovi.</p>
-            @if (_aiStatus is not null)
-            {
-                <p role="status">@_aiStatus</p>
-            }
-        }
-    </section>
-
-    @if (IsAdmin)
-    {
-    <section class="card">
-        <h2>Zaxira nusxa</h2>
-        @if (_backup is null)
-        {
-            <p class="muted">Yuklanmoqda…</p>
-        }
-        else if (!_backup.Enabled)
-        {
-            <p class="muted">Bu serverda zaxiralash yoqilmagan.</p>
-        }
-        else
-        {
-            <p class="muted small-text">Har kecha 04:00 da (Koreya vaqti) ma’lumotlar bazasi nusxalanadi va nusxa sinov bazasiga tiklab tekshiriladi. 7 kunlik va 4 haftalik nusxalar saqlanadi.</p>
-            @if (_backup.LastVerifiedAt is { } ok)
-            {
-                <p>Oxirgi tekshirilgan nusxa: <strong>@Format.DayTime(ok)</strong></p>
-            }
-            else
-            {
-                <p class="notice">Hali tekshirilgan nusxa yo‘q.</p>
-            }
-            @if (_backup.Last is { Verified: false, Error: { } error })
-            {
-                <p class="notice">Oxirgi urinish muvaffaqiyatsiz: @error</p>
-            }
-            <p class="muted small-text">Saqlangan nusxalar: @_backup.FilesKept ta@(_backup.Last is { SizeBytes: > 0 } l ? $", har biri ≈ {l.SizeBytes / 1024.0 / 1024.0:0.##} MB" : "")</p>
-            <button class="button small" disabled="@_busy" @onclick="BackupNowAsync">Hozir zaxiralash</button>
-
-            <h3 style="margin-top:16px">Railway'dan tashqarida: Telegram</h3>
-            @if (!_backup.TelegramReady)
-            {
-                <p class="muted small-text">Telegram'ga yuborish sozlanmagan: bot yoki qabul qiluvchi yo‘q (Railway'da <code>Backup__TelegramChatId</code>).</p>
-            }
-            else
-            {
-                <p class="muted small-text">Har hafta tekshirilgan nusxa bot orqali Telegram ID @_backup.TelegramRecipient ga fayl bo‘lib boradi. Faylni o‘chirmang: Railway'ga nimadir bo‘lsa, baza shu fayldan tiklanadi.</p>
-                @if (_backup.LastSentToTelegramAt is { } sent)
-                {
-                    <p>Oxirgi yuborilgan: <strong>@Format.DayTime(sent)</strong></p>
-                }
-                else
-                {
-                    <p class="notice">Hali Telegram'ga nusxa yuborilmagan.</p>
-                }
-                @if (_backup.TelegramError is { } sendError)
-                {
-                    <p class="notice">Oxirgi yuborish muvaffaqiyatsiz: @sendError</p>
-                }
-                <button class="button small" disabled="@_busy" @onclick="SendToTelegramAsync">Hozir Telegram'ga yuborish</button>
-            }
-            @if (_backupStatus is not null)
-            {
-                <p role="status">@_backupStatus</p>
-            }
-        }
-    </section>
-    }
-
-    @if (_groups is { Count: > 0 })
-    {
-        <section class="card">
-            <h2>Guruhlarim</h2>
-            <p class="muted small-text">O‘qituvchi bo‘lim natijalaringiz, faolligingiz va xato so‘zlaringizni ko‘radi.</p>
-            <ul class="plain-list">
-                @foreach (var g in _groups)
-                {
-                    var group = g;
-                    <li>
-                        <span><strong>@g.Name</strong> <span class="muted small-text">· @(g.TeacherName ?? "—")</span></span>
-                        @if (_confirmLeave == g.Id)
-                        {
-                            <button class="button small" disabled="@_busy" @onclick="() => LeaveAsync(group)">Ha, chiqish</button>
-                            <button class="link-btn muted" @onclick="() => _confirmLeave = null">Bekor</button>
-                        }
-                        else
-                        {
-                            <button class="link-btn muted" @onclick="() => _confirmLeave = group.Id">Guruhdan chiqish</button>
-                        }
-                    </li>
-                }
-            </ul>
-        </section>
-    }
-
-    <a class="button block" href="diagnostika" style="margin-top:12px"><span>Qurilmani tekshirish</span><span class="aside">ovoz va mikrofon →</span></a>
-
-    <section class="card">
-        <h2>Vaqt zonasi</h2>
-        <p>@_prefs.TimeZone <span class="muted">(eslatmalar shu vaqt bo‘yicha)</span></p>
-    </section>
-
-    <section class="card">
-        <h2>Haqida</h2>
-        <p class="small-text">So‘zlar manbasi: 국립국어원 «한국어 학습용 어휘 목록» — Koreya Milliy til instituti, KOGL 1-tur litsenziyasi (manba ko‘rsatilgan holda erkin foydalanish).</p>
-        <p class="small-text">O‘zbekcha tarjima, misollar va izohlar — Lug‘at jamoasi; AI qoralamalari muharrir tekshiruvidan o‘tgan.</p>
-        <a class="button block" href="maxfiylik"><span>Maxfiylik siyosati</span><span class="aside">qanday ma’lumot saqlanadi →</span></a>
-    </section>
-
-    <section class="card danger-zone">
-        <h2>Hisobni o‘chirish</h2>
-        <p class="muted small-text">Kirish usullari, so‘zlaringiz, kartochkalar, javoblar va sinov natijalari butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.</p>
-        @if (_confirmDelete)
-        {
-            <p><strong>Rostdan ham o‘chirasizmi?</strong></p>
-            <button class="button" disabled="@_busy" @onclick="DeleteAsync">Ha, hisobni o‘chirish</button>
-            <button class="button" disabled="@_busy" @onclick="() => _confirmDelete = false">Bekor qilish</button>
-        }
-        else
-        {
-            <button class="button" @onclick="() => _confirmDelete = true">Hisobni o‘chirish</button>
-        }
-        @if (_deleteError is not null)
-        {
-            <div class="notice" role="alert">@_deleteError</div>
-        }
-    </section>
+<SectionLabel Text="O‘qish" />
+<ListRow Label="Statistika" Href="natijalar" />
+@if (_groups is { Count: > 0 } groups)
+{
+    <ListRow Label="O‘qituvchi guruhi" Value="@(groups[0].TeacherName ?? groups[0].Name)" Href="profil/hisob" />
 }
+
+<SectionLabel Text="Sozlamalar" />
+<ListRow Label="Mavzu">
+    <div class="seg" role="radiogroup" aria-label="Mavzu">
+        @foreach (var (value, label) in Themes)
+        {
+            var v = value;
+            <button class="@(_me.Theme == v ? "selected" : "")" role="radio" aria-checked="@(_me.Theme == v)" disabled="@_busy" @onclick="() => SaveAsync(theme: v)">@label</button>
+        }
+    </div>
+</ListRow>
+<ListRow Label="Lotincha o‘qilish">
+    <Toggle Value="_me.ShowRomanization" ValueChanged="v => SaveAsync(romanization: v)" Label="Lotincha o‘qilishni ko‘rsatish" Disabled="_busy" />
+</ListRow>
+@if (_prefs is { RemindersAvailable: true, HasTelegram: true } prefs)
+{
+    <ListRow Label="Eslatma" Value="@(prefs.RemindersEnabled ? prefs.ReminderTime.ToString("HH:mm") : "O‘chiq")" Href="profil/eslatma" />
+}
+@if (_status is not null)
+{
+    <p role="status" class="small-text" style="margin-top:8px">@_status</p>
+}
+
+<SectionLabel Text="Ilova" />
+<ListRow Label="Telefonga o‘rnatish" Href="ornatish" />
+<ListRow Label="Hisobni bog‘lash" Note="@string.Join(" · ", _me.Logins.Select(l => l.Provider.ToString()))" Href="profil/hisob" />
+<ListRow Label="Qurilmani tekshirish" Note="Ovoz va mikrofon" Href="diagnostika" />
+<ListRow Label="Haqida" Note="Manba, litsenziya, maxfiylik" Href="profil/haqida" />
+
+<section class="profile-bottom">
+    <button class="btn btn-secondary block small" disabled="@_busy" @onclick="Api.LogoutAsync"><span>Chiqish</span></button>
+    @if (_confirmDelete)
+    {
+        <p class="small-text" style="margin:12px 0 4px"><strong>Rostdan ham o‘chirasizmi?</strong> Kirish usullari, so‘zlaringiz, kartochkalar, javoblar va sinov natijalari butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.</p>
+        <button class="btn btn-ghost small danger" disabled="@_busy" @onclick="DeleteAsync">Ha, hisobni o‘chirish</button>
+        <button class="btn btn-ghost small" disabled="@_busy" @onclick="() => _confirmDelete = false">Bekor qilish</button>
+    }
+    else
+    {
+        <button class="btn btn-ghost small danger" @onclick="() => _confirmDelete = true">Hisobni o‘chirish</button>
+    }
+    @if (_deleteError is not null)
+    {
+        <div class="notice" role="alert">@_deleteError</div>
+    }
+    <p class="muted small-text">Chiqish barcha qurilmalarda sessiyani tugatadi.</p>
+</section>
 
 @code {
-    private PreferencesDto? _prefs;
-    private bool _enabled;
-    private TimeOnly _time;
-    private HashSet<DayOfWeek> _days = [];
-
-    private static readonly (DayOfWeek Day, string Label)[] WeekDays =
-    [
-        (DayOfWeek.Monday, "Du"), (DayOfWeek.Tuesday, "Se"), (DayOfWeek.Wednesday, "Ch"), (DayOfWeek.Thursday, "Pa"),
-        (DayOfWeek.Friday, "Ju"), (DayOfWeek.Saturday, "Sh"), (DayOfWeek.Sunday, "Ya"),
-    ];
-    private bool _busy;
-    private string? _error;
-    private string? _status;
-    private AiStatusDto? _ai;
-    private AiBudgetDto? _budget;
-    private BackupStatusDto? _backup;
-    private string? _backupStatus;
-    private string? _aiStatus;
-    private MeDto? _me;
-    private string _name = "";
-    private bool _romanization;
-    private ThemeChoice _theme;
-    private string? _profileStatus;
-    private bool _confirmDelete;
-    private List<MyGroupDto>? _groups;
-    private Guid? _confirmLeave;
-    private string? _deleteError;
-
     private static readonly (ThemeChoice Value, string Label)[] Themes =
-        [(ThemeChoice.Device, "Qurilmadagidek"), (ThemeChoice.Light, "Yorug‘"), (ThemeChoice.Dark, "Qorong‘i")];
+        [(ThemeChoice.Light, "Yorug‘"), (ThemeChoice.Dark, "Qorong‘i"), (ThemeChoice.Device, "Qurilma")];
+
+    private MeDto? _me;
+    private PreferencesDto? _prefs;
+    private PremiumStatusDto? _premium;
+    private List<MyGroupDto>? _groups;
+    private List<TeacherGroupDto>? _teacherGroups;
+    private bool _busy;
+    private bool _confirmDelete;
+    private string? _status;
+    private string? _deleteError;
 
     private bool IsAdmin => _me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
 
@@ -361,63 +160,41 @@ else
 
     private bool IsTeacher => _me?.Roles.Contains(nameof(UserRoles.Teacher)) == true;
 
+    private string Initials => string.Concat((_me?.DisplayName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpperInvariant(w[0])));
+
+    private string PlanText => _premium switch
+    {
+        { IsPremium: true, EndsAt: { } end } => $"Premium · {Format.DayMonth(end).Split(", ").Last()}gacha",
+        { IsPremium: true } => "Premium",
+        _ => "Bepul",
+    };
+
     protected override async Task OnInitializedAsync()
     {
-        var result = await Api.GetAsync<PreferencesDto>("api/me/preferences");
-        _error = result.Ok ? null : result.Error;
-        Apply(result.Value);
-        ApplyMe(await Api.ReloadMeAsync());
-        _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value;
+        _me = await Api.ReloadMeAsync();
+        _premium = (await Api.GetAsync<PremiumStatusDto>("api/me/premium")).Value;
+        _prefs = (await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value;
         _groups = (await Api.GetAsync<List<MyGroupDto>>("api/me/groups")).Value;
-        if (IsAdmin)
+        if (IsTeacher)
         {
-            // The whole app's spend and the backups are for the owner only (spec §6.4).
-            _budget = (await Api.GetAsync<AiBudgetDto>("api/ai/budget")).Value;
-            _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value;
+            _teacherGroups = (await Api.GetAsync<List<TeacherGroupDto>>("api/teacher/groups")).Value;
         }
     }
 
-    private void ApplyMe(MeDto? me)
-    {
-        if (me is null)
-        {
-            return;
-        }
-
-        _me = me;
-        _name = me.DisplayName ?? "";
-        _romanization = me.ShowRomanization;
-        _theme = me.Theme;
-    }
-
-    // Leaving takes effect at once: the teacher no longer sees the learner (spec §9.1).
-    private async Task LeaveAsync(MyGroupDto group)
+    // Theme and romanization save at once (no "Saqlash" in the design).
+    private async Task SaveAsync(ThemeChoice? theme = null, bool? romanization = null)
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/groups/{group.Id}/membership");
+        var result = await Api.SendJsonAsync<MeDto>(HttpMethod.Patch, "api/me", new UpdateMeRequest(null, romanization, theme));
         _busy = false;
-        _confirmLeave = null;
-        _error = result.Ok ? null : result.Error;
-        _groups = (await Api.GetAsync<List<MyGroupDto>>("api/me/groups")).Value;
-    }
-
-    private async Task ReloadAsync()
-    {
-        ApplyMe(Api.State.Me);
-        _prefs = (await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value ?? _prefs;
-    }
-
-    private async Task SaveProfileAsync()
-    {
-        _busy = true;
-        var result = await Api.SendJsonAsync<MeDto>(HttpMethod.Patch, "api/me",
-            new UpdateMeRequest(string.IsNullOrWhiteSpace(_name) ? null : _name, _romanization, _theme));
-        _busy = false;
-        _profileStatus = result.Ok ? "Saqlandi." : result.Error;
+        _status = result.Ok ? null : result.Error;
         if (result.Ok)
         {
-            ApplyMe(await Api.ReloadMeAsync());
-            await Browser.SetThemeAsync(_theme);
+            _me = await Api.ReloadMeAsync() ?? _me;
+            if (theme is { } t)
+            {
+                await Browser.SetThemeAsync(t);
+            }
         }
     }
 
@@ -428,95 +205,4 @@ else
         _busy = false;
         _deleteError = result.Ok ? null : result.Error;
     }
-
-    private async Task SendToTelegramAsync()
-    {
-        _busy = true;
-        _backupStatus = "Yuborilmoqda…";
-        var result = await Api.SendJsonAsync<BackupSendResult>(HttpMethod.Post, "api/backups/send", null, SessionService.UploadTimeout);
-        _busy = false;
-        _backupStatus = result.Value?.Message ?? result.Error;
-        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
-    }
-
-    private async Task BackupNowAsync()
-    {
-        _busy = true;
-        _backupStatus = "Nusxa olinmoqda va tekshirilmoqda…";
-        var result = await Api.SendJsonAsync<BackupRunDto>(HttpMethod.Post, "api/backups/run", null, SessionService.UploadTimeout);
-        _busy = false;
-        _backupStatus = result.Value is { } r
-            ? r.Verified ? "Nusxa olindi va tiklab tekshirildi." : $"Nusxa olinmadi: {r.Error}"
-            : result.Error;
-        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
-    }
-
-    private static string When(DateTimeOffset? at) => at?.ToLocalTime().ToString("dd.MM HH:mm") ?? "";
-
-    private string Label(AiProviderKind kind) => _ai?.Providers.FirstOrDefault(p => p.Kind == kind)?.Label ?? kind.ToString();
-
-    private async Task ChooseAsync(AiProviderKind? provider)
-    {
-        _busy = true;
-        var result = await Api.SendJsonAsync<AiStatusDto>(HttpMethod.Put, "api/ai/provider", new ChooseAiProviderRequest(provider));
-        _busy = false;
-        _ai = result.Value ?? _ai;
-        _aiStatus = result.Ok ? "Saqlandi." : result.Error;
-    }
-
-    private async Task PingAsync(AiProviderKind provider)
-    {
-        _busy = true;
-        _aiStatus = "Tekshirilmoqda…";
-        var result = await Api.SendJsonAsync<AiPingResult>(HttpMethod.Post, $"api/ai/ping/{provider}", null, SessionService.AiTimeout);
-        _busy = false;
-        _aiStatus = result.Value is { } r
-            ? r.Ok ? $"{Label(provider)}: {r.Message} ({r.LatencyMs} ms, {r.Model})" : $"{Label(provider)}: {r.Message}"
-            : result.Error;
-        _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value ?? _ai;
-    }
-
-    private void Apply(PreferencesDto? prefs)
-    {
-        if (prefs is null)
-        {
-            return;
-        }
-
-        _prefs = prefs;
-        _enabled = prefs.RemindersEnabled;
-        _time = prefs.ReminderTime;
-        _days = prefs.ReminderDays.ToHashSet();
-    }
-
-    private void ToggleDay(DayOfWeek day)
-    {
-        if (!_days.Remove(day))
-        {
-            _days.Add(day);
-        }
-    }
-
-    private async Task SaveAsync()
-    {
-        _busy = true;
-        var result = await Api.SendJsonAsync<PreferencesDto>(HttpMethod.Patch, "api/me/preferences", new UpdatePreferencesRequest(_enabled, _time, WeekDays.Select(w => w.Day).Where(_days.Contains).ToList()));
-        _busy = false;
-        _status = result.Ok ? "Saqlandi." : result.Error;
-        Apply(result.Value);
-    }
-
-    private async Task TestAsync()
-    {
-        _busy = true;
-        var result = await Api.SendJsonAsync<TestReminderResult>(HttpMethod.Post, "api/me/reminders/test");
-        _busy = false;
-        _status = result.Value?.Message ?? result.Error;
-        var prefs = await Api.GetAsync<PreferencesDto>("api/me/preferences");
-        if (prefs.Value is { } p)
-        {
-            _prefs = p;
-        }
-    }
 }
-
