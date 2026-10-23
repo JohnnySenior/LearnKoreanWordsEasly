@@ -13,7 +13,14 @@
 else
 {
     <div class="signin-buttons">
-        @if (ShowTelegram)
+        @if (ShowTelegram && _telegramButton != false && _config.TelegramBotId is not null)
+        {
+            @* Our button opens Telegram's own login window (UI handoff 1a); the widget below is the fallback. *@
+            <button class="btn btn-primary block big" disabled="@(_busy || _telegramButton != true)" @onclick="TelegramAsync">
+                <span>@(Link ? "Telegram’ni bog‘lash" : "Telegram orqali kirish")</span><Icon Name="arrow-right" />
+            </button>
+        }
+        else if (ShowTelegram)
         {
             <div id="@TelegramId" class="signin-telegram"></div>
         }
@@ -23,7 +30,7 @@ else
         }
         @if (!Link && _config.DevLogin)
         {
-            <button class="button" disabled="@_busy" @onclick="DevAsync">Dev sifatida kirish</button>
+            <button class="btn btn-secondary block" disabled="@_busy" @onclick="DevAsync"><span>Dev sifatida kirish</span><Icon Name="arrow-right" /></button>
         }
         @if (!ShowTelegram && !ShowGoogle && !(!Link && _config.DevLogin))
         {
@@ -56,6 +63,9 @@ else
     private bool _busy;
     private bool _rendered;
 
+    /// <summary>Null while Telegram's script loads, false when it could not (then the widget is shown instead).</summary>
+    private bool? _telegramButton;
+
     private string TelegramId => "tg-" + _suffix;
 
     private string GoogleId => "google-" + _suffix;
@@ -81,7 +91,17 @@ else
         _rendered = true;
         _self = DotNetObjectReference.Create(this);
         var failed = false;
-        if (ShowTelegram)
+        if (ShowTelegram && _config.TelegramBotId is not null)
+        {
+            _telegramButton = await Browser.PrepareTelegramAsync();
+            StateHasChanged();
+            if (_telegramButton == false)
+            {
+                await Task.Yield(); // let the widget's element render
+                failed |= !await Browser.TelegramWidgetAsync(TelegramId, _config.TelegramBot!, _self);
+            }
+        }
+        else if (ShowTelegram)
         {
             failed |= !await Browser.TelegramWidgetAsync(TelegramId, _config.TelegramBot!, _self);
         }
@@ -96,6 +116,23 @@ else
             _error = "Kirish tugmasi yuklanmadi. Internetni tekshirib, sahifani yangilang.";
             StateHasChanged();
         }
+    }
+
+    private async Task TelegramAsync()
+    {
+        _error = null;
+        if (!await Browser.TelegramAuthAsync(_config!.TelegramBotId!.Value, _self!))
+        {
+            _error = "Telegram oynasi ochilmadi. Sahifani yangilab, qayta urinib ko‘ring.";
+        }
+    }
+
+    /// <summary>The learner closed Telegram's window without signing in.</summary>
+    [JSInvokable]
+    public void OnTelegramCancelled()
+    {
+        _busy = false;
+        StateHasChanged();
     }
 
     [JSInvokable]

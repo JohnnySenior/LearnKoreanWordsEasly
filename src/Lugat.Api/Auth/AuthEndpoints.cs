@@ -23,6 +23,10 @@ public static class AuthEndpoints
 
     public const string RefreshRateLimitPolicy = "auth-refresh";
 
+    /// <summary>"123456:ABC…" → 123456; null when the token does not start with a number.</summary>
+    internal static long? BotId(string token) =>
+        long.TryParse(token.AsSpan(0, Math.Max(0, token.IndexOf(':'))), out var id) && id > 0 ? id : null;
+
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app, IHostEnvironment env)
     {
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
@@ -30,7 +34,8 @@ public static class AuthEndpoints
         auth.MapGet("/config", (IOptionsMonitor<TelegramLoginOptions> telegram, IOptionsMonitor<GoogleOptions> google) => new AuthConfigDto(
             telegram.CurrentValue is { BotToken.Length: > 0, BotUsername.Length: > 0 } t ? t.BotUsername : null,
             google.CurrentValue.ClientId is { Length: > 0 } id ? id : null,
-            env.IsDevelopment()));
+            env.IsDevelopment(),
+            telegram.CurrentValue is { BotToken.Length: > 0, BotUsername.Length: > 0 } bot ? BotId(bot.BotToken) : null));
 
         auth.MapPost("/telegram-login", SignInWithTelegram).RequireRateLimiting(RateLimitPolicy);
         auth.MapPost("/google", SignInWithGoogle).RequireRateLimiting(RateLimitPolicy);

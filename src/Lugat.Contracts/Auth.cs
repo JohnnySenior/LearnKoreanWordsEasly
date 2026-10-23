@@ -6,7 +6,9 @@ namespace Lugat.Contracts;
 /// <param name="TelegramBot">Bot username for the Telegram Login Widget; null when not configured.</param>
 /// <param name="GoogleClientId">Google Identity Services client id; null when not configured.</param>
 /// <param name="DevLogin">The Development-only sign-in exists.</param>
-public sealed record AuthConfigDto(string? TelegramBot, string? GoogleClientId, bool DevLogin);
+/// <param name="TelegramBotId">The bot's numeric id (the part of the token before ":"), public like its username; the
+/// sign-in button opens Telegram's own login window with it (UI handoff 1a). The rest of the token stays secret.</param>
+public sealed record AuthConfigDto(string? TelegramBot, string? GoogleClientId, bool DevLogin, long? TelegramBotId = null);
 
 /// <summary>
 /// The fields the Telegram Login Widget returned (id, first_name, last_name, username, photo_url, auth_date, hash),
