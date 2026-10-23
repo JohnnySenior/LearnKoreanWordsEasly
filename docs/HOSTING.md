@@ -1,6 +1,13 @@
 # Hosting
 
-**Holat (2026-10-23):** hali deploy qilinmagan. Kod deployga tayyor (8-bosqich); Railway’da Lug‘at uchun **alohida loyiha** (KoreanAiTeacher’dan alohida servis va baza) Railway connector ulangan sessiyada ochiladi (spec §6.1, §13.9).
+**Holat (2026-10-23):** Railway’da alohida **"Lugat"** loyihasi ochildi va `main` (`863d1e5`) deploy qilindi (spec §6.1, §13.9).
+
+- Loyiha: `Lugat` (workspace "Jamshidbek Tursunboev's Projects"), muhit `production`, region `sfo` (KoreanAiTeacher bilan bir xil).
+- Servislar: `app` (GitHub `JohnnySenior/LearnKoreanWordsEasly`, `main`, Dockerfile), `Postgres` (`postgres-ssl:18`, volume `postgres-volume`).
+- `app`: volume `app-data` → `/data`; healthcheck `/health` (120 s); uxlash o‘chiq; qayta ishga tushirish `ON_FAILURE` ×5; port 8080.
+- Domen: `https://app-production-d5ca.up.railway.app`.
+- Kiritilgan o‘zgaruvchilar (maxfiy emas): `ConnectionStrings__Default` (Postgres reference), `Storage__Root`, `DataProtection__KeysPath`, `Backup__Directory`, `ASPNETCORE_ENVIRONMENT=Production`, `RAILWAY_RUN_UID=0`, `PORT=8080`.
+- **Johnny dashboard’da qiladi** (connector’da bu sozlamalar yo‘q yoki maxfiy qiymat): Settings → Source → "Wait for CI" (hozir o‘chiq), Workspace → Usage → hard spend limit, kirish kalitlari (7-band), AI/Azure kalitlari va tariflar (8-band).
 
 ## Deploy qadamlari (Railway)
 
