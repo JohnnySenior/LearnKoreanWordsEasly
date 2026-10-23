@@ -533,8 +533,8 @@ textarea.input { min-height: 96px; resize: vertical; }
 .speak { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0 8px; flex-wrap: wrap; }
 .speak-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    min-width: 44px; min-height: 44px; padding: 0 10px;
-    border: 2px solid var(--color-text); background: transparent; color: var(--color-text);
+    min-width: 48px; min-height: 48px; padding: 0 10px;
+    border: 1px solid var(--color-divider); background: transparent; color: var(--color-text);
     font: 700 14px var(--font-body); cursor: pointer;
 }
 .speak-btn:hover { background: var(--color-accent-100); }
@@ -954,3 +954,27 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .unit-step h3 { font: 800 20px/1.12 var(--font-heading); margin: 0 0 8px; }
 .unit-step .btn.block { margin-top: 12px; }
 .stepper.compact { margin-top: 0; }
+
+/* 1e Kartochka. */
+.session-bar .progress { flex: 1; }
+.progress.ink { height: 4px; }
+.progress.ink > span { background: var(--color-text); }
+.flashcard { margin: 0 calc(-1 * var(--gutter)); padding: 16px var(--gutter) 20px; border-bottom: 2px solid var(--color-divider); }
+.flashcard-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 20px; }
+.flashcard-word { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.flashcard-word .speak { flex-direction: column; margin: 8px 0 0; }
+.flashcard .prompt.ko, .reveal .answer.ko { font: 900 64px/1.05 var(--font-ko); margin: 0; }
+.flashcard-note { font-size: 15px; margin: 6px 0 0; }
+.flashcard-hidden { padding: 20px 0; }
+.flashcard-hidden p { margin: 0 0 12px; }
+.reveal-btn { min-height: 56px; }
+.reveal { margin: 0; padding: 16px 0; border-top: 0; }
+.reveal .answer:not(.ko) { font: 800 28px/1.2 var(--font-heading); }
+.rate-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 8px calc(-1 * var(--gutter)) 0; border-top: 2px solid var(--color-divider); }
+.rate-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 72px; padding: 12px; border: 0; border-right: 1px solid var(--color-divider); background: transparent; color: var(--color-text); text-align: left; cursor: pointer; }
+.rate-cell:last-child { border-right: 0; }
+.rate-cell b { font: 800 14px/1.2 var(--font-heading); }
+.rate-cell span { font-size: 11px; color: var(--color-muted); }
+.rate-cell.middle { background: var(--color-text); color: var(--color-bg); }
+.rate-cell.middle span { color: color-mix(in srgb, var(--color-bg) 75%, transparent); }
+.rate-cell:disabled { opacity: .45; cursor: not-allowed; }
