@@ -5,78 +5,40 @@
 
 <PageTitle>Mashqlar — Lug‘at</PageTitle>
 
-<header class="page-head">
-    <div>
-        <h1>Mashq</h1>
-        <span class="muted small-text">Har bir mashq alohida hisoblanadi</span>
-    </div>
+@* UI handoff 1h: the six practices of opened units; Premium ones keep a tag and lead to the Premium page
+   (spec §4.7, API 403 premium-required). The rest of the practices follow under "Yana". *@
+<header class="practice-head">
+    <h1>Mashq</h1>
+    <p class="muted">Ochilgan bo‘limlar so‘zlari bilan</p>
 </header>
 
-<nav class="menu" aria-label="Mashqlar">
-    <a href="bolimlar">
-        <span class="no">01</span>
-        <span><span class="t">Bo‘lim jadvali</span><span class="s">Bo‘limni jadvalda ko‘rib yodlash, keyin kartochka</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
+<nav class="practice-list" aria-label="Mashqlar">
+    @Row("01", "Yozma mashq", "O‘zbekchadan koreyschaga yozing", "mashq/yozish", false)
+    @Row("02", "Qaysi so‘z to‘g‘ri?", "Gapdagi bo‘sh joyni to‘ldiring", "mashq/qollanish", false)
+    @Row("03", "Talaffuz", "Ayting — Azure baholaydi", "sinov/ogzaki", true)
+    @Row("04", "Gap zinapoyasi", "So‘zdan gapgacha, AI bilan", "gap/zinapoya", true)
+    @Row("05", "Zaif joylar", "Ko‘p adashgan so‘zlaringiz", "zaif-joylar", true)
+    @Row("06", "Xatolar daftari", "Barcha xato javoblar", "xatolar", true)
+</nav>
+
+<SectionLabel Text="Yana" />
+<nav class="practice-list more" aria-label="Boshqa mashqlar">
     @if (_today?.ActiveSession is { Current: not null } active)
     {
-        <a href="mashq/kartochka">
-            <span class="no">02</span>
-            <span><span class="t">Tez kartochka</span><span class="s">Ikki yo‘nalish aralash · o‘zini baholash</span><span class="aside">Tugallanmagan: @active.Position / @active.Total — davom etish</span></span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-        </a>
+        @Row("07", "Tez kartochka", $"Tugallanmagan: {active.Position} / {active.Total} — davom etish", "mashq/kartochka", false)
     }
     else
     {
-        <a href="mashq" @onclick="StartCardsAsync" @onclick:preventDefault>
-            <span class="no">02</span>
-            <span><span class="t">Tez kartochka</span><span class="s">Ikki yo‘nalish aralash · o‘zini baholash · 20 daq</span></span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        <a class="practice-row" href="mashq" @onclick="StartCardsAsync" @onclick:preventDefault>
+            <span class="practice-no">07</span>
+            <span class="practice-text"><b>Tez kartochka</b><span>Ikki yo‘nalish aralash · 20 daq</span></span>
+            <span class="practice-end"><Icon Name="arrow-right" /></span>
         </a>
     }
-    <a href="mashq/qollanish">
-        <span class="no">03</span>
-        <span><span class="t">So‘z qo‘llanishi</span><span class="s">Qaysi so‘z to‘g‘ri? 데려오다 yoki 가져오다 · o‘zbekcha tuzoqlar</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="@(Premium ? "gap/zinapoya" : "premium")">
-        <span class="no">04</span>
-        <span><span class="t">Gap zinapoyasi@(PremiumMark)</span><span class="s">To‘ldirish → yig‘ish → tarjima · qo‘shimcha va fe’l shakllari</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="@(Premium ? "tuzoqlar" : "premium")">
-        <span class="no">05</span>
-        <span><span class="t">Tuzoqlar daftari@(PremiumMark)</span><span class="s">So‘zma-so‘z tarjima xatolari va to‘g‘risi</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="@(Premium ? "zaif-joylar" : "premium")">
-        <span class="no">06</span>
-        <span><span class="t">Zaif joylar@(PremiumMark)</span><span class="s">Nimada ko‘p adashyapsiz · shu xatolardan zinapoya</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="@(Premium ? "gap" : "premium")">
-        <span class="no">07</span>
-        <span><span class="t">Gap tuzish@(PremiumMark)</span><span class="s">So‘z bilan gap yozing — AI avval ishora beradi</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="mashq/yozish">
-        <span class="no">08</span>
-        <span><span class="t">Yozma javob</span><span class="s">Koreyscha yoki o‘zbekcha yozish · kartochka jadvaliga ta’sir qilmaydi</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="@(Premium ? "xatolar" : "premium")">
-        <span class="no">09</span>
-        <span><span class="t">Xatolar daftari@(PremiumMark)</span><span class="s">Xato qilingan so‘zlarni kartochkada takrorlash</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="sinov">
-        <span class="no">10</span>
-        <span><span class="t">Sinovlar</span><span class="s">Lug‘at va og‘zaki sinov · oldingi natijalar</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
+    @Row("08", "Gap tuzish", "So‘z bilan gap yozing — AI avval ishora beradi", "gap", true)
+    @Row("09", "Tuzoqlar daftari", "So‘zma-so‘z tarjima xatolari va to‘g‘risi", "tuzoqlar", true)
+    @Row("10", "Sinovlar", "Lug‘at va og‘zaki sinov · oldingi natijalar", "sinov", false)
 </nav>
-
-<p class="muted small-text" style="margin-top:16px">Mashg‘ulot vaqtini <a href="">Bosh sahifa</a>da ham tanlash mumkin.</p>
 
 @if (_message is not null)
 {
@@ -90,7 +52,12 @@
     /// <summary>Premium features stay visible with a lock and lead to the Premium page (spec §4.7).</summary>
     private bool Premium => _premium?.IsPremium != false;
 
-    private RenderFragment PremiumMark => Premium ? _ => { } : @<span class="pill pill-accent" style="margin-left:6px">Premium</span>;
+    private RenderFragment Row(string no, string title, string note, string href, bool premium) =>
+        @<a class="practice-row" href="@(premium && !Premium ? "premium" : href)">
+            <span class="practice-no">@no</span>
+            <span class="practice-text"><b>@title</b><span>@note</span></span>
+            <span class="practice-end">@if (premium && !Premium) {<Tag Kind="accent">Premium</Tag>}<Icon Name="arrow-right" /></span>
+        </a>;
     private string? _message;
     private bool _busy;
 
