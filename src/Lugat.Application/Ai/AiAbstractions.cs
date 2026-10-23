@@ -16,8 +16,11 @@ public sealed class AiOptions
     /// <summary>When the chosen service is down, try the other one if it is configured.</summary>
     public bool FallbackToOther { get; set; } = true;
 
-    /// <summary>Guard against runaway cost (spec BUD05): AI calls per learner per day.</summary>
-    public int MaxCallsPerUserPerDay { get; set; } = 150;
+    /// <summary>AI calls per Premium learner per day (spec §7.4, BUD05). Learners without Premium get none.</summary>
+    public int MaxCallsPerUserPerDay { get; set; } = 60;
+
+    /// <summary>Editors and admins draft the shared catalog with AI (spec §2.4): a level is about 100 calls.</summary>
+    public int MaxCallsPerEditorPerDay { get; set; } = 300;
 
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(45);
 

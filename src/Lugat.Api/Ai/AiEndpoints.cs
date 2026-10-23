@@ -1,3 +1,4 @@
+using Lugat.Api.Premium;
 using System.Diagnostics;
 using System.Security.Claims;
 using Lugat.Api.Auth;
@@ -48,7 +49,7 @@ public static class AiEndpoints
             }
         });
 
-        var practice = app.MapGroup("/api/practice").RequireAuthorization();
+        var practice = app.MapGroup("/api/practice").RequireAuthorization().RequirePremium(); // AI sentence check
         practice.MapGet("/target", (Guid? learningItemId, ClaimsPrincipal user, SentenceCheckService s, CancellationToken ct) =>
             s.TargetAsync(user.GetUserId(), learningItemId, ct));
         practice.MapPost("/check", (SentenceCheckRequest body, ClaimsPrincipal user, SentenceCheckService s, CancellationToken ct) =>

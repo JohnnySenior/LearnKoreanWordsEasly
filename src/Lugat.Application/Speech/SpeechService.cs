@@ -30,8 +30,8 @@ public sealed class SpeechOptions
     /// <summary>New (not cached) recordings per learner per day; cached ones are free (spec BUD05).</summary>
     public int MaxNewPerUserPerDay { get; set; } = 400;
 
-    /// <summary>Speaking checks per learner per day (Azure free tier has a few hours of speech a month).</summary>
-    public int MaxAssessPerUserPerDay { get; set; } = 200;
+    /// <summary>Pronunciation checks per Premium learner per day (spec §7.4).</summary>
+    public int MaxAssessPerUserPerDay { get; set; } = 60;
 }
 
 public sealed class AzureSpeechOptions

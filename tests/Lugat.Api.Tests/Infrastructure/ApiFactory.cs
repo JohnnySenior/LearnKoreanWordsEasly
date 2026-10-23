@@ -77,6 +77,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Stands in for Google's published keys (tests sign their own ID tokens).</summary>
     public Lugat.Api.Auth.IGoogleSigningKeys? GoogleKeys { get; init; }
 
+    /// <summary>
+    /// Test learners get Premium when they sign in, so the older feature tests run as before; Premium tests turn it
+    /// off and pay like a learner would (stage 5).
+    /// </summary>
+    public bool Premium { get; init; } = true;
+
     /// <summary>Telegram users who are administrators (config Auth:Admins, L-14). None by default.</summary>
     public long[] AdminTelegramIds { get; init; } = [];
 
@@ -261,6 +267,25 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 var telegramId = long.Parse(http.Request.Query["tg"]!, CultureInfo.InvariantCulture);
                 var name = http.Request.Query["name"].ToString() is { Length: > 0 } n ? n : null;
                 var user = await http.RequestServices.GetRequiredService<UserService>().SignInAsync(TelegramLogin(telegramId, name), http.RequestAborted);
+                if (factory.Premium)
+                {
+                    var db = http.RequestServices.GetRequiredService<Lugat.Infrastructure.Persistence.AppDbContext>();
+                    if (!await db.Subscriptions.AnyAsync(s => s.UserId == user.Id && s.Plan == Lugat.Domain.Premium.SubscriptionPlan.Gift))
+                    {
+                        db.Subscriptions.Add(new Lugat.Domain.Premium.Subscription
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = user.Id,
+                            Plan = Lugat.Domain.Premium.SubscriptionPlan.Gift,
+                            StartsAt = Start.AddYears(-1),
+                            EndsAt = Start.AddYears(10),
+                            Source = Lugat.Domain.Premium.SubscriptionSource.Admin,
+                            CreatedAt = Start,
+                        });
+                        await db.SaveChangesAsync();
+                    }
+                }
+
                 await http.SignInAsync(BearerTokenDefaults.AuthenticationScheme, AuthEndpoints.CreatePrincipal(user));
             }));
             next(app);

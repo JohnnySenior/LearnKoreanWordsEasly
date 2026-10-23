@@ -174,6 +174,7 @@ public class AiEndpointsTests
     {
         await using var factory = NewFactory();
         factory.Settings["Ai:MaxCallsPerUserPerDay"] = "1";
+        factory.Settings["Ai:MaxCallsPerEditorPerDay"] = "1"; // UserA is the admin in this class
         var client = await factory.SignedInClientAsync(ApiFactory.UserA);
         var word = await ApprovedWordAsync(client);
 

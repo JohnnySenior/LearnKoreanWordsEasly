@@ -36,7 +36,7 @@ public sealed class AdminOptions
 /// <summary>What a request's token is checked against on every call (L-13).</summary>
 public sealed record SessionCheck(int SessionVersion, UserRoles Roles);
 
-public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationLock operations, IOptionsMonitor<AdminOptions> admins)
+public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationLock operations, IOptionsMonitor<AdminOptions> admins, IOptionsMonitor<Premium.PremiumOptions> premium)
 {
     public const int MaxDisplayName = 100;
 
@@ -61,6 +61,20 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
             db.Users.Add(user);
             existing = NewLogin(user.Id, login, now);
             db.UserLogins.Add(existing);
+            if (premium.CurrentValue.TrialDays is > 0 and var days)
+            {
+                // A trial for a new learner, when Johnny turns it on (spec §7.2, Q3).
+                db.Subscriptions.Add(new Domain.Premium.Subscription
+                {
+                    Id = Guid.CreateVersion7(now),
+                    UserId = user.Id,
+                    Plan = Domain.Premium.SubscriptionPlan.Trial,
+                    StartsAt = now,
+                    EndsAt = now.AddDays(days),
+                    Source = Domain.Premium.SubscriptionSource.Promo,
+                    CreatedAt = now,
+                });
+            }
         }
         else
         {
@@ -195,6 +209,7 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
 
         var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
         user.DisplayName = null;
+        user.PaymentCode = null;
         user.Roles = UserRoles.None;
         user.RemindersEnabled = false;
         user.BotBlockedAt = null;

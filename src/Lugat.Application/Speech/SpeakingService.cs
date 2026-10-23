@@ -27,7 +27,8 @@ public sealed class SpeakingService(
     IPronunciationAssessor assessor,
     IOptions<SpeechOptions> options,
     ILogger<SpeakingService> logger,
-    AiUsageService usage)
+    AiUsageService usage,
+    Premium.PremiumService premium)
 {
     public const string Feature = "stt";
 
@@ -36,6 +37,7 @@ public sealed class SpeakingService(
 
     public async Task<SpeakingResultDto> AssessAsync(Guid ownerId, byte[] wav, string? referenceText, CancellationToken ct)
     {
+        await premium.RequireAsync(ownerId, ct); // pronunciation checks are Premium (spec §7.1)
         if (wav.Length < 3200 || wav.Length > MaxBytes || wav[0] != (byte)'R' || wav[1] != (byte)'I' || wav[2] != (byte)'F' || wav[3] != (byte)'F')
         {
             throw new ValidationException("Yozuv juda qisqa, juda uzun yoki noto‘g‘ri formatda. 1–30 soniya gapiring.");

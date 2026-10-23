@@ -45,6 +45,9 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
     /// <summary>Raised when the learner signs in or out, so the layout can switch between the app and the sign-in screen.</summary>
     public event Action? Changed;
 
+    /// <summary>A Premium feature was asked for without Premium (403 "premium-required", spec §11): show the Premium page.</summary>
+    public event Action? PremiumRequired;
+
     public Task<SessionState> EnsureSignedInAsync()
     {
         // A restore that failed only for lack of connection is tried again next time.
@@ -289,8 +292,13 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
                 return new ApiResult<T>(value, (int)response.StatusCode, null);
             }
 
-            var detail = await ReadDetailAsync(response, cts.Token) ?? "Kutilmagan xato yuz berdi. Qayta urinib ko‘ring.";
-            return new ApiResult<T>(default, (int)response.StatusCode, detail);
+            var (detail, type) = await ReadProblemAsync(response, cts.Token);
+            if (type == "premium-required")
+            {
+                PremiumRequired?.Invoke();
+            }
+
+            return new ApiResult<T>(default, (int)response.StatusCode, detail ?? "Kutilmagan xato yuz berdi. Qayta urinib ko‘ring.");
         }
         catch (Exception ex) when (IsNetworkFailure(ex))
         {
@@ -344,6 +352,20 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
         _accessToken = tokens.AccessToken;
         _refreshToken = tokens.RefreshToken;
         await browser.StorageSetAsync(RefreshKey, tokens.RefreshToken);
+    }
+
+    private static async Task<(string? Detail, string? Type)> ReadProblemAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            var root = doc.RootElement;
+            return (root.TryGetProperty("detail", out var d) ? d.GetString() : null, root.TryGetProperty("type", out var t) ? t.GetString() : null);
+        }
+        catch (JsonException)
+        {
+            return (null, null);
+        }
     }
 
     private static async Task<string?> ReadDetailAsync(HttpResponseMessage response, CancellationToken ct = default)

@@ -39,24 +39,24 @@
         <span><span class="t">So‘z qo‘llanishi</span><span class="s">Qaysi so‘z to‘g‘ri? 데려오다 yoki 가져오다 · o‘zbekcha tuzoqlar</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
-    <a href="gap/zinapoya">
+    <a href="@(Premium ? "gap/zinapoya" : "premium")">
         <span class="no">04</span>
-        <span><span class="t">Gap zinapoyasi</span><span class="s">To‘ldirish → yig‘ish → tarjima · qo‘shimcha va fe’l shakllari</span></span>
+        <span><span class="t">Gap zinapoyasi@(PremiumMark)</span><span class="s">To‘ldirish → yig‘ish → tarjima · qo‘shimcha va fe’l shakllari</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
-    <a href="tuzoqlar">
+    <a href="@(Premium ? "tuzoqlar" : "premium")">
         <span class="no">05</span>
-        <span><span class="t">Tuzoqlar daftari</span><span class="s">So‘zma-so‘z tarjima xatolari va to‘g‘risi</span></span>
+        <span><span class="t">Tuzoqlar daftari@(PremiumMark)</span><span class="s">So‘zma-so‘z tarjima xatolari va to‘g‘risi</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
-    <a href="zaif-joylar">
+    <a href="@(Premium ? "zaif-joylar" : "premium")">
         <span class="no">06</span>
-        <span><span class="t">Zaif joylar</span><span class="s">Nimada ko‘p adashyapsiz · shu xatolardan zinapoya</span></span>
+        <span><span class="t">Zaif joylar@(PremiumMark)</span><span class="s">Nimada ko‘p adashyapsiz · shu xatolardan zinapoya</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
-    <a href="gap">
+    <a href="@(Premium ? "gap" : "premium")">
         <span class="no">07</span>
-        <span><span class="t">Gap tuzish</span><span class="s">So‘z bilan gap yozing — AI avval ishora beradi</span></span>
+        <span><span class="t">Gap tuzish@(PremiumMark)</span><span class="s">So‘z bilan gap yozing — AI avval ishora beradi</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
     <a href="mashq/yozish">
@@ -64,9 +64,9 @@
         <span><span class="t">Yozma javob</span><span class="s">Koreyscha yoki o‘zbekcha yozish · kartochka jadvaliga ta’sir qilmaydi</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
-    <a href="xatolar">
+    <a href="@(Premium ? "xatolar" : "premium")">
         <span class="no">09</span>
-        <span><span class="t">Xatolar daftari</span><span class="s">Xato qilingan so‘zlarni kartochkada takrorlash</span></span>
+        <span><span class="t">Xatolar daftari@(PremiumMark)</span><span class="s">Xato qilingan so‘zlarni kartochkada takrorlash</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
     </a>
     <a href="sinov">
@@ -85,11 +85,18 @@
 
 @code {
     private TodayDto? _today;
+    private PremiumStatusDto? _premium;
+
+    /// <summary>Premium features stay visible with a lock and lead to the Premium page (spec §4.7).</summary>
+    private bool Premium => _premium?.IsPremium != false;
+
+    private RenderFragment PremiumMark => Premium ? _ => { } : @<span class="pill pill-accent" style="margin-left:6px">Premium</span>;
     private string? _message;
     private bool _busy;
 
     protected override async Task OnInitializedAsync()
     {
+        _premium = (await Api.GetAsync<PremiumStatusDto>("api/me/premium")).Value;
         var today = await Api.GetAsync<TodayDto>("api/today");
         _today = today.Value;
         _message = today.Ok ? null : today.Error;

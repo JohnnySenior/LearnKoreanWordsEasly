@@ -1,0 +1,225 @@
+@page "/admin/tolovlar"
+@using Lugat.Contracts
+@using Lugat.Domain.Premium
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>To‘lovlar — Lug‘at</PageTitle>
+
+@* The owner's manual payment flow (spec §7.3, §10): find the payer by code or name, record the transfer, refund.
+   The full admin panel comes in stage 7. *@
+<a class="back" href="sozlamalar">← Sozlamalar</a>
+<h1>To‘lovlar</h1>
+
+@if (!IsAdmin)
+{
+    <p class="muted">Bu sahifa admin uchun.</p>
+    return;
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+@if (_status is not null)
+{
+    <p role="status">@_status</p>
+}
+
+<section class="card">
+    <h2>To‘lovni qayd etish</h2>
+    <label class="field">
+        Foydalanuvchi (to‘lov kodi, ism, Telegram username yoki email)
+        <input class="input" maxlength="100" @bind="_query" @bind:event="oninput" @onkeydown="SearchKeyAsync" />
+    </label>
+    <button class="button small" disabled="@(_busy || (_query?.Trim().Length ?? 0) < 2)" @onclick="SearchAsync">Qidirish</button>
+    @if (_users is { Count: 0 })
+    {
+        <p class="muted small-text">Topilmadi.</p>
+    }
+    else if (_users is not null)
+    {
+        <ul class="plain-list">
+            @foreach (var u in _users)
+            {
+                var user = u;
+                <li>
+                    <button class="link-btn @(_user?.Id == u.Id ? "selected" : "")" @onclick="() => SelectAsync(user)">
+                        <strong>@(u.DisplayName ?? "—")</strong> <span class="pill">@(u.PaymentCode ?? "kod yo‘q")</span>
+                        <span class="muted small-text">@string.Join(", ", u.Logins)@(u.IsPremium ? $" · Premium {Format.DayMonth(u.PremiumEndsAt!.Value)} gacha" : "")</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (_user is { } selected)
+    {
+        <p style="margin-top:12px">Tanlangan: <strong>@(selected.DisplayName ?? "—")</strong> (@selected.PaymentCode)</p>
+        <div class="chips" role="radiogroup" aria-label="Tarif">
+            @foreach (var plan in new[] { SubscriptionPlan.Monthly, SubscriptionPlan.Quarterly })
+            {
+                var p = plan;
+                <button class="chip wide @(_plan == p ? "selected" : "")" role="radio" aria-checked="@(_plan == p)" @onclick="() => _plan = p">@(p == SubscriptionPlan.Monthly ? "1 oy" : "3 oy")</button>
+            }
+        </div>
+        <label class="field">To‘langan summa (₩)<input class="input" type="number" min="1" @bind="_amount" /></label>
+        <label class="field">Promo-kod (bo‘lsa)<input class="input" maxlength="32" @bind="_promo" /></label>
+        <label class="field">Izoh<input class="input" maxlength="500" @bind="_note" /></label>
+        <button class="button primary" disabled="@(_busy || _amount <= 0)" @onclick="RecordAsync">To‘lovni qayd etish</button>
+        <p class="muted small-text">Yangi muddat foydalanuvchining hozirgi Premium’i tugagan kundan boshlanadi.</p>
+    }
+</section>
+
+@if (_payments is { Count: > 0 })
+{
+    <section class="card">
+        <h2>@(_user is null ? "Oxirgi to‘lovlar" : "Shu foydalanuvchining to‘lovlari")</h2>
+        <ul class="plain-list">
+            @foreach (var p in _payments)
+            {
+                var payment = p;
+                <li>
+                    <strong>₩@p.AmountKrw.ToString("N0")</strong> · @(p.Plan == SubscriptionPlan.Monthly ? "1 oy" : "3 oy") · @(p.UserName ?? "—")
+                    <span class="muted small-text">@Format.DayMonth(p.StartsAt) – @Format.DayMonth(p.EndsAt)@(p.PromoCode is null ? "" : $" · {p.PromoCode} (−{p.DiscountPercent}%, komissiya ₩{p.CommissionKrw:N0})")</span>
+                    @if (p.Status == PaymentStatus.Refunded)
+                    {
+                        <span class="pill">Qaytarilgan</span>
+                    }
+                    else if (_confirmRefund == p.Id)
+                    {
+                        <button class="button small" disabled="@_busy" @onclick="() => RefundAsync(payment)">Ha, qaytarish</button>
+                        <button class="link-btn muted" @onclick="() => _confirmRefund = null">Bekor</button>
+                    }
+                    else
+                    {
+                        <button class="link-btn muted" @onclick="() => _confirmRefund = payment.Id">Qaytarish</button>
+                    }
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+<section class="card">
+    <h2>Promo-kodlar</h2>
+    <label class="field">Kod<input class="input" maxlength="32" @bind="_newCode" /></label>
+    <label class="field">Chegirma (%)<input class="input" type="number" min="0" max="100" @bind="_newDiscount" /></label>
+    <label class="field">Komissiya (%)<input class="input" type="number" min="0" max="100" @bind="_newCommission" /></label>
+    @if (_user is { } teacher)
+    {
+        <label class="toggle"><input type="checkbox" @bind="_forTeacher" /> O‘qituvchiniki: @(teacher.DisplayName ?? "—")</label>
+    }
+    <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_newCode))" @onclick="CreatePromoAsync">Yaratish</button>
+    @if (_promos is { Count: > 0 })
+    {
+        <ul class="plain-list small-text" style="margin-top:8px">
+            @foreach (var p in _promos)
+            {
+                <li><strong>@p.Code</strong> −@p.DiscountPercent% · komissiya @p.CommissionPercent%@(p.Teacher is null ? "" : $" · {p.Teacher}") · @p.Payments ta to‘lov@(p.IsActive ? "" : " · o‘chirilgan")</li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    private string? _query;
+    private List<AdminUserDto>? _users;
+    private AdminUserDto? _user;
+    private SubscriptionPlan _plan = SubscriptionPlan.Monthly;
+    private int _amount = 5000;
+    private string? _promo;
+    private string? _note;
+    private Guid _paymentId = Guid.NewGuid(); // one id per form, so a double click records one payment
+    private List<PaymentDto>? _payments;
+    private Guid? _confirmRefund;
+    private List<PromoCodeDto>? _promos;
+    private string? _newCode;
+    private int _newDiscount = 10;
+    private int _newCommission = 30;
+    private bool _forTeacher;
+    private string? _error;
+    private string? _status;
+    private bool _busy;
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsAdmin)
+        {
+            _payments = (await Api.GetAsync<List<PaymentDto>>("api/admin/payments")).Value;
+            _promos = (await Api.GetAsync<List<PromoCodeDto>>("api/admin/promo-codes")).Value;
+        }
+    }
+
+    private async Task SearchKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        var result = await Api.GetAsync<List<AdminUserDto>>($"api/admin/users?q={Uri.EscapeDataString(_query ?? "")}");
+        _users = result.Value;
+        _error = result.Error;
+    }
+
+    private async Task SelectAsync(AdminUserDto user)
+    {
+        _user = user;
+        _paymentId = Guid.NewGuid();
+        _payments = (await Api.GetAsync<List<PaymentDto>>($"api/admin/payments?userId={user.Id}")).Value;
+    }
+
+    private async Task RecordAsync()
+    {
+        if (_user is not { } user)
+        {
+            return;
+        }
+
+        _busy = true;
+        var result = await Api.SendJsonAsync<PaymentDto>(HttpMethod.Post, "api/admin/payments",
+            new RecordPaymentRequest(_paymentId, user.Id, _plan, _amount, string.IsNullOrWhiteSpace(_promo) ? null : _promo, null, _note));
+        _busy = false;
+        _error = result.Error;
+        if (result.Value is { } payment)
+        {
+            _status = $"Qayd etildi: Premium {Format.DayMonth(payment.EndsAt)} gacha." +
+                (payment.AmountKrw != payment.ExpectedKrw ? $" Diqqat: tarif narxi ₩{payment.ExpectedKrw:N0}." : "");
+            await SelectAsync(user with { IsPremium = true, PremiumEndsAt = payment.EndsAt });
+        }
+    }
+
+    private async Task RefundAsync(PaymentDto payment)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<PaymentDto>(HttpMethod.Post, $"api/admin/payments/{payment.Id}/refund", new RefundPaymentRequest(null));
+        _busy = false;
+        _confirmRefund = null;
+        _error = result.Error;
+        if (result.Value is not null)
+        {
+            _status = "To‘lov qaytarildi: muddat bugundan tugadi.";
+            _payments = (await Api.GetAsync<List<PaymentDto>>(_user is null ? "api/admin/payments" : $"api/admin/payments?userId={_user.Id}")).Value;
+        }
+    }
+
+    private async Task CreatePromoAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<PromoCodeDto>(HttpMethod.Post, "api/admin/promo-codes",
+            new CreatePromoCodeRequest(_newCode ?? "", _newDiscount, _newCommission, _forTeacher ? _user?.Id : null, null));
+        _busy = false;
+        _error = result.Error;
+        if (result.Value is not null)
+        {
+            _newCode = null;
+            _promos = (await Api.GetAsync<List<PromoCodeDto>>("api/admin/promo-codes")).Value;
+        }
+    }
+}

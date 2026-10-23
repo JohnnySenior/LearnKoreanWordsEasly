@@ -200,9 +200,11 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
             };
             attempt.Note = Cut(result.ExplanationUz!.Trim(), 500);
         }
-        catch (Exception ex) when (ex is ServiceUnavailableException or TooManyRequestsException or JsonException)
+        catch (Exception ex) when (ex is ServiceUnavailableException or TooManyRequestsException or PremiumRequiredException or JsonException)
         {
-            attempt.Note = "Ma’nosini AI tekshira olmadi. To‘g‘ri javob bilan o‘zingiz solishtiring.";
+            attempt.Note = ex is PremiumRequiredException
+                ? "Ma’nosini AI tekshirishi Premium’da. To‘g‘ri javob bilan o‘zingiz solishtiring."
+                : "Ma’nosini AI tekshira olmadi. To‘g‘ri javob bilan o‘zingiz solishtiring.";
         }
     }
 

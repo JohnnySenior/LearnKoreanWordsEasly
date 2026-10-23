@@ -1,0 +1,131 @@
+@page "/premium"
+@using Lugat.Contracts
+@using Lugat.Domain.Premium
+@inject SessionService Api
+
+<PageTitle>Premium — Lug‘at</PageTitle>
+
+@* Premium (spec §7): what it gives, the plans, how to pay by bank transfer, the learner's payment code. Whether the
+   learner has Premium is decided by the server only. *@
+<a class="back" href="sozlamalar">← Profil</a>
+<h1>Premium</h1>
+
+@if (_status is null || _plans is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<section class="card" style="border-top:0">
+    @if (_status.IsPremium)
+    {
+        <span class="kicker accent">Premium faol</span>
+        <p><strong>@Format.DayMonth(_status.EndsAt!.Value) gacha</strong>@(_status.Plan == SubscriptionPlan.Trial ? " (sinov muddati)" : "")</p>
+        <p class="muted small-text">Muddatni uzaytirish uchun yana to‘lashingiz mumkin: yangi muddat hozirgisi tugagan kundan boshlanadi.</p>
+    }
+    else
+    {
+        <span class="kicker">Hozir: bepul</span>
+        <p>Barcha bo‘limlar, jadval, kartochka, takrorlash, bo‘lim testlari, yozma mashq va «Qaysi so‘z to‘g‘ri?» bepul.</p>
+    }
+</section>
+
+<section class="card">
+    <h2>Premium’da</h2>
+    <ul class="plain-list">
+        <li>Talaffuzni baholash (mikrofon)</li>
+        <li>Xatolar daftari va zaif joylar</li>
+        <li>Gap zinapoyasi, AI gap tekshiruvi, tuzoqlar daftari</li>
+        <li>Og‘zaki sinov</li>
+    </ul>
+    @if (_status.TrapNotesFree)
+    {
+        <p class="muted small-text">So‘z kartasidagi tayyor «o‘zbekcha tuzoq» izohi hammaga bepul.</p>
+    }
+</section>
+
+<section class="card">
+    <h2>Tariflar</h2>
+    <div class="chips" role="radiogroup" aria-label="Tarif">
+        @foreach (var p in _plans.Plans)
+        {
+            var plan = p;
+            <button class="chip wide @(_plan == plan.Plan ? "selected" : "")" role="radio" aria-checked="@(_plan == plan.Plan)" @onclick="() => SelectAsync(plan.Plan)">
+                @plan.Title · ₩@plan.PriceKrw.ToString("N0")
+            </button>
+        }
+    </div>
+
+    <label class="field" style="margin-top:12px">
+        Promo-kod (bo‘lsa)
+        <input class="input" maxlength="32" autocapitalize="characters" @bind="_promo" @bind:event="oninput" />
+    </label>
+    <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_promo))" @onclick="CheckPromoAsync">Tekshirish</button>
+    @if (_check is { } c)
+    {
+        <p role="status">@(c.Valid ? $"Chegirma {c.DiscountPercent}%: ₩{c.PriceKrw:N0} o‘rniga ₩{c.FinalPriceKrw:N0}" : c.Message)</p>
+    }
+
+    <p style="margin-top:12px">To‘lov: <strong>₩@Price.ToString("N0")</strong></p>
+</section>
+
+<section class="card">
+    <h2>Qanday to‘lanadi</h2>
+    @if (_plans.Bank is { } bank)
+    {
+        <ol class="plain-list">
+            <li>Bank o‘tkazmasi: <strong>@bank.BankName</strong>, hisob <strong>@bank.AccountNumber</strong>, egasi <strong>@bank.AccountHolder</strong>.</li>
+            <li>O‘tkazma izohiga to‘lov kodingizni yozing: <strong class="pill">@_status.PaymentCode</strong></li>
+            <li>Chekni yuboring@(_plans.ContactTelegram is null ? "." : ":")
+                @if (_plans.ContactTelegram is { } contact)
+                {
+                    <a href="@($"https://t.me/{contact}")" target="_blank" rel="noopener">Telegram’da yuborish</a>
+                }
+            </li>
+        </ol>
+        <p class="muted small-text">To‘lov tekshirilgach Premium yoqiladi va shu sahifada ko‘rinadi@(_plans.ContactTelegram is null ? "" : "; Telegram orqali kirgan bo‘lsangiz, bot ham xabar beradi").</p>
+    }
+    else
+    {
+        <p><strong>Tez orada.</strong> To‘lov rekvizitlari hali e’lon qilinmagan.</p>
+        <p class="muted small-text">Sizning to‘lov kodingiz: <strong>@_status.PaymentCode</strong></p>
+    }
+</section>
+
+@code {
+    private PremiumStatusDto? _status;
+    private PremiumPlansDto? _plans;
+    private SubscriptionPlan _plan = SubscriptionPlan.Monthly;
+    private string? _promo;
+    private PromoCheckDto? _check;
+    private string? _error;
+    private bool _busy;
+
+    private int Price => _check is { Valid: true } c ? c.FinalPriceKrw : _plans?.Plans.FirstOrDefault(p => p.Plan == _plan)?.PriceKrw ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var status = await Api.GetAsync<PremiumStatusDto>("api/me/premium");
+        var plans = await Api.GetAsync<PremiumPlansDto>("api/premium/plans");
+        (_status, _plans) = (status.Value, plans.Value);
+        _error = status.Error ?? plans.Error;
+        _plan = _plans?.Plans.FirstOrDefault()?.Plan ?? _plan;
+    }
+
+    private async Task SelectAsync(SubscriptionPlan plan)
+    {
+        _plan = plan;
+        if (_check is { Valid: true })
+        {
+            await CheckPromoAsync();
+        }
+    }
+
+    private async Task CheckPromoAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<PromoCheckDto>(HttpMethod.Post, "api/premium/promo/check", new PromoCheckRequest(_promo ?? "", _plan));
+        _check = result.Value ?? new PromoCheckDto(false, _promo ?? "", 0, 0, 0, result.Error);
+        _busy = false;
+    }
+}

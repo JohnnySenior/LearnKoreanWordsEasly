@@ -22,6 +22,7 @@ public sealed class TestService(
     Speech.SpeechService speech,
     Vocabulary.UsageService usage,
     Catalog.UnitTestService unitTests,
+    Premium.PremiumService premium,
     TimeProvider time,
     IOperationLock operations)
 {
@@ -89,7 +90,7 @@ public sealed class TestService(
         var run = request switch
         {
             { RetryOf: { } retryOf } => await RetryMistakesAsync(ownerId, retryOf, ct),
-            { Oral: true } => await BuildOralAsync(ownerId, request, ct),
+            { Oral: true } => await BuildOralAsync(ownerId, request, ct), // checked for Premium inside
             { Usage: true } => await BuildUsageAsync(ownerId, request, ct),
             _ => await BuildAsync(ownerId, request, ct),
         };
@@ -244,6 +245,7 @@ public sealed class TestService(
     /// </summary>
     private async Task<TestRun> BuildOralAsync(Guid ownerId, CreateTestRequest request, CancellationToken ct)
     {
+        await premium.RequireAsync(ownerId, ct); // spoken answers are checked by Azure pronunciation (spec §7.1)
         if (!OralCounts.Contains(request.Count))
         {
             throw new ValidationException("Og‘zaki sinov 20 ta savol yoki barcha so‘zlar bo‘lsin.");

@@ -1,3 +1,4 @@
+using Lugat.Api.Premium;
 using System.Security.Claims;
 using Lugat.Api.Auth;
 using Lugat.Application.Abstractions;
@@ -57,12 +58,12 @@ public static class MeEndpoints
 
         // The mistakes notebook (D-41).
         app.MapGet("/api/mistakes", (ClaimsPrincipal user, Application.Mistakes.MistakeService s, CancellationToken ct) => s.GetAsync(user.GetUserId(), ct))
-            .RequireAuthorization();
+            .RequireAuthorization().RequirePremium();
 
         // Weak points of the last 7 or 30 days (D-54).
         app.MapGet("/api/weak-points", (int? days, ClaimsPrincipal user, Application.Mistakes.WeakPointService s, CancellationToken ct) =>
                 s.GetAsync(user.GetUserId(), days ?? 7, ct))
-            .RequireAuthorization();
+            .RequireAuthorization().RequirePremium();
 
         app.MapGet("/api/progress", (ClaimsPrincipal user, ProgressService progress, CancellationToken ct) =>
                 progress.GetAsync(user.GetUserId(), ct))
