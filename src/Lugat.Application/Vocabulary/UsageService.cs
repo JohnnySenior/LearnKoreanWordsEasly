@@ -26,18 +26,28 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    /// <summary>Per unit: how many words already have their usage, for the practice page.</summary>
+    /// <summary>
+    /// Per unit: how many words have questions, for the practice page. Catalog words bring the checked, shared
+    /// questions of the catalog (spec §3.1, L-29); the learner's own AI usage only fills in words without them.
+    /// </summary>
     public async Task<IReadOnlyList<UsageTableSummaryDto>> SummaryAsync(Guid ownerId, CancellationToken ct)
     {
-        var words = await Words(ownerId)
+        var rows = await Words(ownerId)
             .Select(s => new
             {
                 s.UnitId,
                 s.Order,
-                Usage = db.WordUsages.Where(u => u.OwnerId == ownerId && u.LearningItemId == s.Id && u.ContentVersion == s.ContentVersion)
-                    .Select(u => new { u.Questions }).FirstOrDefault(),
+                Own = db.WordUsages.Where(u => u.OwnerId == ownerId && u.LearningItemId == s.Id && u.ContentVersion == s.ContentVersion)
+                    .Select(u => u.Questions).FirstOrDefault(),
+                Catalog = db.CatalogUsages.Where(c => c.CatalogWordId == s.CatalogWordId).Select(c => c.Questions).FirstOrDefault(),
             })
             .ToListAsync(ct);
+        var words = rows.Select(r => new
+        {
+            r.UnitId,
+            r.Order,
+            Usage = r.Catalog is { Count: > 0 } || r.Own is not null ? new { Questions = (r.Catalog ?? []).Concat(r.Own ?? []).ToList() } : null,
+        }).ToList();
         var labels = await Study.LearnerItems.UnitLabelsAsync(db, words.Select(w => w.UnitId), ct);
         return words
             .Where(w => w.UnitId is not null)
@@ -67,7 +77,8 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
     {
         var words = await TableWordsAsync(ownerId, unitId, ct);
         var usages = await CurrentAsync(ownerId, words, ct);
-        var missing = words.Where(w => !usages.ContainsKey(w.Id)).Take(WordsPerCall).ToList();
+        var catalog = await CatalogQuestionsAsync(words, ct);
+        var missing = words.Where(w => !usages.ContainsKey(w.Id) && !catalog.Contains(w.Id)).Take(WordsPerCall).ToList();
         if (missing.Count == 0)
         {
             return await ToDtoAsync(unitId, words, usages, ct);
@@ -110,11 +121,23 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
             query = query.Where(s => s.UnitId != null && units.Contains(s.UnitId.Value));
         }
 
-        var rows = await (from s in query
-                          join u in db.WordUsages on s.Id equals u.LearningItemId
-                          where u.OwnerId == ownerId && u.ContentVersion == s.ContentVersion
-                          select new { Word = s, u.Questions }).ToListAsync(ct);
-        return rows.SelectMany(r => r.Questions.Select(q => (r.Word, q))).ToList();
+        var own = await (from s in query
+                         join u in db.WordUsages on s.Id equals u.LearningItemId
+                         where u.OwnerId == ownerId && u.ContentVersion == s.ContentVersion
+                         select new { Word = s, u.Questions }).ToListAsync(ct);
+        var shared = await (from s in query
+                            join c in db.CatalogUsages on s.CatalogWordId equals c.CatalogWordId
+                            select new { Word = s, c.Questions }).ToListAsync(ct);
+        return shared.Concat(own).SelectMany(r => r.Questions.Select(q => (r.Word, q))).ToList();
+    }
+
+    /// <summary>Items whose catalog word already has checked questions: no AI call for them.</summary>
+    private async Task<HashSet<Guid>> CatalogQuestionsAsync(List<LearningItem> words, CancellationToken ct)
+    {
+        var ids = words.Select(w => w.CatalogWordId).OfType<Guid>().ToList();
+        var withQuestions = (await db.CatalogUsages.Where(c => ids.Contains(c.CatalogWordId)).ToListAsync(ct))
+            .Where(c => c.Questions.Count > 0).Select(c => c.CatalogWordId).ToHashSet();
+        return words.Where(w => w.CatalogWordId is { } id && withQuestions.Contains(id)).Select(w => w.Id).ToHashSet();
     }
 
     private IQueryable<LearningItem> Words(Guid ownerId) => Study.LearnerItems.Of(db, ownerId);
@@ -134,16 +157,21 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         return usages.Where(u => versions[u.LearningItemId] == u.ContentVersion).ToDictionary(u => u.LearningItemId);
     }
 
-    private async Task<TableUsageDto> ToDtoAsync(Guid unitId, List<LearningItem> words, Dictionary<Guid, WordUsage> usages, CancellationToken ct) => new(
-        unitId,
-        (await Study.LearnerItems.UnitLabelsAsync(db, [unitId], ct)).GetValueOrDefault(unitId, "—"),
-        words.Count,
-        words.Count(w => usages.ContainsKey(w.Id)),
+    /// <summary>A word counts as ready with its own usage or with the catalog's checked questions.</summary>
+    private async Task<TableUsageDto> ToDtoAsync(Guid unitId, List<LearningItem> words, Dictionary<Guid, WordUsage> usages, CancellationToken ct)
+    {
+        var catalog = await CatalogQuestionsAsync(words, ct);
+        return new TableUsageDto(
+            unitId,
+            (await Study.LearnerItems.UnitLabelsAsync(db, [unitId], ct)).GetValueOrDefault(unitId, "—"),
+            words.Count,
+            words.Count(w => usages.ContainsKey(w.Id) || catalog.Contains(w.Id)),
         words.Where(w => usages.ContainsKey(w.Id)).Select(w =>
         {
             var u = usages[w.Id];
             return new WordUsageDto(w.Id, w.Korean, w.Uzbek, u.Phrases, u.TrapUz, u.Example, u.Questions.Count, u.Warning);
         }).ToList());
+    }
 
     public static AiJsonRequest BuildRequest(IReadOnlyList<LearningItem> words)
     {

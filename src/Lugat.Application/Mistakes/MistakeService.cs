@@ -59,6 +59,7 @@ public sealed class MistakeService(IAppDbContext db, TimeProvider time)
                     {
                         TestQuestionKind.OralKorean or TestQuestionKind.OralMeaning => "og‘zaki",
                         TestQuestionKind.WordUsage => "qo‘llanish",
+                        _ when run.Purpose != TestPurpose.Practice => "bo‘lim testi", // spec §4.4
                         _ => "sinov",
                     }));
                 }

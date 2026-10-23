@@ -15,7 +15,7 @@ namespace Lugat.Application.Catalog;
 /// </summary>
 public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOperationLock operations)
 {
-    private sealed record UnitRow(Guid Id, CatalogLevel Level, int Number, UnitStatus Status, int WordCount);
+    public sealed record UnitRow(Guid Id, CatalogLevel Level, int Number, UnitStatus Status, int WordCount);
 
     private static readonly ReviewDirection[] Directions = [ReviewDirection.KoreanToUzbek, ReviewDirection.UzbekToKorean];
 
@@ -83,27 +83,98 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
         return await UnitAsync(userId, unitId, ct);
     }
 
+    /// <summary>Records a pass as the unit test would (tests and tools); see <see cref="RecordTestAsync"/>.</summary>
+    public Task<Guid?> PassAsync(Guid userId, Guid unitId, UnitPassedBy by, int scorePercent, CancellationToken ct) =>
+        RecordTestAsync(userId, unitId, by, passed: true, scorePercent, [], ct);
+
     /// <summary>
-    /// Records a passed unit and opens the next one (spec §4.4, §4.5). Called by the unit test (stage 4); a passed
-    /// unit stays passed, and a better score is kept.
+    /// Applies a finished unit test (spec §4.4, §4.5) and returns the unit it opened, if any. The final test counts an
+    /// attempt and keeps the best score; a pass marks the unit passed and opens the next. A passed "Bilaman" test also
+    /// opens the skipped unit and creates its cards: words answered right start as reviews due in a day (the state a
+    /// new card gets when rated "Oson", without counting as an independent recall), the others as new (L-28).
+    /// The caller makes sure a test is applied only once.
     /// </summary>
-    public async Task PassAsync(Guid userId, Guid unitId, UnitPassedBy by, int scorePercent, CancellationToken ct)
+    public async Task<Guid?> RecordTestAsync(Guid userId, Guid unitId, UnitPassedBy by, bool passed, int scorePercent, IReadOnlyCollection<Guid> knownItems, CancellationToken ct)
     {
+        var now = time.GetUtcNow();
         await using (await operations.AcquireAsync("units:" + userId, ct))
         {
-            var progress = await db.UnitProgress.SingleOrDefaultAsync(p => p.UserId == userId && p.UnitId == unitId, ct)
-                ?? throw new ForbiddenException("Bu bo‘lim hali qulflangan.");
+            var progress = await db.UnitProgress.SingleOrDefaultAsync(p => p.UserId == userId && p.UnitId == unitId, ct);
+            if (by == UnitPassedBy.SkipTest && passed && progress is null)
+            {
+                progress = new UserUnitProgress { Id = Guid.CreateVersion7(now), UserId = userId, UnitId = unitId, Status = UnitProgressStatus.Open, OpenedAt = now, StartedAt = now };
+                db.UnitProgress.Add(progress);
+                await AddSkippedCardsAsync(userId, unitId, knownItems, now, ct);
+            }
+
+            if (progress is null)
+            {
+                return null; // a failed "Bilaman" test leaves the unit locked
+            }
+
             progress.Attempts++;
             progress.BestScorePercent = Math.Max(progress.BestScorePercent ?? 0, scorePercent);
-            if (progress.Status != UnitProgressStatus.Passed)
+            if (passed && progress.Status != UnitProgressStatus.Passed)
             {
-                (progress.Status, progress.PassedAt, progress.PassedBy) = (UnitProgressStatus.Passed, time.GetUtcNow(), by);
+                (progress.Status, progress.PassedAt, progress.PassedBy) = (UnitProgressStatus.Passed, now, by);
             }
 
             await db.SaveChangesAsync(ct);
         }
 
-        await SyncAsync(userId, ct);
+        if (!passed)
+        {
+            return null;
+        }
+
+        var after = await SyncAsync(userId, ct);
+        var units = await db.Units.Select(u => new UnitRow(u.Id, u.Level, u.Number, u.Status, u.WordCount)).ToListAsync(ct);
+        var next = units.FirstOrDefault(u => u.Id == unitId) is { } row ? Next(units, row) : null;
+        return next is not null && after.Any(p => p.UnitId == next.Id) ? next.Id : null;
+    }
+
+    private async Task AddSkippedCardsAsync(Guid userId, Guid unitId, IReadOnlyCollection<Guid> knownItems, DateTimeOffset now, CancellationToken ct)
+    {
+        var items = await db.LearningItems.Where(i => i.UnitId == unitId && i.IsActive).Select(i => i.Id).ToListAsync(ct);
+        var existing = (await db.Cards.Where(c => c.OwnerId == userId && items.Contains(c.LearningItemId))
+                .Select(c => new { c.LearningItemId, c.Direction }).ToListAsync(ct))
+            .Select(c => (c.LearningItemId, c.Direction)).ToHashSet();
+        var day = LadderSchedulerV1.Ladder[1];
+        foreach (var item in items)
+        {
+            foreach (var direction in Directions.Where(d => !existing.Contains((item, d))))
+            {
+                var card = new Card { Id = Guid.CreateVersion7(now), OwnerId = userId, LearningItemId = item, Direction = direction, Phase = LearningPhase.New };
+                if (knownItems.Contains(item))
+                {
+                    (card.Phase, card.Stage, card.Interval, card.DueAt) = (LearningPhase.Review, 1, day, now + day);
+                }
+
+                db.Cards.Add(card);
+            }
+        }
+    }
+
+    /// <summary>
+    /// "Bilaman" is offered for a locked, published unit that comes right after one of the learner's open units
+    /// (spec §4.5: only the next one; to skip unit 3, unit 2 first).
+    /// </summary>
+    public async Task<bool> CanSkipAsync(Guid userId, Guid unitId, CancellationToken ct)
+    {
+        var progress = await SyncAsync(userId, ct);
+        return (await NextLockedAsync(progress, ct)).Contains(unitId);
+    }
+
+    private async Task<HashSet<Guid>> NextLockedAsync(IReadOnlyList<UserUnitProgress> progress, CancellationToken ct)
+    {
+        var units = await db.Units.Select(u => new UnitRow(u.Id, u.Level, u.Number, u.Status, u.WordCount)).ToListAsync(ct);
+        var have = progress.Select(p => p.UnitId).ToHashSet();
+        return progress.Where(p => p.Status == UnitProgressStatus.Open)
+            .Select(p => units.FirstOrDefault(u => u.Id == p.UnitId) is { } unit ? Next(units, unit) : null)
+            .OfType<UnitRow>()
+            .Where(u => u.Status == UnitStatus.Published && !have.Contains(u.Id))
+            .Select(u => u.Id)
+            .ToHashSet();
     }
 
     /// <summary>Open, not yet passed units the learner started: new words come only from these (spec §4.6).</summary>
@@ -182,7 +253,8 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
             : null;
     }
 
-    private async Task<(UnitRow Unit, UserUnitProgress Progress)> AccessAsync(Guid userId, Guid unitId, CancellationToken ct)
+    /// <summary>The published unit and the learner's progress in it; 404 when not published, 403 when locked.</summary>
+    public async Task<(UnitRow Unit, UserUnitProgress Progress)> AccessAsync(Guid userId, Guid unitId, CancellationToken ct)
     {
         var unit = await db.Units.Where(u => u.Id == unitId && u.Status == UnitStatus.Published)
             .Select(u => new UnitRow(u.Id, u.Level, u.Number, u.Status, u.WordCount)).SingleOrDefaultAsync(ct)
@@ -206,6 +278,7 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
                              where c.OwnerId == userId && ids.Contains(i.UnitId) && c.Phase != LearningPhase.New
                              group i.Id by i.UnitId into g
                              select new { UnitId = g.Key, Count = g.Distinct().Count() }).ToDictionaryAsync(x => x.UnitId!.Value, x => x.Count, ct);
+        var skippable = await NextLockedAsync(progress, ct);
         var themes = (await db.CatalogWords.Where(w => ids.Contains(w.UnitId) && w.Theme != null).Select(w => new { w.UnitId, w.Theme }).ToListAsync(ct))
             .GroupBy(w => w.UnitId!.Value)
             .ToDictionary(g => g.Key, g => g.GroupBy(w => w.Theme!).OrderByDescending(t => t.Count()).ThenBy(t => t.Key).Take(3).Select(t => t.Key).ToList());
@@ -214,7 +287,7 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
             var p = progress.FirstOrDefault(x => x.UnitId == u.Id);
             var state = p is null ? UnitState.Locked : p.Status == UnitProgressStatus.Passed ? UnitState.Passed : UnitState.Open;
             return new UnitSummaryDto(u.Id, u.Level, u.Number, LearnerItems.Label(u.Level, u.Number), u.WordCount, state,
-                started.GetValueOrDefault(u.Id), p?.BestScorePercent, themes.GetValueOrDefault(u.Id) ?? []);
+                started.GetValueOrDefault(u.Id), p?.BestScorePercent, themes.GetValueOrDefault(u.Id) ?? [], skippable.Contains(u.Id));
         }).ToList();
     }
 }

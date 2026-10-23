@@ -28,7 +28,7 @@ Quyidagilar kodda saqlangan va amal qiladi. Matni KAT’da; bu yerda faqat Lug�
 | D-23 | Yozma mashq kartochkadan alohida | KAT D-23 dan olingan. Dars o‘rniga bo‘lim bo‘yicha tanlash |
 | D-25 | "Modernist" dizayn | KAT D-25 dan olingan. Telegram mavzusi o‘rniga qurilma sozlamasi: L-11 |
 | D-29 | Talaffuz: OpenAI ovozi, serverda kesh | KAT D-29 dan olingan (Azure’dan keyin zaxira) |
-| D-30 | Sinov tizimi (TEST01–TEST04) | KAT D-30 dan olingan. Faqat so‘z savollari: L-10 |
+| D-30 | Sinov tizimi (TEST01–TEST04) | KAT D-30 dan olingan. Faqat so‘z savollari: L-10. Bo‘lim testi shu dvigatelda: L-28 |
 | D-31 | Azure Speech TTS | KAT D-31 dan olingan |
 | D-32 | Talaffuz mashqi va Azure baholash | KAT D-32 dan olingan |
 | D-36 | Jadvalni yodlash, ustunni yopish | KAT D-36 dan olingan. Kitob o‘rniga jadval raqami bo‘yicha |
@@ -226,4 +226,21 @@ Johnny asl faylni berdi; repoda `content/official/eohwi-mokrok-2003.txt` (KOGL 1
 - **Yangi turkumlar:** `고` (atoqli ot) va `불` (tasniflanmagan: 걔, 그래서, 이렇게 — so‘zlashuv shakllari). Ikkalasi kartaga mos (spec §2.2 faqat `보/의/관` ni chiqaradi); o‘zbekcha nomlari qo‘shildi.
 - Bir xil yozilgan omonimlar haqiqatda bor (A: `가다01 동` va `가다01 보`) — alohida yozuv, yordamchisi kartaga kirmaydi (spec §2.2).
 - **Natija:** kartaga mos so‘zlar A 904 → **36 bo‘lim** (oxirgisi 29 so‘z; spec’dagi "≈ 33" taxmin edi), B 2,043 → 82, C 2,786 → 112.
+
+## L-28 · 2026-10-23 · Bo‘lim testi va "Bilaman"
+
+Spec §4.4, §4.5, §13.5.
+- **Model:** alohida `UnitTestAttempt` jadvali o‘rniga mavjud `TestRun` (D-30): `Purpose` (`Practice`/`UnitFinal`/`UnitSkip`), `UnitId`, `PassMark` (test tuzilganda `ceil(savollar × Units:PassPercent)`), `Passed`, `OpenedUnitId`. Javob berish, yakunlash, natijani yashirish (TEST03), xatolar daftari — umumiy. Eski sinovlar migratsiyada `Practice`.
+- **API:** `POST /api/units/{id}/tests` (`kind: Final|Skip`, klient tanlagan `Id` — idempotent), `POST /api/unit-tests/{id}/answers`, `POST /api/unit-tests/{id}/finish` (spec §11); `/api/tests/{id}/…` ham ishlaydi.
+- **Savollar** (`UnitTestGenerator`): har so‘zdan bittadan, aralash tartibda; 25 so‘zda 10 `WordMeaning`, 10 `WordKorean`, 5 `WordListening`, boshqa hajmlarda shu nisbatda (5 dan 1 tasi tinglash). Har urinish tasodifiy (yangi tartib, tur taqsimoti va distraktorlar); D-45 dagi "vaqtdan seed" qayta topshirishni bir xil qilib qo‘yardi, shuning uchun tasodifiy seed.
+- **Distraktorlar:** shu va oldingi nashr qilingan bo‘limlardan, avval bir xil turkumdan. Hech qachon: bir xil yozilgan so‘z (omonim) va ma’nolaridan biri mos keladigan so‘z (sinonim) — ma’nolar `;` va `,` bo‘yicha bo‘linadi, qavs ichi hisobga olinmaydi ("men (do‘stona)" = "men"). Variantlar serverda aralashtiriladi.
+- **Tinglash:** savolda so‘z matni yo‘q; yozuv `GET /api/tests/{id}/questions/{index}/audio` dan (server `BaseForm` dagi matnni o‘qiydi, u klientga chiqmaydi). Ovoz xizmati bo‘lmasa tinglash savollari ma’no savollariga almashtiriladi va testda ogohlantirish yoziladi.
+- **Yakunlash** (`TestService.FinishAsync`): test bo‘yicha advisory lock + bitta tranzaksiya — `Finished` va natija birga. Qayta yuborilsa yoki parallel kelsa natija bir marta qo‘llanadi (`Passed` allaqachon bor). Yakuniy test: urinish soni va eng yaxshi ball; o‘tsa bo‘lim `Passed`, keyingisi ochiladi. Test kartochka jadvalini o‘zgartirmaydi (TEST04); xatolar daftarida manba "bo‘lim testi".
+- **"Bilaman":** faqat foydalanuvchining ochiq bo‘limidan keyingi qulflangan, nashr qilingan bo‘lim (`UnitSummaryDto.CanSkip`); boshqasiga 403. Bir bo‘lim uchun kuniga `Units:SkipAttemptsPerDay` (3) — foydalanuvchining vaqt zonasidagi kun, 4-chisi 429. O‘tmasa bo‘lim qulflangan qoladi.
+- **"Bilaman" o‘tilganda kartalar:** bo‘lim ochiladi, kartalar yaratiladi. To‘g‘ri javob berilgan so‘zning ikkala kartasi `Review`, 1-bosqich (1 kun), `DueAt = hozir + 1 kun` — yangi kartaga "Oson" bergandagi holat; `IndependentSuccessDays` 0, chunki variant tanlash mustaqil eslash emas (TEST04). Xato javob berilganlari `New`. Bo‘lim `Passed` (`SkipTest`), keyingisi ochiladi.
+- UI: bo‘lim sahifasining 4-qadami, Bo‘limlar sahifasidagi "Bilaman", test natijasida o‘tdi/o‘tmadi, "Keyingi bo‘limga o‘tish", "Xato qilgan N ta so‘zni takrorlash" (shu so‘zlar bilan drill), "Testni qayta topshirish". Tabriklash sokin, konfettisiz.
+
+## L-29 · 2026-10-23 · "Qaysi so‘z to‘g‘ri?" — katalog savollari
+
+Spec §3.1 ("kontent katalog darajasida, umumiy, bepul"). Mashq va qo‘llanish testi endi avval katalogning tekshirilgan savollarini (`CatalogUsage`) ishlatadi; foydalanuvchining AI qo‘llanishi (D-46) faqat katalogda savoli yo‘q so‘zlar uchun qoladi ("Tayyorlash" ularni so‘raydi). Katalog savoli bor so‘z uchun AI chaqirilmaydi (BUD04).
 

@@ -836,12 +836,26 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("OpenedUnitId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("PassMark")
+                        .HasColumnType("integer");
+
+                    b.Property<bool?>("Passed")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Provider")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<string>("Questions")
                         .IsRequired()
@@ -860,6 +874,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("UnitId")
+                        .HasColumnType("uuid");
+
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -872,7 +889,11 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UnitId");
+
                     b.HasIndex("OwnerId", "CreatedAt");
+
+                    b.HasIndex("OwnerId", "UnitId", "Purpose", "CreatedAt");
 
                     b.ToTable("test_runs", (string)null);
                 });
@@ -1280,6 +1301,11 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Lugat.Domain.Catalog.Unit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Lugat.Domain.Users.UserLogin", b =>

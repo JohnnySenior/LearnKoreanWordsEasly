@@ -8,14 +8,14 @@
 
 @if (_test is null)
 {
-    <a class="back" href="sinov">← Sinov</a>
+    <a class="back" href="@Back">← Orqaga</a>
     <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
     return;
 }
 
 @if (_test.Status == TestRunStatus.Finished)
 {
-    <a class="back" href="sinov">← Sinov</a>
+    <a class="back" href="@Back">@(_test.Unit is null ? "← Sinov" : "← Bo‘lim")</a>
     <header class="page-head">
         <div>
             <span class="kicker">@_test.Title</span>
@@ -46,7 +46,41 @@
         {
             <p class="muted small-text" style="margin-top:10px">Gapli savollarni @(_test.Provider ?? "AI") yozgan: bu TOPIK uslubidagi mashq, rasmiy test emas.</p>
         }
+        @if (_test.Warning is not null)
+        {
+            <p class="muted small-text" style="margin-top:10px">@_test.Warning</p>
+        }
     </section>
+
+    @if (_test.Unit is { } unit)
+    {
+        @* The unit's result (spec §4.4, §4.5); decided by the server. A calm note, no confetti. *@
+        <section class="card unit-result">
+            @if (unit.Passed == true)
+            {
+                <h2>Bo‘lim tugallandi</h2>
+                <p>@_test.Score ta to‘g‘ri javob (o‘tish uchun @unit.PassMark ta kerak edi).@(unit.Purpose == TestPurpose.UnitSkip ? " Bu bo‘lim so‘zlari takrorlashga qo‘shildi." : "")</p>
+                @if (unit.NextUnitId is { } next)
+                {
+                    <a class="button primary block" href="@($"bolimlar/{next}")">Keyingi bo‘limga o‘tish →</a>
+                }
+                else
+                {
+                    <a class="button primary block" href="bolimlar">Bo‘limlarga qaytish</a>
+                }
+            }
+            else
+            {
+                <h2>Hali o‘tilmadi</h2>
+                <p>@_test.Score ta to‘g‘ri javob, o‘tish uchun @unit.PassMark ta kerak.@(unit.Purpose == TestPurpose.UnitSkip ? " Bo‘lim qulflangan qoladi: avval oldingi bo‘limni tugating." : "")</p>
+                @if (unit.Purpose == TestPurpose.UnitFinal && unit.WrongItemIds.Count > 0)
+                {
+                    <button class="button primary block" disabled="@_busy" @onclick="() => DrillWrongAsync(unit.WrongItemIds)">Xato qilgan @unit.WrongItemIds.Count ta so‘zni takrorlash</button>
+                }
+                <button class="button block" disabled="@_busy" @onclick="() => RetakeAsync(unit)">Testni qayta topshirish</button>
+            }
+        </section>
+    }
 
     @if (_test.Questions.Where(q => q.IsCorrect != true).ToList() is { Count: > 0 } wrong)
     {
@@ -82,6 +116,10 @@
                             <p class="muted">@q.Translation</p>
                         }
                     }
+                    else if (q.Kind == TestQuestionKind.WordListening)
+                    {
+                        <p><strong lang="ko">@q.Correct</strong> — @q.Translation</p>
+                    }
                     else
                     {
                         <p class="@(IsKoreanPrompt(q.Kind) ? "ko" : "")" lang="@(IsKoreanPrompt(q.Kind) ? "ko" : null)"><strong>@q.Prompt</strong></p>
@@ -101,7 +139,10 @@
                 </li>
             }
         </ol>
-        <button class="button primary block" disabled="@_busy" @onclick="RetryMistakesAsync">Xatolarni qayta ishlash</button>
+        @if (_test.Unit is null)
+        {
+            <button class="button primary block" disabled="@_busy" @onclick="RetryMistakesAsync">Xatolarni qayta ishlash</button>
+        }
     }
     else
     {
@@ -119,7 +160,10 @@
         </ul>
     }
 
-    <a class="button block" href="sinov" style="margin-top:12px">Yangi sinov</a>
+    @if (_test.Unit is null)
+    {
+        <a class="button block" href="sinov" style="margin-top:12px">Yangi sinov</a>
+    }
     return;
 }
 
@@ -128,7 +172,7 @@
 }
 
 <div class="session-bar">
-    <a class="close" href="sinov" aria-label="Sinovdan chiqish (javoblar saqlanadi)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></a>
+    <a class="close" href="@Back" aria-label="Sinovdan chiqish (javoblar saqlanadi)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></a>
     <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="@_test.Questions.Count" aria-valuenow="@_test.Answered">
         <div style="width:@(_test.Answered * 100 / _test.Questions.Count)%"></div>
     </div>
@@ -201,8 +245,17 @@ else
     }
     else
     {
-        <span class="kicker">@(question.Kind switch { TestQuestionKind.WordMeaning => "Ma’nosini toping", TestQuestionKind.WordKorean => "Koreyschasini toping", _ => "Ma’nosini toping" })</span>
-        <p class="prompt @(IsKoreanPrompt(question.Kind) ? "ko" : "")" lang="@(IsKoreanPrompt(question.Kind) ? "ko" : null)">@question.Prompt</p>
+        <span class="kicker">@(question.Kind switch { TestQuestionKind.WordMeaning => "Ma’nosini toping", TestQuestionKind.WordKorean => "Koreyschasini toping", TestQuestionKind.WordListening => "Tinglang", _ => "Ma’nosini toping" })</span>
+        @if (question.Kind == TestQuestionKind.WordListening)
+        {
+            @* The word is only heard (spec §4.4): the recording comes from the test, the text stays on the server. *@
+            <p class="prompt">@question.Prompt</p>
+            <Speak Text="@($"{Id}:{question.Index}")" Source="@($"api/tests/{Id}/questions/{question.Index}/audio")" />
+        }
+        else
+        {
+            <p class="prompt @(IsKoreanPrompt(question.Kind) ? "ko" : "")" lang="@(IsKoreanPrompt(question.Kind) ? "ko" : null)">@question.Prompt</p>
+        }
         @if (question.Kind == TestQuestionKind.WordMeaning)
         {
             <Speak Text="@question.Prompt" />
@@ -266,6 +319,9 @@ else
 
 @code {
     [Parameter] public Guid Id { get; set; }
+
+    /// <summary>A unit test goes back to its unit, a practice test to the tests page.</summary>
+    private string Back => _test?.Unit is { } unit ? $"bolimlar/{unit.UnitId}" : "sinov";
 
     private TestDto? _test;
     private int _position;
@@ -348,6 +404,37 @@ else
         _test = result.Value ?? _test;
     }
 
+    /// <summary>The words answered wrong, on the cards (spec §4.4 "Xato qilgan N ta so‘zni takrorlash").</summary>
+    private async Task DrillWrongAsync(IReadOnlyList<Guid> items)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(null, true, LearningItemIds: items));
+        _busy = false;
+        if (result.Value?.Session is not null)
+        {
+            Nav.NavigateTo("mashq/kartochka");
+            return;
+        }
+
+        _error = result.Value?.Message ?? result.Error;
+    }
+
+    /// <summary>A new attempt: new order, new wrong options, another mix of question types (spec §4.4).</summary>
+    private async Task RetakeAsync(UnitTestInfoDto unit)
+    {
+        _busy = true;
+        var kind = unit.Purpose == TestPurpose.UnitSkip ? UnitTestKind.Skip : UnitTestKind.Final;
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, $"api/units/{unit.UnitId}/tests", new StartUnitTestRequest(Guid.NewGuid(), kind));
+        _busy = false;
+        if (result.Value is { } next)
+        {
+            Nav.NavigateTo($"sinov/{next.Id}"); // the page loads it from its new id
+            return;
+        }
+
+        _error = result.Error;
+    }
+
     private async Task RetryMistakesAsync()
     {
         _busy = true;
@@ -364,7 +451,7 @@ else
 
     private static bool IsKoreanPrompt(TestQuestionKind kind) => kind is TestQuestionKind.WordMeaning;
 
-    private static bool IsKoreanOption(TestQuestionKind kind) => kind is TestQuestionKind.WordKorean or TestQuestionKind.WordCloze;
+    private static bool IsKoreanOption(TestQuestionKind kind) => kind is TestQuestionKind.WordKorean or TestQuestionKind.WordCloze or TestQuestionKind.WordListening;
 
     private static RenderFragment Blanked(string sentence) => builder =>
     {
@@ -393,6 +480,7 @@ else
         TestQuestionKind.OralKorean => "Koreyschasini aytish",
         TestQuestionKind.OralMeaning => "Ma’nosini aytish",
         TestQuestionKind.WordUsage => "So‘z qo‘llanishi",
+        TestQuestionKind.WordListening => "Tinglash",
         _ => kind.ToString(),
     };
 }

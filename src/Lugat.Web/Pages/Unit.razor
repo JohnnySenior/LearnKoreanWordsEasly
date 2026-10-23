@@ -66,10 +66,10 @@
 {
     <section class="card">
         <h2>Bo‘lim testi</h2>
-        <p class="muted small-text">25 savol, 80% (20 ta to‘g‘ri) bo‘lsa bo‘lim tugaydi va keyingisi ochiladi.</p>
-        @* The unit test (spec §4.4) is stage 4; nothing here may open a unit (spec §5.3). *@
-        <button class="button primary block" disabled>Testni boshlash</button>
-        <p class="muted small-text">Bo‘lim testi keyingi yangilanishda qo‘shiladi.</p>
+        <p class="muted small-text">Har so‘zdan bitta savol; 80% to‘g‘ri bo‘lsa (25 savolda 20 ta) bo‘lim tugaydi va keyingisi ochiladi.</p>
+        <p class="muted small-text">Savollar: so‘z → ma’no, ma’no → so‘z va eshitib tanlash. Javoblar test oxirida ko‘rsatiladi; test kartochkalar jadvalini o‘zgartirmaydi. Qayta topshirish cheklanmagan.</p>
+        @* Only the server's grading opens the next unit (spec §5.3). *@
+        <button class="button primary block" disabled="@_busy" @onclick="StartTestAsync">@(_unit.Unit.State == UnitState.Passed ? "Testni qayta topshirish" : "Testni boshlash")</button>
     </section>
     return;
 }
@@ -269,6 +269,20 @@
         }
 
         _selected = word.Id;
+    }
+
+    private async Task StartTestAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, $"api/units/{Id}/tests", new StartUnitTestRequest(Guid.NewGuid(), UnitTestKind.Final));
+        _busy = false;
+        if (result.Value is { } test)
+        {
+            Nav.NavigateTo($"sinov/{test.Id}");
+            return;
+        }
+
+        _error = result.Error;
     }
 
     private async Task ToCardsAsync()

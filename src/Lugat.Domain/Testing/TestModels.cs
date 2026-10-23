@@ -28,6 +28,24 @@ public enum TestQuestionKind
     /// the ones a word-for-word translation would give (데려왔어요 / 가져왔어요). Prepared once per word, no AI per test.
     /// </summary>
     WordUsage,
+
+    /// <summary>
+    /// Unit test (spec §4.4): the Korean word is heard, not shown, and chosen among Korean words. The text to say is
+    /// kept in <see cref="TestQuestion.BaseForm"/>, which never reaches the client; the audio comes from the server.
+    /// </summary>
+    WordListening,
+}
+
+/// <summary>Why a test was taken. Unit tests open units; practice tests change nothing (TEST04).</summary>
+public enum TestPurpose
+{
+    Practice,
+
+    /// <summary>The unit's final test (spec §4.4): ≥ 80% passes the unit and opens the next.</summary>
+    UnitFinal,
+
+    /// <summary>"Bilaman — testni topshirish" (spec §4.5) for the next locked unit.</summary>
+    UnitSkip,
 }
 
 public enum TestRunStatus
@@ -93,6 +111,20 @@ public sealed class TestRun
     public string? Provider { get; set; }
 
     public Guid? RetryOfId { get; set; }
+
+    public TestPurpose Purpose { get; set; }
+
+    /// <summary>The unit of a unit test.</summary>
+    public Guid? UnitId { get; set; }
+
+    /// <summary>Right answers needed to pass: ceil(questions × pass percent), fixed when the test is made.</summary>
+    public int? PassMark { get; set; }
+
+    /// <summary>Set once, when a unit test is finished and its outcome applied.</summary>
+    public bool? Passed { get; set; }
+
+    /// <summary>The unit the pass opened, if any (for "next unit" after the result).</summary>
+    public Guid? OpenedUnitId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 
