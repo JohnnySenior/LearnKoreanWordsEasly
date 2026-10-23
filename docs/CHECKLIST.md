@@ -281,3 +281,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Birinchi bosishda telefonning sun’iy ovozi, ikkinchisida Azure chiqishi tuzatildi: yozuv kelguncha kutiladi va bosish boshlagan elementda o‘ynatiladi.
 - Chromium (`--autoplay-policy=user-gesture-required`, `/api/tts` 1.5 s kechiktirilgan): eski kod — birinchi bosish `speechSynthesis`, ikkinchisi yozuv (xato takrorlandi); yangi kod — birinchi bosishda "Ovoz yuklanmoqda…", keyin yozuv, telefon ovozi yo‘q; server 503 qaytarsa telefon ovozi zaxira bo‘lib qoladi. JS test: tayyorlangan element yozuvni o‘ynatadi (11/11).
 - [ ] Haqiqiy iPhone’da tasdiqlash — Johnny (bu konteynerda iOS yo‘q).
+
+**UI handoff — umumiy asos (2026-10-23):**
+- [x] Tokenlar: neutral-300/400/500/600/800, accent-400/900 (yorug‘ va qorong‘i); Archivo va Noto Sans KR 900; `--tabbar-height` 64px.
+- [x] Pastki menyu: Bosh · Bo‘limlar · Takror · Mashq · Profil (lucide ikonkalar, chapga tekis, faol katak tepasida 3px qizil chiziq); hover faqat sichqonchali qurilmada.
+- [x] Umumiy komponentlar: `Icon`, `AppHeader`, `ListRow`, `SectionLabel`, `Toggle`, `Tag`, `UnitStepper`; `.btn-primary/.btn-secondary/.btn-ghost`, `.progress`, `.skeleton`. Segmented — mavjud `.seg`.
+- [x] `/profil` manzili (hozircha Sozlamalar sahifasi; `/sozlamalar` ham ishlaydi), havolalar `/profil` ga.
+- Chromium 360px: bosh sahifa, yonlama scroll yo‘q, 44px dan kichik nishon yo‘q, xato yo‘q.

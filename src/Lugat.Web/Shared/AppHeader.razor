@@ -1,0 +1,31 @@
+@inject NavigationManager Nav
+
+@* Screen header (UI handoff): a back arrow or the brand, an 18px title, an optional right side, a 2px rule below. *@
+<header class="app-header">
+    @if (Back is not null)
+    {
+        <a class="app-header-back" href="@Back" aria-label="Orqaga"><Icon Name="arrow-left" Size="22" /></a>
+    }
+    else if (Close is not null)
+    {
+        <a class="app-header-back" href="@Close" aria-label="Yopish"><Icon Name="x" Size="22" /></a>
+    }
+    <span class="app-header-title">@(Title ?? "Lug‘at")</span>
+    @if (Right is not null)
+    {
+        <span class="app-header-right">@Right</span>
+    }
+</header>
+
+@code {
+    /// <summary>Null shows the brand "Lug‘at".</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Where the back arrow goes; null hides it.</summary>
+    [Parameter] public string? Back { get; set; }
+
+    /// <summary>Where the close (X) goes, for full-screen sessions and tests.</summary>
+    [Parameter] public string? Close { get; set; }
+
+    [Parameter] public RenderFragment? Right { get; set; }
+}

@@ -1,0 +1,16 @@
+@* Group heading (UI handoff): 11px uppercase kicker with a 2px rule under it; Accent for "Boshqaruv", "Diqqat". *@
+<div class="section-label @(Accent ? "accent" : "")">
+    <span>@Text</span>
+    @if (Right is not null)
+    {
+        <span class="section-label-right">@Right</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+
+    [Parameter] public bool Accent { get; set; }
+
+    [Parameter] public string? Right { get; set; }
+}

@@ -1,0 +1,16 @@
+@* Square switch (UI handoff): 40×22, the knob right and ink when on, left and grey when off. *@
+<button type="button" class="switch @(Value ? "on" : "")" role="switch" aria-checked="@(Value ? "true" : "false")" aria-label="@Label" disabled="@Disabled" @onclick="ToggleAsync">
+    <span class="switch-track"><span class="switch-knob"></span></span>
+</button>
+
+@code {
+    [Parameter] public bool Value { get; set; }
+
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+
+    [Parameter] public bool Disabled { get; set; }
+
+    private Task ToggleAsync() => ValueChanged.InvokeAsync(!Value);
+}
