@@ -282,6 +282,11 @@ Bosqichlar spec §13 bo‘yicha.
 - Chromium (`--autoplay-policy=user-gesture-required`, `/api/tts` 1.5 s kechiktirilgan): eski kod — birinchi bosish `speechSynthesis`, ikkinchisi yozuv (xato takrorlandi); yangi kod — birinchi bosishda "Ovoz yuklanmoqda…", keyin yozuv, telefon ovozi yo‘q; server 503 qaytarsa telefon ovozi zaxira bo‘lib qoladi. JS test: tayyorlangan element yozuvni o‘ynatadi (11/11).
 - [ ] Haqiqiy iPhone’da tasdiqlash — Johnny (bu konteynerda iOS yo‘q).
 
+**Koreyscha ikonkasi va dizayn fayllari (2026-10-23):**
+- [x] Johnny yuborgan `koreyscha-icons.zip`: yangi logo (ko‘k #0047A0, oq belgi, qizil nuqta) — `icons/` dagi PNG’lar, `icon-maskable-192.png`, `favicon.ico`, `favicon.svg`, `icon.svg`. Manifest: `name`/`short_name` "Koreyscha", `theme_color`/`background_color` #0047A0; iOS sarlavhasi "Koreyscha". Service worker keshi `assetsManifest.version` bo‘yicha o‘zi yangilanadi (fayl xeshlari o‘zgardi). 6-bosqichdagi "yakuniy ikonka dizayni" bandi yopildi.
+- Ilova ichidagi sarlavha hozircha "Lug‘at" (UI dizayni bo‘yicha); Johnny bilan kelishildi — kerak bo‘lsa keyin "Koreyscha" ga o‘zgaradi.
+- Ikkala zip ham repo ildizidan olindi, tarkibi `docs/design/ui-handoff/` va `docs/design/koreyscha-icons/` da.
+
 **UI handoff — umumiy asos (2026-10-23):**
 - [x] Tokenlar: neutral-300/400/500/600/800, accent-400/900 (yorug‘ va qorong‘i); Archivo va Noto Sans KR 900; `--tabbar-height` 64px.
 - [x] Pastki menyu: Bosh · Bo‘limlar · Takror · Mashq · Profil (lucide ikonkalar, chapga tekis, faol katak tepasida 3px qizil chiziq); hover faqat sichqonchali qurilmada.
