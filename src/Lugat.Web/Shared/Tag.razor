@@ -1,0 +1,9 @@
+@* Small label (UI handoff): neutral (topics, logins), accent (Admin, Premium) or outline (card direction). *@
+<span class="tag tag-@Kind">@ChildContent</span>
+
+@code {
+    /// <summary>neutral, accent or outline.</summary>
+    [Parameter] public string Kind { get; set; } = "neutral";
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

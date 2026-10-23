@@ -1,0 +1,44 @@
+@* The unit's four steps (spec §4.3, UI handoff): Jadval · Karta · Mashq · Test. A done step shows a check; the current
+   one has a 3px red underline. A step with OnSelect set is a button. *@
+<ol class="stepper @(Compact ? "compact" : "")">
+    @for (var i = 0; i < Labels.Length; i++)
+    {
+        var step = i + 1;
+        var state = step == Current ? "current" : step < Current || Done.Contains(step) ? "done" : "";
+        <li class="@state">
+            @if (OnSelect.HasDelegate)
+            {
+                <button type="button" @onclick="() => OnSelect.InvokeAsync(step)" aria-current="@(step == Current ? "step" : null)">@Body(step, state)</button>
+            }
+            else
+            {
+                <span aria-current="@(step == Current ? "step" : null)">@Body(step, state)</span>
+            }
+        </li>
+    }
+</ol>
+
+@code {
+    private static readonly string[] Labels = ["Jadval", "Karta", "Mashq", "Test"];
+
+    [Parameter] public int Current { get; set; } = 1;
+
+    /// <summary>Steps finished out of order, e.g. a test passed early with "Bilaman".</summary>
+    [Parameter] public IReadOnlyCollection<int> Done { get; set; } = [];
+
+    /// <summary>One line ("1 Jadval") instead of number over label with a check, as on the unit page header.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    private RenderFragment Body(int step, string state) => Compact
+        ? @<text><b>@step</b> @Labels[step - 1]</text>
+        : @<text>
+            <span class="stepper-no">@step</span>
+            <span class="stepper-label">@Labels[step - 1]</span>
+            @if (state == "done")
+            {
+                <Icon Name="check" Size="18" Stroke="2.5" />
+            }
+        </text>;
+}
