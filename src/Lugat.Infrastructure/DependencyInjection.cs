@@ -76,6 +76,19 @@ public static class DependencyInjection
         // AI (D-21): both services are registered; which one is used is chosen per learner in settings.
         services.Configure<AiOptions>(config.GetSection(AiOptions.SectionName));
         services.Configure<Application.Speech.SpeechOptions>(config.GetSection(Application.Speech.SpeechOptions.SectionName));
+        services.PostConfigure<AiOptions>(o =>
+        {
+            foreach (var p in new[] { o.Anthropic, o.OpenAi })
+            {
+                p.ApiKey = AiProviderOptions.Clean(p.ApiKey);
+                p.Model = AiProviderOptions.Clean(p.Model) ?? "";
+            }
+        });
+        services.PostConfigure<Application.Speech.SpeechOptions>(o =>
+        {
+            o.Azure.Key = AiProviderOptions.Clean(o.Azure.Key);
+            o.Azure.Region = AiProviderOptions.Clean(o.Azure.Region);
+        });
         services.AddHttpClient<Speech.OpenAiSpeechSynthesizer>(c => c.Timeout = TimeSpan.FromSeconds(60)).RemoveAllLoggers();
         services.AddHttpClient<Speech.AzureSpeechSynthesizer>(c => c.Timeout = TimeSpan.FromSeconds(60)).RemoveAllLoggers();
         services.AddTransient<Application.Speech.ISpeechSynthesizer, Speech.SpeechSynthesizerChooser>();

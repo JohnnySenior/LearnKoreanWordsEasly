@@ -28,9 +28,22 @@ public sealed class AiGateway(
     public async Task<AiStatusDto> StatusAsync(Guid ownerId, CancellationToken ct)
     {
         var chosen = await db.Users.Where(u => u.Id == ownerId).Select(u => u.AiProvider).SingleAsync(ct);
-        var list = providers.OrderBy(p => p.Kind)
-            .Select(p => new AiProviderStatusDto(p.Kind, Label(p.Kind), p.IsConfigured, p.IsConfigured ? p.Model : null))
-            .ToList();
+        var list = new List<AiProviderStatusDto>();
+        foreach (var p in providers.OrderBy(p => p.Kind))
+        {
+            // A key being set is not a working connection: the status shows how the latest real call ended.
+            var last = p.IsConfigured
+                ? await db.AiUsages.AsNoTracking()
+                    .Where(u => u.Provider == p.Kind && u.Feature != Speech.SpeechService.Feature && u.Feature != Speech.SpeakingService.Feature
+                        && (u.Succeeded || u.Error != null))
+                    .OrderByDescending(u => u.OccurredAt)
+                    .Select(u => new { u.Succeeded, u.Error, u.OccurredAt })
+                    .FirstOrDefaultAsync(ct)
+                : null;
+            list.Add(new AiProviderStatusDto(p.Kind, Label(p.Kind), p.IsConfigured, p.IsConfigured ? p.Model : null,
+                last?.Succeeded, last is { Succeeded: false } ? last.Error : null, last?.OccurredAt));
+        }
+
         var effective = Order(chosen).FirstOrDefault(p => p.IsConfigured)?.Kind;
         return new AiStatusDto(list, chosen, Options.DefaultProvider, effective, await CallsTodayAsync(ownerId, ct), await DailyLimitAsync(ownerId, ct));
     }
@@ -109,7 +122,8 @@ public sealed class AiGateway(
                     OperationCanceledException or HttpRequestException => "javob kechikdi yoki aloqa uzildi",
                     _ => "kutilmagan javob",
                 };
-                logger.LogWarning("AI call {Feature} via {Provider} failed: {Error}", request.Feature, provider.Kind, lastError);
+                // The exception type only: a message can quote the request, e.g. an invalid header value (the key).
+                logger.LogWarning("AI call {Feature} via {Provider} failed: {Error} ({ErrorType})", request.Feature, provider.Kind, lastError, ex.GetType().Name);
                 await usage.FailAsync(reservation, (int)watch.ElapsedMilliseconds, lastError);
             }
         }

@@ -203,6 +203,55 @@ public class AiEndpointsTests
     }
 
     [Fact]
+    public async Task Status_shows_how_the_last_call_ended_not_only_that_a_key_is_set()
+    {
+        _gpt.Failure = new AiProviderException("ChatGPT: API kaliti noto‘g‘ri yoki ruxsat yo‘q", transient: false);
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+
+        var before = await client.GetFromJsonAsync<AiStatusDto>("/api/ai/status", Json);
+        Assert.All(before!.Providers, p => Assert.Null(p.LastOk)); // a key alone is "not checked yet"
+
+        await client.PostAsync("/api/ai/ping/Anthropic", null);
+        await client.PostAsync("/api/ai/ping/OpenAi", null);
+        var after = await client.GetFromJsonAsync<AiStatusDto>("/api/ai/status", Json);
+        var claude = after!.Providers.Single(p => p.Kind == AiProviderKind.Anthropic);
+        var gpt = after.Providers.Single(p => p.Kind == AiProviderKind.OpenAi);
+        Assert.True(claude.LastOk);
+        Assert.Null(claude.LastError);
+        Assert.False(gpt.LastOk);
+        Assert.Contains("API kaliti noto‘g‘ri", gpt.LastError);
+
+        // A fixed key shows as working after the next real call, not before.
+        _gpt.Failure = null;
+        factory.Time.Advance(TimeSpan.FromMinutes(2));
+        await client.PostAsync("/api/ai/ping/OpenAi", null);
+        var fixedNow = await client.GetFromJsonAsync<AiStatusDto>("/api/ai/status", Json);
+        Assert.True(fixedNow!.Providers.Single(p => p.Kind == AiProviderKind.OpenAi).LastOk);
+    }
+
+    [Fact]
+    public async Task Keys_pasted_with_spaces_line_breaks_or_quotes_are_cleaned()
+    {
+        await using var factory = new ApiFactory();
+        factory.Settings["Ai:Anthropic:ApiKey"] = " \"sk-ant-test\"\n";
+        factory.Settings["Ai:OpenAi:ApiKey"] = "  ";
+        factory.Settings["Ai:OpenAi:Model"] = "gpt-5-mini ";
+        factory.Settings["Ai:Tts:Azure:Key"] = "'azure-key' ";
+        factory.Settings["Ai:Tts:Azure:Region"] = " koreacentral\r\n";
+
+        var ai = factory.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiOptions>>().Value;
+        var speech = factory.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<Lugat.Application.Speech.SpeechOptions>>().Value;
+
+        Assert.Equal("sk-ant-test", ai.Anthropic.ApiKey);
+        Assert.Null(ai.OpenAi.ApiKey);
+        Assert.False(ai.OpenAi.IsConfigured);
+        Assert.Equal("gpt-5-mini", ai.OpenAi.Model);
+        Assert.Equal("azure-key", speech.Azure.Key);
+        Assert.Equal("koreacentral", speech.Azure.Region);
+    }
+
+    [Fact]
     public async Task An_unexpected_response_from_one_service_falls_back_instead_of_crashing()
     {
         _claude.Failure = new KeyNotFoundException("content");

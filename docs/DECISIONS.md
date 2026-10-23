@@ -295,3 +295,10 @@ Spec §8, §6.4, §13.9.
 - **Qattiq xarajat chegarasi:** `Ai:Budget:MonthlyLimitUsd` allaqachon har AI, TTS va talaffuz chaqiruvini provayderga borishdan oldin to‘xtatardi, lekin tarifi kiritilmagan model narxi noma’lum bo‘lib chegaraga qo‘shilmasdi. Endi bunday chaqiruvlar oyiga `Ai:Budget:MonthlyUnpricedCalls` (standart 2000) ta bilan to‘xtaydi. Railway workspace’dagi spend limit — ikkinchi qavat (HOSTING).
 - **Proksi:** Railway’da (`RAILWAY_ENVIRONMENT_NAME` bor) yoki `ForwardedHeaders:Enabled=true` da `X-Forwarded-For` ning faqat **oxirgi** qiymati (proksi qo‘shgani, `ForwardLimit = 1`) mijoz IP’si hisoblanadi: rate limit har mijozga alohida, mijoz o‘zi yozgan manzil bilan limitdan qochib keta olmaydi. Boshqa joyda o‘chiq.
 - **Volume:** image root bo‘lmagan foydalanuvchida ishlaydi, Railway volume’i root’niki — `RAILWAY_RUN_UID=0` (HOSTING, deploy qadamlari).
+
+## L-34 · 2026-10-23 · AI holati haqiqiy natijadan, kalitlar tozalanadi
+
+Production’dagi birinchi sinovda topilgan (Bosqich 8, deploy). `Ai__Anthropic__ApiKey` ortiqcha belgi bilan kiritilgan edi: so‘rov serverdan chiqmay yiqilardi (94 ms, logda faqat "kutilmagan javob"), Sozlamalar esa baribir "ulangan" deb ko‘rsatardi — u faqat kalit borligini bildirardi.
+- **Holat:** `AiProviderStatusDto` ga `LastOk`, `LastError`, `LastAt` qo‘shildi — shu xizmatga oxirgi **tugagan** matnli chaqiruv natijasi (istalgan funksiya va foydalanuvchi; ovoz `tts`/`stt` hisobga olinmaydi, davom etayotgan rezerv ham). Sozlamalarda: "ishlayapti (model, oxirgi so‘rov …)", "**ishlamayapti:** sabab" yoki "kalit qo‘shilgan, hali tekshirilmagan". "Ulangan" so‘zi endi ishlatilmaydi. Xato holati rang bilan emas, qalin matn bilan (D-25).
+- **Tozalash:** `Ai:Anthropic`, `Ai:OpenAi` kaliti va modeli, `Ai:Tts:Azure` kaliti va regioni chetidagi bo‘sh joy, qator oxiri va `"`/`'` dan tozalanadi (`AiProviderOptions.Clean`, `PostConfigure`); faqat bo‘sh joydan iborat qiymat — kiritilmagan.
+- **Log:** muvaffaqiyatsiz AI chaqiruvi logida xato **turi** ham yoziladi (`FormatException` va h.k.). Xabarning o‘zi yozilmaydi: noto‘g‘ri header xabari kalitni o‘z ichiga oladi (SEC05).
