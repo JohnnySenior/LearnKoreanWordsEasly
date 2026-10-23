@@ -978,3 +978,38 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .rate-cell.middle { background: var(--color-text); color: var(--color-bg); }
 .rate-cell.middle span { color: color-mix(in srgb, var(--color-bg) 75%, transparent); }
 .rate-cell:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 1f Bo‘lim testi. */
+.session-title { flex: 1; min-width: 0; font: 800 15px var(--font-heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.test-segments { display: flex; gap: 2px; margin: 12px 0 0; }
+.test-segments span { flex: 1; height: 6px; background: var(--color-neutral-300); }
+.test-segments span.done { background: var(--color-text); }
+.test-segments span.current { background: var(--color-accent); }
+.question-ask { display: block; font-size: 13px; color: var(--color-muted); margin: 16px 0 4px; }
+.test-question .prompt.ko { font: 900 72px/1.05 var(--font-ko); margin: 0 0 12px; }
+.choice-list { margin: 16px calc(-1 * var(--gutter)) 0; border-top: 1px solid var(--color-divider); }
+.choice { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; width: 100%; min-height: 60px; padding: 8px var(--gutter); border: 0; border-bottom: 1px solid var(--color-divider); background: transparent; color: var(--color-text); text-align: left; cursor: pointer; }
+.choice-letter { font: 800 13px var(--font-heading); }
+.choice-text { font: 600 17px/1.3 var(--font-body); }
+.choice-text[lang="ko"] { font-family: var(--font-ko); font-size: 19px; }
+.choice.chosen { background: var(--color-text); color: var(--color-bg); }
+.choice:disabled { cursor: progress; }
+.test-foot { padding: 16px 0; }
+.test-foot-links { display: flex; justify-content: space-between; margin-top: 4px; }
+
+/* 1g Test natijasi. */
+.result-figures { display: grid; grid-template-columns: 1fr 1fr; margin: 0 calc(-1 * var(--gutter)); border-bottom: 2px solid var(--color-divider); }
+.result-figures > div { padding: 20px var(--gutter); }
+.result-figures b { display: block; font: 900 56px/0.95 var(--font-heading); letter-spacing: -0.03em; margin-top: 6px; }
+.result-figures small { font-size: 22px; font-weight: 800; color: var(--color-muted); }
+.result-figures.passed .result-score { background: var(--color-accent); color: var(--color-bg); }
+.result-figures.passed .result-score .kicker { color: var(--color-bg); }
+.result-figures.failed .result-score { box-shadow: inset 0 0 0 2px var(--color-text); }
+.result-text { padding: 16px 0; }
+.result-text h4 { font: 800 20px/1.12 var(--font-heading); margin: 0 0 6px; }
+.wrong-list { margin: 0 calc(-1 * var(--gutter)); }
+.wrong-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 12px var(--gutter); border-bottom: 1px solid var(--color-divider); }
+.wrong-row .ko { font-size: 17px; font-weight: 700; }
+.wrong-row b { display: block; font-weight: 600; }
+.wrong-row s { display: block; font-size: 13px; }
+.result-actions { padding: 16px 0; display: grid; gap: 8px; }
