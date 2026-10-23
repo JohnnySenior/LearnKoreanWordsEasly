@@ -17,6 +17,7 @@ public enum UnitState
 /// <param name="Label">"A-3".</param>
 /// <param name="Started">Words with a card past "new" (spec §4.2 "12/25 boshlangan").</param>
 /// <param name="Themes">The unit's most common theme tags, at most 3.</param>
+/// <param name="CanSkip">The next locked unit: "Bilaman — testni topshirish" is offered (spec §4.5).</param>
 public sealed record UnitSummaryDto(
     Guid Id,
     CatalogLevel Level,
@@ -26,7 +27,8 @@ public sealed record UnitSummaryDto(
     UnitState State,
     int Started,
     int? BestScorePercent,
-    IReadOnlyList<string> Themes);
+    IReadOnlyList<string> Themes,
+    bool CanSkip = false);
 
 /// <param name="ComingSoon">Units of the level that are still being prepared.</param>
 public sealed record LevelUnitsDto(CatalogLevel Level, string Title, IReadOnlyList<UnitSummaryDto> Units, int ComingSoon);

@@ -15,7 +15,15 @@ namespace Lugat.Application.Testing;
 /// locally; gap sentences come from one AI call per test. When the AI is down the test still works, with choice
 /// questions only. Tests never change the card schedule.
 /// </summary>
-public sealed class TestService(IAppDbContext db, TestQuestionGenerator generator, Speech.SpeakingService speaking, Vocabulary.UsageService usage, TimeProvider time, IOperationLock operations)
+public sealed class TestService(
+    IAppDbContext db,
+    TestQuestionGenerator generator,
+    Speech.SpeakingService speaking,
+    Speech.SpeechService speech,
+    Vocabulary.UsageService usage,
+    Catalog.UnitTestService unitTests,
+    TimeProvider time,
+    IOperationLock operations)
 {
     public const string PromptVersion = "test-gaps-v1";
 
@@ -272,18 +280,37 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
         };
     }
 
+    /// <summary>
+    /// Ends the test; answers can no longer change. A unit test's outcome (pass, next unit) is applied in the same
+    /// transaction, once: finishing again, or twice at the same moment, returns the same result (spec §13.5).
+    /// </summary>
     public async Task<TestDto> FinishAsync(Guid ownerId, Guid id, CancellationToken ct)
     {
+        await using var lease = await operations.AcquireAsync($"test-finish:{id}", ct);
         var run = await FindAsync(ownerId, id, ct);
         if (run.Status == TestRunStatus.Finished)
         {
             return ToDto(run);
         }
 
+        await using var tx = await db.BeginTransactionAsync(ct);
         run.Status = TestRunStatus.Finished;
         run.FinishedAt = time.GetUtcNow();
         await SaveAsync(ct);
+        await unitTests.ApplyAsync(run, ct);
+        db.TestRuns.Update(run); // still tracked even if opening units had to re-read its own state
+        await SaveAsync(ct);
+        await tx.CommitAsync(ct);
         return ToDto(run);
+    }
+
+    /// <summary>The recording of a listening question (spec §4.4): the word is heard, never sent as text before the end.</summary>
+    public async Task<byte[]> AudioAsync(Guid ownerId, Guid id, int index, CancellationToken ct)
+    {
+        var run = await FindAsync(ownerId, id, ct);
+        var question = run.Questions.SingleOrDefault(q => q.Index == index && q.Kind == TestQuestionKind.WordListening)
+            ?? throw new NotFoundException("Tinglash savoli topilmadi.");
+        return await speech.GetAsync(ownerId, question.BaseForm, ct);
     }
 
     private async Task<TestRun> FindAsync(Guid ownerId, Guid id, CancellationToken ct) =>
@@ -379,7 +406,7 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
         return copy;
     }
 
-    private static TestDto ToDto(TestRun run)
+    public static TestDto ToDto(TestRun run)
     {
         var finished = run.Status == TestRunStatus.Finished;
         var answers = run.Answers.ToDictionary(a => a.Index);
@@ -412,8 +439,12 @@ public sealed class TestService(IAppDbContext db, TestQuestionGenerator generato
         var byKind = finished
             ? questions.GroupBy(q => q.Kind).Select(g => new TestKindScoreDto(g.Key, g.Count(q => q.IsCorrect == true), g.Count())).ToList()
             : [];
+        var unit = run.UnitId is { } unitId && run.PassMark is { } mark
+            ? new UnitTestInfoDto(run.Purpose, unitId, mark, finished ? run.Passed : null, finished ? run.OpenedUnitId : null,
+                finished ? run.Questions.Where(q => !(answers.GetValueOrDefault(q.Index)?.IsCorrect ?? false)).Select(q => q.LearningItemId).OfType<Guid>().ToList() : [])
+            : null;
         return new TestDto(run.Id, run.Title, run.Status, run.CreatedAt, run.FinishedAt, run.Warning, run.Provider, questions,
-            run.Answers.Count, finished ? run.Answers.Count(a => a.IsCorrect) : null, byKind);
+            run.Answers.Count, finished ? run.Answers.Count(a => a.IsCorrect) : null, byKind, unit);
     }
 
 }

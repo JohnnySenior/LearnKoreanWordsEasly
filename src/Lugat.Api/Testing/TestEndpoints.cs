@@ -46,6 +46,18 @@ public static class TestEndpoints
         tests.MapPost("/{id:guid}/oral/{index:int}/technical", (Guid id, int index, ClaimsPrincipal user, TestService s, CancellationToken ct) =>
             s.OralTechnicalAsync(user.GetUserId(), id, index, ct));
         tests.MapPost("/{id:guid}/finish", (Guid id, ClaimsPrincipal user, TestService s, CancellationToken ct) => s.FinishAsync(user.GetUserId(), id, ct));
+        tests.MapGet("/{id:guid}/questions/{index:int}/audio", async (Guid id, int index, ClaimsPrincipal user, TestService s, CancellationToken ct) =>
+            Results.File(await s.AudioAsync(user.GetUserId(), id, index, ct), "audio/mpeg"));
+
+        // Unit tests (spec §4.4, §4.5, §11): the final test of an open unit, "Bilaman" for the next locked one.
+        // Answers and finishing work like any test; finishing applies the result (pass, next unit) once.
+        var api = app.MapGroup("/api").RequireAuthorization();
+        api.MapPost("/units/{unitId:guid}/tests", (Guid unitId, StartUnitTestRequest body, ClaimsPrincipal user,
+                Application.Catalog.UnitTestService s, CancellationToken ct) => s.StartAsync(user.GetUserId(), unitId, body, ct))
+            .RequireRateLimiting(StartRateLimitPolicy);
+        api.MapPost("/unit-tests/{id:guid}/answers", (Guid id, TestAnswerRequest body, ClaimsPrincipal user, TestService s, CancellationToken ct) =>
+            s.AnswerAsync(user.GetUserId(), id, body, ct));
+        api.MapPost("/unit-tests/{id:guid}/finish", (Guid id, ClaimsPrincipal user, TestService s, CancellationToken ct) => s.FinishAsync(user.GetUserId(), id, ct));
 
         return app;
     }

@@ -4,7 +4,7 @@
 
 @* Listen to Korean text: normal and slower (spec AU01). The recording is loaded when the text appears, so a tap plays at once. *@
 <span class="speak" role="group" aria-label="Tinglash">
-    <button type="button" class="speak-btn" title="Tinglash" aria-label="@($"Tinglash: {Text}")" @onclick="() => PlayAsync(1.0)">
+    <button type="button" class="speak-btn" title="Tinglash" aria-label="@(Source is null ? $"Tinglash: {Text}" : "Tinglash")" @onclick="() => PlayAsync(1.0)">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
     </button>
     <button type="button" class="speak-btn slow" title="Sekinroq" aria-label="Sekinroq tinglash" @onclick="() => PlayAsync(0.7)">0.7×</button>
@@ -17,6 +17,14 @@
 @code {
     [Parameter, EditorRequired] public string Text { get; set; } = "";
 
+    /// <summary>
+    /// Where the recording comes from instead of the text, e.g. a listening question (spec §4.4): then the text is
+    /// only a key, never sent or shown, and the phone's own voice cannot stand in for it.
+    /// </summary>
+    [Parameter] public string? Source { get; set; }
+
+    private string Key => Source ?? Text;
+
     private string? _loadedFor;
     private bool _serverFailed;
     private string? _note;
@@ -24,15 +32,15 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_loadedFor == Text)
+        if (_loadedFor == Key)
         {
             return;
         }
 
-        _loadedFor = Text;
+        _loadedFor = Key;
         _serverFailed = false;
         _note = null;
-        await LoadAsync(Text);
+        await LoadAsync(Key);
     }
 
     private async Task LoadAsync(string text)
@@ -42,8 +50,8 @@
             return;
         }
 
-        var result = await Api.GetBytesAsync($"api/tts?text={Uri.EscapeDataString(text)}");
-        if (_gone.IsCancellationRequested || text != Text)
+        var result = await Api.GetBytesAsync(Source ?? $"api/tts?text={Uri.EscapeDataString(text)}");
+        if (_gone.IsCancellationRequested || text != Key)
         {
             return;
         }
@@ -61,13 +69,21 @@
     private async Task PlayAsync(double rate)
     {
         _note = null;
-        if (!_serverFailed && await Audio.HasSpeechAsync(Text))
+        if (!_serverFailed && await Audio.HasSpeechAsync(Key))
         {
-            var played = await Audio.PlaySpeechAsync(Text, rate);
+            var played = await Audio.PlaySpeechAsync(Key, rate);
             if (played.Ok)
             {
                 return;
             }
+        }
+
+        if (Source is not null)
+        {
+            _note = _serverFailed ? "Ovoz yuklanmadi. Internetni tekshirib, qayta bosing." : "Ovoz yuklanmoqda, birozdan keyin qayta bosing.";
+            _serverFailed = false;
+            await LoadAsync(Key);
+            return;
         }
 
         // Not loaded yet or the server has no voice: the phone's own Korean voice.
@@ -77,7 +93,7 @@
             _note = "Ovoz yuklanmoqda, birozdan keyin qayta bosing.";
             if (!_serverFailed)
             {
-                await LoadAsync(Text);
+                await LoadAsync(Key);
             }
         }
     }

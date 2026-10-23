@@ -85,6 +85,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         configurationBuilder.Properties<AiCheckStatus>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<Domain.Writing.WritingVerdict>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<Domain.Testing.TestRunStatus>().HaveConversion<string>().HaveMaxLength(32);
+        configurationBuilder.Properties<Domain.Testing.TestPurpose>().HaveConversion<string>().HaveMaxLength(16);
     }
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -290,10 +291,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.ToTable("test_runs");
             e.Property(x => x.Id).ValueGeneratedNever();
             e.HasIndex(x => new { x.OwnerId, x.CreatedAt });
+            e.HasIndex(x => new { x.OwnerId, x.UnitId, x.Purpose, x.CreatedAt }); // "Bilaman" attempts per day (spec §4.5)
             e.Property(x => x.Version).IsRowVersion();
             e.Property(x => x.Title).HasMaxLength(200);
             e.Property(x => x.Warning).HasMaxLength(500);
             e.Property(x => x.Provider).HasMaxLength(64);
+            e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.Questions).HasColumnType("jsonb").HasConversion(
                 JsonConverter<List<Domain.Testing.TestQuestion>>(),
                 new ValueComparer<List<Domain.Testing.TestQuestion>>((a, c) => a!.SequenceEqual(c!), v => v.Count, v => v.ToList()));

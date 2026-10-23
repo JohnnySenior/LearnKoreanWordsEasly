@@ -126,13 +126,29 @@ Bosqichlar spec §13 bo‘yicha.
 - Chromium, 360px (Development, namuna seed): Bosh sahifa → joriy bo‘lim A-1; Bo‘limlar (A-1 ochiq, A-2 qulflangan, "Avval 1-bo‘limni tugating"); A-1 sahifasi — 25 so‘z jadvalda, so‘z bosilganda misol va tuzoq; Kartochka → 50 kartali drill; Takrorlash tabi. Gorizontal scroll yo‘q; konsolda faqat TTS 503 (dev’da ovoz kaliti yo‘q).
 
 **Ochiq qoldi:**
-- Bo‘lim testi va "Bilaman" — 4-bosqich (tugmalar hozir o‘chiq). Hozircha o‘quvchi faqat A-1 da ishlay oladi.
-- "Qaysi so‘z to‘g‘ri?" mashqi hali har foydalanuvchining AI qo‘llanishidan; katalogning tekshirilgan savollariga (`CatalogUsage`) o‘tkazish kerak (spec §3.1: umumiy, bepul) — 4-bosqich test generatori bilan birga.
+- ~~Bo‘lim testi va "Bilaman"~~ — 4-bosqichda (L-28).
+- ~~"Qaysi so‘z to‘g‘ri?" katalog savollariga~~ — 4-bosqichda (L-29).
 - Onboarding (spec §4.1, 2–3 ekran) va "Ilovani o‘rnatish" — 6-bosqich (PWA).
 
-## Bosqich 4 · Bo‘lim testi va "Bilaman"
+## Bosqich 4 · Bo‘lim testi va "Bilaman" (2026-10-23)
 
-- [ ] Savol generatori (distraktor qoidalari), `WordListening`, ochilish, "Bilaman" limiti.
+- [x] Bo‘lim testi `TestRun` dvigatelida: `POST /api/units/{id}/tests`, `/api/unit-tests/{id}/answers`, `/finish` (L-28).
+- [x] Savol generatori: har so‘zdan bittadan, 10/10/5 (`WordMeaning`/`WordKorean`/`WordListening`), distraktor qoidalari (omonim, sinonim yo‘q; bir xil turkum avval) (L-28).
+- [x] `WordListening`: audio serverdan, matn klientga chiqmaydi; TTS bo‘lmasa ma’no savoliga almashadi va qayd etiladi.
+- [x] Baholash serverda, ≥ 80% (`Units:PassPercent`) — o‘tdi, keyingi bo‘lim ochiladi; yakunlash bir marta qo‘llanadi.
+- [x] "Bilaman": faqat navbatdagi qulflangan bo‘lim, kuniga 3 marta (`Units:SkipAttemptsPerDay`); o‘tsa to‘g‘ri so‘zlar 1 kunlik `Review`, xatolari `New` (L-28).
+- [x] Xatolar daftari: manba "bo‘lim testi"; test kartochka jadvalini o‘zgartirmaydi.
+- [x] "Qaysi so‘z to‘g‘ri?" — katalogning tekshirilgan savollari (L-29).
+- [x] UI: bo‘lim sahifasida "Testni boshlash", Bo‘limlarda "Bilaman", natijada keyingi bo‘lim / xato so‘zlarni takrorlash / qayta topshirish.
+
+**Tekshirildi:**
+- `dotnet build` toza; testlar 95 (Domain) + 32 (Application) + 164 (Api) = 291, hammasi o‘tdi.
+- Qabul mezonlari (`Catalog/UnitTestTests`, `UnitTestGeneratorTests`): 20/25 → o‘tdi, A-2 ochildi, eng yaxshi ball 80%; 19/25 → o‘tmadi, qayta topshirish boshqa savollar beradi; yakunlashni parallel 3 marta + yana 1 marta yuborish — urinish 1, natija bir marta; yakunlangandan keyin javob 409; "Bilaman" A-3 ga (navbatdagi emas) va ochiq bo‘limga 403, A-2 ga 3 marta OK, 4-chisi 429, ertasi kuni yana OK; o‘tilgan "Bilaman" — 42 karta `Review` (1 kun), 8 `New`, `IndependentSuccessDays` 0; distraktorlar orasida omonim va sinonim yo‘q (50 xil seed); test javobgacha `correct` qaytarmaydi, tinglash savolida matn yo‘q, audio faqat tinglash savoli uchun, boshqa foydalanuvchi testi 404; yakuniy test kartalarni o‘zgartirmaydi, xatolar daftariga "bo‘lim testi" bilan tushadi; TTS’siz 13 ma’no savoli va ogohlantirish.
+- Chromium, 360px (Development): Bo‘limlar → A-2 qulflangan, "Bilaman" tugmasi; A-1 → 4. Test → 25 savol → yakunlash → "Hali o‘tilmadi", xato so‘zlar ro‘yxati, takrorlash va qayta topshirish tugmalari. Gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+
+**Ochiq qoldi:**
+- Tinglash savoli haqiqiy ovoz bilan brauzerda eshitib ko‘rilmadi (dev’da TTS kaliti yo‘q; serverdagi yo‘l testlarda fake ovoz bilan sinalgan).
+- Katalogda hali "Qaysi so‘z to‘g‘ri?" savollari yo‘q (namuna faylda yo‘q; AI qoralama bilan yoziladi va muharrir tekshiradi).
 
 ## Bosqich 5 · Premium va to‘lov
 

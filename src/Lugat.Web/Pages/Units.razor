@@ -2,6 +2,7 @@
 @using Lugat.Contracts
 @using Lugat.Domain.Catalog
 @inject SessionService Api
+@inject NavigationManager Nav
 
 <PageTitle>Bo‘limlar — Lug‘at</PageTitle>
 
@@ -56,11 +57,11 @@ else
                     {
                         <div class="unit-locked-note" role="status">
                             <p>Avval @(u.Number - 1)-bo‘limni tugating.</p>
-                            @if (u.Id == NextLocked)
+                            @if (u.CanSkip)
                             {
-                                @* "Bilaman — testni topshirish" (spec §4.5) comes with the unit test in stage 4. *@
-                                <button class="button small" disabled>Bilaman — testni topshirish</button>
-                                <p class="muted small-text">Bo‘lim testi bilan birga qo‘shiladi.</p>
+                                @* "Bilaman — testni topshirish" (spec §4.5): only the next locked unit, 3 times a day. *@
+                                <button class="button small" disabled="@_busy" @onclick="() => SkipAsync(unit)">Bilaman — testni topshirish</button>
+                                <p class="muted small-text">Bo‘lim testi bilan bir xil: 80% to‘g‘ri bo‘lsa bo‘lim o‘tiladi va keyingisi ochiladi. Kuniga 3 marta.</p>
                             }
                         </div>
                     }
@@ -99,8 +100,21 @@ else
     private Guid? _tapped;
     private string? _error;
 
-    /// <summary>Only the first locked unit can be skipped with a test (spec §4.5).</summary>
-    private Guid? NextLocked => _units?.Units.FirstOrDefault(u => u.State == UnitState.Locked)?.Id;
+    private bool _busy;
+
+    private async Task SkipAsync(UnitSummaryDto unit)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, $"api/units/{unit.Id}/tests", new StartUnitTestRequest(Guid.NewGuid(), UnitTestKind.Skip));
+        _busy = false;
+        if (result.Value is { } test)
+        {
+            Nav.NavigateTo($"sinov/{test.Id}");
+            return;
+        }
+
+        _error = result.Error;
+    }
 
     protected override Task OnInitializedAsync() => LoadAsync();
 

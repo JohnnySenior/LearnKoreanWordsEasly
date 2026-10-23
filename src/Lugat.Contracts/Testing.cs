@@ -54,7 +54,29 @@ public sealed record TestDto(
     IReadOnlyList<TestQuestionDto> Questions,
     int Answered,
     int? Score,
-    IReadOnlyList<TestKindScoreDto> ByKind);
+    IReadOnlyList<TestKindScoreDto> ByKind,
+    UnitTestInfoDto? Unit = null);
+
+/// <param name="PassMark">Right answers needed (spec §4.4: 20 of 25).</param>
+/// <param name="Passed">Only once the test is finished.</param>
+/// <param name="NextUnitId">The unit the pass opened.</param>
+/// <param name="WrongItemIds">Words answered wrong, for "Xato qilgan N ta so‘zni takrorlash" (after the end only).</param>
+public sealed record UnitTestInfoDto(
+    TestPurpose Purpose,
+    Guid UnitId,
+    int PassMark,
+    bool? Passed,
+    Guid? NextUnitId,
+    IReadOnlyList<Guid> WrongItemIds);
+
+public enum UnitTestKind
+{
+    Final,
+    Skip,
+}
+
+/// <param name="Id">Chosen by the client once and reused on retries (API01).</param>
+public sealed record StartUnitTestRequest(Guid Id, UnitTestKind Kind);
 
 /// <summary>What a test was made of, for the history filter (D-39).</summary>
 public enum TestCategory
