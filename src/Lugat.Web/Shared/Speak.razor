@@ -26,6 +26,7 @@
     private string Key => Source ?? Text;
 
     private string? _loadedFor;
+    private Task? _loading;
     private bool _serverFailed;
     private string? _note;
     private readonly CancellationTokenSource _gone = new();
@@ -40,7 +41,8 @@
         _loadedFor = Key;
         _serverFailed = false;
         _note = null;
-        await LoadAsync(Key);
+        _loading = LoadAsync(Key);
+        await _loading;
     }
 
     private async Task LoadAsync(string text)
@@ -69,6 +71,17 @@
     private async Task PlayAsync(double rate)
     {
         _note = null;
+        if (_loading is { IsCompleted: false } loading)
+        {
+            // Tapped before the recording arrived (it takes about a second the first time): wait for it on an element
+            // started by this tap, instead of the phone's robotic voice now and the real one only on the next tap.
+            await Audio.PrimeSpeechAsync();
+            _note = "Ovoz yuklanmoqda…";
+            StateHasChanged();
+            await loading;
+            _note = null;
+        }
+
         if (!_serverFailed && await Audio.HasSpeechAsync(Key))
         {
             var played = await Audio.PlaySpeechAsync(Key, rate);

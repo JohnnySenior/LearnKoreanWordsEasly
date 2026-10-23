@@ -92,12 +92,34 @@ export function hasSpeech(key) {
     return speech.has(key);
 }
 
+// A tap that comes before the recording has arrived: iOS lets an element start only from a tap, so the element is
+// started here on a moment of silence, and playSpeech gives it the recording when it comes. Without this the first
+// tap fell back to the phone's own robotic voice and only the second one played the real recording.
+const SILENCE = 'data:audio/wav;base64,UklGRmQBAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+let primed = null;
+
+export function primeSpeech() {
+    try {
+        if (current) current.pause();
+        primed = new Audio(SILENCE);
+        const started = primed.play();
+        if (started && started.catch) started.catch(() => {});
+        return true;
+    } catch {
+        primed = null;
+        return false;
+    }
+}
+
 export async function playSpeech(key, rate) {
     const url = speech.get(key);
     if (!url) return { ok: false, error: 'yuklanmagan' };
     try {
-        if (current) current.pause();
-        current = new Audio(url);
+        const element = primed ?? new Audio();
+        primed = null;
+        if (current && current !== element) current.pause();
+        current = element;
+        current.src = url;
         current.playbackRate = rate;
         current.preservesPitch = true;
         current.webkitPreservesPitch = true;
