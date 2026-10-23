@@ -925,3 +925,32 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .unit-item.next .unit-end { color: var(--color-neutral-600); }
 .unit-skip { grid-column: 2 / 4; margin-top: 12px; min-height: 44px; padding: 0 12px; font-size: 14px; white-space: nowrap; }
 .unit-skip-note { grid-column: 2 / 4; margin-top: 6px; font-size: 11px; color: var(--color-muted); }
+
+/* 1d Bo‘lim · Jadval. */
+.timer-box { min-width: 64px; min-height: 44px; padding: 0 10px; border: 1px solid var(--color-divider); background: transparent; color: var(--color-text); font: 600 15px var(--font-body); font-variant-numeric: tabular-nums; cursor: pointer; }
+.timer-box.over { border-color: var(--color-accent); color: var(--color-accent-700); }
+.cover-bar { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.cover-bar .seg { margin: 0; flex: 1; }
+.cover-bar .seg > button { min-height: 44px; font-size: 13px; padding: 0 10px; }
+.cover-hint { margin: -4px 0 8px; }
+.word-table { margin: 0 calc(-1 * var(--gutter)); width: calc(100% + 2 * var(--gutter)); border-top: 2px solid var(--color-divider); }
+.word-table th { padding: 10px 8px; font: 400 11px var(--font-body); letter-spacing: .08em; border-bottom: 2px solid var(--color-divider); }
+.word-table th:first-child, .word-table td:first-child { padding-left: var(--gutter); }
+.word-table th:last-child, .word-table td:last-child { padding-right: var(--gutter); }
+.word-table td { padding: 12px 8px; min-height: 50px; border-bottom: 1px solid var(--color-divider); vertical-align: middle; }
+.word-table .n { width: 36px; font-size: 13px; }
+.word-table td.ko { font-size: 17px; font-weight: 700; width: 46%; }
+.word-table td.ko small { font-size: 11px; }
+.word-table td.uz { font-size: 14px; }
+.covered { display: block; width: 100%; min-width: 4em; height: 24px; background: var(--color-neutral-300); border: 0; }
+.trap { margin: 10px 0; padding: 12px 14px; background: var(--color-accent-100); }
+.trap-title { display: flex; align-items: center; gap: 6px; font: 600 11px var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); }
+.trap p { margin: 6px 0 0; font-size: 14px; color: var(--color-accent-900); }
+/* A screen's main action kept above the tab bar (body has overflow-x: hidden, so sticky would not stick). */
+.sticky-action { position: fixed; left: 0; right: 0; bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom)); z-index: 9; padding: 12px var(--gutter); background: var(--color-bg); border-top: 2px solid var(--color-divider); }
+.sticky-action > * { max-width: calc(640px - 2 * var(--gutter)); margin: 0 auto; }
+.sticky-space { height: 84px; }
+.unit-step { padding: 16px 0; }
+.unit-step h3 { font: 800 20px/1.12 var(--font-heading); margin: 0 0 8px; }
+.unit-step .btn.block { margin-top: 12px; }
+.stepper.compact { margin-top: 0; }
