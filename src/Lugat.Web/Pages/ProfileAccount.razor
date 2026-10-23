@@ -1,0 +1,107 @@
+@page "/profil/hisob"
+@using Lugat.Contracts
+@inject SessionService Api
+
+<PageTitle>Hisob — Lug‘at</PageTitle>
+
+@* The name, the ways to sign in and linking a second one, and the teacher groups (UI handoff 2a "Hisobni bog‘lash",
+   "O‘qituvchi guruhi"). *@
+<AppHeader Title="Hisob" Back="profil" />
+
+@if (_me is null)
+{
+    <span class="skeleton" style="width:70%;margin:16px 0"></span>
+    return;
+}
+
+<section class="unit-step">
+    <label class="field">
+        Ism
+        <input class="input" maxlength="100" @bind="_name" />
+    </label>
+    <button class="btn btn-secondary block" disabled="@_busy" @onclick="SaveNameAsync"><span>Saqlash</span></button>
+    @if (_status is not null)
+    {
+        <p role="status" class="small-text" style="margin-top:8px">@_status</p>
+    }
+</section>
+
+<SectionLabel Text="Kirish usullari" />
+@foreach (var login in _me.Logins)
+{
+    <ListRow Label="@login.Provider.ToString()" Value="@login.Display" />
+}
+@if (_me.Logins.Count < 2)
+{
+    <p class="muted small-text" style="margin-top:12px">Ikkinchi kirish usulini bog‘lasangiz, Telegram yoki Google’dan biri ishlamay qolsa ham hisobingizga kira olasiz.</p>
+    <SignIn Link="true" Have="@_me.Logins.Select(l => l.Provider).ToList()" OnLinked="ReloadAsync" />
+}
+
+@if (_groups is { Count: > 0 })
+{
+    <SectionLabel Text="O‘qituvchi guruhlari" />
+    <p class="muted small-text" style="margin-top:8px">O‘qituvchi bo‘lim natijalaringiz, faolligingiz va xato so‘zlaringizni ko‘radi.</p>
+    @foreach (var g in _groups)
+    {
+        var group = g;
+        <ListRow Label="@g.Name" Note="@(g.TeacherName ?? "—")">
+            @if (_confirmLeave == g.Id)
+            {
+                <button class="btn btn-ghost small" disabled="@_busy" @onclick="() => LeaveAsync(group)">Ha, chiqish</button>
+            }
+            else
+            {
+                <button class="btn btn-ghost small" @onclick="() => _confirmLeave = group.Id">Chiqish</button>
+            }
+        </ListRow>
+    }
+}
+
+@code {
+    private MeDto? _me;
+    private string _name = "";
+    private List<MyGroupDto>? _groups;
+    private Guid? _confirmLeave;
+    private bool _busy;
+    private string? _status;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Apply(await Api.ReloadMeAsync());
+        _groups = (await Api.GetAsync<List<MyGroupDto>>("api/me/groups")).Value;
+    }
+
+    private void Apply(MeDto? me)
+    {
+        if (me is not null)
+        {
+            _me = me;
+            _name = me.DisplayName ?? "";
+        }
+    }
+
+    private async Task ReloadAsync() => Apply(await Api.ReloadMeAsync());
+
+    private async Task SaveNameAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<MeDto>(HttpMethod.Patch, "api/me", new UpdateMeRequest(string.IsNullOrWhiteSpace(_name) ? null : _name, null, null));
+        _busy = false;
+        _status = result.Ok ? "Saqlandi." : result.Error;
+        if (result.Ok)
+        {
+            Apply(await Api.ReloadMeAsync());
+        }
+    }
+
+    // Leaving takes effect at once: the teacher no longer sees the learner (spec §9.1).
+    private async Task LeaveAsync(MyGroupDto group)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/groups/{group.Id}/membership");
+        _busy = false;
+        _confirmLeave = null;
+        _status = result.Ok ? "Guruhdan chiqdingiz." : result.Error;
+        _groups = (await Api.GetAsync<List<MyGroupDto>>("api/me/groups")).Value;
+    }
+}

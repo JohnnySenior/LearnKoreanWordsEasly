@@ -1,26 +1,80 @@
 @page "/admin"
+@using Lugat.Contracts
+@using Lugat.Domain.Catalog
 @using Lugat.Domain.Users
 @inject SessionService Api
 
 <PageTitle>Admin panel — Lug‘at</PageTitle>
 
-@* The owner's panel (spec §10). Content is shared with editors; the rest is admin only (server checks both). *@
-<a class="back" href="profil">← Profil</a>
-<h1>Admin panel</h1>
+@* UI handoff 2c (spec §10): what needs attention first, then the six areas. Content is shared with editors; the rest is
+   admin only (the server checks both). *@
+<AppHeader Title="Admin panel" Back="profil" />
 
 @if (!IsAdmin)
 {
-    <p class="muted">Bu sahifa admin uchun.</p>
+    <p class="muted" style="margin-top:16px">Bu sahifa admin uchun.</p>
     return;
 }
 
-<a class="button block" href="admin/foydalanuvchilar"><span>Foydalanuvchilar</span><span class="aside">qidirish, rollar, Premium, progress →</span></a>
-<a class="button block" href="admin/tolovlar"><span>To‘lovlar</span><span class="aside">qayd etish, qaytarish, promo-kodlar →</span></a>
-<a class="button block" href="admin/komissiya"><span>Komissiya</span><span class="aside">o‘qituvchilar, «To‘landi» →</span></a>
-<a class="button block" href="kontent"><span>Kontent</span><span class="aside">import, AI qoralama, tekshirish, nashr →</span></a>
-<a class="button block" href="admin/sarf"><span>Sarf</span><span class="aside">AI va ovoz →</span></a>
-<a class="button block" href="admin/korsatkichlar"><span>Ko‘rsatkichlar</span><span class="aside">faollik, retention, tushum →</span></a>
+@if (_attention.Count > 0)
+{
+    <SectionLabel Text="Diqqat talab qiladi" Accent="true" />
+    @foreach (var (count, text, href) in _attention)
+    {
+        <a class="attention-row" href="@href">
+            <b>@count</b>
+            <span>@text</span>
+            <Icon Name="chevron-right" Size="18" />
+        </a>
+    }
+}
+
+<div class="admin-tiles">
+    @Tile("01", "Kontent", "Import, AI qoralama, nashr", "kontent")
+    @Tile("02", "Foydalanuvchilar", "Qidirish, rollar, Premium", "admin/foydalanuvchilar")
+    @Tile("03", "To‘lovlar", "Qayd etish, qaytarish", "admin/tolovlar")
+    @Tile("04", "Promo va o‘qituvchilar", "Komissiya, «To‘landi»", "admin/komissiya")
+    @Tile("05", "Ko‘rsatkichlar", "Faollik, retention, tushum", "admin/korsatkichlar")
+    @Tile("06", "Tizim", "AI, sarf, zaxira", "admin/tizim")
+</div>
 
 @code {
+    private readonly List<(int Count, string Text, string Href)> _attention = [];
+
     private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    private static RenderFragment Tile(string no, string title, string note, string href) =>
+        @<a class="admin-tile" href="@href">
+            <span class="admin-tile-no">@no</span>
+            <span><b>@title</b><span>@note</span></span>
+        </a>;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsAdmin)
+        {
+            return;
+        }
+
+        // Units with words that are not published yet: waiting for review and "Nashr".
+        var drafts = new List<string>();
+        foreach (var level in new[] { CatalogLevel.A, CatalogLevel.B, CatalogLevel.C })
+        {
+            if ((await Api.GetAsync<List<UnitAdminSummaryDto>>($"api/admin/units?level={level}")).Value is { } units)
+            {
+                drafts.AddRange(units.Where(u => u.Status == UnitStatus.Draft && u.Drafted > 0).Select(u => $"{u.Level}-{u.Number}"));
+            }
+        }
+
+        if (drafts.Count > 0)
+        {
+            _attention.Add((drafts.Count, $"Bo‘lim tekshiruvda ({string.Join(", ", drafts.Take(4))}{(drafts.Count > 4 ? ", …" : "")})", "kontent"));
+        }
+
+        if ((await Api.GetAsync<List<TeacherCommissionDto>>("api/admin/commissions")).Value is { } commissions
+            && commissions.Count(c => !c.Paid && c.CommissionKrw > 0) is > 0 and var unpaid)
+        {
+            _attention.Add((unpaid, "Komissiya to‘lanmagan", "admin/komissiya"));
+        }
+    }
 }

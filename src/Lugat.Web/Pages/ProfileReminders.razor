@@ -1,0 +1,128 @@
+@page "/profil/eslatma"
+@using Lugat.Contracts
+@inject SessionService Api
+
+<PageTitle>Eslatma — Lug‘at</PageTitle>
+
+@* Telegram reminders (spec §8): moved from the long settings page to its own screen (UI handoff 2a "Eslatma"). *@
+<AppHeader Title="Eslatma" Back="profil" />
+
+@if (_prefs is null)
+{
+    @if (_error is not null)
+    {
+        <div class="notice" role="alert">@_error</div>
+    }
+    else
+    {
+        <span class="skeleton" style="width:70%;margin:16px 0"></span>
+    }
+    return;
+}
+
+<section class="unit-step">
+    @if (!_prefs.RemindersAvailable)
+    {
+        <p class="muted">Eslatmalar hozircha serverda yoqilmagan.</p>
+    }
+    else if (!_prefs.HasTelegram)
+    {
+        <p class="muted">Eslatmalar Telegram bot orqali keladi. Ularni olish uchun <a href="profil/hisob">Telegram hisobini bog‘lang</a>.</p>
+    }
+    else
+    {
+        @if (_prefs.BotBlocked)
+        {
+            <div class="notice" role="alert">Bot sizga xabar yubora olmadi. Telegram'da botni oching va «Start» (/start) tugmasini bosing.</div>
+        }
+
+        <ListRow Label="Telegram orqali eslatib turish">
+            <Toggle @bind-Value="_enabled" Label="Telegram orqali eslatib turish" />
+        </ListRow>
+
+        <div class="field" style="margin-top:12px">
+            Vaqt (@_prefs.TimeZone)
+            <TimeSelect @bind-Value="_time" Disabled="@(!_enabled)" Label="Eslatma vaqti" />
+        </div>
+        <div class="chips days" role="group" aria-label="Kunlar">
+            @foreach (var (day, label) in WeekDays)
+            {
+                var d = day;
+                <button class="chip @(_days.Contains(d) ? "selected" : "")" aria-pressed="@(_days.Contains(d) ? "true" : "false")" disabled="@(!_enabled)" @onclick="() => ToggleDay(d)">@label</button>
+            }
+        </div>
+        <p class="muted small-text">Takrorlash vaqti kelgan so‘z bo‘lmasa, xabar kelmaydi. Kech qolgan eslatmalar to‘planib yuborilmaydi.</p>
+
+        <button class="btn btn-primary block big" disabled="@_busy" @onclick="SaveAsync"><span>Saqlash</span></button>
+        <button class="btn btn-secondary block" style="margin-top:8px" disabled="@_busy" @onclick="TestAsync"><span>Sinov xabari</span></button>
+        @if (_status is not null)
+        {
+            <p role="status" style="margin-top:8px">@_status</p>
+        }
+    }
+</section>
+
+@code {
+    private static readonly (DayOfWeek Day, string Label)[] WeekDays =
+    [
+        (DayOfWeek.Monday, "Du"), (DayOfWeek.Tuesday, "Se"), (DayOfWeek.Wednesday, "Ch"), (DayOfWeek.Thursday, "Pa"),
+        (DayOfWeek.Friday, "Ju"), (DayOfWeek.Saturday, "Sh"), (DayOfWeek.Sunday, "Ya"),
+    ];
+
+    private PreferencesDto? _prefs;
+    private bool _enabled;
+    private TimeOnly _time;
+    private HashSet<DayOfWeek> _days = [];
+    private bool _busy;
+    private string? _error;
+    private string? _status;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetAsync<PreferencesDto>("api/me/preferences");
+        _error = result.Ok ? null : result.Error;
+        Apply(result.Value);
+    }
+
+    private void Apply(PreferencesDto? prefs)
+    {
+        if (prefs is null)
+        {
+            return;
+        }
+
+        _prefs = prefs;
+        _enabled = prefs.RemindersEnabled;
+        _time = prefs.ReminderTime;
+        _days = prefs.ReminderDays.ToHashSet();
+    }
+
+    private void ToggleDay(DayOfWeek day)
+    {
+        if (!_days.Remove(day))
+        {
+            _days.Add(day);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<PreferencesDto>(HttpMethod.Patch, "api/me/preferences", new UpdatePreferencesRequest(_enabled, _time, WeekDays.Select(w => w.Day).Where(_days.Contains).ToList()));
+        _busy = false;
+        _status = result.Ok ? "Saqlandi." : result.Error;
+        Apply(result.Value);
+    }
+
+    private async Task TestAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TestReminderResult>(HttpMethod.Post, "api/me/reminders/test");
+        _busy = false;
+        _status = result.Value?.Message ?? result.Error;
+        if ((await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value is { } p)
+        {
+            _prefs = p;
+        }
+    }
+}
