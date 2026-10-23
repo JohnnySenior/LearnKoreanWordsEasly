@@ -21,7 +21,7 @@ public class PwaTests
         Assert.Equal("application/manifest+json", response.Content.Headers.ContentType?.MediaType);
         using var manifest = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = manifest.RootElement;
-        Assert.Equal("Lug‘at", root.GetProperty("short_name").GetString());
+        Assert.Equal("Koreyscha", root.GetProperty("short_name").GetString());
         Assert.Equal("standalone", root.GetProperty("display").GetString());
         Assert.Equal("/", root.GetProperty("start_url").GetString());
         Assert.Equal("uz", root.GetProperty("lang").GetString());
@@ -48,8 +48,11 @@ public class PwaTests
 
         Assert.Contains("rel=\"manifest\" href=\"manifest.webmanifest\"", html);
         Assert.Contains("rel=\"apple-touch-icon\" href=\"icons/apple-touch-icon.png\"", html);
+        Assert.Contains("rel=\"icon\" href=\"favicon.ico\"", html);
         Assert.Contains("service-worker.js", html);
         Assert.DoesNotContain("telegram-web-app.js", html);
+        Assert.Equal(HttpStatusCode.OK, (await factory.CreateClient().GetAsync("/favicon.ico")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await factory.CreateClient().GetAsync("/icons/favicon.svg")).StatusCode);
     }
 
     [Fact]
