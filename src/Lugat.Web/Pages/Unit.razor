@@ -210,6 +210,9 @@
 
     private UnitDto? _unit;
     private int _step = 1;
+
+    /// <summary>The step to open, e.g. "Davom etish — kartochka" on the home page (UI handoff 1b).</summary>
+    [SupplyParameterFromQuery(Name = "qadam")] public int? Qadam { get; set; }
     private string? _error;
     private int _minutes = 10;
     private DateTimeOffset? _startedAt;
@@ -223,6 +226,11 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (Qadam is >= 1 and <= 4)
+        {
+            _step = Qadam.Value;
+        }
+
         var result = await Api.GetAsync<UnitDto>($"api/units/{Id}");
         if (result.Value is { CardsReady: false })
         {

@@ -5,19 +5,17 @@
 
 <PageTitle>Bugun — Lug‘at</PageTitle>
 
-@* The home page (spec §4.6, §12.3): today's review across all opened units and the current unit to continue.
-   Units live in Bo‘limlar, settings behind the avatar. *@
-<header class="page-head">
-    <div>
-        <span class="kicker accent">@Format.DayMonth(DateTimeOffset.UtcNow)</span>
-        <h1>Bugun</h1>
-    </div>
-    <a class="avatar" href="profil" title="Profil va sozlamalar" aria-label="Profil va sozlamalar">@Initial</a>
-</header>
+@* The home page (spec §4.6, §12.3; UI handoff 1b): today's review across all opened units, then the current unit
+   with its four steps. *@
+<AppHeader><Right>@Format.DayMonth(DateTimeOffset.UtcNow)</Right></AppHeader>
 
-@if (_signIn is null)
+@if (_signIn is null || (_signIn.Status == SessionStatus.SignedIn && _today is null && _error is null))
 {
-    <p class="muted" style="margin-top:16px">Kirilmoqda…</p>
+    <section class="home-due" aria-busy="true">
+        <span class="kicker accent">Bugun takrorlash</span>
+        <span class="skeleton" style="width:120px;height:80px"></span>
+        <span class="skeleton" style="width:220px;margin-top:12px"></span>
+    </section>
 }
 else if (_signIn.Status != SessionStatus.SignedIn)
 {
@@ -25,77 +23,84 @@ else if (_signIn.Status != SessionStatus.SignedIn)
 }
 else if (_error is not null)
 {
-    <div class="notice" role="alert">@_error <button class="button small" @onclick="LoadAsync">Qayta urinish</button></div>
+    <div class="notice" role="alert">@_error</div>
+    <button class="btn btn-secondary block" @onclick="LoadAsync"><span>Qayta urinish</span></button>
 }
-else if (_today is null)
+else if (_today is not null)
 {
-    <p class="muted" style="margin-top:16px">Yuklanmoqda…</p>
-}
-else
-{
-    <section class="card" style="border-top:0">
-        <span class="kicker">Bugungi mashq</span>
-        <div class="today-stats">
-            <div><b>@_today.DueNow</b><span>takrorlash</span></div>
-            <div><b>@_today.NewAvailable</b><span>yangi so‘z</span></div>
-        </div>
+    <section class="home-due">
+        <span class="kicker accent">Bugun takrorlash</span>
         @if (_today.ActiveSession is { Current: not null } active)
         {
-            <a class="button primary block" href="mashq/kartochka">
-                <span>Davom etish</span><span class="aside">@active.Position / @active.Total</span>
-            </a>
-            <button class="button small" style="margin-top:8px" disabled="@_busy" @onclick="() => StartAsync(restart: true)">Yangidan boshlash</button>
+            <div class="home-due-figure">
+                <b>@(active.Total - active.Position + 1)</b>
+                <span>ta karta qoldi<br />~@Minutes(active.Total - active.Position + 1) daqiqa</span>
+            </div>
+            <p class="muted small-text">Boshlangan mashg‘ulot: @active.Position / @active.Total.</p>
+            <a class="btn btn-primary block big" href="mashq/kartochka"><span>Davom etish</span><Icon Name="arrow-right" /></a>
+            <button class="btn btn-ghost small" disabled="@_busy" @onclick="() => StartAsync(restart: true)">Yangidan boshlash</button>
         }
-        else if (_today.DueNow == 0 && _today.NewAvailable == 0)
+        else if (_today.DueNow > 0)
         {
-            <p class="muted">Hozircha takrorlanadigan so‘z yo‘q.</p>
-            <p class="small-text">Bo‘limni oching: avval jadvalni ko‘rib yodlang, keyin kartochkada tekshiring.</p>
+            <div class="home-due-figure">
+                <b>@_today.DueNow</b>
+                <span>ta karta<br />~@Minutes(_today.DueNow) daqiqa</span>
+            </div>
+            <p class="muted small-text">Ochilgan bo‘limlardan muddati kelgan so‘zlar.</p>
+            <button class="btn btn-primary block big" disabled="@_busy" @onclick="() => StartAsync(restart: false)"><span>Boshlash</span><Icon Name="arrow-right" /></button>
         }
         else
         {
-            <div class="seg" role="radiogroup" aria-label="Mashg‘ulot vaqti">
-                @foreach (var option in MinuteOptions)
-                {
-                    <button class="@(_minutes == option ? "selected" : "")" role="radio" aria-checked="@(_minutes == option)" @onclick="() => _minutes = option">
-                        @(option is null ? "Cheklovsiz" : $"{option} daq")
-                    </button>
-                }
-            </div>
-            <p class="muted small-text">≈ @(_minutes is { } m ? $"{m * 60 / _today.SecondsPerCard} karta sig‘adi" : "barcha kartalar")</p>
-            <button class="button primary block" disabled="@_busy" @onclick="() => StartAsync(restart: false)">
-                <span>Boshlash</span>
-                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-            </button>
+            <h3 class="home-due-empty">Bugun takrorlash yo‘q</h3>
+            <p class="muted small-text">@(_today.NewAvailable > 0
+                ? $"Ochiq bo‘limlarda {_today.NewAvailable} ta yangi so‘z bor: jadvaldan boshlang."
+                : "Takrorlash vaqti kelgan so‘zlar shu yerda chiqadi.")</p>
         }
         @if (_startMessage is not null)
         {
-            <p role="status" style="margin-top:8px">@_startMessage</p>
+            <p role="status" class="small-text">@_startMessage</p>
         }
     </section>
 
     @if (_today.CurrentUnit is { } unit)
     {
-        <section class="card">
-            <span class="kicker">Joriy bo‘lim</span>
-            <a class="button block" href="@($"bolimlar/{unit.Id}")">
-                <span>@unit.Label-bo‘lim</span><span class="aside">@unit.Started/@unit.WordCount boshlangan →</span>
-            </a>
+        var step = StepOf(unit);
+        <section class="home-unit">
+            <div class="home-unit-head">
+                <span class="kicker">Joriy bo‘lim</span>
+                <span class="muted small-text">@unit.Started / @unit.WordCount</span>
+            </div>
+            <h3>@unit.Number-bo‘lim</h3>
+            @if (unit.Themes.Count > 0)
+            {
+                <div class="tags">
+                    @foreach (var theme in unit.Themes)
+                    {
+                        <Tag>@theme</Tag>
+                    }
+                </div>
+            }
         </section>
+        <UnitStepper Current="step" />
+        <a class="btn btn-secondary block home-continue" href="@($"bolimlar/{unit.Id}?qadam={step}")">
+            <span>Davom etish — @ContinueLabel(step)</span><Icon Name="arrow-right" />
+        </a>
     }
     else
     {
-        <p class="muted small-text" style="margin:12px 0"><a href="bolimlar">Bo‘limlar</a>: hali ochiq bo‘lim yo‘q.</p>
+        <section class="home-unit">
+            <span class="kicker">Joriy bo‘lim</span>
+            <p class="small-text">Hali ochiq bo‘lim yo‘q.</p>
+            <a class="btn btn-secondary block" href="bolimlar"><span>Bo‘limlar</span><Icon Name="arrow-right" /></a>
+        </section>
     }
 }
 
 @code {
-    private static readonly int?[] MinuteOptions = [10, 20, 30, null];
-
-    private string Initial => _signIn?.Me?.DisplayName is { Length: > 0 } name ? name[..1].ToUpperInvariant() : "•";
-
     private SessionState? _signIn;
     private TodayDto? _today;
-    private int? _minutes = 20;
+    // The home page has no time choice (UI handoff 1b): a review session of up to 20 minutes, as before by default.
+    private const int SessionMinutes = 20;
     private string? _error;
     private string? _startMessage;
     private bool _busy;
@@ -116,10 +121,23 @@ else
         _today = today.Value;
     }
 
+    private int Minutes(int cards) => Math.Max(1, (int)Math.Round(cards * (_today?.SecondsPerCard ?? 10) / 60.0));
+
+    // Where the learner is in the unit (spec §4.3): nothing started → the table, some cards → the cards, all → the test.
+    private static int StepOf(UnitSummaryDto unit) => unit.Started == 0 ? 1 : unit.Started < unit.WordCount ? 2 : 4;
+
+    private static string ContinueLabel(int step) => step switch
+    {
+        1 => "jadval",
+        2 => "kartochka",
+        3 => "mashq",
+        _ => "test",
+    };
+
     private async Task StartAsync(bool restart)
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(_minutes, restart));
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(SessionMinutes, restart));
         _busy = false;
         if (!result.Ok)
         {
