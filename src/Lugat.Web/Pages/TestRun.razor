@@ -13,6 +13,93 @@
     return;
 }
 
+@if (_test.Status == TestRunStatus.Finished && _test.Unit is { } result)
+{
+    @* UI handoff 1g: score and percent side by side, a calm line, the wrong answers, then what to do next. *@
+    var counted = _test.Questions.Count(q => !q.Technical);
+    var percent = counted == 0 ? 0 : (_test.Score ?? 0) * 100 / counted;
+    var wrongs = _test.Questions.Where(q => q.IsCorrect != true && !q.Technical).ToList();
+    <AppHeader Title="@_test.Title" Close="@Back" />
+    <div class="result-figures @(result.Passed == true ? "passed" : "failed")">
+        <div><span class="kicker">To‘g‘ri</span><b>@_test.Score<small>/@counted</small></b></div>
+        <div class="result-score"><span class="kicker">Ball</span><b>@percent%</b></div>
+    </div>
+    <section class="result-text">
+        @if (result.Passed == true)
+        {
+            <h4>@(result.NextUnitId is null ? "Bo‘lim tugadi." : "Bo‘lim tugadi. Keyingi bo‘lim ochildi.")</h4>
+            <p class="muted small-text">@_test.Score ta to‘g‘ri javob, o‘tish uchun @result.PassMark ta kerak edi.@(result.Purpose == TestPurpose.UnitSkip ? " Bu bo‘lim so‘zlari takrorlashga qo‘shildi." : "")</p>
+        }
+        else
+        {
+            <h4>Hali emas — @result.PassMark ta kerak edi</h4>
+            <p class="muted small-text">@_test.Score ta to‘g‘ri javob.@(result.Purpose == TestPurpose.UnitSkip ? " Bo‘lim qulflangan qoladi: avval oldingi bo‘limni tugating." : " Xato so‘zlarni takrorlab, testni qayta topshiring.")</p>
+        }
+        @if (_test.Warning is not null)
+        {
+            <p class="muted small-text">@_test.Warning</p>
+        }
+    </section>
+
+    @if (wrongs.Count > 0)
+    {
+        <SectionLabel Text="@($"Xato javoblar · {wrongs.Count}")" />
+        <div class="wrong-list">
+            @foreach (var q in wrongs)
+            {
+                var korean = q.Kind is TestQuestionKind.WordMeaning ? q.Prompt : q.Correct;
+                var meaning = q.Kind is TestQuestionKind.WordMeaning ? q.Correct : q.Kind is TestQuestionKind.WordListening ? q.Translation : q.Prompt;
+                <div class="wrong-row">
+                    <span class="ko" lang="ko">@korean</span>
+                    <span>
+                        <b>@meaning</b>
+                        @if (string.IsNullOrEmpty(q.Given))
+                        {
+                            <span class="muted small-text">javob berilmadi</span>
+                        }
+                        else
+                        {
+                            <s class="muted" lang="@(q.Kind is TestQuestionKind.WordMeaning ? null : "ko")">@q.Given</s>
+                        }
+                    </span>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_error is not null)
+    {
+        <div class="notice" role="alert">@_error</div>
+    }
+
+    <div class="result-actions">
+        @if (result.Passed == true)
+        {
+            @if (result.NextUnitId is { } next)
+            {
+                <a class="btn btn-primary block big" href="@($"bolimlar/{next}")"><span>Keyingi bo‘limni boshlash</span><Icon Name="arrow-right" /></a>
+            }
+            else
+            {
+                <a class="btn btn-primary block big" href="bolimlar"><span>Bo‘limlarga qaytish</span><Icon Name="arrow-right" /></a>
+            }
+            @if (result.WrongItemIds.Count > 0)
+            {
+                <button class="btn btn-secondary block" disabled="@_busy" @onclick="() => DrillWrongAsync(result.WrongItemIds)"><span>Xato @result.WrongItemIds.Count ta so‘zni takrorlash</span></button>
+            }
+        }
+        else
+        {
+            @if (result.WrongItemIds.Count > 0)
+            {
+                <button class="btn btn-primary block big" disabled="@_busy" @onclick="() => DrillWrongAsync(result.WrongItemIds)"><span>Xato so‘zlarni takrorlash</span><Icon Name="arrow-right" /></button>
+            }
+            <button class="btn btn-secondary block" disabled="@_busy" @onclick="() => RetakeAsync(result)"><span>Testni qayta topshirish</span></button>
+        }
+    </div>
+    return;
+}
+
 @if (_test.Status == TestRunStatus.Finished)
 {
     <a class="back" href="@Back">@(_test.Unit is null ? "← Sinov" : "← Bo‘lim")</a>
@@ -171,12 +258,17 @@
     var question = _test.Questions[_position];
 }
 
+@* UI handoff 1f: X, the title, "14 / 25"; one segment per question (answered ink, current red, the rest grey). *@
 <div class="session-bar">
-    <a class="close" href="@Back" aria-label="Sinovdan chiqish (javoblar saqlanadi)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></a>
-    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="@_test.Questions.Count" aria-valuenow="@_test.Answered">
-        <div style="width:@(_test.Answered * 100 / _test.Questions.Count)%"></div>
-    </div>
+    <a class="close" href="@Back" aria-label="Sinovdan chiqish (javoblar saqlanadi)"><Icon Name="x" Size="22" /></a>
+    <span class="session-title">@_test.Title</span>
     <span class="count">@(_position + 1) / @_test.Questions.Count</span>
+</div>
+<div class="test-segments" role="progressbar" aria-valuemin="0" aria-valuemax="@_test.Questions.Count" aria-valuenow="@_test.Answered">
+    @foreach (var q in _test.Questions)
+    {
+        <span class="@(q.Index == _position ? "current" : q.Given is not null || q.Technical ? "done" : "")"></span>
+    }
 </div>
 
 @if (question.Kind == TestQuestionKind.OralKorean)
@@ -245,7 +337,7 @@ else
     }
     else
     {
-        <span class="kicker">@(question.Kind switch { TestQuestionKind.WordMeaning => "Ma’nosini toping", TestQuestionKind.WordKorean => "Koreyschasini toping", TestQuestionKind.WordListening => "Tinglang", _ => "Ma’nosini toping" })</span>
+        <span class="question-ask">@(question.Kind switch { TestQuestionKind.WordMeaning => "Bu so‘z nimani bildiradi?", TestQuestionKind.WordKorean => "Koreyschasi qaysi?", TestQuestionKind.WordListening => "Eshitgan so‘zingizni tanlang", _ => "Bu so‘z nimani bildiradi?" })</span>
         @if (question.Kind == TestQuestionKind.WordListening)
         {
             @* The word is only heard (spec §4.4): the recording comes from the test, the text stays on the server. *@
@@ -272,12 +364,14 @@ else
     }
     else
     {
-        <div class="options">
-            @foreach (var option in question.Options)
+        <div class="choice-list">
+            @for (var i = 0; i < question.Options.Count; i++)
             {
-                var o = option;
-                <button class="button option @(question.Given == o ? "chosen" : "")" aria-pressed="@(question.Given == o)" disabled="@_busy"
-                        lang="@(IsKoreanOption(question.Kind) ? "ko" : null)" @onclick="() => AnswerAsync(question, o)">@o</button>
+                var o = question.Options[i];
+                <button class="choice @(question.Given == o ? "chosen" : "")" aria-pressed="@(question.Given == o)" disabled="@_busy" @onclick="() => AnswerAsync(question, o)">
+                    <span class="choice-letter">@((char)('A' + i))</span>
+                    <span class="choice-text" lang="@(IsKoreanOption(question.Kind) ? "ko" : null)">@o</span>
+                </button>
             }
         </div>
     }
@@ -289,31 +383,23 @@ else
     <div class="notice" role="alert">@_error</div>
 }
 
-<nav class="pager" aria-label="Savollar">
-    <button class="button" disabled="@(_position == 0)" @onclick="() => Go(_position - 1)">← Oldingi</button>
-    @if (_position < _test.Questions.Count - 1)
+<section class="test-foot">
+    <p class="muted small-text">@(_test.Unit is { } u ? $"O‘tish uchun {u.PassMark} ta to‘g‘ri javob kerak. " : "")Javoblar oxirida ko‘rsatiladi.@(_test.Warning is null ? "" : $" {_test.Warning}")</p>
+    @if (_test.Answered == _test.Questions.Count || _confirmFinish)
     {
-        <button class="button" @onclick="() => Go(_position + 1)">O‘tkazib yuborish →</button>
-    }
-</nav>
-
-<section class="card" style="margin-top:16px">
-    <p class="muted small-text">Javob berildi: @_test.Answered / @_test.Questions.Count. Javoblar oxirida ko‘rsatiladi.</p>
-    @if (_test.Warning is not null)
-    {
-        <p class="muted small-text">@_test.Warning</p>
-    }
-    @if (_confirmFinish || _test.Answered == _test.Questions.Count)
-    {
-        <button class="button primary block" disabled="@_busy" @onclick="FinishAsync">Yakunlash va natijani ko‘rish</button>
+        <button class="btn btn-primary block big" disabled="@_busy" @onclick="FinishAsync"><span>Yakunlash va natijani ko‘rish</span><Icon Name="arrow-right" /></button>
+        @if (_test.Answered < _test.Questions.Count)
+        {
+            <p class="muted small-text">@(_test.Questions.Count - _test.Answered) ta savolga javob berilmagan, ular xato hisoblanadi.</p>
+        }
     }
     else
     {
-        <button class="button small" @onclick="() => _confirmFinish = true">Hozir yakunlash</button>
-    }
-    @if (_confirmFinish && _test.Answered < _test.Questions.Count)
-    {
-        <p class="muted small-text">@(_test.Questions.Count - _test.Answered) ta savolga javob berilmagan, ular xato hisoblanadi.</p>
+        <button class="btn btn-primary block big" disabled="@(_position >= _test.Questions.Count - 1)" @onclick="() => Go(_position + 1)"><span>Keyingisi</span><Icon Name="arrow-right" /></button>
+        <div class="test-foot-links">
+            <button class="btn btn-ghost small" disabled="@(_position == 0)" @onclick="() => Go(_position - 1)">← Oldingi</button>
+            <button class="btn btn-ghost small" @onclick="() => _confirmFinish = true">Hozir yakunlash</button>
+        </div>
     }
 </section>
 
