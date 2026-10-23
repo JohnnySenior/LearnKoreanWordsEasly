@@ -65,6 +65,12 @@ public sealed class User
     /// </summary>
     public string? PaymentCode { get; set; }
 
+    /// <summary>
+    /// A teacher's promo code the learner came with (an invite link or <c>/?ref=CODE</c>, spec §9.1): the Premium page
+    /// fills it in.
+    /// </summary>
+    public Guid? PromoCodeId { get; set; }
+
     /// <summary>The account was deleted: personal data is gone, the row stays only for anonymous records (spec §5.3).</summary>
     public DateTimeOffset? DeletedAt { get; set; }
 

@@ -110,6 +110,12 @@
         (_status, _plans) = (status.Value, plans.Value);
         _error = status.Error ?? plans.Error;
         _plan = _plans?.Plans.FirstOrDefault()?.Plan ?? _plan;
+        if (_status?.PromoCode is { } teacherCode && _plans is not null)
+        {
+            // The teacher's code the learner came with (spec §9.1): filled in, with the discount shown.
+            _promo = teacherCode;
+            await CheckPromoAsync();
+        }
     }
 
     private async Task SelectAsync(SubscriptionPlan plan)

@@ -18,6 +18,12 @@ public sealed class AuthOptions
     /// <summary>Sign-in requests allowed per minute from one IP (spec §6.4).</summary>
     public int SignInPerMinute { get; set; } = 10;
 
+    /// <summary>
+    /// Token refreshes per minute from one IP. Higher than sign-in: a class on one Wi-Fi opens the app together, and a
+    /// refresh token is an encrypted value that cannot be guessed.
+    /// </summary>
+    public int RefreshPerMinute { get; set; } = 60;
+
     /// <summary>Tests a user may start per hour (spec §6.4).</summary>
     public int TestStartsPerHour { get; set; } = 20;
 }
@@ -29,4 +35,7 @@ public static class Policies
 
     /// <summary>Content work: editors and admins (spec §10).</summary>
     public const string Editor = "Editor";
+
+    /// <summary>The teacher panel (spec §9.2).</summary>
+    public const string Teacher = "Teacher";
 }

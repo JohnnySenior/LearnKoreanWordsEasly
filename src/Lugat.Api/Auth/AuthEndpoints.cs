@@ -21,6 +21,8 @@ public static class AuthEndpoints
     /// <summary>Rate limit policy for sign-in endpoints: 10 a minute per IP (spec §6.3, §6.4).</summary>
     public const string RateLimitPolicy = "auth";
 
+    public const string RefreshRateLimitPolicy = "auth-refresh";
+
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app, IHostEnvironment env)
     {
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
@@ -32,7 +34,7 @@ public static class AuthEndpoints
 
         auth.MapPost("/telegram-login", SignInWithTelegram).RequireRateLimiting(RateLimitPolicy);
         auth.MapPost("/google", SignInWithGoogle).RequireRateLimiting(RateLimitPolicy);
-        auth.MapPost("/refresh", Refresh).RequireRateLimiting(RateLimitPolicy);
+        auth.MapPost("/refresh", Refresh).RequireRateLimiting(RefreshRateLimitPolicy);
         if (env.IsDevelopment())
         {
             auth.MapPost("/dev", DevSignIn).RequireRateLimiting(RateLimitPolicy);

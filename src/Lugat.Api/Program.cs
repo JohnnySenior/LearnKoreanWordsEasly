@@ -1,3 +1,4 @@
+using Lugat.Api.Admin;
 using Lugat.Api.Ai;
 using Lugat.Api.Auth;
 using Lugat.Api.Backups;
@@ -8,6 +9,7 @@ using Lugat.Api.Me;
 using Lugat.Api.Premium;
 using Lugat.Api.Speech;
 using Lugat.Api.Study;
+using Lugat.Api.Teaching;
 using Lugat.Api.Testing;
 using Lugat.Infrastructure;
 using Lugat.Infrastructure.Persistence;
@@ -51,6 +53,7 @@ builder.Services.AddAuthorization(o =>
 {
     o.AddPolicy(Policies.Admin, p => p.RequireRole(nameof(UserRoles.Admin)));
     o.AddPolicy(Policies.Editor, p => p.RequireRole(nameof(UserRoles.Admin), nameof(UserRoles.Editor)));
+    o.AddPolicy(Policies.Teacher, p => p.RequireRole(nameof(UserRoles.Teacher)));
 });
 
 // Open sign-up (spec §6.3) needs limits (spec §6.4): sign-in per IP, starting tests per user.
@@ -73,6 +76,13 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = http.RequestServices.GetRequiredService<IOptionsMonitor<AuthOptions>>().CurrentValue.SignInPerMinute,
             Window = TimeSpan.FromMinutes(1),
         }));
+    o.AddPolicy(AuthEndpoints.RefreshRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        "refresh-ip:" + (http.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = http.RequestServices.GetRequiredService<IOptionsMonitor<AuthOptions>>().CurrentValue.RefreshPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+        }));
     o.AddPolicy(TestEndpoints.StartRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
         "user:" + (http.User.FindFirstValue(AuthEndpoints.UserIdClaim) ?? "anonymous"),
         _ => new FixedWindowRateLimiterOptions
@@ -80,6 +90,11 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = http.RequestServices.GetRequiredService<IOptionsMonitor<AuthOptions>>().CurrentValue.TestStartsPerHour,
             Window = TimeSpan.FromHours(1),
         }));
+    // Invite links and referral codes: per user, so a class joining from one Wi-Fi is not blocked, while guessing
+    // codes stays slow.
+    o.AddPolicy(TeachingEndpoints.CodeRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        "user:" + (http.User.FindFirstValue(AuthEndpoints.UserIdClaim) ?? "anonymous"),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromHours(1) }));
 });
 
 // Session tokens are encrypted with Data Protection keys. In production they must live on the persistent
@@ -138,6 +153,8 @@ app.MapBackupEndpoints();
 app.MapSpeechEndpoints();
 app.MapTestEndpoints();
 app.MapLadderEndpoints(app.Configuration);
+app.MapTeachingEndpoints();
+app.MapAdminEndpoints();
 
 // Unknown API routes must be a JSON 404, not the SPA shell.
 app.Map("/api/{**rest}", () => TypedResults.Problem(statusCode: StatusCodes.Status404NotFound));

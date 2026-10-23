@@ -1,0 +1,235 @@
+@page "/admin/foydalanuvchilar"
+@using Lugat.Contracts
+@using Lugat.Domain.Catalog
+@using Lugat.Domain.Premium
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Foydalanuvchilar — Lug‘at</PageTitle>
+
+@* Users (spec §10): search, progress, roles, Premium by hand with a reason. *@
+<a class="back" href="admin">← Admin panel</a>
+<h1>Foydalanuvchilar</h1>
+
+@if (!IsAdmin)
+{
+    <p class="muted">Bu sahifa admin uchun.</p>
+    return;
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+@if (_status is not null)
+{
+    <p role="status">@_status</p>
+}
+
+<section class="card">
+    <label class="field">
+        Ism, to‘lov kodi, Telegram username yoki email
+        <input class="input" maxlength="100" @bind="_query" @bind:event="oninput" @onkeydown="SearchKeyAsync" />
+    </label>
+    <button class="button small" disabled="@((_query?.Trim().Length ?? 0) < 2)" @onclick="SearchAsync">Qidirish</button>
+    @if (_users is { Count: 0 })
+    {
+        <p class="muted small-text">Topilmadi.</p>
+    }
+    else if (_users is not null)
+    {
+        <ul class="plain-list">
+            @foreach (var u in _users)
+            {
+                var user = u;
+                <li>
+                    <button class="link-btn @(_user?.Id == u.Id ? "selected" : "")" @onclick="() => OpenAsync(user.Id)">
+                        <strong>@(u.DisplayName ?? "—")</strong> <span class="pill">@(u.PaymentCode ?? "kod yo‘q")</span>
+                        <span class="muted small-text">@string.Join(", ", u.Logins)</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@if (_user is { } d)
+{
+    <section class="card">
+        <h2>@(d.DisplayName ?? "—")</h2>
+        <p class="muted small-text">
+            @string.Join(", ", d.Logins) · ro‘yxatdan: @Format.DayMonth(d.CreatedAt) · oxirgi kirish: @Format.Ago(d.LastSeenAt, DateTimeOffset.UtcNow)
+            @if (d.PaymentCode is not null) { <text> · kod </text><span class="pill">@d.PaymentCode</span> }
+            @if (d.PromoCode is not null) { <text> · promo: @d.PromoCode</text> }
+        </p>
+        @if (d.Groups.Count > 0)
+        {
+            <p class="small-text">Guruhlar: @string.Join("; ", d.Groups)</p>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Rollar</h2>
+        <p class="muted small-text">Har kim o‘quvchi. Rol keyingi so‘rovdan kuchga kiradi.</p>
+        @foreach (var role in Roles)
+        {
+            var r = role;
+            <label class="toggle"><input type="checkbox" checked="@_roles.Contains(r.Name)" @onchange="e => Toggle(r.Name, (bool)e.Value!)" /> @r.Label</label>
+        }
+        <button class="button small" disabled="@(_busy || !RolesChanged)" @onclick="SaveRolesAsync">Rollarni saqlash</button>
+    </section>
+
+    <section class="card">
+        <h2>Premium</h2>
+        <p>@(d.IsPremium ? $"Faol: {Format.DayMonth(d.PremiumEndsAt!.Value)} gacha" : "Yo‘q")</p>
+        @if (d.Subscriptions.Count > 0)
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Tarif</th><th>Manba</th><th>Boshlanish</th><th>Tugash</th></tr></thead>
+                    <tbody>
+                        @foreach (var s in d.Subscriptions)
+                        {
+                            <tr><td>@Plan(s.Plan)</td><td>@Source(s.Source)</td><td>@Format.DayMonth(s.StartsAt)</td><td>@Format.DayMonth(s.EndsAt)</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <label class="field" style="margin-top:12px">Kunlar (+ qo‘shish, − olib tashlash)<input class="input" type="number" min="-3650" max="3650" @bind="_days" /></label>
+        <label class="field">Sabab (majburiy)<input class="input" maxlength="300" @bind="_reason" @bind:event="oninput" /></label>
+        <button class="button small" disabled="@(_busy || _days == 0 || (_reason?.Trim().Length ?? 0) < 3)" @onclick="AdjustAsync">Premium muddatini o‘zgartirish</button>
+        <p class="muted small-text">Qo‘shilgan kunlar hozirgi muddat tugagandan keyin boshlanadi (sovg‘a). Olib tashlash oxiridan boshlab, bugundan oldinga emas. To‘lov bo‘lsa — «To‘lovlar» sahifasida qayd eting.</p>
+    </section>
+
+    <section class="card">
+        <h2>Progress</h2>
+        @if (d.Units.Count == 0)
+        {
+            <p class="muted">Hali bo‘lim boshlanmagan.</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Bo‘lim</th><th>Holat</th><th class="num">Eng yaxshi</th><th class="num">Urinish</th></tr></thead>
+                    <tbody>
+                        @foreach (var u in d.Units)
+                        {
+                            <tr><td>@u.Unit</td><td>@(u.Status == UnitProgressStatus.Passed ? (u.PassedBy == UnitPassedBy.SkipTest ? "O‘tdi («Bilaman»)" : "O‘tdi") : "Ochiq")</td><td class="num">@(u.BestScorePercent is { } p ? $"{p}%" : "—")</td><td class="num">@u.Attempts</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    @if (d.Audit.Count > 0)
+    {
+        <section class="card">
+            <h2>O‘zgarishlar tarixi</h2>
+            <ul class="plain-list small-text">
+                @foreach (var a in d.Audit)
+                {
+                    <li>@Format.DayTime(a.At) · @(a.Admin ?? "—") · @a.Detail</li>
+                }
+            </ul>
+        </section>
+    }
+}
+
+@code {
+    private static readonly (string Name, string Label)[] Roles =
+        [(nameof(UserRoles.Teacher), "O‘qituvchi"), (nameof(UserRoles.Editor), "Muharrir (kontent)"), (nameof(UserRoles.Admin), "Admin")];
+
+    private string? _query;
+    private List<AdminUserDto>? _users;
+    private AdminUserDetailDto? _user;
+    private HashSet<string> _roles = [];
+    private int _days = 30;
+    private string? _reason;
+    private string? _error;
+    private string? _status;
+    private bool _busy;
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    private bool RolesChanged => _user is not null && !_roles.SetEquals(_user.Roles.Where(r => r != nameof(UserRoles.Learner)));
+
+    private async Task SearchKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        var result = await Api.GetAsync<List<AdminUserDto>>($"api/admin/users?q={Uri.EscapeDataString(_query ?? "")}");
+        (_users, _error) = (result.Value, result.Error);
+    }
+
+    private async Task OpenAsync(Guid id)
+    {
+        var result = await Api.GetAsync<AdminUserDetailDto>($"api/admin/users/{id}");
+        Show(result.Value);
+        (_error, _status) = (result.Error, null);
+    }
+
+    private void Show(AdminUserDetailDto? user)
+    {
+        _user = user ?? _user;
+        _roles = _user?.Roles.Where(r => r != nameof(UserRoles.Learner)).ToHashSet() ?? [];
+    }
+
+    private void Toggle(string role, bool on)
+    {
+        if (on)
+        {
+            _roles.Add(role);
+        }
+        else
+        {
+            _roles.Remove(role);
+        }
+    }
+
+    private async Task SaveRolesAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<AdminUserDetailDto>(HttpMethod.Put, $"api/admin/users/{_user!.Id}/roles", new SetRolesRequest(_roles.ToList()));
+        _busy = false;
+        Show(result.Value);
+        (_error, _status) = (result.Error, result.Ok ? "Rollar saqlandi." : null);
+    }
+
+    private async Task AdjustAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<AdminUserDetailDto>(HttpMethod.Post, $"api/admin/users/{_user!.Id}/premium", new AdjustPremiumRequest(_days, _reason ?? ""));
+        _busy = false;
+        Show(result.Value);
+        (_error, _status) = (result.Error, result.Ok ? "Premium muddati o‘zgartirildi." : null);
+        if (result.Ok)
+        {
+            _reason = null;
+        }
+    }
+
+    private static string Plan(SubscriptionPlan plan) => plan switch
+    {
+        SubscriptionPlan.Monthly => "1 oy",
+        SubscriptionPlan.Quarterly => "3 oy",
+        SubscriptionPlan.Trial => "Sinov",
+        _ => "Sovg‘a",
+    };
+
+    private static string Source(SubscriptionSource source) => source switch
+    {
+        SubscriptionSource.ManualTransfer => "Bank o‘tkazmasi",
+        SubscriptionSource.Admin => "Admin",
+        SubscriptionSource.Promo => "Avtomatik",
+        _ => source.ToString(),
+    };
+}

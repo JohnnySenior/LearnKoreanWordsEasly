@@ -12,11 +12,21 @@ public interface IAppDbContext
 
     DbSet<UserLogin> UserLogins { get; }
 
+    DbSet<UserActivityDay> ActivityDays { get; }
+
     DbSet<Domain.Premium.Subscription> Subscriptions { get; }
 
     DbSet<Domain.Premium.Payment> Payments { get; }
 
     DbSet<Domain.Premium.PromoCode> PromoCodes { get; }
+
+    DbSet<Domain.Teaching.Group> Groups { get; }
+
+    DbSet<Domain.Teaching.GroupMember> GroupMembers { get; }
+
+    DbSet<Domain.Teaching.CommissionPayout> CommissionPayouts { get; }
+
+    DbSet<Domain.Operations.AdminAuditEntry> AdminAudit { get; }
 
     DbSet<Domain.Catalog.CatalogWord> CatalogWords { get; }
 

@@ -207,9 +207,31 @@ Bosqichlar spec §13 bo‘yicha.
 - Android’dagi haqiqiy `beforeinstallprompt` oynasi ham deploy’dan keyin (HTTPS domen kerak).
 - Yakuniy ikonka dizayni — Johnny.
 
-## Bosqich 7 · O‘qituvchilar va admin
+## Bosqich 7 · O‘qituvchilar va admin (2026-10-23)
 
-- [ ] Guruhlar, o‘qituvchi paneli, komissiya hisoboti, admin panel.
+- [x] `Group`, `GroupMember`, `CommissionPayout`, `AdminAuditEntry`, `UserActivityDay`, `User.PromoCodeId`; migratsiya `Teachers` (L-32).
+- [x] Guruhga qo‘shilish: `/join/{code}` rozilik sahifasi, `POST /api/groups/join/{code}`, Profil → "Guruhlarim" dan chiqish; `/?ref=KOD`.
+- [x] O‘qituvchi paneli `/oqituvchi`: guruhlar, taklif havolasi (nusxa, yangilash), guruhni yopish, o‘quvchilar jadvali, eng qiyin 10 so‘z, o‘quvchi sahifasi (bo‘limlar, eng ko‘p xato qilgan 10 so‘z).
+- [x] Komissiya hisoboti (o‘qituvchi) va admin "To‘landi".
+- [x] Admin panel `/admin`: foydalanuvchilar (qidirish, progress, rollar, Premium’ni sabab bilan o‘zgartirish, tarix), to‘lovlar, promo-kodni o‘chirish/yoqish, komissiya, sarf, ko‘rsatkichlar (pilot ko‘rsatkichi bilan).
+
+**Tekshirildi:**
+- `dotnet build` toza; testlar 106 (Domain) + 32 (Application) + 187 (Api) = 325, JS testlar 10 — hammasi o‘tdi.
+- **Qabul mezonlari** (`Teaching/TeachingTests`, `Teaching/AdminPanelTests`):
+  - O‘qituvchi faqat o‘z guruhidagi **rozilik bergan** o‘quvchini ko‘radi: havolani ochish (taklifni ko‘rish) a’zolik emas; qo‘shilmagan o‘quvchi — 404; boshqa o‘qituvchi bu guruh va o‘quvchini — 404; rolsiz foydalanuvchi — 403.
+  - Guruhdan chiqqan o‘quvchi darhol ko‘rinmaydi (jadvalda yo‘q, sahifasi 404); yopilgan guruh yoki yangilangan havoladan keyin eski havola 404; hisobini o‘chirgan o‘quvchi jadvaldan chiqadi; o‘chirilgan o‘qituvchining guruhlari yopiladi.
+  - Komissiya hisobotida to‘lovchining ismi ham, id’si ham yo‘q; ikki to‘lov (4,500 + 10,800) → komissiya 4,590, qaytarilgani hisobga olinmaydi; admin "To‘landi" — bir marta, o‘qituvchida ham "To‘landi".
+  - `Editor` kontentga kiradi, lekin to‘lovlar, foydalanuvchilar, promo-kodlar, komissiya, sarf va ko‘rsatkichlar (GET va POST/PUT) — 403.
+- Rollar: berilgan `Teacher` keyingi so‘rovdan ishlaydi, olingani ham; o‘zidan Admin’ni olib bo‘lmaydi; tarixga o‘zbekcha yoziladi. Premium: sababsiz — 422; +30 kun sovg‘a to‘lov muddatidan keyin; −40 kun sovg‘ani va to‘lovning 10 kunini oladi; −365 → Premium yo‘q.
+- Guruh jadvali: 2 kun mashq (har kuni "Eslay olmadim") → joriy A-1, 7 kunda 3 faol kun, eng qiyin so‘z 2 xato / 1 o‘quvchi; javobda login yo‘q.
+- Ko‘rsatkichlar: 3 foydalanuvchi, ertasi kuni 2 tasi qaytdi → D1 67%, kunlik faol [2, 3], tushum, sarf (kun va funksiya, narxi noma’lum chaqiruv).
+- Bitta tarmoqdagi 15 o‘quvchi ketma-ket qo‘shila oladi; kirish limiti tugagan IP’dan ham token yangilash ishlaydi.
+- `KoreaTimeTests`: kun va oy Seul yarim tunida almashadi, kun boshi UTC’da (PostgreSQL faqat UTC qabul qiladi — brauzer sinovida topilgan xato).
+- Chromium, 360px (Development, admin): Profil → Admin panel → Foydalanuvchilar (qidirish, o‘qituvchi rolini olib/qaytarish, +7 kun Premium, tarix) → O‘qituvchi paneli (guruh yaratish, havola) → `/join/…` (rozilik matni; o‘z guruhiga — tushunarli xato) → Komissiya, Sarf, Ko‘rsatkichlar, To‘lovlar. Gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+
+**Ochiq qoldi:**
+- Ikkinchi haqiqiy foydalanuvchi bilan (o‘qituvchi va o‘quvchi alohida telefonlarda) to‘liq oqim — deploy’dan keyin; API testlarda sinalgan.
+- Komissiya "To‘landi" deb belgilangandan keyin o‘sha oy to‘lovi qaytarilsa, hisobot yangi summani ko‘rsatadi, to‘langan summa `CommissionPayout.AmountKrw` da qoladi — farqni Johnny qo‘lda hal qiladi.
 
 ## Bosqich 8 · Eslatmalar, ishga tushirish
 

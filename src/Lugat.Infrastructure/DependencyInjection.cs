@@ -52,6 +52,9 @@ public static class DependencyInjection
         services.Configure<Application.Premium.PremiumOptions>(config.GetSection(Application.Premium.PremiumOptions.SectionName));
         services.Configure<Application.Premium.PaymentOptions>(config.GetSection(Application.Premium.PaymentOptions.SectionName));
         services.AddScoped<Application.Premium.PremiumService>();
+        services.AddScoped<Application.Teaching.GroupService>();
+        services.AddScoped<Application.Teaching.TeacherService>();
+        services.AddScoped<Application.Admin.AdminService>();
         services.Configure<Application.Catalog.CatalogOptions>(config.GetSection(Application.Catalog.CatalogOptions.SectionName));
         services.AddSingleton<Application.Catalog.ICatalogFileReader, Catalog.CatalogFileReader>();
         services.AddScoped<Application.Catalog.CatalogService>();

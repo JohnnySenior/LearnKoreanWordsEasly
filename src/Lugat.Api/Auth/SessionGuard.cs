@@ -8,7 +8,7 @@ namespace Lugat.Api.Auth;
 /// Runs after authentication on every request (L-13). A token of a deleted user, or one issued before the user
 /// signed out, is treated as no token at all, so protected endpoints answer 401 at once instead of after the access
 /// token expires. For a valid token the user's current roles are added from the database, so a role given or taken
-/// away counts on the next request.
+/// away counts on the next request. It also marks the user active, at most about once an hour (stage 7 metrics).
 /// </summary>
 public static class SessionGuard
 {
@@ -16,8 +16,9 @@ public static class SessionGuard
     {
         if (http.User.Identity?.IsAuthenticated == true)
         {
+            var users = http.RequestServices.GetRequiredService<UserService>();
             var session = Guid.TryParse(http.User.FindFirstValue(AuthEndpoints.UserIdClaim), out var userId)
-                ? await http.RequestServices.GetRequiredService<UserService>().CheckSessionAsync(userId, http.RequestAborted)
+                ? await users.CheckSessionAsync(userId, http.RequestAborted)
                 : null;
             if (session is null || session.SessionVersion != http.User.GetSessionVersion())
             {
@@ -25,6 +26,11 @@ public static class SessionGuard
             }
             else if (http.User.Identity is ClaimsIdentity identity)
             {
+                if (users.NeedsTouch(session.LastSeenAt))
+                {
+                    await users.TouchAsync(userId, http.RequestAborted);
+                }
+
                 foreach (var role in Enum.GetValues<UserRoles>().Where(r => r != UserRoles.None && session.Roles.HasFlag(r)))
                 {
                     identity.AddClaim(new Claim(ClaimTypes.Role, role.ToString()));

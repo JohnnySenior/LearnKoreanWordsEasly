@@ -86,6 +86,9 @@ public sealed class UnitTestService(
         return TestService.ToDto(run);
     }
 
+    /// <summary>A unit test's score, as stored in the learner's unit progress.</summary>
+    public static int ScorePercent(int questions, int right) => questions == 0 ? 0 : (int)Math.Round(right * 100.0 / questions);
+
     /// <summary>
     /// Applies a finished unit test: passed when right answers ≥ the pass mark (spec §4.4). Runs once per test,
     /// inside the caller's transaction that also marks it finished.
@@ -99,7 +102,7 @@ public sealed class UnitTestService(
 
         var right = run.Answers.Where(a => a.IsCorrect).Select(a => a.Index).ToHashSet();
         var passed = right.Count >= run.PassMark;
-        var percent = run.Questions.Count == 0 ? 0 : (int)Math.Round(right.Count * 100.0 / run.Questions.Count);
+        var percent = ScorePercent(run.Questions.Count, right.Count);
         var known = run.Questions.Where(q => right.Contains(q.Index)).Select(q => q.LearningItemId).OfType<Guid>().ToHashSet();
         var opened = await units.RecordTestAsync(run.OwnerId, unitId,
             run.Purpose == TestPurpose.UnitSkip ? UnitPassedBy.SkipTest : UnitPassedBy.Test, passed, percent, known, ct);

@@ -1,0 +1,130 @@
+@page "/admin/korsatkichlar"
+@using Lugat.Contracts
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Ko‘rsatkichlar — Lug‘at</PageTitle>
+
+@* Key figures (spec §10): plain tables. "Faol" = opened the app that day (Korea time). *@
+<a class="back" href="admin">← Admin panel</a>
+<h1>Ko‘rsatkichlar</h1>
+
+@if (!IsAdmin)
+{
+    <p class="muted">Bu sahifa admin uchun.</p>
+    return;
+}
+
+@if (_m is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<section class="card">
+    <div class="figures">
+        <div><strong>@_m.Users</strong><span>foydalanuvchi</span></div>
+        <div><strong>@_m.NewLast7Days</strong><span>yangi, 7 kunda</span></div>
+        <div><strong>@_m.NewLast30Days</strong><span>yangi, 30 kunda</span></div>
+        <div><strong>@(_m.DailyActive.FirstOrDefault()?.Users ?? 0)</strong><span>bugun faol</span></div>
+        <div><strong>@Percent(_m.D1)</strong><span>D1 retention (@_m.D1.Returned/@_m.D1.Cohort)</span></div>
+        <div><strong>@Percent(_m.D7)</strong><span>D7 retention (@_m.D7.Returned/@_m.D7.Cohort)</span></div>
+        <div><strong>@_m.PremiumNow</strong><span>Premium hozir</span></div>
+    </div>
+    <p class="muted small-text">D1/D7: oxirgi 30 kunda ro‘yxatdan o‘tganlardan ro‘yxatdan o‘tgan kunidan 1 (7) kun keyin ilovani ochganlar ulushi.</p>
+</section>
+
+<section class="card">
+    <h2>Kunlik faol</h2>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr>@foreach (var d in _m.DailyActive) { <th class="num">@Format.Day(d.Day)</th> }</tr></thead>
+            <tbody><tr>@foreach (var d in _m.DailyActive) { <td class="num">@d.Users</td> }</tr></tbody>
+        </table>
+    </div>
+</section>
+
+<section class="card">
+    <h2>Tushum</h2>
+    @if (_m.Revenue.Count == 0)
+    {
+        <p class="muted">Oxirgi 6 oyda to‘lov yo‘q.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Oy</th><th class="num">To‘lov</th><th class="num">Summa</th><th class="num">Komissiya</th></tr></thead>
+                <tbody>
+                    @foreach (var r in _m.Revenue)
+                    {
+                        <tr><td>@Format.Month(r.Month)</td><td class="num">@r.Payments</td><td class="num">@Format.Won(r.AmountKrw)</td><td class="num">@Format.Won(r.CommissionKrw)</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="card">
+    <h2>Bo‘lim testidan o‘tish</h2>
+    @if (_m.Units.Count == 0)
+    {
+        <p class="muted">Hali bo‘lim testi topshirilmagan.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Bo‘lim</th><th class="num">Urinish</th><th class="num">O‘tdi</th><th class="num">%</th></tr></thead>
+                <tbody>
+                    @foreach (var u in _m.Units)
+                    {
+                        <tr><td>@u.Unit</td><td class="num">@u.Attempts</td><td class="num">@u.Passed</td><td class="num">@(u.Percent is { } p ? $"{p}%" : "—")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="card">
+    <h2>Guruhlar: 2-haftada faol</h2>
+    @if (_m.Groups.Count == 0)
+    {
+        <p class="muted">Hali guruh yo‘q.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Guruh</th><th>O‘qituvchi</th><th class="num">A’zo</th><th class="num">14+ kun</th><th class="num">Faol</th><th class="num">%</th></tr></thead>
+                <tbody>
+                    @foreach (var g in _m.Groups)
+                    {
+                        <tr><td class="wrap">@g.Group</td><td>@(g.Teacher ?? "—")</td><td class="num">@g.Members</td><td class="num">@g.Eligible</td><td class="num">@g.ActiveSecondWeek</td><td class="num">@(g.Percent is { } p ? $"{p}%" : "—")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <p class="muted small-text">Pilot ko‘rsatkichi: kamida 14 kun oldin qo‘shilganlardan qo‘shilganining 8–14-kunlarida ilovani ochganlar.</p>
+</section>
+
+@code {
+    private MetricsDto? _m;
+    private string? _error;
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsAdmin)
+        {
+            var result = await Api.GetAsync<MetricsDto>("api/admin/metrics");
+            (_m, _error) = (result.Value, result.Error);
+        }
+    }
+
+    private static string Percent(RetentionDto r) => r.Percent is { } p ? $"{p}%" : "—";
+}

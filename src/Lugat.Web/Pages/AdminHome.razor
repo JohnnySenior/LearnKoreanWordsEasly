@@ -1,0 +1,26 @@
+@page "/admin"
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Admin panel — Lug‘at</PageTitle>
+
+@* The owner's panel (spec §10). Content is shared with editors; the rest is admin only (server checks both). *@
+<a class="back" href="sozlamalar">← Profil</a>
+<h1>Admin panel</h1>
+
+@if (!IsAdmin)
+{
+    <p class="muted">Bu sahifa admin uchun.</p>
+    return;
+}
+
+<a class="button block" href="admin/foydalanuvchilar"><span>Foydalanuvchilar</span><span class="aside">qidirish, rollar, Premium, progress →</span></a>
+<a class="button block" href="admin/tolovlar"><span>To‘lovlar</span><span class="aside">qayd etish, qaytarish, promo-kodlar →</span></a>
+<a class="button block" href="admin/komissiya"><span>Komissiya</span><span class="aside">o‘qituvchilar, «To‘landi» →</span></a>
+<a class="button block" href="kontent"><span>Kontent</span><span class="aside">import, AI qoralama, tekshirish, nashr →</span></a>
+<a class="button block" href="admin/sarf"><span>Sarf</span><span class="aside">AI va ovoz →</span></a>
+<a class="button block" href="admin/korsatkichlar"><span>Ko‘rsatkichlar</span><span class="aside">faollik, retention, tushum →</span></a>
+
+@code {
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+}

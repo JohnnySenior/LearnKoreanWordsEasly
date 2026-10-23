@@ -5,7 +5,8 @@ namespace Lugat.Contracts;
 /// <param name="IsPremium">Decided by the server (spec §0.6); the client only shows it.</param>
 /// <param name="EndsAt">The end of the last paid or given period, when Premium is on.</param>
 /// <param name="PaymentCode">To write in the bank transfer note (spec §7.3).</param>
-public sealed record PremiumStatusDto(bool IsPremium, DateTimeOffset? EndsAt, SubscriptionPlan? Plan, string PaymentCode, bool TrapNotesFree);
+/// <param name="PromoCode">The teacher's code the learner came with, filled in on the page (spec §9.1).</param>
+public sealed record PremiumStatusDto(bool IsPremium, DateTimeOffset? EndsAt, SubscriptionPlan? Plan, string PaymentCode, bool TrapNotesFree, string? PromoCode = null);
 
 public sealed record PlanDto(SubscriptionPlan Plan, string Title, int PriceKrw, int Months);
 

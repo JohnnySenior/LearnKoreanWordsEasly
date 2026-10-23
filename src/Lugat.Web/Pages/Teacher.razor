@@ -1,0 +1,135 @@
+@page "/oqituvchi"
+@using Lugat.Contracts
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>O‘qituvchi paneli — Lug‘at</PageTitle>
+
+@* The teacher panel (spec §9.2, §9.3): groups with their invite links, and the commission report. *@
+<a class="back" href="sozlamalar">← Profil</a>
+<h1>O‘qituvchi paneli</h1>
+
+@if (!IsTeacher)
+{
+    <p class="muted">Bu sahifa o‘qituvchilar uchun. O‘qituvchi bo‘lish uchun admin bilan bog‘laning.</p>
+    return;
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+<section class="card">
+    <h2>Guruhlar</h2>
+    @if (_groups is null)
+    {
+        <p class="muted">Yuklanmoqda…</p>
+    }
+    else if (_groups.Count == 0)
+    {
+        <p class="muted">Hali guruh yo‘q. Guruh yarating va taklif havolasini o‘quvchilarga yuboring.</p>
+    }
+    else
+    {
+        @foreach (var g in _groups)
+        {
+            <a class="button block" href="@($"oqituvchi/guruh/{g.Id}")"><span>@g.Name</span><span class="aside">@g.Members o‘quvchi →</span></a>
+        }
+    }
+
+    <label class="field" style="margin-top:12px">
+        Yangi guruh nomi
+        <input class="input" maxlength="100" placeholder="Masalan: Ansan, kechki guruh" @bind="_name" @bind:event="oninput" />
+    </label>
+    <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_name))" @onclick="CreateAsync">Guruh yaratish</button>
+</section>
+
+<section class="card">
+    <h2>Komissiya</h2>
+    @if (_commission is null)
+    {
+        <p class="muted">Yuklanmoqda…</p>
+    }
+    else
+    {
+        @if (_commission.Codes.Count == 0)
+        {
+            <p class="muted">Sizga hali promo-kod biriktirilmagan. Admin promo-kod beradi; o‘quvchilar u bilan chegirma oladi, siz esa komissiya.</p>
+        }
+        else
+        {
+            <p>Mening promo-kodim:
+                @foreach (var c in _commission.Codes)
+                {
+                    <span class="pill">@c.Code</span> <span class="muted small-text">−@c.DiscountPercent% · komissiya @c.CommissionPercent%@(c.IsActive ? "" : " · o‘chirilgan")</span>
+                }
+            </p>
+            <p class="muted small-text">Guruh havolasi orqali kelgan o‘quvchiga kod Premium sahifasida avtomatik qo‘yiladi.</p>
+        }
+
+        <div class="figures">
+            <div><strong>@_commission.Payments</strong><span>to‘lov</span></div>
+            <div><strong>@Format.Won(_commission.AmountKrw)</strong><span>to‘langan summa</span></div>
+            <div><strong>@Format.Won(_commission.CommissionKrw)</strong><span>komissiya</span></div>
+        </div>
+        @if (_commission.Months.Count > 0)
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Oy</th><th class="num">To‘lov</th><th class="num">Summa</th><th class="num">Komissiya</th><th>Holat</th></tr></thead>
+                    <tbody>
+                        @foreach (var m in _commission.Months)
+                        {
+                            <tr>
+                                <td>@Format.Month(m.Month)</td>
+                                <td class="num">@m.Payments</td>
+                                <td class="num">@Format.Won(m.AmountKrw)</td>
+                                <td class="num">@Format.Won(m.CommissionKrw)</td>
+                                <td>@(m.Paid ? "To‘landi" : "Kutilmoqda")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <p class="muted small-text">Faqat soni va summa ko‘rsatiladi, to‘lovchilarning ismi emas. Qaytarilgan to‘lovlar hisobga olinmaydi. Komissiya ilovadan tashqarida to‘lanadi.</p>
+    }
+</section>
+
+@code {
+    private List<TeacherGroupDto>? _groups;
+    private CommissionReportDto? _commission;
+    private string? _name;
+    private Guid _newId = Guid.NewGuid(); // one id per form, so a double tap makes one group
+    private string? _error;
+    private bool _busy;
+
+    private bool IsTeacher => Api.State.Me?.Roles.Contains(nameof(UserRoles.Teacher)) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsTeacher)
+        {
+            return;
+        }
+
+        var groups = await Api.GetAsync<List<TeacherGroupDto>>("api/teacher/groups");
+        _groups = groups.Value;
+        _error = groups.Error;
+        _commission = (await Api.GetAsync<CommissionReportDto>("api/teacher/commission")).Value;
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TeacherGroupDto>(HttpMethod.Post, "api/teacher/groups", new CreateGroupRequest(_newId, _name ?? ""));
+        _busy = false;
+        _error = result.Error;
+        if (result.Value is not null)
+        {
+            (_name, _newId) = (null, Guid.NewGuid());
+            _groups = (await Api.GetAsync<List<TeacherGroupDto>>("api/teacher/groups")).Value;
+        }
+    }
+}

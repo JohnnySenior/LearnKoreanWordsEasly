@@ -12,9 +12,13 @@
 <a class="button block" href="natijalar"><span>Natijalar</span><span class="aside">o‘rganilgan so‘zlar va xatolar →</span></a>
 <a class="button block" href="premium"><span>Premium</span><span class="aside">tariflar va to‘lov →</span></a>
 <a class="button block" href="ornatish"><span>Ilovani o‘rnatish</span><span class="aside">bosh ekranga →</span></a>
+@if (IsTeacher)
+{
+    <a class="button block" href="oqituvchi"><span>O‘qituvchi paneli</span><span class="aside">guruhlar, komissiya →</span></a>
+}
 @if (IsAdmin)
 {
-    <a class="button block" href="admin/tolovlar"><span>To‘lovlar</span><span class="aside">to‘lovni qayd etish, promo-kodlar →</span></a>
+    <a class="button block" href="admin"><span>Admin panel</span><span class="aside">foydalanuvchilar, to‘lovlar, ko‘rsatkichlar →</span></a>
 }
 @if (IsEditor)
 {
@@ -240,6 +244,32 @@ else
     </section>
     }
 
+    @if (_groups is { Count: > 0 })
+    {
+        <section class="card">
+            <h2>Guruhlarim</h2>
+            <p class="muted small-text">O‘qituvchi bo‘lim natijalaringiz, faolligingiz va xato so‘zlaringizni ko‘radi.</p>
+            <ul class="plain-list">
+                @foreach (var g in _groups)
+                {
+                    var group = g;
+                    <li>
+                        <span><strong>@g.Name</strong> <span class="muted small-text">· @(g.TeacherName ?? "—")</span></span>
+                        @if (_confirmLeave == g.Id)
+                        {
+                            <button class="button small" disabled="@_busy" @onclick="() => LeaveAsync(group)">Ha, chiqish</button>
+                            <button class="link-btn muted" @onclick="() => _confirmLeave = null">Bekor</button>
+                        }
+                        else
+                        {
+                            <button class="link-btn muted" @onclick="() => _confirmLeave = group.Id">Guruhdan chiqish</button>
+                        }
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
     <a class="button block" href="diagnostika" style="margin-top:12px"><span>Qurilmani tekshirish</span><span class="aside">ovoz va mikrofon →</span></a>
 
     <section class="card">
@@ -285,6 +315,8 @@ else
     private ThemeChoice _theme;
     private string? _profileStatus;
     private bool _confirmDelete;
+    private List<MyGroupDto>? _groups;
+    private Guid? _confirmLeave;
     private string? _deleteError;
 
     private static readonly (ThemeChoice Value, string Label)[] Themes =
@@ -294,6 +326,8 @@ else
 
     private bool IsEditor => IsAdmin || _me?.Roles.Contains(nameof(UserRoles.Editor)) == true;
 
+    private bool IsTeacher => _me?.Roles.Contains(nameof(UserRoles.Teacher)) == true;
+
     protected override async Task OnInitializedAsync()
     {
         var result = await Api.GetAsync<PreferencesDto>("api/me/preferences");
@@ -301,6 +335,7 @@ else
         Apply(result.Value);
         ApplyMe(await Api.ReloadMeAsync());
         _ai = (await Api.GetAsync<AiStatusDto>("api/ai/status")).Value;
+        _groups = (await Api.GetAsync<List<MyGroupDto>>("api/me/groups")).Value;
         if (IsAdmin)
         {
             // The whole app's spend and the backups are for the owner only (spec §6.4).
@@ -320,6 +355,17 @@ else
         _name = me.DisplayName ?? "";
         _romanization = me.ShowRomanization;
         _theme = me.Theme;
+    }
+
+    // Leaving takes effect at once: the teacher no longer sees the learner (spec §9.1).
+    private async Task LeaveAsync(MyGroupDto group)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/groups/{group.Id}/membership");
+        _busy = false;
+        _confirmLeave = null;
+        _error = result.Ok ? null : result.Error;
+        _groups = (await Api.GetAsync<List<MyGroupDto>>("api/me/groups")).Value;
     }
 
     private async Task ReloadAsync()

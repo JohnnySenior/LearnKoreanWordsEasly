@@ -30,6 +30,27 @@ public static class Format
         return $"{Days[(int)k.DayOfWeek]}, {k.Day}-{Months[k.Month - 1]}";
     }
 
+    /// <summary>"sentabr 2026".</summary>
+    public static string Month(DateOnly month) => $"{Months[month.Month - 1]} {month.Year}";
+
+    /// <summary>"29-sentabr".</summary>
+    public static string Day(DateOnly day) => $"{day.Day}-{Months[day.Month - 1]}";
+
+    /// <summary>"bugun", "kecha", "3 kun oldin", or the date.</summary>
+    public static string Ago(DateTimeOffset value, DateTimeOffset now)
+    {
+        var days = (DateOnly.FromDateTime(ToKorea(now).DateTime).DayNumber - DateOnly.FromDateTime(ToKorea(value).DateTime).DayNumber);
+        return days switch
+        {
+            <= 0 => "bugun",
+            1 => "kecha",
+            < 30 => $"{days} kun oldin",
+            _ => DayMonth(value),
+        };
+    }
+
+    public static string Won(int amount) => $"₩{amount:N0}";
+
     /// <summary>"15 daq", "5 soat", "1 kun", "2 oy".</summary>
     public static string Interval(int seconds) => seconds switch
     {

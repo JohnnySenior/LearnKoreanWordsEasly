@@ -106,7 +106,8 @@ public sealed class PremiumService(
         var now = time.GetUtcNow();
         var running = await db.Subscriptions.Where(s => s.UserId == userId && s.EndsAt > now).OrderBy(s => s.StartsAt).ToListAsync(ct);
         var current = running.FirstOrDefault(s => s.StartsAt <= now);
-        return new PremiumStatusDto(current is not null, current is null ? null : running.Max(s => s.EndsAt), current?.Plan, code, premium.CurrentValue.TrapNotesFree);
+        return new PremiumStatusDto(current is not null, current is null ? null : running.Max(s => s.EndsAt), current?.Plan, code, premium.CurrentValue.TrapNotesFree,
+            await Teaching.GroupService.AttachedPromoAsync(db, userId, now, ct));
     }
 
     public PremiumPlansDto Plans()

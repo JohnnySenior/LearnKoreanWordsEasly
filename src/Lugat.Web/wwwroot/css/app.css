@@ -695,3 +695,18 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
 .onboarding-dots span.current { background: var(--color-accent); }
 .onboarding-actions { display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 .onboarding-actions .link-btn { min-height: 44px; font-weight: 600; }
+
+/* Teacher and admin tables (stage 7): plain rules, scroll sideways on a phone instead of squeezing. */
+.table-wrap { overflow-x: auto; margin: 8px calc(-1 * var(--gutter)) 0; padding: 0 var(--gutter); -webkit-overflow-scrolling: touch; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th { text-align: left; font: 600 11px/1.2 var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--color-muted); padding: 8px 10px 8px 0; border-bottom: 2px solid var(--color-divider); white-space: nowrap; }
+.data-table td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--color-rule-soft); vertical-align: top; white-space: nowrap; }
+.data-table td.wrap { white-space: normal; min-width: 140px; }
+.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.data-table a { font-weight: 600; }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0; border-top: 2px solid var(--color-divider); margin: 8px 0; }
+.figures div { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--color-rule-soft); }
+.figures strong { display: block; font: 800 26px/1.1 var(--font-heading); }
+.figures span { font-size: 13px; color: var(--color-muted); }
+.invite-link { display: block; word-break: break-all; font: 600 15px var(--font-body); padding: 10px 0; }
+.card > .figures:first-child { border-top: 0; margin-top: 0; }

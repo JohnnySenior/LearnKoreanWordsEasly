@@ -670,6 +670,38 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("listening_sets", (string)null);
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Operations.AdminAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("AdminUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("TargetUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetUserId", "At");
+
+                    b.ToTable("admin_audit", (string)null);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Operations.BackupRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -983,6 +1015,104 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("study_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Teaching.CommissionPayout", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AmountKrw")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("MarkedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Month")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TeacherUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherUserId", "Month")
+                        .IsUnique();
+
+                    b.ToTable("commission_payouts", (string)null);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Teaching.Group", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InviteCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TeacherUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InviteCode")
+                        .IsUnique();
+
+                    b.HasIndex("TeacherUserId");
+
+                    b.ToTable("groups", (string)null);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Teaching.GroupMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LeftAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("GroupId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("group_members", (string)null);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Testing.TestRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1090,6 +1220,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<Guid?>("PromoCodeId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("RemindersEnabled")
                         .HasColumnType("boolean");
 
@@ -1126,7 +1259,24 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.HasIndex("PaymentCode")
                         .IsUnique();
 
+                    b.HasIndex("PromoCodeId");
+
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Users.UserActivityDay", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.HasKey("UserId", "Day");
+
+                    b.HasIndex("Day");
+
+                    b.ToTable("user_activity_days", (string)null);
                 });
 
             modelBuilder.Entity("Lugat.Domain.Users.UserLogin", b =>
@@ -1499,6 +1649,39 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Teaching.CommissionPayout", b =>
+                {
+                    b.HasOne("Lugat.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("TeacherUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Teaching.Group", b =>
+                {
+                    b.HasOne("Lugat.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("TeacherUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Teaching.GroupMember", b =>
+                {
+                    b.HasOne("Lugat.Domain.Teaching.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Lugat.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Lugat.Domain.Testing.TestRun", b =>
                 {
                     b.HasOne("Lugat.Domain.Users.User", null)
@@ -1511,6 +1694,23 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Users.User", b =>
+                {
+                    b.HasOne("Lugat.Domain.Premium.PromoCode", null)
+                        .WithMany()
+                        .HasForeignKey("PromoCodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Users.UserActivityDay", b =>
+                {
+                    b.HasOne("Lugat.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Lugat.Domain.Users.UserLogin", b =>
