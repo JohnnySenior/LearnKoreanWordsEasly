@@ -875,3 +875,18 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 
 /* Loading skeleton (UX06): grey blocks where the text will be. */
 .skeleton { display: block; height: 1em; background: var(--color-neutral-300); }
+
+/* 1b Bosh sahifa. */
+.home-due { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--gutter)); padding: 24px var(--gutter) 20px; border-bottom: 2px solid var(--color-divider); }
+.home-due .kicker { margin-bottom: 8px; }
+.home-due-figure { display: flex; align-items: flex-end; gap: 12px; }
+.home-due-figure b { font: 900 88px/0.9 var(--font-heading); letter-spacing: -0.04em; }
+.home-due-figure span { font-size: 15px; line-height: 1.5; padding-bottom: 4px; }
+.home-due p { margin: 12px 0 0; }
+.home-due .btn.block { margin-top: 20px; }
+.home-due .btn-ghost { align-self: flex-start; margin-top: 4px; }
+.home-due-empty { font: 800 25px/1.12 var(--font-heading); margin: 4px 0 0; }
+.home-unit { padding: 20px 0 16px; }
+.home-unit-head { display: flex; justify-content: space-between; align-items: baseline; }
+.home-unit h3 { font: 800 25px/1.12 var(--font-heading); margin: 4px 0 10px; }
+.home-continue { margin-top: 16px; }
