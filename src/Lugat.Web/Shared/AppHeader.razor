@@ -10,7 +10,7 @@
     {
         <a class="app-header-back" href="@Close" aria-label="Yopish"><Icon Name="x" Size="22" /></a>
     }
-    <span class="app-header-title">@(Title ?? "Lug‘at")</span>
+    <span class="app-header-title">@(Title ?? "Koreyscha")</span>
     @if (Right is not null)
     {
         <span class="app-header-right">@Right</span>
@@ -18,7 +18,7 @@
 </header>
 
 @code {
-    /// <summary>Null shows the brand "Lug‘at".</summary>
+    /// <summary>Null shows the brand "Koreyscha".</summary>
     [Parameter] public string? Title { get; set; }
 
     /// <summary>Where the back arrow goes; null hides it.</summary>
