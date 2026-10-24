@@ -266,7 +266,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Production’da kechki (04:00 KST) zaxira va tiklash mashqi, haftalik Telegram nusxasi.
 - [ ] Haqiqiy bot bilan eslatma: BotFather `/setdomain` va zaxira yuborish bajarildi; "Sinov xabari" va 20:00 dagi xabar qoldi.
 - [ ] **Real iPhone va Android’da to‘liq oqim** (spec §13.9): kirish → 1-bo‘lim → test → 2-bo‘lim ochildi → ertasi kuni takrorlash; PWA o‘rnatish, birinchi yuklanish vaqti (6-bosqichdagi ochiq bandlar).
-- [ ] Maxfiylik siyosati matnini Johnny tasdiqlaydi (Q7).
+- [x] Maxfiylik siyosati matnini Johnny tasdiqladi (Q7, 2026-10-24).
 
 **AI holati va kalitlar (L-34, 2026-10-23):**
 - [x] Sozlamalar → AI xizmati endi kalit borligini emas, oxirgi haqiqiy chaqiruv natijasini ko‘rsatadi: "ishlayapti" / "ishlamayapti: sabab" / "hali tekshirilmagan". Sabab — production’da Anthropic kaliti ortiqcha belgi bilan kiritilganda ham "ulangan" deb ko‘rsatgani (Johnny topdi).
@@ -313,3 +313,6 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] **2d Admin → Tizim** (`/admin/tizim`): AI xizmati (Standart/Anthropic/OpenAI, sozlanmagani o‘chiq; har provayder holati L-34 bo‘yicha haqiqiy — "Ishlayapti · model · N ms" yoki "Ishlamayapti: sabab"; "Tekshirish"), oylik sarf ($ katta raqam, 6px progress, ogohlantirishda qizil), zaxira (har kecha 04:00 + "Hozir", Telegram haftalik + "Yuborish"), vaqt zonasi, sarf tafsiloti, qurilmani tekshirish.
 - Chromium 360px: profil, admin, tizim — scroll yo‘q, xato yo‘q. Testlar 331 + JS 11 o‘tdi.
 - Ochiq: dizayndagi "3 ta to‘lov kutmoqda" — to‘lovlar admin tomonidan qo‘lda qayd etiladi, kutayotgan to‘lovlar navbati yo‘q; o‘quvchining AI xizmatini tanlashi endi faqat admin sahifasida (dizayn bo‘yicha).
+
+**Natijalar grafigi (2026-10-24):**
+- [x] Johnny iPhone’da topdi: "Oldingi sinovlar" grafigida nuqtalar katta qora doira, chiziq qalin, 0/50/100 chiziqlari ko‘rinmas edi. Sabab — `ScoreChart` uslublari 0-bosqichda CSS’dan tushib qolgan. Uslublar qaytarildi; bir kunlik natijalarda sana ikki marta yozilmaydi. Chromium 390px: nuqtalar 4px, oxirgi qiymat yorlig‘i, sana bir marta.
