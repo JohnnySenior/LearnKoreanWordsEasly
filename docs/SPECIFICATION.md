@@ -182,9 +182,11 @@ Bo‘lim ichida yo‘l ko‘rsatkichi (stepper), lekin qadamlar majburiy tartibd
 
 ### 4.4 Bo‘lim yakuniy testi (KELISHILGAN: ≥80%)
 - **25 savol**, har so‘zdan bittadan, aralash tartibda. Savol turlari taqsimoti (TEXNIK ASOS):
-  - 10 × `WordMeaning` (koreyscha → o‘zbekcha ma’noni tanlash, 4 variant);
-  - 10 × `WordKorean` (o‘zbekcha → koreyscha so‘zni tanlash, 4 variant);
-  - 5 × `WordListening` (yangi tur: audio eshitiladi → koreyscha so‘zni tanlash; matn javobgacha ko‘rinmaydi). TTS mavjud bo‘lmasa, bu savollar `WordMeaning` bilan almashtiriladi va natijada qayd etiladi.
+  - 6 × `WordMeaning` (koreyscha → o‘zbekcha ma’noni tanlash, 4 variant);
+  - 6 × `WordKorean` (o‘zbekcha → koreyscha so‘zni tanlash, 4 variant);
+  - 8 × `WordKoreanTyped` (o‘zbekcha → koreyscha so‘zni **yozish**; L-38);
+  - 2 × `WordListening` (audio eshitiladi → koreyscha so‘zni tanlash; matn javobgacha ko‘rinmaydi);
+  - 3 × `WordListeningTyped` (audio eshitiladi → koreyscha so‘zni **yozish**; L-38). TTS mavjud bo‘lmasa, eshitish savollari o‘rniga tanlash va yozish savollari tuziladi (25 so‘zda 8 / 7 / 10) va natijada qayd etiladi.
   - Qaysi so‘z qaysi turga tushishi tasodifiy (seed sessiya vaqtidan, KoreanAiTeacher D-45 usuli).
 - **Noto‘g‘ri variantlar (distraktor):** shu yoki oldingi nashr qilingan bo‘limlardan, iloji bo‘lsa bir xil so‘z turkumidan; to‘g‘ri javobning sinonimi, bir xil yozilgan omonimi yoki ma’nosi bir xil bo‘lgan so‘z variant bo‘lmaydi. Variantlar serverda aralashtiriladi.
 - **O‘tish sharti:** to‘g‘ri javoblar ≥ `ceil(savollar × 0.8)` (25 savolda **20**). Foiz `Units:PassPercent` (standart 80) sozlamada.

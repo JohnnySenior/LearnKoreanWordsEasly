@@ -48,7 +48,7 @@
             @foreach (var q in wrongs)
             {
                 var korean = q.Kind is TestQuestionKind.WordMeaning ? q.Prompt : q.Correct;
-                var meaning = q.Kind is TestQuestionKind.WordMeaning ? q.Correct : q.Kind is TestQuestionKind.WordListening ? q.Translation : q.Prompt;
+                var meaning = q.Kind is TestQuestionKind.WordMeaning ? q.Correct : TestGrader.IsListening(q.Kind) ? q.Translation : q.Prompt;
                 <div class="wrong-row">
                     <span class="ko" lang="ko">@korean</span>
                     <span>
@@ -203,7 +203,7 @@
                             <p class="muted">@q.Translation</p>
                         }
                     }
-                    else if (q.Kind == TestQuestionKind.WordListening)
+                    else if (TestGrader.IsListening(q.Kind))
                     {
                         <p><strong lang="ko">@q.Correct</strong> — @q.Translation</p>
                     }
@@ -346,8 +346,8 @@ else
     }
     else
     {
-        <span class="question-ask">@(question.Kind switch { TestQuestionKind.WordMeaning => "Bu so‘z nimani bildiradi?", TestQuestionKind.WordKorean => "Koreyschasi qaysi?", TestQuestionKind.WordListening => "Eshitgan so‘zingizni tanlang", _ => "Bu so‘z nimani bildiradi?" })</span>
-        @if (question.Kind == TestQuestionKind.WordListening)
+        <span class="question-ask">@(question.Kind switch { TestQuestionKind.WordMeaning => "Bu so‘z nimani bildiradi?", TestQuestionKind.WordKorean => "Koreyschasi qaysi?", TestQuestionKind.WordKoreanTyped => "Koreyschasini yozing", TestQuestionKind.WordListening => "Eshitgan so‘zingizni tanlang", TestQuestionKind.WordListeningTyped => "Eshitgan so‘zingizni yozing", _ => "Bu so‘z nimani bildiradi?" })</span>
+        @if (TestGrader.IsListening(question.Kind))
         {
             @* The word is only heard (spec §4.4): the recording comes from the test, the text stays on the server. *@
             <p class="prompt">@question.Prompt</p>
@@ -363,7 +363,7 @@ else
         }
     }
 
-    @if (question.Kind == TestQuestionKind.WordClozeTyped)
+    @if (TestGrader.IsTyped(question.Kind))
     {
         <label class="field">
             Javobingiz (koreyscha)
@@ -596,6 +596,8 @@ else
         TestQuestionKind.OralMeaning => "Ma’nosini aytish",
         TestQuestionKind.WordUsage => "So‘z qo‘llanishi",
         TestQuestionKind.WordListening => "Tinglash",
+        TestQuestionKind.WordKoreanTyped => "Ma’no → so‘z (yozish)",
+        TestQuestionKind.WordListeningTyped => "Tinglab yozish",
         _ => kind.ToString(),
     };
 }
