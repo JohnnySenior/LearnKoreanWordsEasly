@@ -50,7 +50,7 @@ public class UnitTestTests
 
         foreach (var q in questions)
         {
-            var answer = q.Index < right ? q.Correct : q.Options.First(o => o != q.Correct);
+            var answer = q.Index < right ? q.Correct : q.Options.Count == 0 ? "틀린답" : q.Options.First(o => o != q.Correct); // typed: any wrong word
             (await client.PostAsJsonAsync($"/api/unit-tests/{testId}/answers", new TestAnswerRequest(q.Index, answer), ApiFactory.Json)).EnsureSuccessStatusCode();
         }
     }
@@ -129,15 +129,18 @@ public class UnitTestTests
         var response = await StartAsync(client, 1, UnitTestKind.Final);
         var json = await response.Content.ReadAsStringAsync();
         var test = (await response.Content.ReadFromJsonAsync<TestDto>(ApiFactory.Json))!;
-        var listening = test.Questions.Where(q => q.Kind == TestQuestionKind.WordListening).ToList();
+        var listening = test.Questions.Where(q => q.Kind is TestQuestionKind.WordListening or TestQuestionKind.WordListeningTyped).ToList();
         var audio = await client.GetAsync($"/api/tests/{test.Id}/questions/{listening[0].Index}/audio");
-        var notListening = await client.GetAsync($"/api/tests/{test.Id}/questions/{test.Questions.First(q => q.Kind != TestQuestionKind.WordListening).Index}/audio");
+        var notListening = await client.GetAsync($"/api/tests/{test.Id}/questions/{test.Questions.First(q => q.Kind is TestQuestionKind.WordMeaning).Index}/audio");
         var other = await (await factory.SignedInClientAsync(ApiFactory.UserB)).GetAsync($"/api/tests/{test.Id}");
 
-        Assert.Equal([(TestQuestionKind.WordMeaning, 10), (TestQuestionKind.WordKorean, 10), (TestQuestionKind.WordListening, 5)],
+        // L-38: 11 of 25 are typed, so options alone do not pass the unit.
+        Assert.Equal([(TestQuestionKind.WordMeaning, 6), (TestQuestionKind.WordKorean, 6), (TestQuestionKind.WordListening, 2),
+                (TestQuestionKind.WordKoreanTyped, 8), (TestQuestionKind.WordListeningTyped, 3)],
             test.Questions.GroupBy(q => q.Kind).OrderBy(g => g.Key).Select(g => (g.Key, g.Count())));
         Assert.All(test.Questions, q => Assert.Null(q.Correct));
-        Assert.All(test.Questions, q => Assert.Equal(4, q.Options.Distinct().Count()));
+        Assert.All(test.Questions, q => Assert.Equal(TestGrader.IsTyped(q.Kind) ? 0 : 4, q.Options.Distinct().Count()));
+        Assert.All(test.Questions.Where(q => q.Kind == TestQuestionKind.WordListeningTyped), q => Assert.DoesNotContain("가", q.Prompt));
         Assert.All(listening, q => Assert.Null(q.Translation));
         Assert.Equal(25, test.Questions.Select(q => q.Index).Distinct().Count());
         Assert.Equal(HttpStatusCode.OK, audio.StatusCode);
@@ -156,8 +159,9 @@ public class UnitTestTests
 
         var test = await StartOkAsync(client, 1);
 
-        Assert.DoesNotContain(test.Questions, q => q.Kind == TestQuestionKind.WordListening);
-        Assert.Equal(13, test.Questions.Count(q => q.Kind == TestQuestionKind.WordMeaning));
+        Assert.DoesNotContain(test.Questions, q => TestGrader.IsListening(q.Kind));
+        Assert.Equal(8, test.Questions.Count(q => q.Kind == TestQuestionKind.WordMeaning));
+        Assert.Equal(10, test.Questions.Count(q => q.Kind == TestQuestionKind.WordKoreanTyped));
         Assert.Contains("tinglash", test.Warning);
     }
 

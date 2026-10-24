@@ -327,3 +327,13 @@ Johnny topdi: (1) bo‘sh joyli savolda 있다 ham, 없다 ham gapga to‘g‘ri
   - yozma mashqda shu ma’noli boshqa so‘z yozilsa — "Ma’nosi to‘g‘ri, boshqa so‘z" (xato emas), AI chaqirilmaydi; so‘z tez orada yana so‘raladi;
   - test variantlarida (lokal savollar ham) shu ma’noli so‘z noto‘g‘ri variant bo‘lmaydi (bo‘lim testida bu avvaldan bor edi);
   - Kontent sahifasida so‘z ostida ogohlantirish: "Bu ma’no boshqa so‘zda ham bor: …".
+
+## L-38 · 2026-10-24 · Bo‘lim testida yozish
+
+Johnny: bo‘lim testida faqat variant tanlash va eshitib tanlash bor edi, shuning uchun uni tanib olishning o‘zi bilan tez o‘tib ketish mumkin edi. Endi 25 savolning 11 tasi yozma:
+- `WordKoreanTyped`: o‘zbekcha ma’no ko‘rsatiladi → koreyscha so‘z yoziladi ("uy" → 집).
+- `WordListeningTyped`: so‘z faqat eshitiladi (matn javobgacha serverda) → yoziladi.
+- Taqsimot: eshitish savollari ~1/5 (yarmidan ko‘pi yozma), qolganining 40% yozma, qolgani teng ikkiga — so‘z → ma’no va ma’no → so‘z tanlash. 25 so‘zda 6 / 6 / 8 / 2 / 3; ovoz bo‘lmasa 8 / 7 / 10.
+- Baholash `WordClozeTyped` bilan bir xil: so‘zning o‘zi (bo‘sh joy, qavsdagi izoh hisobga olinmaydi) — to‘g‘ri; bitta jamo xatosi — "Imlo xatosi" va **noto‘g‘ri** (bo‘lim testi qat’iy bo‘lsin).
+- O‘zbekchasi bir xil so‘z bo‘lsa (안 / 아니다 "emas"), yozma savolda farq izohi bilan so‘raladi (L-37).
+- O‘tish sharti o‘zgarmadi: 25 dan 20.

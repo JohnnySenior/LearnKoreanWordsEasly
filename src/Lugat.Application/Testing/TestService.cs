@@ -133,7 +133,7 @@ public sealed class TestService(
             throw new ValidationException("Javob juda uzun.");
         }
 
-        if (question.Options.Count > 0 && question.Kind != TestQuestionKind.WordClozeTyped && !question.Options.Contains(given))
+        if (question.Options.Count > 0 && !TestGrader.IsTyped(question.Kind) && !question.Options.Contains(given))
         {
             throw new ValidationException("Variantlardan birini tanlang.");
         }
@@ -313,7 +313,7 @@ public sealed class TestService(
     public async Task<byte[]> AudioAsync(Guid ownerId, Guid id, int index, CancellationToken ct)
     {
         var run = await FindAsync(ownerId, id, ct);
-        var question = run.Questions.SingleOrDefault(q => q.Index == index && q.Kind == TestQuestionKind.WordListening)
+        var question = run.Questions.SingleOrDefault(q => q.Index == index && TestGrader.IsListening(q.Kind))
             ?? throw new NotFoundException("Tinglash savoli topilmadi.");
         return await speech.GetAsync(ownerId, question.BaseForm, ct);
     }

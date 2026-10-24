@@ -34,6 +34,12 @@ public enum TestQuestionKind
     /// kept in <see cref="TestQuestion.BaseForm"/>, which never reaches the client; the audio comes from the server.
     /// </summary>
     WordListening,
+
+    /// <summary>Unit test (L-38): the Uzbek meaning is shown → the learner types the Korean word.</summary>
+    WordKoreanTyped,
+
+    /// <summary>Unit test (L-38): the word is only heard, as in <see cref="WordListening"/> → the learner types it.</summary>
+    WordListeningTyped,
 }
 
 /// <summary>Why a test was taken. Unit tests open units; practice tests change nothing (TEST04).</summary>
@@ -159,6 +165,13 @@ public static class TestGrader
         };
     }
 
+    /// <summary>Questions answered by typing the Korean word instead of choosing an option.</summary>
+    public static bool IsTyped(TestQuestionKind kind) =>
+        kind is TestQuestionKind.WordClozeTyped or TestQuestionKind.WordKoreanTyped or TestQuestionKind.WordListeningTyped;
+
+    /// <summary>Questions where the word is only heard; its text stays on the server until the end.</summary>
+    public static bool IsListening(TestQuestionKind kind) => kind is TestQuestionKind.WordListening or TestQuestionKind.WordListeningTyped;
+
     public static (bool IsCorrect, string? Note) Grade(TestQuestion q, string given)
     {
         var answer = (given ?? "").Trim();
@@ -167,7 +180,7 @@ public static class TestGrader
             return (false, "Javob berilmagan");
         }
 
-        if (q.Kind != TestQuestionKind.WordClozeTyped)
+        if (!IsTyped(q.Kind))
         {
             return (answer == q.Correct, null);
         }

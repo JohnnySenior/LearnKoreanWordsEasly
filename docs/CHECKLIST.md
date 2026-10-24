@@ -323,3 +323,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] "Bu savolda xato bor" → admin `/admin/savollar`, "Diqqat talab qiladi"; ochiq xabarli saqlangan savol qayta berilmaydi (test: takror, begona test, admin ro‘yxati, hal qilish).
 - [x] Bir xil ma’noli so‘zlar: kartochka va yozma mashqda farq izohi; boshqa so‘z yozilsa "ma’nosi to‘g‘ri", AI’siz (test: 안 / 아니다); test variantlarida chiqmaydi; Kontent sahifasida ogohlantirish.
 - [ ] iPhone’da ko‘rib chiqish — Johnny.
+
+**Bo‘lim testida yozish (L-38, 2026-10-24):**
+- [x] `WordKoreanTyped` va `WordListeningTyped`; 25 so‘zda 11 ta yozma savol; imlo xatosi noto‘g‘ri; bir xil ma’noli so‘zda izoh (testlar: taqsimot, baholash, izoh, tinglashda matn yo‘q).
+- [ ] iPhone’da koreyscha klaviatura bilan sinab ko‘rish — Johnny.
