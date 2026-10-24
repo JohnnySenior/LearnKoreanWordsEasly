@@ -354,3 +354,7 @@ Johnny Telegram, Instagram, Facebook, YouTube orqali reklama sinamoqchi. Qaysi k
 - **Ro‘yxatdan o‘tish:** kirgandan keyin kanal `POST /api/me/source` bilan hisobga yoziladi (`User.SignupSource`) — faqat birinchisi va faqat hisob 2 kundan yangi bo‘lsa (eski foydalanuvchi reklama havolasini ochsa, "olib kelingan" hisoblanmaydi). Hisob o‘chirilsa tozalanadi.
 - **Hisobot:** Admin → Ko‘rsatkichlar → "Reklama kanallari (30 kun)": tashrif, ro‘yxatdan o‘tgan, D7 (metrikadagidek: 7 kun oldin yoki avval o‘tganlardan 7-kuni ochganlar), to‘lagan (tasdiqlangan to‘lov). `GET /api/admin/sources?days=`.
 - Cheklov: iPhone’da bosh ekranga qo‘shilgan ilova Safari xotirasini ko‘rmaydi — havolani ochib, avval ilovani o‘rnatib, keyin unda ro‘yxatdan o‘tgan odamning kanali yozilmaydi (tashrifi sanaladi).
+
+## L-41 · 2026-10-24 · Kirishdan oldin ilova haqida
+
+Reklamadan kelgan odam darhol faqat kirish tugmalarini ko‘rardi. Endi kirish ekranida, tugmalar ostida (`Landing`): bir bo‘limning to‘rt qadami, haqiqiy so‘z kartasi (우리 va uning tuzog‘i, A-darajadan), nima bepul va Premium narxi, telefonga o‘rnatish (`InstallGuide`), pastda "Bepul boshlash" — kirish tugmalariga qaytaradi. Kirish tugmalari tepada qoladi: tushunib kelgan odam darhol kiradi. Matnlar reklama to‘plamidagi da’volar bilan bir xil.
