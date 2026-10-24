@@ -128,6 +128,7 @@ var app = builder.Build();
 if (behindProxy)
 {
     app.UseForwardedHeaders();
+    app.UseCloudflareClientIp(app.Configuration);
 }
 
 // Single small instance: applying migrations at startup keeps deploys one step (see docs/DECISIONS.md D-08).

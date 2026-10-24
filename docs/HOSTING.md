@@ -5,7 +5,13 @@
 - Loyiha: `Lugat` (workspace "Jamshidbek Tursunboev's Projects"), muhit `production`, region `sfo` (KoreanAiTeacher bilan bir xil).
 - Servislar: `app` (GitHub `JohnnySenior/LearnKoreanWordsEasly`, `main`, Dockerfile), `Postgres` (`postgres-ssl:18`, volume `postgres-volume`).
 - `app`: volume `app-data` → `/data`; healthcheck `/health` (120 s); uxlash o‘chiq; qayta ishga tushirish `ON_FAILURE` ×5; port 8080.
-- Domen: `https://app-production-d5ca.up.railway.app`.
+- Domen: `https://app-production-d5ca.up.railway.app` (Railway) va **`https://koreyscha.com`** (asosiy, L-39).
+
+## koreyscha.com (Cloudflare orqali, L-39)
+- Railway custom domain `koreyscha.com` qo‘shilgan va tasdiqlangan; Let’s Encrypt sertifikati rate limit tufayli chiqmadi (`ISSUE_FAILED`, retry yopiq). Railway hujjati (Troubleshooting SSL) Cloudflare bilan shunday ishlashni tavsiya qiladi: **proksi yoqiq (to‘q sariq bulut)**, **SSL/TLS → Full** (Full Strict emas). Foydalanuvchiga sertifikatni Cloudflare beradi; Cloudflare → Railway ham shifrlangan, Railway sertifikati chiqmaguncha o‘zining `*.up.railway.app` sertifikati bilan.
+- Cloudflare DNS: `@` CNAME → `ptj35e3q.up.railway.app` (proxied), `www` CNAME (proxied, `www` → apex 301 qoidasi), `_railway-verify` TXT (DNS only).
+- Mijoz IP’si: Cloudflare’dan kelgan so‘rovda (manba Cloudflare diapazonida) `CF-Connecting-IP` olinadi (`CloudflareClientIp`), aks holda X-Forwarded-For’ning oxirgi qiymati (L-33). Diapazonlar kodda; Cloudflare o‘zgartirsa — `Cloudflare__Ranges__0…`.
+- Kirish: BotFather `/setdomain` → `koreyscha.com`; Google "Authorized JavaScript origins" → `https://koreyscha.com` (Railway domeni ham qolsin).
 - Kiritilgan o‘zgaruvchilar (maxfiy emas): `ConnectionStrings__Default` (Postgres reference), `Storage__Root`, `DataProtection__KeysPath`, `Backup__Directory`, `ASPNETCORE_ENVIRONMENT=Production`, `RAILWAY_RUN_UID=0`, `PORT=8080`.
 - **Johnny dashboard’da qiladi** (connector’da bu sozlamalar yo‘q yoki maxfiy qiymat): Settings → Source → "Wait for CI" (hozir o‘chiq), Workspace → Usage → hard spend limit, kirish kalitlari (7-band), AI/Azure kalitlari va tariflar (8-band).
 
