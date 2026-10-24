@@ -26,7 +26,10 @@
         </svg>
         <figcaption class="chart-x">
             <span>@Format.DayMonth(Points[0].At)</span>
-            <span>@Format.DayMonth(last.At)</span>
+            @if (Format.DayMonth(last.At) != Format.DayMonth(Points[0].At))
+            {
+                <span>@Format.DayMonth(last.At)</span>
+            }
         </figcaption>
     </figure>
 }

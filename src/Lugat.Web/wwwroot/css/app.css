@@ -1108,3 +1108,14 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .admin-tile-no { font-size: 11px; color: var(--color-muted); }
 .admin-tile b { display: block; font: 800 16px/1.2 var(--font-heading); }
 .admin-tile span span { display: block; font-size: 12px; color: var(--color-muted); margin-top: 2px; }
+
+/* Score chart (ScoreChart.razor, D-35/D-40): restored, lost in stage 0. */
+.score-chart { margin: 12px 0 0; }
+.score-chart svg { width: 100%; height: auto; max-height: 220px; overflow: visible; display: block; }
+.score-chart .grid { stroke: var(--color-rule-soft); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.score-chart .axis { font: 600 10px var(--font-body); fill: var(--color-muted); }
+.score-chart .line { fill: none; stroke: var(--color-text); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.score-chart .dot { fill: var(--color-text); stroke: var(--color-bg); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.score-chart .hit { fill: transparent; }
+.score-chart .label { font: 800 13px var(--font-heading); fill: var(--color-text); }
+.chart-x { display: flex; justify-content: space-between; font-size: 12px; color: var(--color-muted); padding-left: 24px; margin-top: 4px; }
