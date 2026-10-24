@@ -293,6 +293,38 @@ public class AuthEndpointsTests
     }
 
     [Fact]
+    public async Task Behind_cloudflare_the_limit_counts_the_visitor_only_when_the_request_came_from_cloudflare()
+    {
+        await using var factory = Factory();
+        factory.Settings["Auth:SignInPerMinute"] = "1";
+        factory.Settings["ForwardedHeaders:Enabled"] = "true";
+        var client = factory.CreateClient();
+
+        async Task<HttpStatusCode> FromAsync(string forwardedFor, string? visitor)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/telegram-login")
+            {
+                Content = JsonContent.Create(new TelegramLoginRequest(TelegramWidget.Build(User, _time.GetUtcNow(), TelegramWidget.BotToken)), options: Json),
+            };
+            request.Headers.Add("X-Forwarded-For", forwardedFor);
+            if (visitor is not null)
+            {
+                request.Headers.Add("CF-Connecting-IP", visitor);
+            }
+
+            return (await client.SendAsync(request)).StatusCode;
+        }
+
+        // L-39: two learners behind the same Cloudflare edge are counted apart.
+        Assert.Equal(HttpStatusCode.OK, await FromAsync("172.68.10.1", "203.0.113.1"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, await FromAsync("172.68.10.1", "203.0.113.1"));
+        Assert.Equal(HttpStatusCode.OK, await FromAsync("172.68.10.1", "203.0.113.2"));
+        // Straight to the Railway domain: the header is the client's own claim and is ignored.
+        Assert.Equal(HttpStatusCode.OK, await FromAsync("198.51.100.7", "203.0.113.3"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, await FromAsync("198.51.100.7", "203.0.113.4"));
+    }
+
+    [Fact]
     public async Task A_class_on_one_network_can_refresh_after_the_sign_in_limit_is_used_up()
     {
         await using var factory = Factory();

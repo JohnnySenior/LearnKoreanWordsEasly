@@ -337,3 +337,10 @@ Johnny: bo‘lim testida faqat variant tanlash va eshitib tanlash bor edi, shuni
 - Baholash `WordClozeTyped` bilan bir xil: so‘zning o‘zi (bo‘sh joy, qavsdagi izoh hisobga olinmaydi) — to‘g‘ri; bitta jamo xatosi — "Imlo xatosi" va **noto‘g‘ri** (bo‘lim testi qat’iy bo‘lsin).
 - O‘zbekchasi bir xil so‘z bo‘lsa (안 / 아니다 "emas"), yozma savolda farq izohi bilan so‘raladi (L-37).
 - O‘tish sharti o‘zgarmadi: 25 dan 20.
+
+## L-39 · 2026-10-24 · koreyscha.com Cloudflare proksi orqali
+
+Railway’da `koreyscha.com` uchun Let’s Encrypt sertifikati 24 soatdan ko‘p "rate limit" bilan chiqmadi va qayta urinish yopiq (Railway hujjatiga ko‘ra blok 7 kungacha bo‘lishi mumkin). Railway’ning o‘z SSL qo‘llanmasi Cloudflare bilan **proksi yoqiq + SSL "Full"** ni tavsiya qiladi: foydalanuvchiga sertifikatni Cloudflare beradi, Railway sertifikatini kutish shart emas.
+- L-33 da proksi yoqilmagan edi: Railway hamma so‘rovni Cloudflare manzilidan ko‘radi va IP bo‘yicha limit (kirish, refresh) ko‘p o‘quvchini bitta deb hisoblaydi. Endi `CloudflareClientIp`: so‘rov Cloudflare diapazonidan kelgan bo‘lsa, mijoz `CF-Connecting-IP` dan olinadi; boshqa manbadan (Railway domeniga to‘g‘ridan-to‘g‘ri) kelgan bu sarlavha e’tiborga olinmaydi — limitdan qochib bo‘lmaydi (test).
+- Diapazonlar Cloudflare’ning e’lon qilingan ro‘yxati (2021 dan beri o‘zgarmagan), `Cloudflare:Ranges` bilan almashtiriladi; eskirsa faqat limit yana edge manzili bo‘yicha hisoblanadi.
+- Railway sertifikati keyinroq chiqsa ham proksi qolaveradi (Cloudflare kesh/himoya); "Full" rejim ikkala holatda ishlaydi.
