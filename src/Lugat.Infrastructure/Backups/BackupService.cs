@@ -139,7 +139,7 @@ public sealed class BackupService(
         else
         {
             var bytes = await File.ReadAllBytesAsync(path, ct);
-            var caption = $"Lug‘at · zaxira nusxa {run.StartedAt:yyyy-MM-dd HH:mm} UTC · {bytes.Length / 1024.0 / 1024.0:0.##} MB · tiklab tekshirilgan.\n"
+            var caption = $"Koreyscha · zaxira nusxa {run.StartedAt:yyyy-MM-dd HH:mm} UTC · {bytes.Length / 1024.0 / 1024.0:0.##} MB · tiklab tekshirilgan.\n"
                 + "Bu faylni o‘chirmang: Railway'dagi baza yo‘qolsa, shu fayldan tiklanadi.\n"
                 + $"Tiklash yo‘riqnomasi: {Options.RestoreGuideUrl}";
             result = await telegram.SendDocumentAsync(chat, Path.GetFileName(path), bytes, caption, ct);

@@ -284,7 +284,7 @@ Bosqichlar spec §13 bo‘yicha.
 
 **Koreyscha ikonkasi va dizayn fayllari (2026-10-23):**
 - [x] Johnny yuborgan `koreyscha-icons.zip`: yangi logo (ko‘k #0047A0, oq belgi, qizil nuqta) — `icons/` dagi PNG’lar, `icon-maskable-192.png`, `favicon.ico`, `favicon.svg`, `icon.svg`. Manifest: `name`/`short_name` "Koreyscha", `theme_color`/`background_color` #0047A0; iOS sarlavhasi "Koreyscha". Service worker keshi `assetsManifest.version` bo‘yicha o‘zi yangilanadi (fayl xeshlari o‘zgardi). 6-bosqichdagi "yakuniy ikonka dizayni" bandi yopildi.
-- Ilova ichidagi sarlavha hozircha "Lug‘at" (UI dizayni bo‘yicha); Johnny bilan kelishildi — kerak bo‘lsa keyin "Koreyscha" ga o‘zgaradi.
+- [x] Ilova ichidagi nom ham "Koreyscha" (L-36, 2026-10-24): header, sahifa sarlavhalari, yuklanish ekrani, o‘rnatish yo‘riqnomasi, zaxira xabari.
 - Ikkala zip ham repo ildizidan olindi, tarkibi `docs/design/ui-handoff/` va `docs/design/koreyscha-icons/` da.
 
 **UI handoff — umumiy asos (2026-10-23):**

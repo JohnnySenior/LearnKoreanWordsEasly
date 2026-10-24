@@ -308,3 +308,10 @@ Production’dagi birinchi sinovda topilgan (Bosqich 8, deploy). `Ai__Anthropic_
 Johnny iPhone’da topdi: so‘zning ovoz tugmasini birinchi bosganda telefonning sun’iy ovozi, ikkinchisida Azure ovozi chiqardi. Sabab — yozuv so‘z ochilganda yuklana boshlaydi, birinchi Azure chaqiruvi esa 0.4–1.5 s (production loglari); shu vaqt ichida bosilsa `Speak` telefon ovoziga (`speechSynthesis`) o‘tardi. KoreanAiTeacher’da ham shunday.
 - Yozuv hali yuklanayotganda bosilsa, telefon ovozi ishlatilmaydi: bosish ichida `primeSpeech` bitta audio elementni qisqa jimlik bilan boshlaydi (iOS ovozni faqat bosish boshlagan elementga ruxsat beradi), "Ovoz yuklanmoqda…" chiqadi, yozuv kelgach `playSpeech` aynan shu elementda uni o‘ynatadi.
 - Telefon ovozi faqat server ovoz bera olmaganda (kalit yo‘q, xato) zaxira bo‘lib qoladi.
+
+## L-36 · 2026-10-24 · Ilova nomi "Koreyscha"
+
+Johnny tanladi: brend "Koreyscha" (domen koreyscha.com, ikonka va manifest). Ishchi nom "Lug‘at" ilova ichidan ham olib tashlandi: header, sahifa sarlavhalari (`… — Koreyscha`), yuklanish ekrani, o‘rnatish yo‘riqnomasi, "Haqida", maxfiylik sahifasidagi qaytish havolasi, zaxira xabari.
+- "Lug‘at" so‘zi faqat **ma’nosi** bilan qoladi: "Lug‘at sinovi", sinov turi "Lug‘at", "Lug‘atda:".
+- Kod nomlari (`Lugat.*`, `LUGAT_*`, DataProtection `SetApplicationName("Lugat")`) o‘zgarmaydi: DataProtection nomi o‘zgarsa barcha kirish cookie’lari bekor bo‘ladi.
+- Google OAuth consent screen’dagi ilova nomini Johnny Google Cloud Console’da "Koreyscha" ga o‘zgartiradi.

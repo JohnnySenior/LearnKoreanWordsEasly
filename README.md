@@ -1,6 +1,6 @@
-# Lug‘at — o‘zbeklar uchun koreys tili lug‘ati (PWA)
+# Koreyscha — o‘zbeklar uchun koreys tili lug‘ati (PWA)
 
-Koreyadagi va Koreyaga ketayotgan o‘zbeklar uchun koreys tili so‘zlarini **o‘zbek tilida**, eng ko‘p ishlatiladigan so‘zlardan boshlab, **25 talik bo‘limlarda ketma-ket** va haqiqatan yodlatib o‘rgatadigan PWA. Ishchi nom: "Lug‘at" (yakuniy brend keyinroq tanlanadi).
+Koreyadagi va Koreyaga ketayotgan o‘zbeklar uchun koreys tili so‘zlarini **o‘zbek tilida**, eng ko‘p ishlatiladigan so‘zlardan boshlab, **25 talik bo‘limlarda ketma-ket** va haqiqatan yodlatib o‘rgatadigan PWA. Ilova nomi: "Koreyscha" (L-36); kodda `Lugat` prefiksi qoladi.
 
 > **Holat (2026-10-22):** Bosqich 0 — repo va asos. Kod [KoreanAiTeacher](https://github.com/JohnnySenior/KoreanAiTeacher) dan ko‘chirildi, `Lugat.*` ga qayta nomlandi va v1 ga kirmaydigan modullar olib tashlandi. Kirish, katalog, bo‘limlar va PWA keyingi bosqichlarda. Batafsil: [docs/CHECKLIST.md](docs/CHECKLIST.md).
 

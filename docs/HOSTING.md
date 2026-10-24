@@ -72,7 +72,7 @@ Ikkalasi ham ixtiyoriy: sozlanmagani kirish sahifasida ko‘rinmaydi (`GET /api/
 **Google** (L-13):
 1. Google Cloud Console → APIs & Services → Credentials → OAuth client ID → "Web application".
 2. "Authorized JavaScript origins" ga ilova domeni (`https://...`) va lokal sinov uchun `http://localhost:5248`. Redirect URI kerak emas (GIS ID token).
-3. OAuth consent screen: ilova nomi "Lug‘at", scope’lar faqat `openid`, `email`, `profile`.
+3. OAuth consent screen: ilova nomi "Koreyscha" (L-36), scope’lar faqat `openid`, `email`, `profile`.
 4. `Google__ClientId` — maxfiy emas (brauzerga ham beriladi). Client secret kerak emas va saqlanmaydi.
 
 **Birinchi admin** (L-14): `Auth__Admins__TelegramUserIds__0=<Telegram ID>` yoki `Auth__Admins__GoogleSubjects__0=<Google sub>`. Shu hisob bilan kirilganda `Admin` roli beriladi.
