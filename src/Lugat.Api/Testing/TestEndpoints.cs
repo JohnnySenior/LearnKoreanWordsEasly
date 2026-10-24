@@ -45,6 +45,12 @@ public static class TestEndpoints
         }).DisableAntiforgery();
         tests.MapPost("/{id:guid}/oral/{index:int}/technical", (Guid id, int index, ClaimsPrincipal user, TestService s, CancellationToken ct) =>
             s.OralTechnicalAsync(user.GetUserId(), id, index, ct));
+        tests.MapPost("/{id:guid}/questions/{index:int}/report", async (Guid id, int index, QuestionReportRequest body, ClaimsPrincipal user,
+            QuestionReportService s, CancellationToken ct) =>
+        {
+            await s.ReportAsync(user.GetUserId(), id, index, body, ct);
+            return Results.NoContent();
+        });
         tests.MapPost("/{id:guid}/finish", (Guid id, ClaimsPrincipal user, TestService s, CancellationToken ct) => s.FinishAsync(user.GetUserId(), id, ct));
         tests.MapGet("/{id:guid}/questions/{index:int}/audio", async (Guid id, int index, ClaimsPrincipal user, TestService s, CancellationToken ct) =>
             Results.File(await s.AudioAsync(user.GetUserId(), id, index, ct), "audio/mpeg"));

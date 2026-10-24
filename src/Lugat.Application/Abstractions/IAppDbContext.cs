@@ -62,6 +62,8 @@ public interface IAppDbContext
 
     DbSet<Domain.Testing.TestRun> TestRuns { get; }
 
+    DbSet<Domain.Testing.QuestionReport> QuestionReports { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 
     /// <summary>Forgets tracked changes after a failed save, so follow-up reads see the database.</summary>

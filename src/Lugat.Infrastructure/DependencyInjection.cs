@@ -106,6 +106,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Ladder.LadderService>();
         services.AddScoped<Application.Listening.ListeningService>();
         services.AddScoped<Application.Testing.TestService>();
+        services.AddScoped<Application.Testing.QuestionReportService>();
         services.AddScoped<Application.Testing.TestQuestionGenerator>();
 
         services.Configure<Backups.BackupOptions>(config.GetSection(Backups.BackupOptions.SectionName));

@@ -235,6 +235,7 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         await db.WordUsages.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.WritingAttempts.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.SentenceChecks.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
+        await db.QuestionReports.Where(x => x.ReporterId == userId).ExecuteDeleteAsync(ct);
         await db.TestRuns.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.SentenceLadders.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.TrapNotes.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);

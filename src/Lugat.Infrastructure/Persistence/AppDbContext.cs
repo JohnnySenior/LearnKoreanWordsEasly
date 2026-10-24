@@ -71,6 +71,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Domain.Testing.TestRun> TestRuns => Set<Domain.Testing.TestRun>();
 
+    public DbSet<Domain.Testing.QuestionReport> QuestionReports => Set<Domain.Testing.QuestionReport>();
+
     public DbSet<Domain.Writing.WritingAttempt> WritingAttempts => Set<Domain.Writing.WritingAttempt>();
 
     public DbSet<Domain.Operations.BackupRun> BackupRuns => Set<Domain.Operations.BackupRun>();
@@ -106,6 +108,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         configurationBuilder.Properties<Domain.Writing.WritingVerdict>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<Domain.Testing.TestRunStatus>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<Domain.Testing.TestPurpose>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Testing.TestQuestionKind>().HaveConversion<string>().HaveMaxLength(32);
     }
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -403,6 +406,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 JsonConverter<List<Domain.Testing.TestAnswer>>(),
                 new ValueComparer<List<Domain.Testing.TestAnswer>>((a, c) => a!.SequenceEqual(c!), v => v.Count, v => v.ToList()));
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Testing.QuestionReport>(e =>
+        {
+            e.ToTable("question_reports");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.HasIndex(x => new { x.ReporterId, x.TestRunId, x.QuestionIndex }).IsUnique();
+            e.HasIndex(x => x.ResolvedAt);
+            e.Property(x => x.Prompt).HasMaxLength(500);
+            e.Property(x => x.Sentence).HasMaxLength(500);
+            e.Property(x => x.Translation).HasMaxLength(500);
+            e.Property(x => x.Correct).HasMaxLength(500);
+            e.Property(x => x.Given).HasMaxLength(500);
+            e.Property(x => x.Comment).HasMaxLength(500);
+            e.Property(x => x.Options).HasColumnType("jsonb").HasConversion(
+                JsonConverter<List<string>>(),
+                new ValueComparer<List<string>>((a, c) => a!.SequenceEqual(c!), v => v.Count, v => v.ToList()));
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Domain.Writing.WritingAttempt>(e =>

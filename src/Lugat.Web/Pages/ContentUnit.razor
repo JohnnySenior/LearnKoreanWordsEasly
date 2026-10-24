@@ -56,6 +56,11 @@
             <span class="pill @(word.Status == CatalogWordStatus.Reviewed ? "pill-ok" : "pill-warn")">@(word.Status == CatalogWordStatus.Reviewed ? "Tekshirildi" : "Qoralama")</span>
         </div>
         <label class="field">Tarjima (1–3 ma’no, «;» bilan)<input class="input" maxlength="300" @bind="edit.TranslationUz" /></label>
+        @if (word.SameMeaning is { Count: > 0 } same)
+        {
+            @* L-37: asked from Uzbek, both words are right. *@
+            <p class="notice small-text">Bu ma’no boshqa so‘zda ham bor: <span lang="ko">@string.Join(", ", same)</span>. O‘zbekchadan so‘ralganda ilova farqini ko‘rsatadi; aniqroq bo‘lsin desangiz, tarjimaga qavsda izoh qo‘shing, masalan «emas (fe’ldan oldin)».</p>
+        }
         <label class="field">Lotincha o‘qilishi<input class="input" maxlength="100" @bind="edit.Romanization" /></label>
         <label class="field">Misol (koreyscha, ≤ 8 so‘z)<input class="input" lang="ko" maxlength="200" @bind="edit.ExampleKo" /></label>
         <label class="field">Misol tarjimasi<input class="input" maxlength="300" @bind="edit.ExampleUz" /></label>

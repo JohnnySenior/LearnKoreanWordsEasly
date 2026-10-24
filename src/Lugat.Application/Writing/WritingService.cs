@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
+using Lugat.Application.Vocabulary;
 using Lugat.Contracts;
 using Lugat.Domain.Learning;
 using Lugat.Domain.Vocabulary;
@@ -62,13 +63,16 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
             .ToList();
 
         var units = await Study.LearnerItems.UnitLabelsAsync(db, picked.Select(s => s.UnitId), ct);
+        var twinPool = await MeaningTwins.LearnerPoolAsync(db, ownerId, ct);
+        var posOf = twinPool.ToDictionary(t => t.Id, t => t.Pos);
         return picked.Select(s =>
         {
             var d = direction ?? (Random.Shared.Next(2) == 0 ? ReviewDirection.KoreanToUzbek : ReviewDirection.UzbekToKorean);
             var unit = s.UnitId is { } u ? units.GetValueOrDefault(u) : null;
             return d == ReviewDirection.KoreanToUzbek
                 ? new WritingPromptDto(s.Id, d, s.Korean, s.KoreanNote, unit)
-                : new WritingPromptDto(s.Id, d, s.Uzbek, null, unit);
+                : new WritingPromptDto(s.Id, d, s.Uzbek, null, unit,
+                    MeaningTwins.Of(s.Id, s.Korean, s.Uzbek, twinPool) is { Count: > 0 } twins ? MeaningTwins.Hint(posOf.GetValueOrDefault(s.Id), twins) : null);
         }).ToList();
     }
 
@@ -122,9 +126,16 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
             CreatedAt = time.GetUtcNow(),
         };
 
+        // Another word with the same meaning (안 for 아니다 "emas"): not a mistake, and no AI call is needed (L-37).
+        if (match == MatchResult.NoMatch && typingKorean && await MeaningTwins.TypedTwinAsync(db, ownerId, sense, answer, ct) is { } twin)
+        {
+            attempt.Verdict = WritingVerdict.SameMeaning;
+            attempt.Note = $"«{twin.Korean}» ham «{sense.Uzbek}» degani, lekin bu mashqda boshqa so‘z kutilgan.";
+        }
+
         // Only a real attempt is worth an AI call: "Bilmayman", or Latin letters where Hangul was asked, is simply wrong.
         var worthJudging = answer.Any(char.IsLetter) && (!typingKorean || SentenceCheckService.ContainsHangul(answer));
-        if (match == MatchResult.NoMatch && worthJudging)
+        if (attempt.Verdict == WritingVerdict.Wrong && worthJudging)
         {
             await JudgeMeaningAsync(ownerId, attempt, sense, typingKorean, ct);
         }

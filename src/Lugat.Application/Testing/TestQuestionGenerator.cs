@@ -50,17 +50,20 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
     public static TestQuestion? Local(int index, Planned p, List<LearningItem> words)
     {
         var w = p.Word;
+        // A word sharing a meaning (안 / 아니다 "emas") would be a second right option (L-37).
+        var meanings = Catalog.UnitTestGenerator.Meanings(w.Uzbek);
+        var others = words.Where(o => o.Id != w.Id && !Catalog.UnitTestGenerator.Meanings(o.Uzbek).Overlaps(meanings)).ToList();
         switch (p.Kind)
         {
             case TestQuestionKind.WordMeaning:
                 {
-                    var options = Options(w.Uzbek, words.Where(o => o.Id != w.Id).Select(o => o.Uzbek), AnswerMatcher.NormalizeUzbek);
+                    var options = Options(w.Uzbek, others.Select(o => o.Uzbek), AnswerMatcher.NormalizeUzbek);
                     return options is null ? null : new TestQuestion(index, p.Kind, KoreanWithNote(w), null, null, options, w.Uzbek, null, null, w.Id, false);
                 }
 
             case TestQuestionKind.WordKorean:
                 {
-                    var options = Options(KoreanWithNote(w), words.Where(o => o.Id != w.Id).Select(KoreanWithNote), AnswerMatcher.NormalizeKorean);
+                    var options = Options(KoreanWithNote(w), others.Select(KoreanWithNote), AnswerMatcher.NormalizeKorean);
                     return options is null ? null : new TestQuestion(index, p.Kind, w.Uzbek, null, null, options, KoreanWithNote(w), null, null, w.Id, false);
                 }
 
@@ -100,7 +103,7 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
 
     public sealed record GapResult(List<GapItem>? Items);
 
-    public sealed record GapItem(int Id, string? Sentence, string? TranslationUz, string? Answer, List<string>? Options, string? ExplanationUz);
+    public sealed record GapItem(int Id, string? Sentence, string? TranslationUz, string? Answer, List<string>? Options, string? ExplanationUz, List<string?>? WrongReasonsUz = null);
 
     public async Task<(Dictionary<int, Gap> Gaps, string? Provider, string? Warning)> AskForGapsAsync(
         Guid ownerId, List<Planned> tasks, List<LearningItem> words, CancellationToken ct)
@@ -176,7 +179,9 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
                 && SentenceCheckService.ContainsHangul(answer)
                 && !sentence.Replace(Blank, "").Contains(answer, StringComparison.Ordinal)
                 && item.TranslationUz is { } tr && SentenceCheckService.IsUzbekLatin(tr)
-                && (task.Kind == TestQuestionKind.WordClozeTyped || options.Count == 4 && options.Contains(answer) && options.All(SentenceCheckService.ContainsHangul));
+                && (task.Kind == TestQuestionKind.WordClozeTyped || options.Count == 4 && options.Contains(answer) && options.All(SentenceCheckService.ContainsHangul)
+                    // A wrong option the AI cannot say why is wrong may be a second right answer (L-37).
+                    && item.WrongReasonsUz is { Count: 3 } reasons && reasons.All(r => r is { } x && x.Trim().Length > 0 && SentenceCheckService.IsUzbekLatin(x)));
             if (!ok)
             {
                 continue;
@@ -210,8 +215,12 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
         - answer: exactly the text that fills "___" (the word conjugated as it must stand in the sentence).
         - translationUz: natural Uzbek translation of the full sentence (Latin script, apostrophes o‘ g‘ ’).
         - options: for word_choice, exactly 4 different Korean options that fit "___" grammatically: the answer plus
-          3 wrong ones taken from <other_words_for_wrong_options> (conjugated the same way). Wrong options must be
-          clearly wrong in this context. For word_typed return an empty list.
+          3 wrong ones taken from <other_words_for_wrong_options> (conjugated the same way). Each wrong option
+          must make the sentence wrong or clearly unnatural even for a reader who does not see translationUz: never
+          an antonym or a word that gives another correct sentence with a different meaning (있다 / 없다, 좋다 /
+          싫다, 가다 / 오다, 크다 / 작다). For word_typed return an empty list.
+        - wrongReasonsUz: for word_choice, one short Uzbek reason per wrong option, in the order they appear in
+          options, saying why it does not fit this sentence. For word_typed return an empty list.
         - explanationUz: one short Uzbek sentence: why the answer fits.
         Never use Cyrillic. Korean in Hangul.
         """;
@@ -227,13 +236,14 @@ public sealed class TestQuestionGenerator(AiGateway ai, ILogger<TestQuestionGene
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["id", "sentence", "translationUz", "answer", "options", "explanationUz"],
+                "required": ["id", "sentence", "translationUz", "answer", "options", "wrongReasonsUz", "explanationUz"],
                 "properties": {
                   "id": { "type": "integer" },
                   "sentence": { "type": "string" },
                   "translationUz": { "type": "string" },
                   "answer": { "type": "string" },
                   "options": { "type": "array", "items": { "type": "string" } },
+                  "wrongReasonsUz": { "type": "array", "items": { "type": "string" } },
                   "explanationUz": { "type": "string" }
                 }
               }

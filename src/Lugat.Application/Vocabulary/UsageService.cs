@@ -285,7 +285,8 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
           Korean translation with the target word replaced by exactly "___" (three underscores, once); answer — the
           target word exactly as it stands in the gap (conjugated); wrong — 1-3 Korean words conjugated the same way
           that an Uzbek speaker would wrongly pick: the word-for-word translation of the Uzbek, a near-synonym, or the
-          trap word, but each clearly wrong or unnatural in this sentence; explanationUz — one short Uzbek sentence
+          trap word, but each clearly wrong or unnatural in this sentence, even read without the Uzbek one (never an
+          antonym or a word giving another correct sentence: 있다 / 없다, 좋다 / 싫다, 가다 / 오다); explanationUz — one short Uzbek sentence
           on why the answer is right and the others are not. Prefer questions about the trap when there is one.
         Write Uzbek in Latin script with the apostrophes o‘ g‘ ’; never Cyrillic. Korean in Hangul. Use only what you
         are sure is natural Korean.

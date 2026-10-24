@@ -87,6 +87,10 @@ else
                 else
                 {
                     <p class="prompt">@card.Prompt</p>
+                    @if (card.MeaningHint is not null)
+                    {
+                        <p class="muted flashcard-note">@card.MeaningHint</p>
+                    }
                 }
             </div>
             @if (card.Direction == ReviewDirection.KoreanToUzbek)

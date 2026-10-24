@@ -165,4 +165,30 @@ public class WritingEndpointsTests
         Assert.Equal(HttpStatusCode.NotFound, foreignId.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, emptyQueue.StatusCode);
     }
+
+    [Fact]
+    public async Task Another_word_with_the_same_meaning_is_not_a_mistake_and_the_prompt_tells_them_apart()
+    {
+        // L-37: 안 and 아니다 are both "emas".
+        await using var factory = new ApiFactory
+        {
+            TableWords = [("안", "emas"), ("아니다", "emas; yo‘q"), ("가다", "bormoq"), ("오다", "kelmoq"), ("보다", "ko‘rmoq")],
+            AiProviders = [_ai],
+        };
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await ApproveAsync(client);
+        await StartAllAsync(client);
+
+        var queue = (await client.GetFromJsonAsync<List<WritingPromptDto>>("/api/writing/queue?direction=UzbekToKorean&count=10", Json))!;
+        var an = queue.Single(p => p.Prompt == "emas");
+        var result = await AnswerAsync(client, an, "아니다");
+
+        Assert.Equal("아니다 emas", an.MeaningHint);
+        Assert.Equal("안 emas", queue.Single(p => p.Prompt == "emas; yo‘q").MeaningHint);
+        Assert.Null(queue.Single(p => p.Prompt == "bormoq").MeaningHint);
+        Assert.Equal(WritingVerdict.SameMeaning, result.Verdict);
+        Assert.Equal("안", result.Expected);
+        Assert.Contains("아니다", result.Note);
+        Assert.Empty(_ai.Requests); // known from the word list, no AI call
+    }
 }

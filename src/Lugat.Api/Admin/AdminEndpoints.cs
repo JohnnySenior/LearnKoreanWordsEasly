@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Lugat.Api.Auth;
 using Lugat.Application.Admin;
+using Lugat.Application.Testing;
 using Lugat.Contracts;
 
 namespace Lugat.Api.Admin;
@@ -26,6 +27,12 @@ public static class AdminEndpoints
             s.MarkPaidAsync(user.GetUserId(), body, ct));
         admin.MapGet("/usage", (int? days, AdminService s, CancellationToken ct) => s.UsageAsync(days ?? 30, ct));
         admin.MapGet("/metrics", (AdminService s, CancellationToken ct) => s.MetricsAsync(ct));
+        admin.MapGet("/question-reports", (QuestionReportService s, CancellationToken ct) => s.OpenAsync(ct));
+        admin.MapPost("/question-reports/{id:guid}/resolve", async (Guid id, ClaimsPrincipal user, QuestionReportService s, CancellationToken ct) =>
+        {
+            await s.ResolveAsync(user.GetUserId(), id, ct);
+            return Results.NoContent();
+        });
         return app;
     }
 }
