@@ -12,9 +12,23 @@ namespace Lugat.Api.Me;
 
 public static class MeEndpoints
 {
+    public const string VisitRateLimitPolicy = "visits";
+
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)
     {
         var me = app.MapGroup("/api/me").RequireAuthorization();
+
+        // Ad channel links (L-40): a visit is counted before sign-in, the channel is kept on a new account after it.
+        app.MapPost("/api/visits", async (SourceRequest body, SourceService s, CancellationToken ct) =>
+        {
+            await s.VisitAsync(body.Source, ct);
+            return TypedResults.NoContent();
+        }).AllowAnonymous().RequireRateLimiting(VisitRateLimitPolicy);
+        me.MapPost("/source", async (SourceRequest body, ClaimsPrincipal user, SourceService s, CancellationToken ct) =>
+        {
+            await s.AttachAsync(user.GetUserId(), body.Source, ct);
+            return TypedResults.NoContent();
+        });
 
         // The account (spec §11): who I am and how I sign in, my settings, deleting the account.
         me.MapGet("/", (ClaimsPrincipal user, UserService users, CancellationToken ct) => users.GetMeAsync(user.GetUserId(), ct));

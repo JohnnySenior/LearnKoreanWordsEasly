@@ -82,6 +82,7 @@
     {
         Api.Changed += OnChanged;
         Api.PremiumRequired += OnPremiumRequired;
+        await CaptureSourceAsync();
         _state = await Api.EnsureSignedInAsync();
         await ApplyThemeAsync();
         await CheckOnboardingAsync();
@@ -97,22 +98,49 @@
 
         _onboardingChecked = true;
         _onboarding = await Browser.StorageGetAsync(Onboarding.SeenKey) is null;
+        await AttachSourceAsync();
         await ApplyReferralAsync();
     }
+
+    private const string SourceKey = "koreyscha.src";
+    private const string SourceSentKey = "koreyscha.src.sent";
+
+    // "/?src=tg" (L-40): the ad channel. The visit is counted once per device, before signing in.
+    private async Task CaptureSourceAsync()
+    {
+        var source = QueryValue("src") ?? QueryValue("utm_source");
+        if (string.IsNullOrWhiteSpace(source) || await Browser.StorageGetAsync(SourceKey) is not null)
+        {
+            return;
+        }
+
+        await Browser.StorageSetAsync(SourceKey, source);
+        await Api.PostAnonymousAsync("api/visits", new Lugat.Contracts.SourceRequest(source));
+    }
+
+    // After signing in, the channel goes to the account once; the server keeps it only on a new account.
+    private async Task AttachSourceAsync()
+    {
+        if (await Browser.StorageGetAsync(SourceKey) is { Length: > 0 } source && await Browser.StorageGetAsync(SourceSentKey) is null
+            && (await Api.SendJsonAsync<object>(HttpMethod.Post, "api/me/source", new Lugat.Contracts.SourceRequest(source))).Ok)
+        {
+            await Browser.StorageSetAsync(SourceSentKey, "1");
+        }
+    }
+
+    private string? QueryValue(string name) => new Uri(Nav.Uri).Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
+        .Select(p => p.Split('=', 2))
+        .Where(p => p.Length == 2 && p[0] == name)
+        .Select(p => Uri.UnescapeDataString(p[1]))
+        .FirstOrDefault();
 
     // "/?ref=CODE" (spec §4.1): a teacher's promo code goes with the learner to the Premium page (spec §9.1).
     private async Task ApplyReferralAsync()
     {
-        var uri = new Uri(Nav.Uri);
-        var code = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => p.Split('=', 2))
-            .Where(p => p.Length == 2 && p[0] == "ref")
-            .Select(p => Uri.UnescapeDataString(p[1]))
-            .FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(code))
+        if (QueryValue("ref") is { } code && !string.IsNullOrWhiteSpace(code))
         {
             await Api.SendJsonAsync<object>(HttpMethod.Post, "api/me/referral", new Lugat.Contracts.ReferralRequest(code));
-            Nav.NavigateTo(uri.AbsolutePath, replace: true);
+            Nav.NavigateTo(new Uri(Nav.Uri).AbsolutePath, replace: true);
         }
     }
 

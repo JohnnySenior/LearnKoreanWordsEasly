@@ -14,6 +14,8 @@ public interface IAppDbContext
 
     DbSet<UserActivityDay> ActivityDays { get; }
 
+    DbSet<SourceVisit> SourceVisits { get; }
+
     DbSet<Domain.Premium.Subscription> Subscriptions { get; }
 
     DbSet<Domain.Premium.Payment> Payments { get; }

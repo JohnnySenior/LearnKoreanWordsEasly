@@ -35,6 +35,30 @@
 </section>
 
 <section class="card">
+    @* L-40: every ad channel gets its own link; which one brings learners who stay. *@
+    <h2>Reklama kanallari (30 kun)</h2>
+    @if (_sources is not { Count: > 0 })
+    {
+        <p class="muted">Hali kanal havolasi bilan kelgan yo‘q.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Kanal</th><th class="num">Tashrif</th><th class="num">Ro‘yxatdan o‘tdi</th><th class="num">D7</th><th class="num">To‘ladi</th></tr></thead>
+                <tbody>
+                    @foreach (var r in _sources)
+                    {
+                        <tr><td>@r.Source</td><td class="num">@r.Visits</td><td class="num">@r.SignUps</td><td class="num">@Percent(r.D7) <span class="muted">(@r.D7.Returned/@r.D7.Cohort)</span></td><td class="num">@r.Paying</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <p class="muted small-text">Har kanalga o‘z havolasi: <b>koreyscha.com/?src=tg</b>, <b>?src=ig</b>, <b>?src=fb</b>, <b>?src=yt</b>, <b>?src=tiktok</b> yoki kanal nomi (lotin harflari, raqam, «-», «_»). Tashrif — havolani ochgan qurilmalar; ro‘yxatdan o‘tgan — shu havola bilan kelib 2 kun ichida hisob ochganlar.</p>
+</section>
+
+<section class="card">
     <h2>Kunlik faol</h2>
     <div class="table-wrap">
         <table class="data-table">
@@ -113,6 +137,7 @@
 
 @code {
     private MetricsDto? _m;
+    private List<SourceRowDto>? _sources;
     private string? _error;
 
     private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
@@ -123,6 +148,7 @@
         {
             var result = await Api.GetAsync<MetricsDto>("api/admin/metrics");
             (_m, _error) = (result.Value, result.Error);
+            _sources = (await Api.GetAsync<List<SourceRowDto>>("api/admin/sources?days=30")).Value;
         }
     }
 

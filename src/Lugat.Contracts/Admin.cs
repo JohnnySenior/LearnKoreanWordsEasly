@@ -73,3 +73,8 @@ public sealed record MetricsDto(
     IReadOnlyList<RevenueMonthDto> Revenue,
     IReadOnlyList<UnitPassRateDto> Units,
     IReadOnlyList<GroupPilotDto> Groups);
+
+/// <summary>One ad channel (L-40): visits with its link, sign-ups that came with it, their D7 return and how many paid.</summary>
+public sealed record SourceRowDto(string Source, int Visits, int SignUps, RetentionDto D7, int Paying);
+
+public sealed record SourceRequest(string? Source);

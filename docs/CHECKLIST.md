@@ -327,3 +327,7 @@ Bosqichlar spec §13 bo‘yicha.
 **Bo‘lim testida yozish (L-38, 2026-10-24):**
 - [x] `WordKoreanTyped` va `WordListeningTyped`; 25 so‘zda 11 ta yozma savol; imlo xatosi noto‘g‘ri; bir xil ma’noli so‘zda izoh (testlar: taqsimot, baholash, izoh, tinglashda matn yo‘q).
 - [ ] iPhone’da koreyscha klaviatura bilan sinab ko‘rish — Johnny.
+
+**Reklama kanallari (L-40, 2026-10-24):**
+- [x] `?src=` havolasi: tashrif sanog‘i, yangi hisobga kanal, Admin → Ko‘rsatkichlar jadvali (test: normalizatsiya, birinchi kanal qoladi, eski hisob olinmaydi, D7, faqat admin).
+- [ ] Kontent to‘plami (b) va tushuntirish sahifasi (c).

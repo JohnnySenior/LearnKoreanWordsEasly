@@ -31,6 +31,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<UserActivityDay> ActivityDays => Set<UserActivityDay>();
 
+    public DbSet<SourceVisit> SourceVisits => Set<SourceVisit>();
+
     public DbSet<Domain.Teaching.Group> Groups => Set<Domain.Teaching.Group>();
 
     public DbSet<Domain.Teaching.GroupMember> GroupMembers => Set<Domain.Teaching.GroupMember>();
@@ -123,6 +125,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasIndex(u => u.PaymentCode).IsUnique();
             e.Property(u => u.Version).IsRowVersion();
             e.HasOne<Domain.Premium.PromoCode>().WithMany().HasForeignKey(u => u.PromoCodeId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(u => u.SignupSource).HasMaxLength(Application.Users.SourceService.MaxLength);
+        });
+
+        b.Entity<SourceVisit>(e =>
+        {
+            e.ToTable("source_visits");
+            e.HasKey(x => new { x.Source, x.Day });
+            e.Property(x => x.Source).HasMaxLength(Application.Users.SourceService.MaxLength);
         });
 
         b.Entity<UserLogin>(e =>
