@@ -1119,3 +1119,23 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .score-chart .hit { fill: transparent; }
 .score-chart .label { font: 800 13px var(--font-heading); fill: var(--color-text); }
 .chart-x { display: flex; justify-content: space-between; font-size: 12px; color: var(--color-muted); padding-left: 24px; margin-top: 4px; }
+
+/* Before sign-in: what the app is (L-41). Same flat language as the app: 2px rules, no cards, left-aligned. */
+.landing { display: grid; gap: 14px; padding: 20px 0 24px; }
+.landing .section-label { margin-top: 10px; }
+.landing-steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+.landing-steps li { counter-increment: step; display: grid; grid-template-columns: 32px 1fr; column-gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--color-divider); }
+.landing-steps li::before { content: counter(step); grid-row: span 2; font: 900 22px/1 var(--font-heading); color: var(--color-accent); }
+.landing-steps b { font-size: 16px; }
+.landing-steps span { font-size: 14px; color: var(--color-muted); }
+.landing-word { display: grid; gap: 8px; padding: 4px 0 14px; border-bottom: 1px solid var(--color-divider); }
+.landing-word p { margin: 0; }
+.landing-word-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.landing-word-ko { font: 900 40px/1 var(--font-ko); }
+.landing-example span[lang="ko"] { font-family: var(--font-ko); }
+.landing-trap { font-size: 14px; padding-left: 10px; border-left: 3px solid var(--color-accent); }
+.landing-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; }
+.landing-plans > div { padding: 12px 12px 12px 0; min-width: 0; }
+.landing-plans > div + div { padding-left: 12px; border-left: 1px solid var(--color-divider); }
+.landing-plans ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
+.landing-cta { margin-top: 8px; }

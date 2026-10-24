@@ -331,3 +331,4 @@ Bosqichlar spec §13 bo‘yicha.
 **Reklama kanallari (L-40, 2026-10-24):**
 - [x] `?src=` havolasi: tashrif sanog‘i, yangi hisobga kanal, Admin → Ko‘rsatkichlar jadvali (test: normalizatsiya, birinchi kanal qoladi, eski hisob olinmaydi, D7, faqat admin).
 - [ ] Kontent to‘plami (b) va tushuntirish sahifasi (c).
+- [x] Kirishdan oldingi tushuntirish (L-41): to‘rt qadam, so‘z kartasi va tuzoq, bepul/Premium, o‘rnatish. Chromium 390px: gorizontal scroll yo‘q.
