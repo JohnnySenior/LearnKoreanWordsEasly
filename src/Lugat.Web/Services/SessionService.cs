@@ -216,6 +216,21 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
         }
     }
 
+    /// <summary>A small report that needs no session (an ad link visit, L-40); failures are ignored by the caller.</summary>
+    public async Task<bool> PostAnonymousAsync(string uri, object body)
+    {
+        using var cts = new CancellationTokenSource(DefaultTimeout);
+        try
+        {
+            using var response = await http.PostAsJsonAsync(uri, body, Json, cts.Token);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (IsNetworkFailure(ex))
+        {
+            return false;
+        }
+    }
+
     public Task<ApiResult<T>> GetAsync<T>(string uri) =>
         CallAsync<T>(() => new HttpRequestMessage(HttpMethod.Get, uri), DefaultTimeout);
 

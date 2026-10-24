@@ -345,3 +345,12 @@ Railway’da `koreyscha.com` uchun Let’s Encrypt sertifikati 24 soatdan ko‘p
 - Diapazonlar Cloudflare’ning e’lon qilingan ro‘yxati (2021 dan beri o‘zgarmagan), `Cloudflare:Ranges` bilan almashtiriladi; eskirsa faqat limit yana edge manzili bo‘yicha hisoblanadi.
 - Railway sertifikati keyinroq chiqsa ham proksi qolaveradi (Cloudflare kesh/himoya); "Full" rejim ikkala holatda ishlaydi.
 - **Vaqt chegarasi:** Cloudflare bepul tarifda javobni 100 soniya kutadi, keyin 524 sahifasini ko‘rsatadi. Barcha AI chaqiruvlari jami `Ai:TotalTimeout` = **85 s** (100 edi), shunda server o‘z "AI javob bermadi" xabarini Cloudflare’dan oldin qaytaradi.
+
+## L-40 · 2026-10-24 · Reklama kanallari: qaysi kanal ishlaydi
+
+Johnny Telegram, Instagram, Facebook, YouTube orqali reklama sinamoqchi. Qaysi kanal **qoladigan** o‘quvchi olib kelishini bilish uchun:
+- Har kanalga o‘z havolasi: `koreyscha.com/?src=tg` (yoki `utm_source`). Kod: kichik lotin harflari, raqam, `-`, `_`, ≤ 32 belgi; boshqasi e’tiborga olinmaydi.
+- **Tashrif:** havola birinchi ochilganda qurilma uni eslab qoladi (`localStorage`) va `POST /api/visits` kanal va Koreya kuni bo‘yicha sanaydi (`source_visits`) — tashrif buyuruvchi haqida hech narsa saqlanmaydi; IP bo‘yicha daqiqasiga 5 ta.
+- **Ro‘yxatdan o‘tish:** kirgandan keyin kanal `POST /api/me/source` bilan hisobga yoziladi (`User.SignupSource`) — faqat birinchisi va faqat hisob 2 kundan yangi bo‘lsa (eski foydalanuvchi reklama havolasini ochsa, "olib kelingan" hisoblanmaydi). Hisob o‘chirilsa tozalanadi.
+- **Hisobot:** Admin → Ko‘rsatkichlar → "Reklama kanallari (30 kun)": tashrif, ro‘yxatdan o‘tgan, D7 (metrikadagidek: 7 kun oldin yoki avval o‘tganlardan 7-kuni ochganlar), to‘lagan (tasdiqlangan to‘lov). `GET /api/admin/sources?days=`.
+- Cheklov: iPhone’da bosh ekranga qo‘shilgan ilova Safari xotirasini ko‘rmaydi — havolani ochib, avval ilovani o‘rnatib, keyin unda ro‘yxatdan o‘tgan odamning kanali yozilmaydi (tashrifi sanaladi).

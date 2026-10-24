@@ -1261,6 +1261,23 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("test_runs", (string)null);
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Users.SourceVisit", b =>
+                {
+                    b.Property<string>("Source")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Source", "Day");
+
+                    b.ToTable("source_visits", (string)null);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1311,6 +1328,10 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("ShowRomanization")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("SignupSource")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("Theme")
                         .IsRequired()

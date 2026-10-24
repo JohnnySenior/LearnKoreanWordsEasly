@@ -91,6 +91,10 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = http.RequestServices.GetRequiredService<IOptionsMonitor<AuthOptions>>().CurrentValue.TestStartsPerHour,
             Window = TimeSpan.FromHours(1),
         }));
+    // Ad link visits (L-40): anonymous, so per IP; a few per minute are plenty for one person opening links.
+    o.AddPolicy(MeEndpoints.VisitRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        "visit-ip:" + (http.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }));
     // Invite links and referral codes: per user, so a class joining from one Wi-Fi is not blocked, while guessing
     // codes stays slow.
     o.AddPolicy(TeachingEndpoints.CodeRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(

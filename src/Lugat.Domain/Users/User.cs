@@ -74,6 +74,9 @@ public sealed class User
     /// </summary>
     public Guid? PromoCodeId { get; set; }
 
+    /// <summary>The ad channel the user first came from (<c>/?src=tg</c>, L-40); null for a plain visit.</summary>
+    public string? SignupSource { get; set; }
+
     /// <summary>The account was deleted: personal data is gone, the row stays only for anonymous records (spec §5.3).</summary>
     public DateTimeOffset? DeletedAt { get; set; }
 

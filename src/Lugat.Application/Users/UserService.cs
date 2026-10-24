@@ -254,6 +254,7 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         user.DisplayName = null;
         user.PaymentCode = null;
         user.PromoCodeId = null;
+        user.SignupSource = null;
         user.Roles = UserRoles.None;
         user.RemindersEnabled = false;
         user.BotBlockedAt = null;
