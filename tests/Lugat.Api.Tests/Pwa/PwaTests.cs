@@ -47,8 +47,10 @@ public class PwaTests
         var html = await factory.CreateClient().GetStringAsync("/bolimlar");
 
         Assert.Contains("rel=\"manifest\" href=\"manifest.webmanifest\"", html);
-        Assert.Contains("rel=\"apple-touch-icon\" href=\"icons/apple-touch-icon.png\"", html);
-        Assert.Contains("rel=\"icon\" href=\"favicon.ico\"", html);
+        // "?v=2": a new icon under the old name; Safari would keep the cached one when re-adding to the home screen.
+        Assert.Contains("rel=\"apple-touch-icon\" href=\"icons/apple-touch-icon.png?v=2\"", html);
+        Assert.Contains("rel=\"icon\" href=\"favicon.ico?v=2\"", html);
+        Assert.Equal(HttpStatusCode.OK, (await factory.CreateClient().GetAsync("/icons/apple-touch-icon.png?v=2")).StatusCode);
         Assert.Contains("service-worker.js", html);
         Assert.DoesNotContain("telegram-web-app.js", html);
         Assert.Equal(HttpStatusCode.OK, (await factory.CreateClient().GetAsync("/favicon.ico")).StatusCode);
