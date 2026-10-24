@@ -24,8 +24,11 @@ public sealed class AiOptions
 
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(45);
 
-    /// <summary>All providers together; shorter than the client's two-minute deadline.</summary>
-    public TimeSpan TotalTimeout { get; set; } = TimeSpan.FromSeconds(100);
+    /// <summary>
+    /// All providers together; shorter than the client's two-minute deadline and than Cloudflare's 100-second proxy
+    /// limit (L-39), past which the learner would get Cloudflare's 524 page instead of our message.
+    /// </summary>
+    public TimeSpan TotalTimeout { get; set; } = TimeSpan.FromSeconds(85);
 
     public AiProviderOptions Anthropic { get; set; } = new() { Model = "claude-sonnet-5", BaseUrl = "https://api.anthropic.com/" };
 
