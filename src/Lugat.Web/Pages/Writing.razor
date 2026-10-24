@@ -68,6 +68,10 @@ else
         @if (typingKorean)
         {
             <p class="prompt">@prompt.Prompt</p>
+            @if (prompt.MeaningHint is not null)
+            {
+                <p class="muted">@prompt.MeaningHint</p>
+            }
         }
         else
         {

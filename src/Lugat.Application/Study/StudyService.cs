@@ -442,7 +442,8 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             unit,
             state.IsDue(now),
             previews,
-            trap);
+            trap,
+            koreanToUzbek ? null : await Vocabulary.MeaningTwins.HintAsync(db, card.OwnerId, sense, ct));
     }
 
     private IQueryable<ActiveCard> ActiveCards(Guid ownerId) =>

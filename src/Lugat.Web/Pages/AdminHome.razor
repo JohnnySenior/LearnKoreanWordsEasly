@@ -71,6 +71,11 @@
             _attention.Add((drafts.Count, $"Bo‘lim tekshiruvda ({string.Join(", ", drafts.Take(4))}{(drafts.Count > 4 ? ", …" : "")})", "kontent"));
         }
 
+        if ((await Api.GetAsync<List<QuestionReportDto>>("api/admin/question-reports")).Value is { Count: > 0 } reports)
+        {
+            _attention.Add((reports.Count, "Savolda xato bor, deb yozishdi", "admin/savollar"));
+        }
+
         if ((await Api.GetAsync<List<TeacherCommissionDto>>("api/admin/commissions")).Value is { } commissions
             && commissions.Count(c => !c.Paid && c.CommissionKrw > 0) is > 0 and var unpaid)
         {

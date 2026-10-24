@@ -315,3 +315,15 @@ Johnny tanladi: brend "Koreyscha" (domen koreyscha.com, ikonka va manifest). Ish
 - "Lug‘at" so‘zi faqat **ma’nosi** bilan qoladi: "Lug‘at sinovi", sinov turi "Lug‘at", "Lug‘atda:".
 - Kod nomlari (`Lugat.*`, `LUGAT_*`, DataProtection `SetApplicationName("Lugat")`) o‘zgarmaydi: DataProtection nomi o‘zgarsa barcha kirish cookie’lari bekor bo‘ladi.
 - Google OAuth consent screen’dagi ilova nomini Johnny Google Cloud Console’da "Koreyscha" ga o‘zgartiradi.
+
+## L-37 · 2026-10-24 · Bitta savolga bitta to‘g‘ri javob
+
+Johnny topdi: (1) bo‘sh joyli savolda 있다 ham, 없다 ham gapga to‘g‘ri tushardi; (2) yozma mashqda "emas" so‘raldi, u 아니다 yozdi, kutilgani 안 edi — ikkalasi ham "emas".
+- **Tarjima oldindan.** Variantli bo‘sh joy savolida (`WordCloze`) o‘zbekcha tarjima javobdan oldin ko‘rinadi: gapning ma’nosi aniq bo‘lsa, zid ma’noli variant to‘g‘ri bo‘lolmaydi. Javob baribir koreyscha so‘zni bilishni talab qiladi.
+- **AI qoidasi.** Test savollari, "Qaysi so‘z to‘g‘ri?" (o‘quvchi va katalog) promptlarida: noto‘g‘ri variant tarjimasiz o‘qilganda ham noto‘g‘ri bo‘lsin, zid ma’noli yoki boshqa to‘g‘ri gap beradigan so‘z bo‘lmasin. Test bo‘sh joyi uchun AI har bir noto‘g‘ri variantga sabab (`wrongReasonsUz`, 3 ta) yozadi; sababsiz savol tashlanadi va variantli savol bilan almashtiriladi.
+- **"Bu savolda xato bor".** Test natijasidagi xatolar ro‘yxatida tugma (`POST /api/tests/{id}/questions/{index}/report`, o‘quvchi va savol bo‘yicha bir marta). Admin panel: "Diqqat talab qiladi" qatori va `/admin/savollar` ("Hal qilindi"). Ochiq xabar bor ekan, shu gapli saqlangan "Qaysi so‘z to‘g‘ri?" savoli testga qo‘shilmaydi. Jadval `question_reports`; hisob o‘chirilsa xabarlar ham o‘chadi.
+- **Bir xil ma’noli so‘zlar** (`MeaningTwins`, ma’nolar `;`/`,` bo‘yicha, qavs ichidagisi hisobga olinmaydi):
+  - o‘zbekchadan so‘ralganda (kartochka, yozma mashq) o‘quvchining so‘zlarida shu ma’noli boshqa so‘z bo‘lsa, ostida farq yoziladi: so‘z turkumi farq qilsa "ravish · shu ma’noli boshqa so‘z ham bor", aks holda "아니다 emas";
+  - yozma mashqda shu ma’noli boshqa so‘z yozilsa — "Ma’nosi to‘g‘ri, boshqa so‘z" (xato emas), AI chaqirilmaydi; so‘z tez orada yana so‘raladi;
+  - test variantlarida (lokal savollar ham) shu ma’noli so‘z noto‘g‘ri variant bo‘lmaydi (bo‘lim testida bu avvaldan bor edi);
+  - Kontent sahifasida so‘z ostida ogohlantirish: "Bu ma’no boshqa so‘zda ham bor: …".

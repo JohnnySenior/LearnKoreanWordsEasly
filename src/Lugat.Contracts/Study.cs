@@ -37,7 +37,8 @@ public sealed record CardPromptDto(
     string? Unit,
     bool IsDue,
     IReadOnlyList<RatingPreview> Previews,
-    string? UsageTrap = null);
+    string? UsageTrap = null,
+    string? MeaningHint = null);
 
 public sealed record SessionSummaryDto(int Answered, int Forgot, int Hard, int Easy, int NewSeen);
 
@@ -59,7 +60,8 @@ public sealed record AnswerResultDto(Guid EventId, DateTimeOffset? NextDueAt, in
 
 /// <summary>One word to type (spec PR02). The answer is not sent until the learner has answered.</summary>
 /// <param name="Unit">The word's unit, e.g. "A-3".</param>
-public sealed record WritingPromptDto(Guid LearningItemId, ReviewDirection Direction, string Prompt, string? PromptNote, string? Unit);
+/// <param name="MeaningHint">Uzbek → Korean only: what tells the word from another one with the same meaning (L-37).</param>
+public sealed record WritingPromptDto(Guid LearningItemId, ReviewDirection Direction, string Prompt, string? PromptNote, string? Unit, string? MeaningHint = null);
 
 /// <param name="Id">Chosen by the client once per answer and reused on retries (spec API01).</param>
 public sealed record WritingCheckRequest(Guid Id, Guid LearningItemId, ReviewDirection Direction, string Answer);

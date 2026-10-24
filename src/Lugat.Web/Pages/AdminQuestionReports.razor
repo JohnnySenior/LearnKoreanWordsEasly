@@ -1,0 +1,101 @@
+@page "/admin/savollar"
+@using Lugat.Contracts
+@using Lugat.Domain.Users
+@inject SessionService Api
+
+<PageTitle>Savollardagi xatolar — Koreyscha</PageTitle>
+
+@* "Bu savolda xato bor" reports (L-37). Until a report is resolved, a stored question with its sentence is not asked
+   again; fix the word's content first when the question came from it, then mark the report resolved. *@
+<AppHeader Title="Savollardagi xatolar" Back="admin" />
+
+@if (!IsAdmin)
+{
+    <p class="muted" style="margin-top:16px">Bu sahifa admin uchun.</p>
+    return;
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_reports is null)
+{
+    <p class="muted" style="margin-top:16px">Yuklanmoqda…</p>
+}
+else if (_reports.Count == 0)
+{
+    <p style="margin-top:16px"><strong>Ochiq xabar yo‘q.</strong></p>
+    <p class="muted">O‘quvchi test natijasida «Bu savolda xato bor» ni bossa, savol shu yerda chiqadi.</p>
+}
+else
+{
+    <SectionLabel Text="@($"Ochiq · {_reports.Count}")" />
+    <ol class="mistakes">
+        @foreach (var r in _reports)
+        {
+            <li>
+                <span class="kicker">@r.Reporter · @Format.DayMonth(r.CreatedAt)</span>
+                @if (r.Sentence is not null)
+                {
+                    <p class="sentence" lang="ko">@r.Sentence</p>
+                }
+                <p>@r.Prompt</p>
+                @if (r.Translation is not null)
+                {
+                    <p class="muted">@r.Translation</p>
+                }
+                @if (r.Options.Count > 0)
+                {
+                    <p><span class="muted">Variantlar:</span> <span lang="ko">@string.Join(" · ", r.Options)</span></p>
+                }
+                <p>
+                    <span class="muted">O‘quvchi:</span> <span lang="ko">@(string.IsNullOrEmpty(r.Given) ? "—" : r.Given)</span><br />
+                    <span class="muted">To‘g‘ri deb belgilangan:</span> <strong lang="ko">@r.Correct</strong>
+                </p>
+                @if (r.Comment is not null)
+                {
+                    <p class="small-text">@r.Comment</p>
+                }
+                <button class="button small" disabled="@_busy" @onclick="() => ResolveAsync(r)">Hal qilindi</button>
+            </li>
+        }
+    </ol>
+}
+
+@code {
+    private List<QuestionReportDto>? _reports;
+    private string? _error;
+    private bool _busy;
+
+    private bool IsAdmin => Api.State.Me?.Roles.Contains(nameof(UserRoles.Admin)) == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsAdmin)
+        {
+            var result = await Api.GetAsync<List<QuestionReportDto>>("api/admin/question-reports");
+            _reports = result.Value;
+            _error = result.Ok ? null : result.Error;
+        }
+    }
+
+    private async Task ResolveAsync(QuestionReportDto report)
+    {
+        _busy = true;
+        try
+        {
+            var result = await Api.SendJsonAsync<object>(HttpMethod.Post, $"api/admin/question-reports/{report.Id}/resolve");
+            _error = result.Ok ? null : result.Error;
+            if (result.Ok)
+            {
+                _reports?.Remove(report);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

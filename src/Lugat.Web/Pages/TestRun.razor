@@ -223,6 +223,15 @@
                     {
                         <p class="small-text">@q.Explanation</p>
                     }
+                    @if (_reported.Contains(q.Index))
+                    {
+                        <p class="muted small-text" role="status">Yuborildi. Admin tekshiradi; shu vaqtgacha bu savol qayta berilmaydi.</p>
+                    }
+                    else
+                    {
+                        @* Two options that both fit, a wrong "right" answer (L-37). *@
+                        <button class="button small" disabled="@_busy" @onclick="() => ReportAsync(q.Index)">Bu savolda xato bor</button>
+                    }
                 </li>
             }
         </ol>
@@ -519,6 +528,26 @@ else
         }
 
         _error = result.Error;
+    }
+
+    private readonly HashSet<int> _reported = [];
+
+    private async Task ReportAsync(int index)
+    {
+        _busy = true;
+        try
+        {
+            var result = await Api.SendJsonAsync<object>(HttpMethod.Post, $"api/tests/{Id}/questions/{index}/report", new QuestionReportRequest(null));
+            _error = result.Ok ? null : result.Error;
+            if (result.Ok)
+            {
+                _reported.Add(index);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task RetryMistakesAsync()

@@ -205,7 +205,10 @@ public sealed class TestService(
     private async Task<TestRun> BuildUsageAsync(Guid ownerId, CreateTestRequest request, CancellationToken ct)
     {
         var count = Counts.Contains(request.Count) ? request.Count : Counts[0];
-        var all = await usage.QuestionsAsync(ownerId, request.UnitIds?.ToList(), ct);
+        var reported = await QuestionReportService.ReportedSentencesAsync(db, ct);
+        var all = (await usage.QuestionsAsync(ownerId, request.UnitIds?.ToList(), ct))
+            .Where(x => !reported.Contains(x.Question.Sentence)) // reported as wrong, until the admin resolves it (L-37)
+            .ToList();
         if (all.Count == 0)
         {
             throw new ValidationException("Bu bo‘limlar uchun qo‘llanish hali tayyorlanmagan. Mashq → So‘z qo‘llanishi sahifasida tayyorlang.");
@@ -421,9 +424,9 @@ public sealed class TestService(
                 q.Kind,
                 q.Prompt,
                 q.Sentence,
-                // The translation helps to find a typed word; for choice gaps it would give the answer away. For an
-                // oral meaning question it is what the learner checks themselves against after saying it.
-                finished || q.Kind is TestQuestionKind.WordClozeTyped or TestQuestionKind.OralMeaning or TestQuestionKind.WordUsage ? q.Translation : null,
+                // The translation makes the gap's meaning clear: without it two options can both fit (있다 / 없다
+                // in "저는 오늘 집에 ___", L-37). For an oral meaning question it is what the learner checks against.
+                finished || q.Kind is TestQuestionKind.WordCloze or TestQuestionKind.WordClozeTyped or TestQuestionKind.OralMeaning or TestQuestionKind.WordUsage ? q.Translation : null,
                 q.Options,
                 q.AiMade,
                 a?.Given,

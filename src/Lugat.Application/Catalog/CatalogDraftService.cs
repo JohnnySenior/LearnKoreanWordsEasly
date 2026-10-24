@@ -182,7 +182,8 @@ public sealed class CatalogDraftService(IAppDbContext db, AiGateway ai, TimeProv
         - questions: 1-2 "which word is right?" questions. Each has: uzbek — a natural Uzbek sentence; sentence —
           its Korean translation with the word replaced by exactly "___" (three underscores, once); answer — the
           word exactly as it stands in the gap; wrong — 1-3 Korean words in the same form that a beginner would
-          wrongly pick (a word-for-word translation of the Uzbek, a similar word), each clearly wrong here;
+          wrongly pick (a word-for-word translation of the Uzbek, a similar word), each clearly wrong here even
+          read without the Uzbek sentence (never an antonym or a word giving another correct sentence: 있다 / 없다);
           explanationUz — one short Uzbek sentence on why.
         Write Uzbek in Latin script with o‘ g‘ and ’; never Cyrillic. Korean in Hangul. Use only natural Korean you
         are sure of.

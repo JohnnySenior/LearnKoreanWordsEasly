@@ -96,3 +96,19 @@ public sealed record TestSummaryDto(
     int? Score,
     TestCategory Category = TestCategory.Vocabulary,
     int Counted = 0);
+
+/// <summary>"Bu savolda xato bor" (L-37); the comment is optional.</summary>
+public sealed record QuestionReportRequest(string? Comment);
+
+public sealed record QuestionReportDto(
+    Guid Id,
+    TestQuestionKind Kind,
+    string Prompt,
+    string? Sentence,
+    string? Translation,
+    IReadOnlyList<string> Options,
+    string Correct,
+    string? Given,
+    string? Comment,
+    string Reporter,
+    DateTimeOffset CreatedAt);

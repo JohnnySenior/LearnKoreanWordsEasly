@@ -92,6 +92,7 @@ public sealed record CatalogQuestionDto(string Uzbek, string Sentence, string An
 
 /// <param name="ReviewedBy">Display name of the person who checked the word.</param>
 /// <param name="Version">Send back when saving; a changed word answers 409.</param>
+/// <param name="SameMeaning">Other catalog words with one of this word's Uzbek meanings (안 / 아니다 "emas", L-37).</param>
 public sealed record CatalogWordAdminDto(
     Guid Id,
     int? Order,
@@ -113,7 +114,8 @@ public sealed record CatalogWordAdminDto(
     DateTimeOffset? ReviewedAt,
     string? AiProvider,
     IReadOnlyList<CatalogQuestionDto> Questions,
-    uint Version);
+    uint Version,
+    IReadOnlyList<string>? SameMeaning = null);
 
 /// <param name="Remaining">Words still waiting for an AI draft.</param>
 public sealed record UnitAdminDto(UnitAdminSummaryDto Unit, IReadOnlyList<CatalogWordAdminDto> Words, int Remaining);

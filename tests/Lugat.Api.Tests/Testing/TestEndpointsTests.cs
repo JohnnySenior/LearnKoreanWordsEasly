@@ -36,7 +36,8 @@ public class TestEndpointsTests
         var ids = userContent.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0 && char.IsDigit(l[0])).Select(l => int.Parse(l[..l.IndexOf('.')]));
         var items = ids.Select(id => $$"""
             {"id":{{id}},"sentence":"저는 매일 ___에 가요.","translationUz":"Men har kuni maktabga boraman.","answer":"학교",
-             "options":["학교","가다","먹다","보다"],"explanationUz":"Maktab — boriladigan joy."}
+             "options":["학교","가다","먹다","보다"],"wrongReasonsUz":["Fe’l, joy emas.","Fe’l, joy emas.","Fe’l, joy emas."],
+             "explanationUz":"Maktab — boriladigan joy."}
             """);
         return $$"""{"items":[{{string.Join(",", items)}}]}""";
     }
@@ -70,7 +71,7 @@ public class TestEndpointsTests
         Assert.True(test.Questions.Any(q => q.Kind == TestQuestionKind.WordCloze), test.Warning + string.Join(",", test.Questions.Select(q => q.Kind)));
         Assert.Contains(test.Questions, q => q.Kind == TestQuestionKind.WordClozeTyped);
         Assert.All(test.Questions, q => Assert.Null(q.Correct));
-        Assert.All(test.Questions.Where(q => q.Kind == TestQuestionKind.WordCloze), q => Assert.Null(q.Translation)); // would give it away
+        Assert.All(test.Questions.Where(q => q.Kind == TestQuestionKind.WordCloze), q => Assert.NotNull(q.Translation)); // one meaning, one answer (L-37)
         Assert.All(test.Questions.Where(q => q.Kind == TestQuestionKind.WordClozeTyped), q => Assert.NotNull(q.Translation));
 
         // Answer everything: gaps right, choices by picking the first option.
@@ -245,5 +246,58 @@ public class TestEndpointsTests
         Assert.Equal([TestCategory.Oral, TestCategory.Vocabulary], all.Select(t => t.Category));
         Assert.Equal(TestCategory.Oral, Assert.Single(oral).Category);
         Assert.Equal(6, oral[0].Counted); // no technical failures yet: every question counts
+    }
+
+    [Fact]
+    public async Task A_choice_gap_without_a_reason_for_every_wrong_option_is_replaced()
+    {
+        // L-37: a wrong option the AI cannot explain may be a second right answer (있다 / 없다).
+        _ai.Answer = r => Gaps(r.UserContent).Replace("\"wrongReasonsUz\":[\"Fe’l, joy emas.\",\"Fe’l, joy emas.\",\"Fe’l, joy emas.\"]", "\"wrongReasonsUz\":[]");
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await ApproveAsync(client);
+
+        var test = await CreateAsync(client, 10);
+
+        Assert.DoesNotContain(test.Questions, q => q.Kind == TestQuestionKind.WordCloze);
+        Assert.Contains(test.Questions, q => q.Kind == TestQuestionKind.WordClozeTyped); // typed gaps need no options
+    }
+
+    [Fact]
+    public async Task A_learner_reports_a_wrong_question_and_the_admin_resolves_it()
+    {
+        _ai.Answer = r => Gaps(r.UserContent);
+        await using var factory = new ApiFactory
+        {
+            TableWords = [("학교", "maktab"), ("가다", "bormoq"), ("먹다", "yemoq"), ("보다", "ko‘rmoq"), ("자다", "uxlamoq"), ("읽다", "o‘qimoq")],
+            AiProviders = [_ai],
+            AdminTelegramIds = [ApiFactory.UserB],
+        };
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var admin = await factory.SignedInClientAsync(ApiFactory.UserB);
+        await ApproveAsync(client);
+        var test = await CreateAsync(client, 10);
+        var q = test.Questions[0];
+
+        var early = await client.PostAsJsonAsync($"/api/tests/{test.Id}/questions/{q.Index}/report", new QuestionReportRequest(null), Json);
+        (await client.PostAsync($"/api/tests/{test.Id}/finish", null)).EnsureSuccessStatusCode();
+        var first = await client.PostAsJsonAsync($"/api/tests/{test.Id}/questions/{q.Index}/report", new QuestionReportRequest("Ikkisi ham to‘g‘ri"), Json);
+        var twice = await client.PostAsJsonAsync($"/api/tests/{test.Id}/questions/{q.Index}/report", new QuestionReportRequest(null), Json);
+        var foreign = await admin.PostAsJsonAsync($"/api/tests/{test.Id}/questions/{q.Index}/report", new QuestionReportRequest(null), Json);
+        var learnerList = await client.GetAsync("/api/admin/question-reports");
+        var open = (await admin.GetFromJsonAsync<List<QuestionReportDto>>("/api/admin/question-reports", Json))!;
+        var resolve = await admin.PostAsync($"/api/admin/question-reports/{open[0].Id}/resolve", null);
+        var after = (await admin.GetFromJsonAsync<List<QuestionReportDto>>("/api/admin/question-reports", Json))!;
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, early.StatusCode); // answer first
+        Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, twice.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, learnerList.StatusCode);
+        var report = Assert.Single(open);
+        Assert.Equal(q.Prompt, report.Prompt);
+        Assert.Equal("Ikkisi ham to‘g‘ri", report.Comment);
+        Assert.Equal(HttpStatusCode.NoContent, resolve.StatusCode);
+        Assert.Empty(after);
     }
 }

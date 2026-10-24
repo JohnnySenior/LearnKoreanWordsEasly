@@ -316,3 +316,10 @@ Bosqichlar spec §13 bo‘yicha.
 
 **Natijalar grafigi (2026-10-24):**
 - [x] Johnny iPhone’da topdi: "Oldingi sinovlar" grafigida nuqtalar katta qora doira, chiziq qalin, 0/50/100 chiziqlari ko‘rinmas edi. Sabab — `ScoreChart` uslublari 0-bosqichda CSS’dan tushib qolgan. Uslublar qaytarildi; bir kunlik natijalarda sana ikki marta yozilmaydi. Chromium 390px: nuqtalar 4px, oxirgi qiymat yorlig‘i, sana bir marta.
+
+**Bitta savolga bitta javob (L-37, 2026-10-24):**
+- [x] Variantli bo‘sh joy savolida tarjima oldindan ko‘rinadi.
+- [x] AI promptlari: zid ma’noli variant yo‘q; test bo‘sh joyi uchun har noto‘g‘ri variantga sabab, sababsizi almashtiriladi (test).
+- [x] "Bu savolda xato bor" → admin `/admin/savollar`, "Diqqat talab qiladi"; ochiq xabarli saqlangan savol qayta berilmaydi (test: takror, begona test, admin ro‘yxati, hal qilish).
+- [x] Bir xil ma’noli so‘zlar: kartochka va yozma mashqda farq izohi; boshqa so‘z yozilsa "ma’nosi to‘g‘ri", AI’siz (test: 안 / 아니다); test variantlarida chiqmaydi; Kontent sahifasida ogohlantirish.
+- [ ] iPhone’da ko‘rib chiqish — Johnny.

@@ -314,6 +314,9 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         var reviewers = words.Select(w => w.ReviewedByUserId).OfType<Guid>().Distinct().ToList();
         var names = await db.Users.Where(u => reviewers.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         var usages = await db.CatalogUsages.Where(u => ids.Contains(u.CatalogWordId)).ToDictionaryAsync(u => u.CatalogWordId, ct);
+        var translated = await db.CatalogWords.AsNoTracking().Where(w => w.TranslationUz != null)
+            .Select(w => new { w.Id, w.Word, w.TranslationUz }).ToListAsync(ct);
+        var twins = translated.Select(t => new Vocabulary.MeaningTwins.Twin(t.Id, t.Word, t.TranslationUz!, null)).ToList();
         return words.Select(w => new CatalogWordAdminDto(
             w.Id, w.OrderInUnit, w.Word, w.Homonym, w.Pos, CatalogPos.Uzbek(w.Pos), w.Gloss, w.FreqRank,
             w.TranslationUz, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz, w.Theme,
@@ -321,6 +324,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             w.ReviewedByUserId is { } r ? names.GetValueOrDefault(r) ?? "—" : w.Status == CatalogWordStatus.Reviewed ? "Namuna fayl" : null,
             w.ReviewedAt, w.AiProvider,
             (usages.GetValueOrDefault(w.Id)?.Questions ?? []).Select(q => new CatalogQuestionDto(q.Uzbek, q.Sentence, q.Answer, q.Wrong, q.ExplanationUz)).ToList(),
-            w.Version)).ToList();
+            w.Version,
+            w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Of(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [])).ToList();
     }
 }
