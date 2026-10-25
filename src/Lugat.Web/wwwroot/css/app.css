@@ -316,8 +316,9 @@ h1 + .card, p + .card, .notice + .card { border-top: 2px solid var(--color-divid
     user-select: all;
 }
 
-/* Tab bar (UI handoff): five cells, icon over a small label, both left-aligned; the active cell is red with a 3px
-   bar along its top edge. */
+/* Tab bar (UI handoff): five cells, icon over a small label; the active cell is red with a 3px bar along its top edge.
+   Centered in their cells: left-aligned they leaned to the left on a phone. On a wide screen the cells keep to the
+   page's 640px column while the bar's background still spans the window. */
 .tabbar {
     position: fixed;
     left: 0;
@@ -329,15 +330,18 @@ h1 + .card, p + .card, .notice + .card { border-top: 2px solid var(--color-divid
     background: var(--color-bg);
     border-top: 2px solid var(--color-divider);
     padding-bottom: env(safe-area-inset-bottom);
+    padding-left: max(env(safe-area-inset-left), calc((100% - 640px) / 2));
+    padding-right: max(env(safe-area-inset-right), calc((100% - 640px) / 2));
 }
 .tab {
     min-height: var(--tabbar-height);
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     gap: 4px;
-    padding: 0 2px 0 12px;
+    padding: 0 2px;
+    text-align: center;
     font: 400 10px/1.1 var(--font-body);
     color: var(--color-text);
     text-decoration: none;
@@ -947,7 +951,7 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .trap-title { display: flex; align-items: center; gap: 6px; font: 600 11px var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); }
 .trap p { margin: 6px 0 0; font-size: 14px; color: var(--color-accent-900); }
 /* A screen's main action kept above the tab bar (body has overflow-x: hidden, so sticky would not stick). */
-.sticky-action { position: fixed; left: 0; right: 0; bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom)); z-index: 9; padding: 12px var(--gutter); background: var(--color-bg); border-top: 2px solid var(--color-divider); }
+.sticky-action { position: fixed; left: 0; right: 0; bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom)); z-index: 9; padding: 12px max(var(--gutter), calc((100% - 640px) / 2 + var(--gutter))); background: var(--color-bg); border-top: 2px solid var(--color-divider); }
 .sticky-action > * { max-width: calc(640px - 2 * var(--gutter)); margin: 0 auto; }
 .sticky-space { height: 84px; }
 .unit-step { padding: 16px 0; }
