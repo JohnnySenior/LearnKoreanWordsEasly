@@ -332,3 +332,4 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] `?src=` havolasi: tashrif sanog‘i, yangi hisobga kanal, Admin → Ko‘rsatkichlar jadvali (test: normalizatsiya, birinchi kanal qoladi, eski hisob olinmaydi, D7, faqat admin).
 - [ ] Kontent to‘plami (b) va tushuntirish sahifasi (c).
 - [x] Kirishdan oldingi tushuntirish (L-41): to‘rt qadam, so‘z kartasi va tuzoq, bepul/Premium, o‘rnatish. Chromium 390px: gorizontal scroll yo‘q.
+- [x] Pastki menyu (2026-10-25): belgi va yozuv katak o‘rtasida (telefonda chapga og‘ib ko‘rinardi); keng ekranda menyu va pastki "Davom etish" tugmasi sahifaning 640px ustuniga moslangan. Chromium 390px va 1440px.
