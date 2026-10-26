@@ -741,6 +741,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<DateTimeOffset?>("TelegramRemovedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("Verified")
                         .HasColumnType("boolean");
 

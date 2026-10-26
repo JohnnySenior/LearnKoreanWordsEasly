@@ -129,6 +129,17 @@ else
             <button class="btn btn-secondary small" disabled="@_busy" @onclick="SendToTelegramAsync">Yuborish</button>
         }
     </div>
+    @if (_backup.TelegramOverdue is { Count: > 0 } overdue)
+    {
+        @* A bot cannot delete its messages after 48 hours: the month of the privacy policy is kept by hand here. *@
+        <div class="system-row">
+            <span class="system-row-text">
+                <b class="warn-text">Telegram’dagi eski nusxalar: @overdue.Count ta</b>
+                <span>Bir oydan eski (@string.Join(", ", overdue.Select(Format.DayMonth))). Maxfiylik siyosati bo‘yicha ularni bot chatidan o‘chiring, keyin «O‘chirdim» ni bosing.</span>
+            </span>
+            <button class="btn btn-secondary small" disabled="@_busy" @onclick="ConfirmTelegramRemovedAsync">O‘chirdim</button>
+        </div>
+    }
     @if (_backupStatus is not null)
     {
         <p role="status" class="small-text">@_backupStatus</p>
@@ -200,6 +211,15 @@ else
         _busy = true;
         _backupStatus = "Yuborilmoqda…";
         var result = await Api.SendJsonAsync<BackupSendResult>(HttpMethod.Post, "api/backups/send", null, SessionService.UploadTimeout);
+        _busy = false;
+        _backupStatus = result.Value?.Message ?? result.Error;
+        _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;
+    }
+
+    private async Task ConfirmTelegramRemovedAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<BackupSendResult>(HttpMethod.Post, "api/backups/telegram-removed");
         _busy = false;
         _backupStatus = result.Value?.Message ?? result.Error;
         _backup = (await Api.GetAsync<BackupStatusDto>("api/backups/status")).Value ?? _backup;

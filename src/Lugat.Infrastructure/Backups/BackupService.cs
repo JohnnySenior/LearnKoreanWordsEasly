@@ -32,6 +32,13 @@ public sealed class BackupOptions
 
     public int KeepWeekly { get; set; } = 4;
 
+    /// <summary>
+    /// No copy is kept longer than this (privacy policy: deleted data leaves the backups within a month), except the
+    /// newest one, so a server whose backups have stopped still has something to restore. Telegram copies older than
+    /// this are listed for the owner to delete by hand.
+    /// </summary>
+    public int MaxAgeDays { get; set; } = 30;
+
     /// <summary>Must be at least the server's major version (production: 18).</summary>
     public string PgDump { get; set; } = "pg_dump";
 
@@ -139,8 +146,10 @@ public sealed class BackupService(
         else
         {
             var bytes = await File.ReadAllBytesAsync(path, ct);
+            var overdue = await TelegramOverdueAsync(ct);
             var caption = $"Koreyscha · zaxira nusxa {run.StartedAt:yyyy-MM-dd HH:mm} UTC · {bytes.Length / 1024.0 / 1024.0:0.##} MB · tiklab tekshirilgan.\n"
-                + "Bu faylni o‘chirmang: Railway'dagi baza yo‘qolsa, shu fayldan tiklanadi.\n"
+                + $"Railway'dagi baza yo‘qolsa, shu fayldan tiklanadi. Maxfiylik siyosati bo‘yicha zaxira bir oy saqlanadi: bu faylni {run.StartedAt.AddDays(Options.MaxAgeDays):yyyy-MM-dd} dan keyin chatdan o‘chiring (yangisi har hafta keladi).\n"
+                + (overdue.Count == 0 ? "" : $"Muddati o‘tgan nusxalar: {string.Join(", ", overdue.Select(r => r.StartedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)))} — ularni chatdan o‘chirib, Admin → Tizim'da «O‘chirdim» ni bosing.\n")
                 + $"Tiklash yo‘riqnomasi: {Options.RestoreGuideUrl}";
             result = await telegram.SendDocumentAsync(chat, Path.GetFileName(path), bytes, caption, ct);
         }
@@ -160,6 +169,24 @@ public sealed class BackupService(
 
         await db.SaveChangesAsync(CancellationToken.None);
         return (run, run.TelegramError);
+    }
+
+    /// <summary>Copies in the owner's Telegram chat older than <see cref="BackupOptions.MaxAgeDays"/> not yet confirmed deleted, oldest first.</summary>
+    public async Task<List<BackupRun>> TelegramOverdueAsync(CancellationToken ct)
+    {
+        var limit = time.GetUtcNow().AddDays(-Options.MaxAgeDays);
+        return await db.BackupRuns.Where(r => r.SentToTelegramAt != null && r.TelegramRemovedAt == null && r.StartedAt < limit)
+            .OrderBy(r => r.StartedAt).ToListAsync(ct);
+    }
+
+    /// <summary>The owner deleted the overdue copies from the chat ("O‘chirdim"). Returns how many were marked.</summary>
+    public async Task<int> ConfirmTelegramRemovedAsync(CancellationToken ct)
+    {
+        var overdue = await TelegramOverdueAsync(ct);
+        var now = time.GetUtcNow();
+        overdue.ForEach(r => r.TelegramRemovedAt = now);
+        await db.SaveChangesAsync(ct);
+        return overdue.Count;
     }
 
     public async Task<BackupRun> RunAsync(CancellationToken ct)
@@ -210,13 +237,18 @@ public sealed class BackupService(
                 await DropScratchAsync(connection, scratch);
             }
 
-            Prune(folder);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError("Backup {File} failed: {Error}", fileName, ex.Message);
             run.Error = Cut(ex.Message, 1000);
             TryDelete(path + ".tmp");
+        }
+
+        // After a failed run too: old copies must not outlive the policy because the nightly dump broke.
+        if (System.IO.Directory.Exists(Options.Directory))
+        {
+            Prune(Options.Directory);
         }
 
         run.FinishedAt = time.GetUtcNow();
@@ -375,22 +407,30 @@ public sealed class BackupService(
         logger.LogWarning("Scratch database {Database} could not be dropped", scratch);
     }
 
-    /// <summary>Keeps the newest <see cref="BackupOptions.KeepDaily"/> files and one per week for <see cref="BackupOptions.KeepWeekly"/> weeks.</summary>
     private void Prune(string folder)
     {
-        var files = new DirectoryInfo(folder).GetFiles("lugat-*.dump").OrderByDescending(f => f.Name, StringComparer.Ordinal).ToList();
-        var keep = files.Take(Options.KeepDaily).ToHashSet();
-        foreach (var weekly in files.GroupBy(f => ISOWeek.GetYear(f.LastWriteTimeUtc) * 100 + ISOWeek.GetWeekOfYear(f.LastWriteTimeUtc))
-                     .Take(Options.KeepWeekly).Select(g => g.First()))
-        {
-            keep.Add(weekly);
-        }
-
-        foreach (var f in files.Where(f => !keep.Contains(f)))
+        var files = new DirectoryInfo(folder).GetFiles("lugat-*.dump").ToList();
+        var keep = Retain(files.Select(f => (f.Name, new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero))).ToList(), time.GetUtcNow(), Options).ToHashSet();
+        foreach (var f in files.Where(f => !keep.Contains(f.Name)))
         {
             TryDelete(f.FullName);
             TryDelete(f.FullName + ".zip");
         }
+    }
+
+    /// <summary>
+    /// The files to keep: the newest <see cref="BackupOptions.KeepDaily"/> and one per week for
+    /// <see cref="BackupOptions.KeepWeekly"/> weeks, none older than <see cref="BackupOptions.MaxAgeDays"/>; the
+    /// newest file always stays.
+    /// </summary>
+    public static IEnumerable<string> Retain(IReadOnlyList<(string Name, DateTimeOffset WrittenAt)> files, DateTimeOffset now, BackupOptions options)
+    {
+        var ordered = files.OrderByDescending(f => f.Name, StringComparer.Ordinal).ToList();
+        var keep = ordered.Take(options.KeepDaily).ToList();
+        keep.AddRange(ordered.GroupBy(f => ISOWeek.GetYear(f.WrittenAt.UtcDateTime) * 100 + ISOWeek.GetWeekOfYear(f.WrittenAt.UtcDateTime))
+            .Take(options.KeepWeekly).Select(g => g.First()));
+        var limit = now.AddDays(-options.MaxAgeDays);
+        return keep.Where(f => f.WrittenAt >= limit).Concat(ordered.Take(1)).Select(f => f.Name).Distinct();
     }
 
     private static void TryDelete(string path)

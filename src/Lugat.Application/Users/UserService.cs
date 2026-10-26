@@ -272,6 +272,13 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
     public async Task<PreferencesDto> UpdatePreferencesAsync(Guid userId, UpdatePreferencesRequest request, bool remindersAvailable, CancellationToken ct)
     {
         var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
+        if (request.TimeZone is { } zone)
+        {
+            user.TimeZone = User.TimeZones.Contains(zone) && TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _)
+                ? zone
+                : throw new ValidationException("Vaqt zonasi noto‘g‘ri: Koreya (Asia/Seoul) yoki O‘zbekiston (Asia/Tashkent) bo‘lsin.");
+        }
+
         if (request.RemindersEnabled is { } enabled)
         {
             user.RemindersEnabled = enabled;

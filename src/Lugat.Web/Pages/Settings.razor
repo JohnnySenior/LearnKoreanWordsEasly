@@ -122,7 +122,7 @@
 <ListRow Label="Haqida" Note="Manba, litsenziya, maxfiylik" Href="profil/haqida" />
 
 <section class="profile-bottom">
-    <button class="btn btn-secondary block small" disabled="@_busy" @onclick="Api.LogoutAsync"><span>Chiqish</span></button>
+    <button class="btn btn-secondary block small" disabled="@_busy" @onclick="LogoutAsync"><span>Chiqish</span></button>
     @if (_confirmDelete)
     {
         <p class="small-text" style="margin:12px 0 4px"><strong>Rostdan ham o‘chirasizmi?</strong> Kirish usullari, so‘zlaringiz, kartochkalar, javoblar va sinov natijalari butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.</p>
@@ -141,6 +141,20 @@
 </section>
 
 @code {
+    // The sign-in screen that follows says when the other devices could not be signed out (SessionService).
+    private async Task LogoutAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Api.LogoutAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
     private static readonly (ThemeChoice Value, string Label)[] Themes =
         [(ThemeChoice.Light, "Yorug‘"), (ThemeChoice.Dark, "Qorong‘i"), (ThemeChoice.Device, "Qurilma")];
 

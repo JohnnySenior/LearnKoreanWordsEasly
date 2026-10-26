@@ -29,8 +29,14 @@ public sealed class User
 
     public string? DisplayName { get; set; }
 
-    /// <summary>IANA time zone. Reminders and local days use Korea time by default (spec §5.1).</summary>
-    public string TimeZone { get; set; } = "Asia/Seoul";
+    /// <summary>
+    /// IANA time zone, one of <see cref="TimeZones"/>. Reminders and the learner's day (the daily «Bilaman» limit,
+    /// study days) use it; Korea time by default (spec §5.1).
+    /// </summary>
+    public string TimeZone { get; set; } = KoreaTime.ZoneId;
+
+    /// <summary>The zones a learner can choose: Korea (default) and Uzbekistan, where the learners are (spec §1.2).</summary>
+    public static IReadOnlyList<string> TimeZones { get; } = [KoreaTime.ZoneId, "Asia/Tashkent"];
 
     public UserRoles Roles { get; set; } = UserRoles.Learner;
 

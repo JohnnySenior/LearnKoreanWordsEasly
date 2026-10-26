@@ -140,6 +140,41 @@ public class PremiumTests
     }
 
     [Fact]
+    public async Task The_payments_list_costs_the_same_queries_for_two_payments_as_for_six()
+    {
+        // Audit 2026-10-26: every row read its subscription, names and promo code with three queries of its own.
+        await using var factory = NewFactory();
+        var admin = await factory.SignedInClientAsync(Admin);
+        var teacher = await UserIdAsync(factory, Admin);
+        await admin.PostAsJsonAsync("/api/admin/promo-codes", new CreatePromoCodeRequest("ustoz10", 10, null, teacher, null), ApiFactory.Json);
+        using var sql = new SqlCounter(factory.DatabaseName);
+
+        async Task<(int Queries, List<PaymentDto> List)> PayAndListAsync(int from, int to)
+        {
+            for (var n = from; to > n; n++)
+            {
+                await factory.SignedInClientAsync(7000 + n, $"To‘lovchi {n}");
+                var userId = await UserIdAsync(factory, 7000 + n);
+                await PayAsync(admin, userId, SubscriptionPlan.Quarterly, n % 2 == 0 ? 10800 : 12000, n % 2 == 0 ? "ustoz10" : null);
+            }
+
+            sql.Reset();
+            var list = (await admin.GetFromJsonAsync<List<PaymentDto>>("/api/admin/payments", ApiFactory.Json))!;
+            return (sql.Count, list);
+        }
+
+        var two = await PayAndListAsync(0, 2);
+        var six = await PayAndListAsync(2, 6);
+
+        Assert.Equal(two.Queries, six.Queries);
+        Assert.Equal(6, six.List.Count);
+        Assert.All(six.List, p => Assert.Equal("Test", p.RecordedBy));
+        Assert.All(six.List, p => Assert.StartsWith("To‘lovchi ", p.UserName));
+        Assert.Equal(3, six.List.Count(p => p.PromoCode == "USTOZ10"));
+        Assert.All(six.List, p => Assert.Equal(p.PaidAt.AddMonths(3), p.EndsAt));
+    }
+
+    [Fact]
     public async Task A_promo_code_gives_its_discount_and_the_teacher_their_commission()
     {
         await using var factory = NewFactory();

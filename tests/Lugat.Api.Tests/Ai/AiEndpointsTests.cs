@@ -203,6 +203,40 @@ public class AiEndpointsTests
     }
 
     [Fact]
+    public async Task A_call_still_running_does_not_replace_the_last_result_in_the_status()
+    {
+        // Audit 2026-10-26: the reservation of a running call (Error "pending") was shown as "not working: pending".
+        _gpt.Failure = new AiProviderException("ChatGPT: API kaliti noto‘g‘ri yoki ruxsat yo‘q", transient: false);
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var userId = (await client.GetFromJsonAsync<MeDto>("/api/me", Json))!.Id;
+        async Task PendingAsync(AiProviderKind provider)
+        {
+            factory.Time.Advance(TimeSpan.FromMinutes(2));
+            await using var scope = factory.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<AiUsageService>()
+                .ReserveAsync(userId, "ping", provider, "fake", 10, 10, 100, CancellationToken.None);
+        }
+
+        await PendingAsync(AiProviderKind.Anthropic); // nothing has ended yet
+        var unchecked_ = await client.GetFromJsonAsync<AiStatusDto>("/api/ai/status", Json);
+        factory.Time.Advance(TimeSpan.FromMinutes(2));
+        await client.PostAsync("/api/ai/ping/Anthropic", null);
+        await client.PostAsync("/api/ai/ping/OpenAi", null);
+        await PendingAsync(AiProviderKind.Anthropic);
+        await PendingAsync(AiProviderKind.OpenAi);
+        var during = await client.GetFromJsonAsync<AiStatusDto>("/api/ai/status", Json);
+
+        Assert.All(unchecked_!.Providers, p => Assert.Null(p.LastOk));
+        var claude = during!.Providers.Single(p => p.Kind == AiProviderKind.Anthropic);
+        var gpt = during.Providers.Single(p => p.Kind == AiProviderKind.OpenAi);
+        Assert.True(claude.LastOk);
+        Assert.Null(claude.LastError);
+        Assert.False(gpt.LastOk);
+        Assert.Contains("API kaliti noto‘g‘ri", gpt.LastError);
+    }
+
+    [Fact]
     public async Task Status_shows_how_the_last_call_ended_not_only_that_a_key_is_set()
     {
         _gpt.Failure = new AiProviderException("ChatGPT: API kaliti noto‘g‘ri yoki ruxsat yo‘q", transient: false);

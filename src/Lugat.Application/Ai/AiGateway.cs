@@ -31,11 +31,12 @@ public sealed class AiGateway(
         var list = new List<AiProviderStatusDto>();
         foreach (var p in providers.OrderBy(p => p.Kind))
         {
-            // A key being set is not a working connection: the status shows how the latest real call ended.
+            // A key being set is not a working connection: the status shows how the latest real call ended. A call
+            // still running is a reservation (Error "pending"), not a result, so the one before it stays shown.
             var last = p.IsConfigured
                 ? await db.AiUsages.AsNoTracking()
                     .Where(u => u.Provider == p.Kind && u.Feature != Speech.SpeechService.Feature && u.Feature != Speech.SpeakingService.Feature
-                        && (u.Succeeded || u.Error != null))
+                        && (u.Succeeded || (u.Error != null && u.Error != AiUsageService.Pending)))
                     .OrderByDescending(u => u.OccurredAt)
                     .Select(u => new { u.Succeeded, u.Error, u.OccurredAt })
                     .FirstOrDefaultAsync(ct)

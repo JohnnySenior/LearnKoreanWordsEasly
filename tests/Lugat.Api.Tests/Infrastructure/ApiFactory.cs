@@ -31,6 +31,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         Environment.GetEnvironmentVariable("LUGAT_TEST_POSTGRES") ?? "Host=localhost;Username=lugat;Password=lugat";
 
     private readonly string _database = "lugat_test_" + Guid.NewGuid().ToString("N");
+
+    /// <summary>This factory's own database (each factory has one), e.g. to count its SQL commands.</summary>
+    public string DatabaseName => _database;
     private readonly string _files = Path.Combine(Path.GetTempPath(), "lugat-test-files", Guid.NewGuid().ToString("N"));
 
     /// <summary>

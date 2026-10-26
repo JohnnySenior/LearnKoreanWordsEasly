@@ -34,6 +34,9 @@ public sealed class AiPrice
 /// <summary>Reservations count towards quotas and the shared monthly budget before a billable call begins.</summary>
 public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, IOptions<AiBudgetOptions> options, TimeProvider time)
 {
+    /// <summary>The <see cref="AiUsage.Error"/> of a reservation whose call has not ended yet.</summary>
+    public const string Pending = "pending";
+
     public async Task<AiUsage> ReserveAsync(Guid ownerId, string feature, AiProviderKind provider, string model,
         int input, int output, int dailyLimit, CancellationToken ct, string unit = "tokens")
     {
@@ -64,7 +67,7 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
             Unit = unit,
             EstimatedUsd = cost,
             PriceAsOf = rate?.AsOf,
-            Error = "pending",
+            Error = Pending,
             OccurredAt = time.GetUtcNow(),
         };
         db.AiUsages.Add(row);
@@ -103,6 +106,6 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
         var total = (await rows.SumAsync(u => u.EstimatedUsd, ct) ?? 0) + options.Value.HostingMonthlyUsd;
         var unknown = await rows.CountAsync(u => u.EstimatedUsd == null, ct);
         return new AiBudgetDto(total, options.Value.MonthlyLimitUsd, total >= options.Value.WarningUsd,
-            unknown, await rows.CountAsync(u => u.Error == "pending", ct), month);
+            unknown, await rows.CountAsync(u => u.Error == Pending, ct), month);
     }
 }

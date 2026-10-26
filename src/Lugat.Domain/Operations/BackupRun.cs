@@ -32,4 +32,10 @@ public sealed class BackupRun
     public DateTimeOffset? TelegramAttemptAt { get; set; }
 
     public string? TelegramError { get; set; }
+
+    /// <summary>
+    /// The owner confirmed this copy is gone from the Telegram chat. A bot cannot delete its own messages there after
+    /// 48 hours, so the privacy policy's "backups last about a month" is kept by hand for the copy outside Railway.
+    /// </summary>
+    public DateTimeOffset? TelegramRemovedAt { get; set; }
 }

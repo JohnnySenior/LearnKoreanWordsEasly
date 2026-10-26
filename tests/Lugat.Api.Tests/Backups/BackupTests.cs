@@ -166,6 +166,73 @@ public class BackupTests
     }
 
     [Fact]
+    public async Task Copies_past_a_month_are_listed_for_deleting_from_telegram_until_the_owner_confirms()
+    {
+        // Audit 2026-10-26: a bot cannot delete its messages after 48 hours, so the month of the privacy policy needs
+        // the owner; the app says which copies and when.
+        var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
+        var telegram = new FakeMessenger();
+        await using var factory = new ApiFactory { Messenger = telegram, AdminTelegramIds = [ApiFactory.UserA] };
+        factory.Settings["Backup:Directory"] = folder;
+        factory.Settings["Backup:TelegramChatId"] = "777000";
+        await factory.SignedInClientAsync(ApiFactory.UserA);
+        var old = await SeedVerifiedAsync(factory, folder);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<BackupService>().SendToTelegramAsync(CancellationToken.None);
+        }
+
+        factory.Time.Advance(TimeSpan.FromDays(31));
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await SeedVerifiedAsync(factory, folder, "lugat-20261104-040000.dump");
+        var overdue = (await client.GetFromJsonAsync<BackupStatusDto>("/api/backups/status", Json))!.TelegramOverdue;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<BackupService>().SendToTelegramAsync(CancellationToken.None);
+        }
+
+        var confirmed = await (await client.PostAsync("/api/backups/telegram-removed", null)).Content.ReadFromJsonAsync<BackupSendResult>(Json);
+        var after = (await client.GetFromJsonAsync<BackupStatusDto>("/api/backups/status", Json))!.TelegramOverdue;
+
+        Assert.Contains($"bu faylni {old.StartedAt.AddDays(30):yyyy-MM-dd} dan keyin chatdan o‘chiring", telegram.Documents[0].Caption);
+        Assert.DoesNotContain("Muddati o‘tgan", telegram.Documents[0].Caption);
+        Assert.Equal([old.StartedAt], overdue!);
+        Assert.Contains($"Muddati o‘tgan nusxalar: {old.StartedAt:yyyy-MM-dd}", telegram.Documents[1].Caption);
+        Assert.Contains("1 ta eski nusxa", confirmed!.Message);
+        Assert.Empty(after!);
+        Directory.Delete(folder, recursive: true);
+    }
+
+    [Fact]
+    public async Task A_failed_night_still_drops_local_copies_older_than_a_month()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        await using var factory = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA] };
+        factory.Settings["Backup:Directory"] = folder;
+        factory.Settings["Backup:PgDump"] = "/nonexistent/pg_dump";
+        await factory.SignedInClientAsync(ApiFactory.UserA);
+        var now = factory.Time.GetUtcNow();
+        foreach (var days in new[] { 1, 20, 35, 50 })
+        {
+            var file = Path.Combine(folder, $"lugat-{now.AddDays(-days):yyyyMMdd-HHmmss}.dump");
+            await File.WriteAllBytesAsync(file, [1]);
+            File.SetLastWriteTimeUtc(file, now.AddDays(-days).UtcDateTime);
+            await File.WriteAllBytesAsync(file + ".zip", [1]);
+        }
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var run = await scope.ServiceProvider.GetRequiredService<BackupService>().RunAsync(CancellationToken.None);
+
+        Assert.False(run.Verified);
+        Assert.Equal(
+            [$"lugat-{now.AddDays(-20):yyyyMMdd-HHmmss}.dump", $"lugat-{now.AddDays(-1):yyyyMMdd-HHmmss}.dump"],
+            Directory.GetFiles(folder, "*.dump").Select(Path.GetFileName).Order(StringComparer.Ordinal));
+        Assert.Equal(2, Directory.GetFiles(folder, "*.zip").Length);
+        Directory.Delete(folder, recursive: true);
+    }
+
+    [Fact]
     public async Task A_bundle_too_big_for_telegram_falls_back_to_the_database_alone()
     {
         var folder = Path.Combine(Path.GetTempPath(), "lugat-backup-test", Guid.NewGuid().ToString("N"));
