@@ -268,13 +268,7 @@ public sealed class PremiumService(
     public async Task<IReadOnlyList<PaymentDto>> PaymentsAsync(Guid? userId, CancellationToken ct)
     {
         var list = await db.Payments.Where(p => userId == null || p.UserId == userId).OrderByDescending(p => p.PaidAt).Take(100).ToListAsync(ct);
-        var dtos = new List<PaymentDto>();
-        foreach (var p in list)
-        {
-            dtos.Add(await PaymentDtoAsync(p, ct));
-        }
-
-        return dtos;
+        return await PaymentDtosAsync(list, ct);
     }
 
     public async Task<PromoCodeDto> CreatePromoAsync(CreatePromoCodeRequest request, CancellationToken ct)
@@ -409,13 +403,25 @@ public sealed class PremiumService(
         }).ToList();
     }
 
-    private async Task<PaymentDto> PaymentDtoAsync(Payment p, CancellationToken ct)
+    private async Task<PaymentDto> PaymentDtoAsync(Payment p, CancellationToken ct) => (await PaymentDtosAsync([p], ct))[0];
+
+    /// <summary>Subscriptions, names and promo codes of all the payments in three queries, not three per payment (audit 2026-10-26).</summary>
+    private async Task<List<PaymentDto>> PaymentDtosAsync(IReadOnlyList<Payment> payments, CancellationToken ct)
     {
-        var sub = await db.Subscriptions.Where(s => s.PaymentId == p.Id).Select(s => new { s.StartsAt, s.EndsAt }).SingleOrDefaultAsync(ct);
-        var names = await db.Users.Where(u => u.Id == p.UserId || u.Id == p.RecordedByUserId).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
-        var promo = p.PromoCodeId is { } id ? await db.PromoCodes.Where(x => x.Id == id).Select(x => x.Code).SingleOrDefaultAsync(ct) : null;
-        return new PaymentDto(p.Id, p.UserId, names.GetValueOrDefault(p.UserId), p.Plan, p.AmountKrw, p.ExpectedKrw, promo, p.DiscountPercent,
-            p.CommissionKrw, p.Status, p.PaidAt, sub?.StartsAt ?? p.PaidAt, sub?.EndsAt ?? p.PaidAt, p.Note, names.GetValueOrDefault(p.RecordedByUserId));
+        var paymentIds = payments.Select(p => (Guid?)p.Id).ToList();
+        var subs = (await db.Subscriptions.Where(s => paymentIds.Contains(s.PaymentId)).Select(s => new { s.PaymentId, s.StartsAt, s.EndsAt }).ToListAsync(ct))
+            .ToDictionary(s => s.PaymentId!.Value);
+        var userIds = payments.SelectMany(p => new[] { p.UserId, p.RecordedByUserId }).Distinct().ToList();
+        var names = await db.Users.Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var promoIds = payments.Select(p => p.PromoCodeId).OfType<Guid>().Distinct().ToList();
+        var promos = promoIds.Count == 0 ? [] : await db.PromoCodes.Where(x => promoIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Code, ct);
+        return payments.Select(p =>
+        {
+            var sub = subs.GetValueOrDefault(p.Id);
+            var promo = p.PromoCodeId is { } id ? promos.GetValueOrDefault(id) : null;
+            return new PaymentDto(p.Id, p.UserId, names.GetValueOrDefault(p.UserId), p.Plan, p.AmountKrw, p.ExpectedKrw, promo, p.DiscountPercent,
+                p.CommissionKrw, p.Status, p.PaidAt, sub?.StartsAt ?? p.PaidAt, sub?.EndsAt ?? p.PaidAt, p.Note, names.GetValueOrDefault(p.RecordedByUserId));
+        }).ToList();
     }
 
     private async Task<List<PromoCodeDto>> PromoDtosAsync(List<PromoCode> promos, CancellationToken ct)

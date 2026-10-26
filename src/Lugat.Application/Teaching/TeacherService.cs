@@ -84,11 +84,14 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
         var active = (await db.ActivityDays.Where(a => ids.Contains(a.UserId) && a.Day >= weekStart).ToListAsync(ct))
             .GroupBy(a => a.UserId).ToDictionary(g => g.Key, g => g.Count());
 
-        var lastTests = (await db.TestRuns.AsNoTracking()
-                .Where(r => ids.Contains(r.OwnerId) && r.Status == TestRunStatus.Finished && r.Purpose != TestPurpose.Practice)
-                .ToListAsync(ct))
-            .GroupBy(r => r.OwnerId)
-            .ToDictionary(g => g.Key, g => UnitTestScore(g.MaxBy(r => r.FinishedAt)!));
+        // The latest unit test of each learner, found in the database; only those runs are read (audit 2026-10-26).
+        var finished = db.TestRuns.Where(r => ids.Contains(r.OwnerId) && r.Status == TestRunStatus.Finished && r.Purpose != TestPurpose.Practice);
+        var latestIds = await finished.GroupBy(r => r.OwnerId)
+            .Select(g => g.OrderByDescending(r => r.FinishedAt).ThenByDescending(r => r.Id).Select(r => r.Id).First())
+            .ToListAsync(ct);
+        var lastTests = (await db.TestRuns.AsNoTracking().Where(r => latestIds.Contains(r.Id))
+                .Select(r => new { r.OwnerId, r.Questions, r.Answers }).ToListAsync(ct))
+            .ToDictionary(r => r.OwnerId, r => Catalog.UnitTestService.ScorePercent(r.Questions.Count, r.Answers.Count(a => a.IsCorrect)));
 
         var students = members
             .Select(m => new GroupStudentDto(m.Id, m.DisplayName, CurrentUnit(units[m.Id]), units[m.Id].Count(u => u.Status == UnitProgressStatus.Passed),
@@ -96,11 +99,7 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
             .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
-        var missed = new List<(MistakeWordDto Word, Guid Learner)>();
-        foreach (var id in ids)
-        {
-            missed.AddRange((await mistakes.GetAsync(id, ct)).Words.Select(w => (w, id)));
-        }
+        var missed = (await mistakes.WordsOfAsync(ids, ct)).SelectMany(p => p.Value.Select(w => (Word: w, Learner: p.Key))).ToList();
 
         var hardest = missed.GroupBy(x => x.Word.LearningItemId)
             .Select(g => new MissedWordDto(g.First().Word.Korean, g.First().Word.Uzbek, g.First().Word.Unit, g.Sum(x => x.Word.Mistakes), g.Select(x => x.Learner).Distinct().Count()))
@@ -170,9 +169,6 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
         var list = units.ToList();
         return (list.LastOrDefault(u => u.Status == UnitProgressStatus.Open) ?? list.LastOrDefault())?.Label;
     }
-
-    private static int UnitTestScore(TestRun run) =>
-        Catalog.UnitTestService.ScorePercent(run.Questions.Count, run.Answers.Count(a => a.IsCorrect));
 
     private async Task<Group> OwnGroupAsync(Guid teacherId, Guid groupId, CancellationToken ct) =>
         await db.Groups.SingleOrDefaultAsync(g => g.Id == groupId && g.TeacherUserId == teacherId && g.ClosedAt == null, ct)

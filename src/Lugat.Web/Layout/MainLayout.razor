@@ -40,6 +40,10 @@
         }
         else
         {
+            @if (_state.Message is { } note)
+            {
+                <div class="notice" role="status">@note</div>
+            }
             <div id="kirish"><SignIn /></div>
             <Landing />
         }

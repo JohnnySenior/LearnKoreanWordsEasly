@@ -150,6 +150,44 @@ public class RemindersTests
     }
 
     [Fact]
+    public async Task A_learner_in_Tashkent_gets_the_reminder_at_their_own_time()
+    {
+        // Audit 2026-10-26: with Seoul as the only zone, "20:00" came at 16:00 in Tashkent.
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await StudyAsync(client, 1);
+        var saved = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(null, null, null, "Asia/Tashkent"), Json);
+        var prefs = (await saved.Content.ReadFromJsonAsync<PreferencesDto>(Json))!;
+
+        factory.Time.SetUtcNow(MondayEvening); // 20:01 in Seoul, 16:01 in Tashkent
+        var atSeoulTime = await RunAsync(factory);
+        factory.Time.SetUtcNow(new DateTimeOffset(2026, 10, 5, 20, 1, 0, TimeSpan.FromHours(5)).ToUniversalTime());
+        var atTashkentTime = await RunAsync(factory);
+
+        Assert.Equal("Asia/Tashkent", prefs.TimeZone);
+        Assert.Equal(new TimeOnly(20, 0), prefs.ReminderTime); // the other settings stay as they were
+        Assert.True(prefs.RemindersEnabled);
+        Assert.Equal(0, atSeoulTime);
+        Assert.Equal(1, atTashkentTime);
+    }
+
+    [Theory]
+    [InlineData("Europe/Moscow")]
+    [InlineData("Mars/Olympus")]
+    [InlineData("")]
+    public async Task Only_the_offered_time_zones_are_accepted(string zone)
+    {
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+
+        var response = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(null, null, null, zone), Json);
+        var prefs = await client.GetFromJsonAsync<PreferencesDto>("/api/me/preferences", Json);
+
+        Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal("Asia/Seoul", prefs!.TimeZone); // the default stays
+    }
+
+    [Fact]
     public async Task Nothing_to_practise_means_no_message()
     {
         await using var factory = NewFactory();

@@ -217,6 +217,60 @@ public class UnitTestTests
     }
 
     [Fact]
+    public async Task Parallel_Bilaman_starts_with_different_ids_never_pass_the_daily_limit()
+    {
+        // Audit 2026-10-26: each start read the day's count before any of them was saved, so all got through.
+        var (factory, client) = await SetUpAsync();
+        await using var _ = factory;
+        var ids = Enumerable.Range(0, 8).Select(_ => Guid.NewGuid()).ToList();
+
+        var responses = await Task.WhenAll(ids.Select(id => StartAsync(client, 2, UnitTestKind.Skip, id)));
+        var started = ids.Where((_, i) => responses[i].StatusCode == HttpStatusCode.OK).ToList();
+        var again = await StartAsync(client, 2, UnitTestKind.Skip, started[0]); // the same id is the same attempt
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(3, await db.TestRuns.CountAsync(r => r.UnitId == ApiFactory.Unit(2) && r.Purpose == TestPurpose.UnitSkip));
+        }
+
+        factory.Time.Advance(TimeSpan.FromDays(1));
+        client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var tomorrow = await StartAsync(client, 2, UnitTestKind.Skip);
+
+        Assert.Equal(3, started.Count);
+        Assert.All(responses.Where(r => r.StatusCode != HttpStatusCode.OK), r => Assert.Equal(HttpStatusCode.TooManyRequests, r.StatusCode));
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.Equal(started[0], (await again.Content.ReadFromJsonAsync<TestDto>(ApiFactory.Json))!.Id);
+        Assert.Equal(HttpStatusCode.OK, tomorrow.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_daily_Bilaman_limit_follows_the_learners_chosen_time_zone()
+    {
+        // Audit 2026-10-26: a learner in Tashkent had Seoul's midnight (20:00 or 19:00 at home) as the day boundary.
+        var (factory, client) = await SetUpAsync();
+        await using var _ = factory;
+        factory.Time.SetUtcNow(new DateTimeOffset(2027, 1, 4, 23, 0, 0, TimeSpan.FromHours(9)).ToUniversalTime()); // Seoul 23:00 = Tashkent 19:00
+        client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var zone = await client.PatchAsJsonAsync("/api/me/preferences", new UpdatePreferencesRequest(null, null, null, "Asia/Tashkent"), ApiFactory.Json);
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.Equal(HttpStatusCode.OK, (await StartAsync(client, 2, UnitTestKind.Skip)).StatusCode);
+        }
+
+        factory.Time.Advance(TimeSpan.FromHours(2)); // a new day in Seoul, still 21:00 in Tashkent
+        client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var sameDay = await StartAsync(client, 2, UnitTestKind.Skip);
+        factory.Time.Advance(TimeSpan.FromHours(3)); // 00:00 in Tashkent
+        client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var nextDay = await StartAsync(client, 2, UnitTestKind.Skip);
+
+        Assert.Equal("Asia/Tashkent", (await zone.Content.ReadFromJsonAsync<PreferencesDto>(ApiFactory.Json))!.TimeZone);
+        Assert.Equal(HttpStatusCode.TooManyRequests, sameDay.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, nextDay.StatusCode);
+    }
+
+    [Fact]
     public async Task A_passed_Bilaman_test_opens_the_unit_with_known_words_as_reviews()
     {
         var (factory, client) = await SetUpAsync();

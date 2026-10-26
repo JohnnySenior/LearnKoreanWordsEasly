@@ -79,14 +79,25 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
             return State = new(SessionStatus.Unavailable, null, "Server bilan aloqa yo‘q. Internetni tekshirib, qayta oching.", null);
         }
 
-        if (!response.IsSuccessStatusCode)
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
+            // The server turned the session down (expired, signed out everywhere, account deleted).
             await browser.StorageRemoveAsync(RefreshKey);
             return State = SignedOut();
         }
 
+        if (!response.IsSuccessStatusCode)
+        {
+            // 429 or a server error says nothing about the session: it is kept and tried again (EnsureSignedInAsync).
+            return State = new(SessionStatus.Unavailable, null, RestoreFailure(response.StatusCode), (int)response.StatusCode);
+        }
+
         return await CompleteAsync(response);
     }
+
+    private static string RestoreFailure(HttpStatusCode status) => status == HttpStatusCode.TooManyRequests
+        ? "Juda ko‘p urinish bo‘ldi. Bir daqiqadan keyin qayta urinib ko‘ring — qayta kirish shart emas."
+        : "Server hozir javob bermayapti. Birozdan keyin qayta urinib ko‘ring — qayta kirish shart emas.";
 
     public Task<SessionState> SignInWithTelegramAsync(Dictionary<string, string> data) =>
         SignInAsync(() => http.PostAsJsonAsync("api/auth/telegram-login", new TelegramLoginRequest(data), Json));
@@ -149,12 +160,23 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
         return me.Value;
     }
 
-    /// <summary>Signs out on every device: the server stops accepting all tokens issued so far (L-13).</summary>
-    public async Task LogoutAsync()
+    /// <summary>
+    /// Signs out on every device: the server stops accepting all tokens issued so far (L-13). This device forgets the
+    /// session either way; when the server did not confirm, the sign-in screen says that other devices may still be
+    /// signed in. True when the server confirmed.
+    /// </summary>
+    public async Task<bool> LogoutAsync()
     {
-        await SendJsonAsync<object>(HttpMethod.Post, "api/auth/logout");
-        await ForgetAsync();
+        var result = await SendJsonAsync<object>(HttpMethod.Post, "api/auth/logout");
+        // 401: the session was already gone on the server, so there is nothing left to end.
+        var everywhere = result.Ok || result.Status == (int)HttpStatusCode.Unauthorized;
+        await ForgetAsync(everywhere ? null : LogoutNotConfirmed);
+        return everywhere;
     }
+
+    public const string LogoutNotConfirmed =
+        "Bu qurilmadan chiqdingiz, lekin server bilan aloqa bo‘lmagani uchun boshqa qurilmalardagi kirishlar bekor qilinmadi. "
+        + "Ularni ham yopish uchun qayta kirib, yana \"Chiqish\" ni bosing.";
 
     /// <summary>Deletes the account on the server (spec §5.3), then forgets it here.</summary>
     public async Task<ApiResult<object>> DeleteAccountAsync()
@@ -168,12 +190,12 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
         return result;
     }
 
-    private async Task ForgetAsync()
+    private async Task ForgetAsync(string? message = null)
     {
         _accessToken = null;
         _refreshToken = null;
         await browser.StorageRemoveAsync(RefreshKey);
-        State = SignedOut();
+        State = SignedOut() with { Message = message };
         _signIn = Task.FromResult(State);
         Changed?.Invoke();
     }

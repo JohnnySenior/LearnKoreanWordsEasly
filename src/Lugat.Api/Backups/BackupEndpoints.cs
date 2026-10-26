@@ -30,8 +30,15 @@ public static class BackupEndpoints
                 service.TelegramReady,
                 recipient is null ? null : "…" + recipient[^Math.Min(4, recipient.Length)..],
                 sent?.SentToTelegramAt,
-                attempt?.SentToTelegramAt is null ? attempt?.TelegramError : null);
+                attempt?.SentToTelegramAt is null ? attempt?.TelegramError : null,
+                (await service.TelegramOverdueAsync(ct)).Select(r => r.StartedAt).ToList());
         });
+
+        // "O‘chirdim": the owner deleted the copies older than a month from the Telegram chat (a bot cannot).
+        backups.MapPost("/telegram-removed", async (BackupService service, CancellationToken ct) =>
+            new BackupSendResult(true, await service.ConfirmTelegramRemovedAsync(ct) is var n and > 0
+                ? $"{n} ta eski nusxa Telegram'dan o‘chirilgan deb belgilandi."
+                : "Muddati o‘tgan nusxa yo‘q."));
 
         // "Telegram'ga yuborish": the newest verified copy to the owner's chat, at most once per 10 minutes (D-37).
         backups.MapPost("/send", async (AppDbContext db, BackupService service, IOptions<BackupOptions> options, TimeProvider time, CancellationToken ct) =>

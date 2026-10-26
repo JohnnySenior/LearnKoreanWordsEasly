@@ -374,3 +374,45 @@ Gap zinapoyasida izoh oxirida `</explanationUz> <parameter name="trap">null` chi
 - Hamma AI javobi uchun: `AiGateway` JSON’dagi har bir matnni tozalaydi (qochirilgan `<` ham).
 - Saqlangan eski yozuvlar: Gap zinapoyasi izohlari ko‘rsatishda tozalanadi.
 - Ochiluvchi teg yolg‘iz (`<b>`) qoldiq hisoblanmaydi.
+
+## L-44 · 2026-10-26 · Sessiya: vaqtinchalik xato login’ni o‘chirmaydi, chiqish natijasi aytiladi
+
+Codex auditi (commit `64e1f0b`) topdi:
+- **Tiklash.** Ilova ochilganda refresh so‘rovi muvaffaqiyatsiz bo‘lsa (har qanday holat), qurilmadagi refresh token o‘chirilardi. Shuning uchun 429 yoki 503 dan keyin ham qayta kirish kerak bo‘lardi.
+  - Endi token faqat **401** da (server sessiyani rad etdi: muddati tugagan, hamma joydan chiqilgan, hisob o‘chirilgan) o‘chiriladi.
+  - 429, 5xx va aloqa yo‘qligida token saqlanadi. Holat `Unavailable` bo‘ladi, ekranda o‘zbekcha xabar va "Qayta urinish" tugmasi chiqadi.
+  - `EnsureSignedInAsync` bunday natijani keshda ushlab qolmaydi: keyingi chaqiruv yoki "Qayta urinish" yana tiklashga urinadi. Server tiklangach qayta kirish shart emas.
+- **Chiqish.** "Chiqish" bosilganda bu qurilma serverning javobidan qat’i nazar sessiyani unutadi (tokenlar tozalanadi).
+  - Server tasdiqlamasa (5xx, aloqa yo‘q), kirish ekranida ogohlantirish chiqadi: boshqa qurilmalardagi kirishlar bekor qilinmagan, ularni yopish uchun qayta kirib yana "Chiqish" ni bosish kerak.
+  - Server 401 qaytarsa, sessiya serverda allaqachon tugagan bo‘ladi, ogohlantirish chiqmaydi.
+
+## L-45 · 2026-10-26 · O‘quvchi vaqt zonasini tanlaydi: Seul yoki Toshkent
+
+Hisob `Asia/Seoul` bilan yaratiladi (spec §5.1) va uni o‘zgartirib bo‘lmasdi. Shuning uchun O‘zbekistondagi o‘quvchiga "20:00" eslatmasi soat 16:00 da kelardi, "Bilaman" kuni esa Seul yarim tunida almashardi.
+- Profil → Eslatma sahifasida "Vaqt zonasi" tanlovi bor: Koreya (`Asia/Seoul`, standart) yoki O‘zbekiston (`Asia/Tashkent`). Bu tanlov Telegram’i bog‘lanmagan o‘quvchida ham ko‘rinadi.
+- Server `UpdatePreferencesRequest.TimeZone` ni `User.TimeZones` ro‘yxati bo‘yicha tekshiradi; boshqa qiymat 422 qaytaradi.
+- Standart qiymat va mavjud hisoblar o‘zgarmaydi.
+- Tanlangan zona eslatmalar, "Bilaman" kunlik chegarasi va o‘quv kuni uchun ishlatiladi.
+- Admin statistikasi kelishilganidek Koreya kuni (`KoreaTime`) bo‘yicha qoladi.
+
+## L-46 · 2026-10-26 · Zaxira nusxa muddati maxfiylik siyosatiga mos
+
+Maxfiylik siyosatida (Johnny tasdiqlagan) shunday yozilgan: "zaxira nusxalar taxminan bir oy saqlanadi; o‘chirilgan ma’lumot ulardan bir oy ichida yo‘qoladi".
+
+**Diskda (texnik kafolat):**
+- Avval saqlanardi: 7 kunlik va 4 haftalik nusxa. Odatda eng eskisi ~22 kunlik bo‘lardi.
+- Kafolat yo‘q edi, chunki tozalash faqat muvaffaqiyatli kechada ishlardi. Nusxalar to‘xtasa yoki haftalar orasida bo‘shliq bo‘lsa, eski fayllar qolib ketardi.
+- Endi `Backup:MaxAgeDays` (30) dan eski fayl o‘chiriladi, muvaffaqiyatsiz kechada ham.
+- Faqat bitta istisno: eng yangi nusxa doim qoladi, shunda nusxalar to‘xtagan serverda ham tiklash uchun fayl bo‘ladi. Nusxalar bir oydan ko‘p to‘xtab qolsa, bu nusxa bir oydan eski bo‘lishi mumkin — bu holat Admin → Tizim’da ko‘rinadi.
+
+**Telegram’da (qo‘lda bajariladigan jarayon):**
+- Bot API botga o‘z xabarini faqat 48 soat ichida o‘chirishga ruxsat beradi, shuning uchun ilova Telegram’dagi nusxani o‘chira olmaydi.
+- Shu sababli:
+  - Har bir nusxa izohida "bu faylni <sana> dan keyin chatdan o‘chiring" yozuvi bor (oldin "o‘chirmang" deyilardi).
+  - Muddati o‘tgan nusxalar keyingi haftalik izohda va Admin → Tizim’da ro‘yxat qilinadi.
+  - Egasi ularni o‘chirib, «O‘chirdim» ni bosadi (`BackupRun.TelegramRemovedAt`).
+- Mavjud fayllar avtomatik o‘chirilmadi.
+- **Qaror Johnny’da:**
+  - (A) shu qo‘lda bajariladigan jarayon (tavsiya);
+  - (B) siyosat matnida Telegram nusxasini alohida aytish;
+  - (C) shifrlangan nusxa va kalitni oyma-oy almashtirish. Bu variantda Railway yo‘qolsa kalit ham yo‘qoladi, shuning uchun u tashqi nusxaning maqsadiga zid.

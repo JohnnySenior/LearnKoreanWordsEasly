@@ -37,6 +37,12 @@ public sealed class UnitTestService(
 
     public async Task<TestDto> StartAsync(Guid userId, Guid unitId, StartUnitTestRequest request, CancellationToken ct)
     {
+        // The daily «Bilaman» limit is counted and the new attempt saved under one lock per learner and unit, so
+        // parallel starts with different ids cannot each see the old count (audit 2026-10-26). Always taken before
+        // the test's own lock, and nothing takes them the other way round.
+        await using var skipLease = request.Kind == UnitTestKind.Skip
+            ? await operations.AcquireAsync($"unit-skip:{userId}:{unitId}", ct)
+            : null;
         await using var lease = await operations.AcquireAsync($"test:{request.Id}", ct);
         if (await db.TestRuns.SingleOrDefaultAsync(r => r.Id == request.Id, ct) is { } existing)
         {

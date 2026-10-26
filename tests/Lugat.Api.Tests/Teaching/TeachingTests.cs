@@ -4,6 +4,7 @@ using Lugat.Api.Tests.Infrastructure;
 using Lugat.Contracts;
 using Lugat.Domain.Learning;
 using Lugat.Domain.Premium;
+using Lugat.Domain.Testing;
 using Lugat.Domain.Users;
 using Lugat.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -163,6 +164,73 @@ public class TeachingTests
         Assert.Equal("가가", Assert.Single(student.TopMistakes).Korean);
         var json = await (await teacher.GetAsync($"/api/teacher/students/{row.UserId}")).Content.ReadAsStringAsync();
         Assert.DoesNotContain("Telegram", json); // no logins
+    }
+
+    [Fact]
+    public async Task The_group_table_costs_the_same_queries_for_two_learners_as_for_six()
+    {
+        // Audit 2026-10-26: the mistakes of each learner were read one by one, and every unit test of every learner
+        // was loaded with its questions to find the latest score.
+        await using var factory = NewFactory();
+        var teacher = await TeacherAsync(factory, Teacher, "Ustoz");
+        var group = await CreateGroupAsync(teacher);
+        using var sql = new SqlCounter(factory.DatabaseName);
+
+        async Task<int> JoinAndCountAsync(int from, int to)
+        {
+            for (var n = from; to > n; n++)
+            {
+                var telegramId = 6000 + n;
+                var learner = await factory.SignedInClientAsync(telegramId, $"O‘quvchi {n}");
+                await OkAsync<MyGroupDto>(await learner.PostAsync($"/api/groups/join/{group.InviteCode}", null));
+                await factory.AddWordsAsync(telegramId, 1, ApiFactory.Words("가", 3));
+                var session = (await OkAsync<StartSessionResponse>(await learner.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true), ApiFactory.Json))).Session!;
+                await OkAsync<AnswerResultDto>(await learner.PostAsJsonAsync($"/api/sessions/{session.Id}/answers",
+                    new AnswerRequest(Guid.NewGuid(), session.Position, ReviewAnswer.Forgot, false, 2000), ApiFactory.Json));
+                await AddUnitTestsAsync(factory, await UserIdAsync(factory, telegramId));
+            }
+
+            teacher = await factory.SignedInClientAsync(Teacher, "Ustoz");
+            await teacher.GetAsync("/api/me"); // warm the sign-in, so only the table is counted
+            sql.Reset();
+            var detail = await OkAsync<GroupDetailDto>(await teacher.GetAsync($"/api/teacher/groups/{group.Id}"));
+            var count = sql.Count;
+            Assert.Equal(to, detail.Students.Count);
+            Assert.All(detail.Students, s => Assert.Equal(80, s.LastTestPercent)); // the latest test, not the best or first
+            var hardest = Assert.Single(detail.HardestWords);
+            Assert.Equal((to, to), (hardest.Mistakes, hardest.Learners));
+            return count;
+        }
+
+        var two = await JoinAndCountAsync(0, 2);
+        var six = await JoinAndCountAsync(2, 6);
+
+        Assert.Equal(two, six);
+    }
+
+    /// <summary>Two finished unit tests of 5 questions: 2 right, then (later) 4 right.</summary>
+    private static async Task AddUnitTestsAsync(ApiFactory factory, Guid userId)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var now = factory.Time.GetUtcNow();
+        foreach (var (right, finished) in new[] { (2, now.AddHours(-2)), (4, now.AddHours(-1)) })
+        {
+            db.TestRuns.Add(new TestRun
+            {
+                Id = Guid.NewGuid(),
+                OwnerId = userId,
+                Title = "A-1-bo‘lim · yakuniy test",
+                Status = TestRunStatus.Finished,
+                Purpose = TestPurpose.UnitFinal,
+                Questions = [.. Enumerable.Range(0, 5).Select(i => new TestQuestion(i, TestQuestionKind.WordMeaning, "?", null, null, ["a", "b"], "a", null, null, null, false))],
+                Answers = [.. Enumerable.Range(0, 5).Select(i => new TestAnswer(i, i < right ? "a" : "b", i < right, null, finished))],
+                CreatedAt = finished.AddMinutes(-5),
+                FinishedAt = finished,
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     [Fact]

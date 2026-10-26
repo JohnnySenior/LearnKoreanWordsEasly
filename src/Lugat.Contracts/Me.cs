@@ -13,8 +13,8 @@ public sealed record PreferencesDto(
     bool BotBlocked,
     bool HasTelegram);
 
-/// <summary>Null fields are left unchanged.</summary>
-public sealed record UpdatePreferencesRequest(bool? RemindersEnabled, TimeOnly? ReminderTime, IReadOnlyList<DayOfWeek>? ReminderDays = null);
+/// <summary>Null fields are left unchanged. <paramref name="TimeZone"/>: "Asia/Seoul" or "Asia/Tashkent".</summary>
+public sealed record UpdatePreferencesRequest(bool? RemindersEnabled, TimeOnly? ReminderTime, IReadOnlyList<DayOfWeek>? ReminderDays = null, string? TimeZone = null);
 
 public sealed record TestReminderResult(bool Delivered, string Message);
 
@@ -36,6 +36,7 @@ public sealed record BackupRunDto(DateTimeOffset StartedAt, DateTimeOffset? Fini
 /// <param name="LastVerifiedAt">The newest backup whose restore check passed (spec REL04).</param>
 /// <param name="TelegramReady">The weekly copy outside Railway can be sent (bot and recipient configured, D-37).</param>
 /// <param name="TelegramRecipient">Masked Telegram id of the recipient, e.g. "…4321".</param>
+/// <param name="TelegramOverdue">Copies in the Telegram chat past the privacy policy's month, still to be deleted by hand.</param>
 public sealed record BackupStatusDto(
     bool Enabled,
     BackupRunDto? Last,
@@ -44,6 +45,7 @@ public sealed record BackupStatusDto(
     bool TelegramReady = false,
     string? TelegramRecipient = null,
     DateTimeOffset? LastSentToTelegramAt = null,
-    string? TelegramError = null);
+    string? TelegramError = null,
+    IReadOnlyList<DateTimeOffset>? TelegramOverdue = null);
 
 public sealed record BackupSendResult(bool Sent, string Message);

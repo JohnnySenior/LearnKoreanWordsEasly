@@ -46,9 +46,9 @@ Narx taxmini (KAT tajribasi, Hobby tarifi): ilova + PostgreSQL oyiga taxminan $5
 
 ## Zaxira nusxa
 
-Har kecha 04:00 KST `/data/backups/lugat-YYYYMMDD-HHMMSS.dump` va `.dump.zip` yoziladi (KAT D-22, D-50). Dump vaqtinchalik bazaga tiklanadi; bir xil snapshot bo‘yicha migratsiya va barcha jadval countlari solishtiriladi. ZIP ichida `database.dump` va `manifest.json` (countlar) bor (L-08). 7 kunlik va 4 haftalik nusxa saqlanadi.
+Har kecha 04:00 KST `/data/backups/lugat-YYYYMMDD-HHMMSS.dump` va `.dump.zip` yoziladi (KAT D-22, D-50). Dump vaqtinchalik bazaga tiklanadi; bir xil snapshot bo‘yicha migratsiya va barcha jadval countlari solishtiriladi. ZIP ichida `database.dump` va `manifest.json` (countlar) bor (L-08). 7 kunlik va 4 haftalik nusxa saqlanadi, lekin hech biri 30 kundan (`Backup__MaxAgeDays`) eski emas; eng yangi nusxa doim qoladi (L-46).
 
-Haftalik tekshirilgan nusxa bot orqali `Backup__TelegramChatId` ga yuboriladi (KAT D-37, D-51). Bot chatida `/start` bosilgan bo‘lishi kerak. Bot API chegarasi 50 MiB: paket sig‘masa faqat `.dump` yuboriladi. Nusxa barcha foydalanuvchilarning shaxsiy ma’lumotini o‘z ichiga oladi; kirishni egasi bilan cheklang.
+Haftalik tekshirilgan nusxa bot orqali `Backup__TelegramChatId` ga yuboriladi (KAT D-37, D-51). Bot chatida `/start` bosilgan bo‘lishi kerak. Bot API chegarasi 50 MiB: paket sig‘masa faqat `.dump` yuboriladi. Nusxa barcha foydalanuvchilarning shaxsiy ma’lumotini o‘z ichiga oladi; kirishni egasi bilan cheklang. Bot o‘z xabarini 48 soatdan keyin o‘chira olmaydi, shuning uchun bir oydan eski nusxalarni egasi chatdan **qo‘lda** o‘chiradi: ro‘yxat haftalik izohda va Admin → Tizim’da chiqadi, o‘chirgach «O‘chirdim» bosiladi (maxfiylik siyosati: zaxira ~1 oy). Faylni telefonga yoki kompyuterga yuklab olgan bo‘lsangiz, uni ham o‘chiring.
 
 ### Tiklash
 

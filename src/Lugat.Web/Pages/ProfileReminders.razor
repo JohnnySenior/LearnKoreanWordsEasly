@@ -21,6 +21,19 @@
 }
 
 <section class="unit-step">
+    @* The learner's day: reminders and the daily «Bilaman» limit follow it (the server checks the value). *@
+    <div class="field">
+        Vaqt zonasi
+        <div class="chips" role="radiogroup" aria-label="Vaqt zonasi">
+            @foreach (var (zone, label) in Zones)
+            {
+                var z = zone;
+                <button class="chip @(_prefs.TimeZone == z ? "selected" : "")" role="radio" aria-checked="@(_prefs.TimeZone == z ? "true" : "false")" disabled="@_busy" @onclick="() => SaveZoneAsync(z)">@label</button>
+            }
+        </div>
+    </div>
+    <p class="muted small-text">Eslatma vaqti va «Bilaman» testining kunlik chegarasi shu vaqt bo‘yicha hisoblanadi.</p>
+
     @if (!_prefs.RemindersAvailable)
     {
         <p class="muted">Eslatmalar hozircha serverda yoqilmagan.</p>
@@ -41,7 +54,7 @@
         </ListRow>
 
         <div class="field" style="margin-top:12px">
-            Vaqt (@_prefs.TimeZone)
+            Vaqt (@ZoneLabel(_prefs.TimeZone))
             <TimeSelect @bind-Value="_time" Disabled="@(!_enabled)" Label="Eslatma vaqti" />
         </div>
         <div class="chips days" role="group" aria-label="Kunlar">
@@ -55,10 +68,10 @@
 
         <button class="btn btn-primary block big" disabled="@_busy" @onclick="SaveAsync"><span>Saqlash</span></button>
         <button class="btn btn-secondary block" style="margin-top:8px" disabled="@_busy" @onclick="TestAsync"><span>Sinov xabari</span></button>
-        @if (_status is not null)
-        {
-            <p role="status" style="margin-top:8px">@_status</p>
-        }
+    }
+    @if (_status is not null)
+    {
+        <p role="status" style="margin-top:8px">@_status</p>
     }
 </section>
 
@@ -68,6 +81,13 @@
         (DayOfWeek.Monday, "Du"), (DayOfWeek.Tuesday, "Se"), (DayOfWeek.Wednesday, "Ch"), (DayOfWeek.Thursday, "Pa"),
         (DayOfWeek.Friday, "Ju"), (DayOfWeek.Saturday, "Sh"), (DayOfWeek.Sunday, "Ya"),
     ];
+
+    private static readonly (string Zone, string Label)[] Zones =
+    [
+        ("Asia/Seoul", "Koreya (Seul)"), ("Asia/Tashkent", "O‘zbekiston (Toshkent)"),
+    ];
+
+    private static string ZoneLabel(string zone) => Zones.FirstOrDefault(z => z.Zone == zone).Label ?? zone;
 
     private PreferencesDto? _prefs;
     private bool _enabled;
@@ -112,6 +132,23 @@
         _busy = false;
         _status = result.Ok ? "Saqlandi." : result.Error;
         Apply(result.Value);
+    }
+
+    private async Task SaveZoneAsync(string zone)
+    {
+        if (_prefs?.TimeZone == zone)
+        {
+            return;
+        }
+
+        _busy = true;
+        var result = await Api.SendJsonAsync<PreferencesDto>(HttpMethod.Patch, "api/me/preferences", new UpdatePreferencesRequest(null, null, null, zone));
+        _busy = false;
+        _status = result.Ok ? $"Vaqt zonasi: {ZoneLabel(zone)}." : result.Error;
+        if (result.Value is { } p)
+        {
+            _prefs = p; // only the zone: unsaved reminder edits on this screen stay as they are
+        }
     }
 
     private async Task TestAsync()

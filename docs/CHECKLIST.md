@@ -260,7 +260,8 @@ Bosqichlar spec §13 bo‘yicha.
 - Tashqi HTTP so‘rovni bu sessiyadan yuborib bo‘lmadi: agent proksisi `*.up.railway.app` ni bloklaydi (ishlab turgan KoreanAiTeacher domeni ham ochilmaydi). Brauzerdagi tekshiruv — Johnny.
 
 **Ochiq qoldi:**
-- [ ] **Johnny, dashboard’da:** `app` → Settings → Source → "Wait for CI" yoqish (connector bu sozlamani o‘zgartira olmaydi; hozir o‘chiq — CI qizil bo‘lsa ham `main` deploy bo‘ladi); Workspace → Usage → hard spend limit (masalan $10/oy).
+- [x] "Wait for CI" yoqilgan: servis sozlamasida `source.checkSuites: true` (Railway connector, 2026-10-26).
+- [ ] **Johnny, dashboard’da:** Workspace → Usage → hard spend limit (masalan $10/oy) — connector’da ko‘rinmaydi, tasdiqlanmagan.
 - [ ] **Johnny, o‘zgaruvchilar** (maxfiy qiymatlar, `docs/HOSTING.md` 7–8-band): AI va Azure kalitlari, `Ai__Budget__*` tariflari; `Payments__*`.
 - [ ] Kontent: production’da `Catalog__SeedSample` o‘chiq — admin kirgach `/kontent` orqali rasmiy ro‘yxat importi va nashr.
 - [ ] Production’da kechki (04:00 KST) zaxira va tiklash mashqi, haftalik Telegram nusxasi.
@@ -337,3 +338,17 @@ Bosqichlar spec §13 bo‘yicha.
 **Haqiqiy qadam belgilari va AI tozalash (L-42, L-43, 2026-10-26):**
 - [x] Jadval/Karta/Mashq/Test belgisi o‘z sharti bilan; `PracticedAt` yozma mashq va "Qaysi so‘z to‘g‘ri?" dan (test: 5 so‘zli bo‘limda 4 javobdan keyin yo‘q, 5-dan keyin bor).
 - [x] AI javobidagi `</teg>`/`<parameter` qoldig‘i kesiladi, eski Gap zinapoyasi izohlari ham (testlar).
+
+**Codex auditi bo‘yicha tuzatishlar (audit commit `64e1f0b`, 2026-10-26, branch `audit-tuzatish`):**
+- [x] 1. Refresh xatosi: token faqat 401 da o‘chadi; 429/5xx/aloqa yo‘q — saqlanadi, "Qayta urinish", server tiklangach qayta kirishsiz (L-44). Test: `Pwa/SessionServiceTests` (eski kodda 3 tasi yiqildi).
+- [x] 2. Chiqish: bu qurilma doim chiqadi; server tasdiqlamasa (5xx, aloqa yo‘q) kirish ekranida "boshqa qurilmalar bekor qilinmadi" (L-44). Test: o‘sha fayl (eski kodda 3 tasi yiqildi).
+- [x] 3. "Bilaman" kunlik chegarasi: hisob va saqlash `unit-skip:{user}:{unit}` qulfi ostida (test qulfidan oldin olinadi, teskari tartib yo‘q). Test: 8 ta parallel turli id → 3 ta 200, qolgani 429, bir xil id qayta — o‘sha test, ertasi kuni ochiq (eski kodda 8 tasi ham o‘tdi).
+- [x] 4. AI holati: davom etayotgan chaqiruv (`pending`) oxirgi natija sifatida olinmaydi; hech biri tugamagan bo‘lsa — "hali tekshirilmagan". Test: `A_call_still_running_does_not_replace_the_last_result_in_the_status` (eski kodda yiqildi).
+- [x] 5. Vaqt zonasi: Seul/Toshkent tanlovi, serverda tekshiriladi, eslatma va "Bilaman" kuni unga bo‘ysunadi; admin statistikasi Koreya kunida (L-45). Testlar: Toshkent 20:00 eslatmasi, "Bilaman" chegarasi Toshkent yarim tunida, noto‘g‘ri zona 422. Chromium 390px: tanlov saqlandi, gorizontal scroll yo‘q.
+- [x] 6. Ortiqcha so‘rovlar: guruh jadvali (xatolar barcha o‘quvchi uchun bitta so‘rovlar to‘plamida, oxirgi test faqat id bo‘yicha) va to‘lovlar ro‘yxati (obuna, ism, promo — 3 ta so‘rov). Testlar SQL buyruqlarini sanaydi: 2 va 6 o‘quvchi/to‘lovda teng (eski kodda 20 → 48 va 7 → 17).
+- [x] 7. Zaxira muddati: diskda 30 kundan eski nusxa yo‘q (eng yangisi bundan mustasno), muvaffaqiyatsiz kechada ham tozalanadi; Telegram nusxalari uchun qo‘lda o‘chirish jarayoni va «O‘chirdim» (L-46). Testlar: `BackupRetentionTests`, `Copies_past_a_month_…`, `A_failed_night_…`. Mavjud fayllar o‘chirilmadi.
+- [ ] 7. **Qaror — Johnny:** Telegram’dagi nusxalar uchun A/B/C (L-46); tavsiya — A (qo‘lda o‘chirish, ilova eslatadi).
+- [x] 8. README joriy holatga keltirildi: kod / avtomatik test / real muhit alohida, ochiq qabul tekshiruvlari ro‘yxati.
+- Tekshirildi: `dotnet build` (0 ogohlantirish), testlar 106 (Domain) + 42 (Application) + 219 (Api) = 367, JS 11, `has-pending-model-changes` — o‘zgarish yo‘q. Migratsiya `BackupTelegramRemoved` (bitta ustun).
+- Production dalili: kechki zaxiralar 23–25-oktabr `verified True` (Railway loglari).
+- [ ] Ochiq (dalil yo‘q): hard spend limit; AI tariflari (`Ai__Budget__Prices__*` o‘zgaruvchilari yo‘q — AI faqat oylik son bilan cheklanadi); production nusxasidan to‘liq tiklash mashqi; real iPhone/Android oqimi, iPhone audio va koreyscha klaviatura, arzon Android/sekin internet; haqiqiy Telegram eslatmasi.
