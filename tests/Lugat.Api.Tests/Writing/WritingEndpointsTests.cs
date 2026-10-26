@@ -191,4 +191,29 @@ public class WritingEndpointsTests
         Assert.Contains("아니다", result.Note);
         Assert.Empty(_ai.Requests); // known from the word list, no AI call
     }
+
+    [Fact]
+    public async Task A_writing_round_with_the_units_words_ticks_its_practice_step()
+    {
+        // L-42: the unit has 5 words, so a round is all 5 of them (10 for a full unit).
+        await using var factory = NewFactory(withAi: false);
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await ApproveAsync(client);
+        await StartAllAsync(client);
+        async Task<UnitSummaryDto> UnitAsync() => (await client.GetFromJsonAsync<LevelUnitsDto>("/api/levels/A/units", Json))!.Units[0];
+
+        var queue = (await client.GetFromJsonAsync<List<WritingPromptDto>>("/api/writing/queue?direction=UzbekToKorean&count=10", Json))!;
+        foreach (var p in queue.Take(4))
+        {
+            await AnswerAsync(client, p, "—");
+        }
+
+        var before = await UnitAsync();
+        await AnswerAsync(client, queue[4], "—"); // wrong answers count too: the round was done
+        var after = await UnitAsync();
+
+        Assert.True(before.Opened);
+        Assert.False(before.Practiced);
+        Assert.True(after.Practiced);
+    }
 }

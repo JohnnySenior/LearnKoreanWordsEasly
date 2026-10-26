@@ -239,9 +239,10 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
     };
 
     private static LadderFeedbackDto Feedback(LadderItem item, LadderAnswer a, TrapNote? trap) =>
-        new(a.IsCorrect, Correct(item, a.Step), a.Corrected, a.ExplanationUz, a.ErrorTypes, trap is null ? null : ToDto(trap));
+        new(a.IsCorrect, Correct(item, a.Step), a.Corrected, AiText.CleanOrNull(a.ExplanationUz), a.ErrorTypes, trap is null ? null : ToDto(trap));
 
-    private static TrapNoteDto ToDto(TrapNote t) => new(t.Id, t.Uzbek, t.Wrong, t.Right, t.ExplanationUz, t.CreatedAt);
+    // Answers saved before L-43 may still carry a leaked fragment.
+    private static TrapNoteDto ToDto(TrapNote t) => new(t.Id, t.Uzbek, t.Wrong, t.Right, AiText.Clean(t.ExplanationUz), t.CreatedAt);
 
     private static LadderDto ToDto(SentenceLadder l)
     {
@@ -268,7 +269,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
             var item = l.Items.Single(i => i.Index == a.Index);
             return new LadderResultDto(a.Index, a.Step, a.Step == LadderStep.Translate ? item.TwinUzbek : item.Uzbek, a.Given, a.IsCorrect,
                 Correct(item, a.Step),
-                a.Corrected, a.ExplanationUz, a.ErrorTypes);
+                a.Corrected, AiText.CleanOrNull(a.ExplanationUz), a.ErrorTypes);
         }).ToList();
         return new LadderDto(l.Id, l.Title, l.CreatedAt, l.FinishedAt is not null, l.Answers.Count, l.Items.Count * 3, task, scores, results, l.Provider);
     }

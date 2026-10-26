@@ -333,3 +333,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Kontent to‘plami (b) va tushuntirish sahifasi (c).
 - [x] Kirishdan oldingi tushuntirish (L-41): to‘rt qadam, so‘z kartasi va tuzoq, bepul/Premium, o‘rnatish. Chromium 390px: gorizontal scroll yo‘q.
 - [x] Pastki menyu (2026-10-25): belgi va yozuv katak o‘rtasida (telefonda chapga og‘ib ko‘rinardi); keng ekranda menyu va pastki "Davom etish" tugmasi sahifaning 640px ustuniga moslangan. Chromium 390px va 1440px.
+
+**Haqiqiy qadam belgilari va AI tozalash (L-42, L-43, 2026-10-26):**
+- [x] Jadval/Karta/Mashq/Test belgisi o‘z sharti bilan; `PracticedAt` yozma mashq va "Qaysi so‘z to‘g‘ri?" dan (test: 5 so‘zli bo‘limda 4 javobdan keyin yo‘q, 5-dan keyin bor).
+- [x] AI javobidagi `</teg>`/`<parameter` qoldig‘i kesiladi, eski Gap zinapoyasi izohlari ham (testlar).

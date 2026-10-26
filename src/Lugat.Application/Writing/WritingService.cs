@@ -14,7 +14,7 @@ namespace Lugat.Application.Writing;
 /// Writing exercise (spec PR02, PR06, D-23): the learner types the Korean word or its Uzbek meaning.
 /// Separate from flash cards: nothing here changes a card's schedule, and results are counted on their own (SRS06).
 /// </summary>
-public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider time)
+public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider time, Catalog.UnitProgressService units)
 {
     public const int MaxCount = 50;
 
@@ -153,6 +153,8 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
             return ToDto(first, sense);
         }
 
+        // A writing round with the unit's words ticks its "Mashq" step (L-42).
+        await units.MarkPracticedAsync(ownerId, [sense.UnitId], writingRound: true, ct);
         return ToDto(attempt, sense);
     }
 

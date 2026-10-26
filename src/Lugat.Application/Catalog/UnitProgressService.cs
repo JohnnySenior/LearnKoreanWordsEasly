@@ -270,6 +270,37 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
         return (unit, progress);
     }
 
+    /// <summary>Words of one unit to answer in writing for a round to count as practice (all of them when fewer).</summary>
+    public const int PracticeRoundWords = 10;
+
+    /// <summary>
+    /// Marks the "Mashq" step of these units once (L-42). <paramref name="writingRound"/>: only units where the learner
+    /// has now answered <see cref="PracticeRoundWords"/> of the words in writing; otherwise every unit given counts.
+    /// </summary>
+    public async Task MarkPracticedAsync(Guid userId, IEnumerable<Guid?> unitIds, bool writingRound, CancellationToken ct)
+    {
+        var ids = unitIds.OfType<Guid>().Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        if (writingRound)
+        {
+            var answered = await (from w in db.WritingAttempts
+                                  join i in db.LearningItems on w.LearningItemId equals i.Id
+                                  where w.OwnerId == userId && ids.Contains(i.UnitId!.Value)
+                                  group i.Id by i.UnitId into g
+                                  select new { UnitId = g.Key!.Value, Count = g.Distinct().Count() }).ToListAsync(ct);
+            var sizes = await db.Units.Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.WordCount, ct);
+            ids = answered.Where(a => a.Count >= Math.Min(PracticeRoundWords, Math.Max(1, sizes.GetValueOrDefault(a.UnitId)))).Select(a => a.UnitId).ToList();
+        }
+
+        var now = time.GetUtcNow();
+        await db.UnitProgress.Where(p => p.UserId == userId && ids.Contains(p.UnitId) && p.PracticedAt == null)
+            .ExecuteUpdateAsync(p => p.SetProperty(x => x.PracticedAt, now), ct);
+    }
+
     private async Task<List<UnitSummaryDto>> SummariesAsync(Guid userId, IReadOnlyList<UnitRow> units, IReadOnlyList<UserUnitProgress> progress, CancellationToken ct)
     {
         var ids = units.Select(u => (Guid?)u.Id).ToList();
@@ -287,7 +318,8 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
             var p = progress.FirstOrDefault(x => x.UnitId == u.Id);
             var state = p is null ? UnitState.Locked : p.Status == UnitProgressStatus.Passed ? UnitState.Passed : UnitState.Open;
             return new UnitSummaryDto(u.Id, u.Level, u.Number, LearnerItems.Label(u.Level, u.Number), u.WordCount, state,
-                started.GetValueOrDefault(u.Id), p?.BestScorePercent, themes.GetValueOrDefault(u.Id) ?? [], skippable.Contains(u.Id));
+                started.GetValueOrDefault(u.Id), p?.BestScorePercent, themes.GetValueOrDefault(u.Id) ?? [], skippable.Contains(u.Id),
+                p?.StartedAt is not null, p?.PracticedAt is not null);
         }).ToList();
     }
 }

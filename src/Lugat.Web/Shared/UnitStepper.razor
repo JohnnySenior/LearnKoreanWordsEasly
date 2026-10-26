@@ -4,7 +4,7 @@
     @for (var i = 0; i < Labels.Length; i++)
     {
         var step = i + 1;
-        var state = step == Current ? "current" : step < Current || Done.Contains(step) ? "done" : "";
+        var state = step == Current ? "current" : Done.Contains(step) ? "done" : "";
         <li class="@state">
             @if (OnSelect.HasDelegate)
             {
@@ -21,9 +21,17 @@
 @code {
     private static readonly string[] Labels = ["Jadval", "Karta", "Mashq", "Test"];
 
+    /// <summary>
+    /// What the learner really did in the unit (L-42): opened its table, started every word in cards, finished a
+    /// practice round, passed the test.
+    /// </summary>
+    public static int[] DoneOf(Lugat.Contracts.UnitSummaryDto unit) =>
+        new[] { (1, unit.Opened), (2, unit.WordCount > 0 && unit.Started >= unit.WordCount), (3, unit.Practiced), (4, unit.State == Lugat.Contracts.UnitState.Passed) }
+            .Where(s => s.Item2).Select(s => s.Item1).ToArray();
+
     [Parameter] public int Current { get; set; } = 1;
 
-    /// <summary>Steps finished out of order, e.g. a test passed early with "Bilaman".</summary>
+    /// <summary>Steps really done (L-42): only these get a check, never a step merely before the current one.</summary>
     [Parameter] public IReadOnlyCollection<int> Done { get; set; } = [];
 
     /// <summary>One line ("1 Jadval") instead of number over label with a check, as on the unit page header.</summary>

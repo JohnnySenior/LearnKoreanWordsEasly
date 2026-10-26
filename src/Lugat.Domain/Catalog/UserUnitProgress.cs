@@ -39,6 +39,12 @@ public sealed class UserUnitProgress
 
     public DateTimeOffset? PassedAt { get; set; }
 
+    /// <summary>
+    /// The first practice round with the unit's words (L-42): a writing round (10 of its words, or all of them) or a
+    /// finished "Qaysi so‘z to‘g‘ri?" test. Only marks the "Mashq" step; the test stays open without it.
+    /// </summary>
+    public DateTimeOffset? PracticedAt { get; set; }
+
     public UnitPassedBy? PassedBy { get; set; }
 
     public int? BestScorePercent { get; set; }

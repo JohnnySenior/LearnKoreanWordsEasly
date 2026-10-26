@@ -81,7 +81,7 @@ else if (_today is not null)
                 </div>
             }
         </section>
-        <UnitStepper Current="step" />
+        <UnitStepper Current="step" Done="UnitStepper.DoneOf(unit)" />
         <a class="btn btn-secondary block home-continue" href="@($"bolimlar/{unit.Id}?qadam={step}")">
             <span>Davom etish — @ContinueLabel(step)</span><Icon Name="arrow-right" />
         </a>
@@ -124,7 +124,9 @@ else if (_today is not null)
     private int Minutes(int cards) => Math.Max(1, (int)Math.Round(cards * (_today?.SecondsPerCard ?? 10) / 60.0));
 
     // Where the learner is in the unit (spec §4.3): nothing started → the table, some cards → the cards, all → the test.
-    private static int StepOf(UnitSummaryDto unit) => unit.Started == 0 ? 1 : unit.Started < unit.WordCount ? 2 : 4;
+    // L-42: the step to continue with and the checks follow what the learner really did, not a guess from the cards.
+    private static int StepOf(UnitSummaryDto unit) =>
+        !unit.Opened ? 1 : unit.Started < unit.WordCount ? 2 : !unit.Practiced ? 3 : 4;
 
     private static string ContinueLabel(int step) => step switch
     {
