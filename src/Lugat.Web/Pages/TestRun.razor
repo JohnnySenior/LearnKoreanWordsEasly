@@ -258,7 +258,7 @@
 
     @if (_test.Unit is null)
     {
-        <a class="button block" href="sinov" style="margin-top:12px">Yangi sinov</a>
+        <a class="button block" href="mashq" style="margin-top:12px">Yangi sinov</a>
     }
     return;
 }
@@ -416,7 +416,7 @@ else
     [Parameter] public Guid Id { get; set; }
 
     /// <summary>A unit test goes back to its unit, a practice test to the tests page.</summary>
-    private string Back => _test?.Unit is { } unit ? $"bolimlar/{unit.UnitId}" : "sinov";
+    private string Back => _test?.Unit is { } unit ? $"bolimlar/{unit.UnitId}" : "mashq";
 
     private TestDto? _test;
     private int _position;

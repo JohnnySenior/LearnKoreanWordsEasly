@@ -74,7 +74,7 @@
             <button class="@(_count == count ? "selected" : "")" role="radio" aria-checked="@(_count == count)" @onclick="() => _count = count">@count ta</button>
         }
     </div>
-    <p class="muted small-text">@(_chosen.Count == 0 ? "Bo‘lim tanlanmagan: barcha tayyor bo‘limlardan" : $"{string.Join(", ", _tables!.Where(t => _chosen.Contains(t.UnitId)).Select(t => t.Unit))}-bo‘limdan") · javoblar oxirida izoh bilan ko‘rsatiladi · xatolar Xatolar daftariga tushadi</p>
+    <p class="muted small-text">@(_chosen.Count == 0 ? "Bo‘lim tanlanmagan: barcha tayyor bo‘limlardan" : $"{string.Join(", ", _tables!.Where(t => _chosen.Contains(t.UnitId)).Select(t => t.Unit))}-bo‘limdan") · javoblar oxirida izoh bilan ko‘rsatiladi · xatolar «Xatolarim» ga tushadi</p>
     <button class="button primary block" disabled="@(_busy || _tables.All(t => t.Ready == 0))" @onclick="StartAsync">Boshlash</button>
 </section>
 

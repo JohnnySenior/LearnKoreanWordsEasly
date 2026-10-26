@@ -87,7 +87,8 @@
 </div>
 
 <SectionLabel Text="O‘qish" />
-<ListRow Label="Statistika" Href="natijalar" />
+<ListRow Label="Statistika" Note="O‘rganilgan so‘zlar, qiyin so‘zlar" Href="natijalar" />
+<ListRow Label="Oldingi sinovlar" Note="Natijalar grafigi" Href="sinov/oldingi" />
 @if (_groups is { Count: > 0 } groups)
 {
     <ListRow Label="O‘qituvchi guruhi" Value="@(groups[0].TeacherName ?? groups[0].Name)" Href="profil/hisob" />

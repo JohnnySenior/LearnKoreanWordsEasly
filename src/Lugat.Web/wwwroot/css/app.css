@@ -268,6 +268,21 @@ h1 + .card, p + .card, .notice + .card { border-top: 2px solid var(--color-divid
 .seg > button:last-child { border-right: 0; }
 .seg > button.selected { background: var(--color-accent); color: var(--color-on-accent); }
 .seg > button:disabled { opacity: .45; }
+/* Tabs that are links to sibling pages ("Xatolarim", L-47): they look like the buttons above. */
+.seg > a {
+    display: block;
+    line-height: 44px;
+    padding: 0 0 0 10px;
+    border-right: 1px solid var(--color-divider);
+    color: var(--color-text);
+    font: 600 14px/44px var(--font-body);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.seg > a:last-child { border-right: 0; }
+.seg > a.selected { background: var(--color-accent); color: var(--color-on-accent); }
 
 /* Week strip (Bugun). */
 .week {

@@ -1,43 +1,41 @@
 @page "/mashq"
 @using Lugat.Contracts
 @inject SessionService Api
-@inject NavigationManager Nav
 
 <PageTitle>Mashqlar — Koreyscha</PageTitle>
 
-@* UI handoff 1h: the six practices of opened units; Premium ones keep a tag and lead to the Premium page
-   (spec §4.7, API 403 premium-required). The rest of the practices follow under "Yana". *@
+@* One practice page in three groups (L-47): words, sentences, and the learner's mistakes. Cards are the "Takror"
+   tab; the unit test is in the unit. Premium ones keep a tag and lead to the Premium page (spec §4.7). *@
 <header class="practice-head">
     <h1>Mashq</h1>
     <p class="muted">Ochilgan bo‘limlar so‘zlari bilan</p>
 </header>
 
-<nav class="practice-list" aria-label="Mashqlar">
+@if (_tests?.FirstOrDefault(r => r.Status == Lugat.Domain.Testing.TestRunStatus.InProgress) is { } open)
+{
+    <a class="btn btn-primary block" href="@($"sinov/{open.Id}")" style="margin-bottom:12px;justify-content:space-between;gap:12px">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Davom etish: @open.Title</span>
+        <span style="flex:none">@open.Answered / @open.Total</span>
+    </a>
+}
+
+<SectionLabel Text="So‘zlar" />
+<nav class="practice-list" aria-label="So‘z mashqlari">
     @Row("01", "Yozma mashq", "O‘zbekchadan koreyschaga yozing", "mashq/yozish", false)
-    @Row("02", "Qaysi so‘z to‘g‘ri?", "Gapdagi bo‘sh joyni to‘ldiring", "mashq/qollanish", false)
-    @Row("03", "Talaffuz", "Ayting — Azure baholaydi", "sinov/ogzaki", true)
-    @Row("04", "Gap zinapoyasi", "So‘zdan gapgacha, AI bilan", "gap/zinapoya", true)
-    @Row("05", "Zaif joylar", "Ko‘p adashgan so‘zlaringiz", "zaif-joylar", true)
-    @Row("06", "Xatolar daftari", "Barcha xato javoblar", "xatolar", true)
+    @Row("02", "Qaysi so‘z to‘g‘ri?", "Gapdagi bo‘sh joyga mos so‘zni tanlang", "mashq/qollanish", false)
+    @Row("03", "Talaffuz", "So‘zlarni mikrofon bilan ayting — Azure baholaydi", "sinov/ogzaki", true)
+    @Row("04", "Aralash sinov", "Ma’no, koreyscha va bo‘sh joy savollari · baho bilan", "sinov/lugat", false)
 </nav>
 
-<SectionLabel Text="Yana" />
-<nav class="practice-list more" aria-label="Boshqa mashqlar">
-    @if (_today?.ActiveSession is { Current: not null } active)
-    {
-        @Row("07", "Tez kartochka", $"Tugallanmagan: {active.Position} / {active.Total} — davom etish", "mashq/kartochka", false)
-    }
-    else
-    {
-        <a class="practice-row" href="mashq" @onclick="StartCardsAsync" @onclick:preventDefault>
-            <span class="practice-no">07</span>
-            <span class="practice-text"><b>Tez kartochka</b><span>Ikki yo‘nalish aralash · 20 daq</span></span>
-            <span class="practice-end"><Icon Name="arrow-right" /></span>
-        </a>
-    }
-    @Row("08", "Gap tuzish", "So‘z bilan gap yozing — AI avval ishora beradi", "gap", true)
-    @Row("09", "Tuzoqlar daftari", "So‘zma-so‘z tarjima xatolari va to‘g‘risi", "tuzoqlar", true)
-    @Row("10", "Sinovlar", "Lug‘at va og‘zaki sinov · oldingi natijalar", "sinov", false)
+<SectionLabel Text="Gaplar" />
+<nav class="practice-list" aria-label="Gap mashqlari">
+    @Row("05", "Gap zinapoyasi", "AI bergan gapni to‘ldiring, tartiblang, tarjima qiling", "gap/zinapoya", true)
+    @Row("06", "O‘z gapingiz", "Gapni o‘zingiz yozing — AI tekshiradi", "gap", true)
+</nav>
+
+<SectionLabel Text="Xatolarim" />
+<nav class="practice-list" aria-label="Xatolar">
+    @Row("07", "Xatolarim", "Xato qilgan so‘zlar, xato turlari va tuzoqlar", "xatolar", true)
 </nav>
 
 @if (_message is not null)
@@ -46,7 +44,6 @@
 }
 
 @code {
-    private TodayDto? _today;
     private PremiumStatusDto? _premium;
 
     /// <summary>Premium features stay visible with a lock and lead to the Premium page (spec §4.7).</summary>
@@ -59,32 +56,13 @@
             <span class="practice-end">@if (premium && !Premium) {<Tag Kind="accent">Premium</Tag>}<Icon Name="arrow-right" /></span>
         </a>;
     private string? _message;
-    private bool _busy;
+    private List<TestSummaryDto>? _tests;
 
     protected override async Task OnInitializedAsync()
     {
         _premium = (await Api.GetAsync<PremiumStatusDto>("api/me/premium")).Value;
-        var today = await Api.GetAsync<TodayDto>("api/today");
-        _today = today.Value;
-        _message = today.Ok ? null : today.Error;
-    }
-
-    private async Task StartCardsAsync()
-    {
-        if (_busy)
-        {
-            return; // a double tap must not start two sessions
-        }
-
-        _busy = true;
-        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(20, false));
-        _busy = false;
-        if (result.Value?.Session is not null)
-        {
-            Nav.NavigateTo("mashq/kartochka");
-            return;
-        }
-
-        _message = result.Value?.Message ?? result.Error;
+        var tests = await Api.GetAsync<List<TestSummaryDto>>("api/tests");
+        _tests = tests.Value;
+        _message = tests.Ok ? null : tests.Error;
     }
 }

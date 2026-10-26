@@ -353,3 +353,11 @@ Bosqichlar spec §13 bo‘yicha.
 - Tekshirildi: `dotnet build` (0 ogohlantirish), testlar 106 (Domain) + 42 (Application) + 219 (Api) = 367, JS 11, `has-pending-model-changes` — o‘zgarish yo‘q. Migratsiya `BackupTelegramRemoved` (bitta ustun).
 - Production dalili: kechki zaxiralar 23–25-oktabr `verified True` (Railway loglari).
 - [ ] Ochiq (dalil yo‘q): hard spend limit; AI tariflari (`Ai__Budget__Prices__*` o‘zgaruvchilari yo‘q — AI faqat oylik son bilan cheklanadi); production nusxasidan to‘liq tiklash mashqi; real iPhone/Android oqimi, iPhone audio va koreyscha klaviatura, arzon Android/sekin internet; haqiqiy Telegram eslatmasi.
+
+**Bitta Mashq sahifasi (L-47, 2026-10-26):**
+- [x] Mashq: So‘zlar (4) · Gaplar (2) · Xatolarim (1). "Tez kartochka" va alohida "Sinov" menyusi olib tashlandi; `/sinov` → `/mashq`.
+- [x] "Xatolarim" — Xatolar daftari, Zaif joylar va Tuzoqlar daftari sahifalari ustida umumiy tablar (`MistakesTabs`).
+- [x] "Oldingi sinovlar" Profil → O‘qish’da; sinov sahifalarining "orqaga" havolalari Mashq/Profil’ga.
+- [x] Chromium 390px, qorong‘i mavzu: Mashq, uch tab, Profil — gorizontal scroll yo‘q, sahifa xatosi yo‘q; `/sinov` Mashq’ga o‘tdi.
+- [ ] iPhone’da ko‘rib chiqish — Johnny.
+

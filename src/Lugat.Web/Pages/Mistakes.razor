@@ -3,16 +3,16 @@
 @inject SessionService Api
 @inject NavigationManager Nav
 
-<PageTitle>Xatolar daftari — Koreyscha</PageTitle>
+<PageTitle>Xatolarim — Koreyscha</PageTitle>
 
-<a class="back" href="sinov">← Sinov</a>
+<a class="back" href="mashq">← Mashq</a>
 <header class="page-head">
     <div>
-        <h1>Xatolar daftari</h1>
+        <h1>Xatolarim</h1>
         <span class="muted small-text">Oxirgi @(_data?.Days ?? 60) kunda xato qilingan so‘zlar: kartochka, sinov, og‘zaki, yozma, qo‘llanish va zinapoyadan</span>
     </div>
 </header>
-<a class="button block" href="zaif-joylar">Zaif joylar: nimada ko‘p adashyapman?</a>
+<MistakesTabs Current="xatolar" />
 
 @if (_data is null)
 {
@@ -20,14 +20,14 @@
     return;
 }
 
-<div class="seg" role="tablist" aria-label="Xatolar" style="margin-top:4px">
-    <button class="@(_tab == Tab.Words ? "selected" : "")" role="tab" aria-selected="@(_tab == Tab.Words)" @onclick="() => _tab = Tab.Words">So‘zlar (@_data.Words.Count)</button>
-    @* Listening is hidden in v1 (spec §3.1); its tab shows only when there are listening results. *@
-    @if (_data.Listening is { Count: > 0 } heard)
-    {
+@* Listening is hidden in v1 (spec §3.1): words and listening are switched only when there are listening results. *@
+@if (_data.Listening is { Count: > 0 } heard)
+{
+    <div class="seg" role="tablist" aria-label="Xatolar" style="margin-top:4px">
+        <button class="@(_tab == Tab.Words ? "selected" : "")" role="tab" aria-selected="@(_tab == Tab.Words)" @onclick="() => _tab = Tab.Words">So‘zlar (@_data.Words.Count)</button>
         <button class="@(_tab == Tab.Listening ? "selected" : "")" role="tab" aria-selected="@(_tab == Tab.Listening)" @onclick="() => _tab = Tab.Listening">Tinglash (@heard.Count)</button>
-    }
-</div>
+    </div>
+}
 
 @if (_error is not null)
 {

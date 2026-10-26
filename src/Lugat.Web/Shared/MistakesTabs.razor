@@ -1,0 +1,17 @@
+@* "Xatolarim" (L-47): the three notebooks built from the learner's mistakes are one place with three tabs. *@
+<nav class="seg" aria-label="Xatolarim" style="margin-bottom:12px">
+    @foreach (var (href, label) in Tabs)
+    {
+        <a href="@href" class="@(href == Current ? "selected" : "")" aria-current="@(href == Current ? "page" : null)">@label</a>
+    }
+</nav>
+
+@code {
+    private static readonly (string Href, string Label)[] Tabs =
+    [
+        ("xatolar", "So‘zlar"), ("zaif-joylar", "Xato turlari"), ("tuzoqlar", "Tuzoqlar"),
+    ];
+
+    /// <summary>The page's own route: "xatolar", "zaif-joylar" or "tuzoqlar".</summary>
+    [Parameter, EditorRequired] public string Current { get; set; } = "";
+}
