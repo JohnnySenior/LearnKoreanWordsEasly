@@ -26,7 +26,7 @@ Koreyadagi va Koreyaga ketayotgan o‘zbeklar uchun koreys tili so‘zlarini **o
 - Production nusxasidan yangi muhitga to‘liq tiklash mashqi.
 - Railway: hard spend limit (dashboard). "Wait for CI" yoqilgan (2026-10-26, servis sozlamasida tekshirildi).
 - AI tariflari (`Ai__Budget__Prices__*`) kiritilmagan: hozir AI chaqiruvlari dollar bilan emas, faqat oylik son bilan cheklanadi.
-- Telegram’dagi bir oydan eski zaxira nusxalarini egasi qo‘lda o‘chiradi (bot o‘chira olmaydi, L-46).
+- Telegram’dagi bir oydan eski zaxira nusxalarini egasi qo‘lda o‘chiradi (bot o‘chira olmaydi; Johnny A variantini tanladi, L-46) — doimiy jarayon.
 
 ## Asosiy hujjat
 

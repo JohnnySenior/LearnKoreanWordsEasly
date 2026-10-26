@@ -412,7 +412,6 @@ Maxfiylik siyosatida (Johnny tasdiqlagan) shunday yozilgan: "zaxira nusxalar tax
   - Muddati o‘tgan nusxalar keyingi haftalik izohda va Admin → Tizim’da ro‘yxat qilinadi.
   - Egasi ularni o‘chirib, «O‘chirdim» ni bosadi (`BackupRun.TelegramRemovedAt`).
 - Mavjud fayllar avtomatik o‘chirilmadi.
-- **Qaror Johnny’da:**
-  - (A) shu qo‘lda bajariladigan jarayon (tavsiya);
+- **Qaror (Johnny, 2026-10-26): A.** Bir oydan eski Telegram nusxalarini Johnny qo‘lda o‘chiradi, ilova eslatadi; maxfiylik siyosati matni o‘zgarmaydi. Ko‘rib chiqilgan, lekin tanlanmagan variantlar:
   - (B) siyosat matnida Telegram nusxasini alohida aytish;
   - (C) shifrlangan nusxa va kalitni oyma-oy almashtirish. Bu variantda Railway yo‘qolsa kalit ham yo‘qoladi, shuning uchun u tashqi nusxaning maqsadiga zid.

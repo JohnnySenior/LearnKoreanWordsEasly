@@ -347,7 +347,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] 5. Vaqt zonasi: Seul/Toshkent tanlovi, serverda tekshiriladi, eslatma va "Bilaman" kuni unga bo‘ysunadi; admin statistikasi Koreya kunida (L-45). Testlar: Toshkent 20:00 eslatmasi, "Bilaman" chegarasi Toshkent yarim tunida, noto‘g‘ri zona 422. Chromium 390px: tanlov saqlandi, gorizontal scroll yo‘q.
 - [x] 6. Ortiqcha so‘rovlar: guruh jadvali (xatolar barcha o‘quvchi uchun bitta so‘rovlar to‘plamida, oxirgi test faqat id bo‘yicha) va to‘lovlar ro‘yxati (obuna, ism, promo — 3 ta so‘rov). Testlar SQL buyruqlarini sanaydi: 2 va 6 o‘quvchi/to‘lovda teng (eski kodda 20 → 48 va 7 → 17).
 - [x] 7. Zaxira muddati: diskda 30 kundan eski nusxa yo‘q (eng yangisi bundan mustasno), muvaffaqiyatsiz kechada ham tozalanadi; Telegram nusxalari uchun qo‘lda o‘chirish jarayoni va «O‘chirdim» (L-46). Testlar: `BackupRetentionTests`, `Copies_past_a_month_…`, `A_failed_night_…`. Mavjud fayllar o‘chirilmadi.
-- [ ] 7. **Qaror — Johnny:** Telegram’dagi nusxalar uchun A/B/C (L-46); tavsiya — A (qo‘lda o‘chirish, ilova eslatadi).
+- [x] 7. Qaror: A (Johnny, 2026-10-26) — Telegram’dagi bir oydan eski nusxalarni Johnny qo‘lda o‘chiradi va Admin → Tizim’da «O‘chirdim» ni bosadi (L-46).
+- [ ] Johnny: hozir chatda turgan eski nusxalarni (23-oktabrdan beri yuborilganlar) bir oy o‘tgach o‘chirish — ilova birinchi eslatmani keyingi haftalik izohda va Admin → Tizim’da beradi.
 - [x] 8. README joriy holatga keltirildi: kod / avtomatik test / real muhit alohida, ochiq qabul tekshiruvlari ro‘yxati.
 - Tekshirildi: `dotnet build` (0 ogohlantirish), testlar 106 (Domain) + 42 (Application) + 219 (Api) = 367, JS 11, `has-pending-model-changes` — o‘zgarish yo‘q. Migratsiya `BackupTelegramRemoved` (bitta ustun).
 - Production dalili: kechki zaxiralar 23–25-oktabr `verified True` (Railway loglari).
