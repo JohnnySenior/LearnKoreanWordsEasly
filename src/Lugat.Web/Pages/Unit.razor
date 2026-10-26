@@ -39,7 +39,7 @@
     </Right>
 </AppHeader>
 
-<UnitStepper Current="_step" Compact="true" OnSelect="s => _step = s" />
+<UnitStepper Current="_step" Compact="true" OnSelect="s => _step = s" Done="UnitStepper.DoneOf(_unit.Unit)" />
 
 @if (_error is not null)
 {

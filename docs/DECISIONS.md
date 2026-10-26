@@ -358,3 +358,19 @@ Johnny Telegram, Instagram, Facebook, YouTube orqali reklama sinamoqchi. Qaysi k
 ## L-41 · 2026-10-24 · Kirishdan oldin ilova haqida
 
 Reklamadan kelgan odam darhol faqat kirish tugmalarini ko‘rardi. Endi kirish ekranida, tugmalar ostida (`Landing`): bir bo‘limning to‘rt qadami, haqiqiy so‘z kartasi (우리 va uning tuzog‘i, A-darajadan), nima bepul va Premium narxi, telefonga o‘rnatish (`InstallGuide`), pastda "Bepul boshlash" — kirish tugmalariga qaytaradi. Kirish tugmalari tepada qoladi: tushunib kelgan odam darhol kiradi. Matnlar reklama to‘plamidagi da’volar bilan bir xil.
+
+## L-42 · 2026-10-26 · Bo‘lim qadamlaridagi belgi haqiqiy ishni ko‘rsatadi
+
+Johnny ko‘rdi: Bugun sahifasida "Mashq" ✓ bilan chiqardi, garchi mashq qilinmagan bo‘lsa ham — belgi faqat "joriy qadamdan oldin" degani edi. Endi har qadam o‘z sharti bilan:
+- **Jadval** ✓ — bo‘lim ochilgan (`StartedAt`).
+- **Karta** ✓ — bo‘limning hamma so‘zi boshlangan.
+- **Mashq** ✓ — bo‘lim so‘zlari bilan kamida bitta tugagan mashq turi (`UserUnitProgress.PracticedAt`): yozma mashqda bo‘limning min(10, so‘zlar soni) xil so‘ziga javob (noto‘g‘ri javob ham — mashq qilingan), yoki tugatilgan "Qaysi so‘z to‘g‘ri?" mashqida bo‘lim so‘zi bo‘lsa.
+- **Test** ✓ — bo‘lim testi o‘tilgan.
+- "Davom etish" mashq qilinmagan bo‘limda Mashqni taklif qiladi; test baribir ochiq (majburiy emas). Oldin mashq qilganlar uchun belgi keyingi mashqdan keyin chiqadi.
+
+## L-43 · 2026-10-26 · AI javobidagi texnik qoldiqlar
+
+Gap zinapoyasida izoh oxirida `</explanationUz> <parameter name="trap">null` chiqdi: model ba’zan javobining tuzilishini matn ichiga yozib yuboradi. Bizning matnlarda belgilash (markup) bo‘lmaydi, shuning uchun `AiText`: yopiluvchi teg (`</...>`) yoki tool-call boshlanishidan (`<parameter`, `<invoke`, …) keyingi qism kesiladi, qolgani ishlatiladi.
+- Hamma AI javobi uchun: `AiGateway` JSON’dagi har bir matnni tozalaydi (qochirilgan `<` ham).
+- Saqlangan eski yozuvlar: Gap zinapoyasi izohlari ko‘rsatishda tozalanadi.
+- Ochiluvchi teg yolg‘iz (`<b>`) qoldiq hisoblanmaydi.

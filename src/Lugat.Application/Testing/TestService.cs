@@ -22,6 +22,7 @@ public sealed class TestService(
     Speech.SpeechService speech,
     Vocabulary.UsageService usage,
     Catalog.UnitTestService unitTests,
+    Catalog.UnitProgressService units,
     Premium.PremiumService premium,
     TimeProvider time,
     IOperationLock operations)
@@ -305,6 +306,14 @@ public sealed class TestService(
         await unitTests.ApplyAsync(run, ct);
         db.TestRuns.Update(run); // still tracked even if opening units had to re-read its own state
         await SaveAsync(ct);
+        if (run.Questions.Any(q => q.Kind == TestQuestionKind.WordUsage))
+        {
+            // A finished "Qaysi so‘z to‘g‘ri?" round ticks the "Mashq" step of its words' units (L-42).
+            var items = run.Questions.Select(q => q.LearningItemId).OfType<Guid>().Distinct().ToList();
+            var unitIds = await db.LearningItems.Where(i => items.Contains(i.Id)).Select(i => i.UnitId).Distinct().ToListAsync(ct);
+            await units.MarkPracticedAsync(ownerId, unitIds, writingRound: false, ct);
+        }
+
         await tx.CommitAsync(ct);
         return ToDto(run);
     }
