@@ -415,3 +415,24 @@ Maxfiylik siyosatida (Johnny tasdiqlagan) shunday yozilgan: "zaxira nusxalar tax
 - **Qaror (Johnny, 2026-10-26): A.** Bir oydan eski Telegram nusxalarini Johnny qo‘lda o‘chiradi, ilova eslatadi; maxfiylik siyosati matni o‘zgarmaydi. Ko‘rib chiqilgan, lekin tanlanmagan variantlar:
   - (B) siyosat matnida Telegram nusxasini alohida aytish;
   - (C) shifrlangan nusxa va kalitni oyma-oy almashtirish. Bu variantda Railway yo‘qolsa kalit ham yo‘qoladi, shuning uchun u tashqi nusxaning maqsadiga zid.
+
+## L-47 · 2026-10-26 · Bitta "Mashq" sahifasi, takrorlar olib tashlandi
+
+Johnny ko‘rdi: Mashq va Sinov sahifalarida bir xil sahifalar ikki nom bilan chiqardi.
+- Takrorlar:
+  - "Talaffuz" va "Og‘zaki tayyorlik" — bitta sahifa;
+  - "Xatolar daftari" ikki marta chiqardi;
+  - "Tez kartochka" — pastki menyudagi "Takror" bilan bir xil sessiya.
+- Mashq ichidagi "Sinovlar" bandi alohida menyuga olib borardi.
+
+Endi bitta "Mashq" sahifasi, 3 guruh:
+- **So‘zlar:** Yozma mashq, "Qaysi so‘z to‘g‘ri?", Talaffuz, Aralash sinov (avvalgi "Lug‘at sinovi").
+- **Gaplar:** Gap zinapoyasi (AI bergan gap), "O‘z gapingiz" (avvalgi "Gap tuzish").
+- **Xatolarim:** bitta joy, uchta tab — So‘zlar (xatolar daftari), Xato turlari (zaif joylar), Tuzoqlar.
+
+Boshqa o‘zgarishlar:
+- Yarim qolgan sinovni "Davom etish" tugmasi Mashq sahifasi tepasida.
+- "Oldingi sinovlar" va "Statistika" Profil → O‘qish ostida.
+- `/sinov` manzili Mashq’ga yo‘naltiradi, eski havolalar ishlayveradi.
+- Sahifalar va API o‘zgarmadi, faqat menyu va nomlar o‘zgardi.
+- Bo‘lim testi Bo‘lim sahifasida qoladi.

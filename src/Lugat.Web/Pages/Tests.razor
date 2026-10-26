@@ -1,54 +1,7 @@
 @page "/sinov"
-@using Lugat.Contracts
-@using Lugat.Domain.Testing
-@inject SessionService Api
+@inject NavigationManager Nav
 
-<PageTitle>Sinov — Koreyscha</PageTitle>
-
-<header class="page-head">
-    <div>
-        <h1>Sinov</h1>
-        <span class="muted small-text">Har bir sinov turi alohida · javoblar oxirida ko‘rsatiladi</span>
-    </div>
-</header>
-
-@if (_recent?.FirstOrDefault(r => r.Status == TestRunStatus.InProgress) is { } open)
-{
-    <a class="button primary block" href="@($"sinov/{open.Id}")" style="margin:12px 0">
-        <span>Davom etish: @open.Title</span><span class="aside">@open.Answered / @open.Total</span>
-    </a>
-}
-
-<nav class="menu" aria-label="Sinovlar">
-    <a href="sinov/lugat">
-        <span class="no">01</span>
-        <span><span class="t">Lug‘at sinovi</span><span class="s">Jadvallardagi so‘zlar · ma’no, koreyscha, gapdagi bo‘sh joy</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="sinov/ogzaki">
-        <span class="no">02</span>
-        <span><span class="t">Og‘zaki tayyorlik</span><span class="s">Mikrofon bilan · so‘zlarni aytib tekshirish</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="sinov/oldingi">
-        <span class="no">03</span>
-        <span><span class="t">Oldingi sinovlar</span><span class="s">@(_recent is { Count: > 0 } ? $"{_recent.Count} ta sinov · grafik va tur bo‘yicha saralash" : "Hali sinov yo‘q")</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="xatolar">
-        <span class="no">04</span>
-        <span><span class="t">Xatolar daftari</span><span class="s">Ko‘p xato qilingan so‘zlar bir joyda · takrorlash</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-    <a href="natijalar">
-        <span class="no">05</span>
-        <span><span class="t">Natijalar</span><span class="s">O‘rganilgan so‘zlar, ikki yo‘nalish, qiyin so‘zlar</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-    </a>
-</nav>
-
+@* The separate "Sinov" menu is gone (L-47): its tests are in Mashq, history and results in Profil. Old links land on Mashq. *@
 @code {
-    private List<TestSummaryDto>? _recent;
-
-    protected override async Task OnInitializedAsync() => _recent = (await Api.GetAsync<List<TestSummaryDto>>("api/tests")).Value;
+    protected override void OnInitialized() => Nav.NavigateTo("mashq", replace: true);
 }

@@ -281,7 +281,7 @@ public sealed class TestService(
         questions = Shuffle(questions).Select((q, i) => q with { Index = i }).ToList();
         return new TestRun
         {
-            Title = $"Og‘zaki tayyorlik · {await UnitTitleAsync(words, ct)}",
+            Title = $"Talaffuz · {await UnitTitleAsync(words, ct)}",
             Questions = questions,
         };
     }

@@ -2,16 +2,17 @@
 @using Lugat.Contracts
 @inject SessionService Api
 
-<PageTitle>Tuzoqlar daftari — Koreyscha</PageTitle>
+<PageTitle>Tuzoqlar — Koreyscha</PageTitle>
 
 @* Word-for-word mistakes found in ladder translations (D-47), kept until the learner marks them learned. *@
 <a class="back" href="mashq">← Mashq</a>
 <header class="page-head">
     <div>
-        <h1>Tuzoqlar daftari</h1>
-        <span class="muted small-text">O‘zbekchadan so‘zma-so‘z o‘girilgan, koreyschada boshqacha aytiladigan so‘zlar</span>
+        <h1>Xatolarim</h1>
+        <span class="muted small-text">Tuzoqlar: o‘zbekchadan so‘zma-so‘z o‘girilgan, koreyschada boshqacha aytiladigan so‘zlar</span>
     </div>
 </header>
+<MistakesTabs Current="tuzoqlar" />
 
 @if (_traps is null)
 {
