@@ -261,7 +261,7 @@ public class TeachingTests
 
         var response = await teacher.GetAsync("/api/teacher/commission");
         var report = await OkAsync<CommissionReportDto>(response);
-        Assert.Equal((2, 15300, 4590), (report.Payments, report.AmountKrw, report.CommissionKrw)); // 30% of 4,500 + 10,800
+        Assert.Equal((2, 15300, 4590), (report.Payments, report.Totals.Single().Amount, report.Totals.Single().Commission)); // 30% of 4,500 + 10,800
         var month = Assert.Single(report.Months);
         Assert.Equal((new DateOnly(2026, 9, 1), 2, false), (month.Month, month.Payments, month.Paid));
         Assert.Equal("AZIZ10", Assert.Single(report.Codes).Code);

@@ -16,6 +16,13 @@ public enum SubscriptionSource
     Admin,
 }
 
+/// <summary>The money a payment is in (L-48): won in Korea, so‘m from Uzbekistan. Sums never mix currencies.</summary>
+public enum Currency
+{
+    Krw,
+    Uzs,
+}
+
 public enum PaymentMethod
 {
     BankTransfer,
@@ -66,10 +73,13 @@ public sealed class Payment
 
     public Guid UserId { get; set; }
 
-    public int AmountKrw { get; set; }
+    /// <summary>What arrived, in <see cref="Currency"/>.</summary>
+    public int Amount { get; set; }
 
-    /// <summary>The plan price after the promo discount, at the time of recording.</summary>
-    public int ExpectedKrw { get; set; }
+    public Currency Currency { get; set; } = Currency.Krw;
+
+    /// <summary>The plan price in <see cref="Currency"/> after the promo discount, at the time of recording.</summary>
+    public int ExpectedAmount { get; set; }
 
     public SubscriptionPlan Plan { get; set; }
 
@@ -81,8 +91,8 @@ public sealed class Payment
 
     public int DiscountPercent { get; set; }
 
-    /// <summary>The teacher's share (spec §9.3), when the promo code belongs to a teacher.</summary>
-    public int CommissionKrw { get; set; }
+    /// <summary>The teacher's share (spec §9.3) in <see cref="Currency"/>, when the promo code belongs to a teacher.</summary>
+    public int Commission { get; set; }
 
     public string? Note { get; set; }
 
@@ -124,15 +134,23 @@ public sealed class PromoCode
 
 public static class PremiumMath
 {
-    /// <summary>Price after a percentage discount, rounded to whole won.</summary>
-    public static int Discounted(int priceKrw, int discountPercent) =>
-        (int)Math.Round(priceKrw * (100 - Math.Clamp(discountPercent, 0, 100)) / 100.0, MidpointRounding.AwayFromZero);
+    /// <summary>Price after a percentage discount, rounded to a whole won or so‘m.</summary>
+    public static int Discounted(int price, int discountPercent) =>
+        (int)Math.Round(price * (100 - Math.Clamp(discountPercent, 0, 100)) / 100.0, MidpointRounding.AwayFromZero);
 
     /// <summary>The teacher's commission on the amount actually paid.</summary>
-    public static int Commission(int amountKrw, int commissionPercent) =>
-        (int)Math.Round(amountKrw * Math.Clamp(commissionPercent, 0, 100) / 100.0, MidpointRounding.AwayFromZero);
+    public static int Commission(int amount, int commissionPercent) =>
+        (int)Math.Round(amount * Math.Clamp(commissionPercent, 0, 100) / 100.0, MidpointRounding.AwayFromZero);
 
     /// <summary>A new period starts at the end of the latest one still running, or now (spec §7.3).</summary>
     public static DateTimeOffset NextStart(DateTimeOffset now, IEnumerable<DateTimeOffset> currentEnds) =>
         currentEnds.Where(e => e > now).DefaultIfEmpty(now).Max();
+}
+
+/// <summary>Amounts as people write them (L-48): "₩5,000" and "29 000 so‘m".</summary>
+public static class Money
+{
+    public static string Format(int amount, Currency currency) => currency == Currency.Uzs
+        ? $"{amount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(',', ' ')} so‘m"
+        : $"₩{amount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)}";
 }

@@ -361,3 +361,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Chromium 390px, qorong‘i mavzu: Mashq, uch tab, Profil — gorizontal scroll yo‘q, sahifa xatosi yo‘q; `/sinov` Mashq’ga o‘tdi.
 - [ ] iPhone’da ko‘rib chiqish — Johnny.
 
+**O‘zbekistondan so‘mda to‘lov (L-48, 2026-10-27):**
+- [x] Premium: ₩ / so‘m tanlovi, 29 000 / 69 000 so‘m, Humo karta; promo-kod so‘mda; admin to‘lovni valyuta bilan qayd etadi.
+- [x] Komissiya va tushum valyuta bo‘yicha alohida; "To‘landi" valyuta bo‘yicha (test topgan xato tuzatildi).
+- [x] Testlar: so‘m narxlari va karta, promo, so‘mdagi to‘lov va komissiya, noto‘g‘ri valyuta 400, won/so‘m bir oyda alohida. Chromium 390px: Premium so‘mda, gorizontal scroll yo‘q.
+- [x] Railway: `Payments__Uz__*` (Johnny bergan TBC Humo karta).
+- [ ] Johnny: telefonda Premium → "O‘zbekistondan (so‘m)" ni ko‘rish; birinchi haqiqiy so‘m to‘lovini admin’da "so‘m" bilan qayd etish.
+

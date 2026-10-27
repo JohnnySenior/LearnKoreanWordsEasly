@@ -436,3 +436,24 @@ Boshqa o‘zgarishlar:
 - `/sinov` manzili Mashq’ga yo‘naltiradi, eski havolalar ishlayveradi.
 - Sahifalar va API o‘zgarmadi, faqat menyu va nomlar o‘zgardi.
 - Bo‘lim testi Bo‘lim sahifasida qoladi.
+
+## L-48 · 2026-10-27 · O‘zbekistondan so‘mda to‘lov
+
+O‘zbekistondagi o‘quvchilar vonda (₩) to‘lay olmaydi. Johnny boshlanishiga ular uchun arzonroq narx belgiladi.
+
+**Narxlar va to‘lov rekvizitlari:**
+- Premium sahifasida "Koreyadan (₩)" va "O‘zbekistondan (so‘m)" tanlovi bor.
+- So‘mdagi narx alohida sozlanadi: `Premium:Plans:n:PriceUzs`. Standart qiymatlar: 1 oy — 29 000 so‘m, 3 oy — 69 000 so‘m.
+- So‘m uchun karta: `Payments:Uz:BankName`, `AccountNumber`, `AccountHolder`, `Kind` (Humo). Hozir — TBC Bank Humo.
+- Karta sozlanmagan bo‘lsa yoki biror tarifning so‘mdagi narxi bo‘lmasa, tanlov ko‘rinmaydi.
+- Tanlov qurilmada eslab qolinadi. Birinchi marta ochilganda, vaqt zonasi Toshkent bo‘lgan o‘quvchiga so‘m ko‘rsatiladi.
+
+**Bazada:**
+- `Payment.Currency` (`Krw` | `Uzs`). Ustunlar qayta nomlandi: `AmountKrw` → `Amount`, `ExpectedKrw` → `ExpectedAmount`, `CommissionKrw` → `Commission`.
+- `CommissionPayout` ga `Currency` qo‘shildi. Yagona indeks endi: o‘qituvchi + oy + valyuta.
+- Avvalgi barcha yozuvlar `Krw` deb belgilandi (migratsiya `PaymentCurrency`).
+
+**Hisob-kitob:**
+- Promo-kod chegirmasi va o‘qituvchi komissiyasi (%) to‘lov qilingan valyutada hisoblanadi.
+- Von va so‘m hech qachon qo‘shilmaydi. Admin komissiya ro‘yxati, o‘qituvchi hisoboti va tushum jadvalida har bir valyuta alohida qatorda chiqadi.
+- "To‘landi" belgisi har bir valyuta uchun alohida qo‘yiladi.

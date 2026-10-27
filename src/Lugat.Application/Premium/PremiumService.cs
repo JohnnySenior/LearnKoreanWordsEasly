@@ -16,8 +16,8 @@ public sealed class PremiumOptions
     /// <summary>Prices live in configuration, never in code (spec §7.2).</summary>
     public List<PlanOption> Plans { get; set; } =
     [
-        new() { Plan = SubscriptionPlan.Monthly, PriceKrw = 5000, Months = 1 },
-        new() { Plan = SubscriptionPlan.Quarterly, PriceKrw = 12000, Months = 3 },
+        new() { Plan = SubscriptionPlan.Monthly, PriceKrw = 5000, PriceUzs = 29000, Months = 1 },
+        new() { Plan = SubscriptionPlan.Quarterly, PriceKrw = 12000, PriceUzs = 69000, Months = 3 },
     ];
 
     /// <summary>Free Premium for a new learner (spec §7.2, Q3): 0 = off.</summary>
@@ -33,7 +33,12 @@ public sealed class PlanOption
 
     public int PriceKrw { get; set; }
 
+    /// <summary>The price paid from Uzbekistan, in so‘m (L-48): set on its own, lower than the won price at launch.</summary>
+    public int PriceUzs { get; set; }
+
     public int Months { get; set; }
+
+    public int Price(Currency currency) => currency == Currency.Uzs ? PriceUzs : PriceKrw;
 }
 
 /// <summary>How to pay by bank transfer (spec §7.3). Empty until Johnny fills it in (Q4).</summary>
@@ -49,6 +54,21 @@ public sealed class PaymentOptions
 
     /// <summary>Telegram username for receipts, without "@".</summary>
     public string? ContactTelegram { get; set; }
+
+    /// <summary>The card for paying in so‘m from Uzbekistan (L-48); <c>Payments:Uz:*</c>.</summary>
+    public PaymentAccount Uz { get; set; } = new();
+}
+
+public sealed class PaymentAccount
+{
+    public string? BankName { get; set; }
+
+    public string? AccountNumber { get; set; }
+
+    public string? AccountHolder { get; set; }
+
+    /// <summary>"Humo" or "Uzcard".</summary>
+    public string? Kind { get; set; }
 }
 
 /// <summary>
@@ -116,22 +136,31 @@ public sealed class PremiumService(
         var bank = string.IsNullOrWhiteSpace(p.BankName) || string.IsNullOrWhiteSpace(p.AccountNumber) || string.IsNullOrWhiteSpace(p.AccountHolder)
             ? null
             : new BankDetailsDto(p.BankName, p.AccountNumber, p.AccountHolder);
+        var uz = p.Uz;
+        var plans = premium.CurrentValue.Plans;
+        // The so‘m card shows only when it is complete and every plan has a so‘m price.
+        var bankUz = string.IsNullOrWhiteSpace(uz.BankName) || string.IsNullOrWhiteSpace(uz.AccountNumber) || string.IsNullOrWhiteSpace(uz.AccountHolder)
+                || plans.Any(x => x.PriceUzs <= 0)
+            ? null
+            : new BankDetailsDto(uz.BankName, uz.AccountNumber, uz.AccountHolder, string.IsNullOrWhiteSpace(uz.Kind) ? null : uz.Kind.Trim());
         return new PremiumPlansDto(
-            premium.CurrentValue.Plans.Select(x => new PlanDto(x.Plan, Title(x), x.PriceKrw, x.Months)).ToList(),
+            plans.Select(x => new PlanDto(x.Plan, Title(x), x.PriceKrw, x.Months, x.PriceUzs)).ToList(),
             bank,
             string.IsNullOrWhiteSpace(p.ContactTelegram) ? null : p.ContactTelegram.Trim().TrimStart('@'),
-            premium.CurrentValue.TrialDays);
+            premium.CurrentValue.TrialDays,
+            bankUz);
     }
 
     /// <summary>The discount shows at once (spec §7.3 step 1); an unknown, inactive or expired code says why.</summary>
     public async Task<PromoCheckDto> CheckPromoAsync(PromoCheckRequest request, CancellationToken ct)
     {
-        var plan = Plan(request.Plan);
+        var plan = Plan(request.Plan, request.Currency);
+        var price = plan.Price(request.Currency);
         var code = PromoCode.Normalize(request.Code ?? "");
         var (promo, problem) = await FindPromoAsync(code, ct);
         return promo is null
-            ? new PromoCheckDto(false, code, 0, plan.PriceKrw, plan.PriceKrw, problem)
-            : new PromoCheckDto(true, promo.Code, promo.DiscountPercent, plan.PriceKrw, PremiumMath.Discounted(plan.PriceKrw, promo.DiscountPercent), null);
+            ? new PromoCheckDto(false, code, 0, price, price, problem, request.Currency)
+            : new PromoCheckDto(true, promo.Code, promo.DiscountPercent, price, PremiumMath.Discounted(price, promo.DiscountPercent), null, request.Currency);
     }
 
     /// <summary>Finds learners by name, payment code ("L-7K3Q", "l7k3q"), Telegram username or email (spec §10).</summary>
@@ -159,8 +188,8 @@ public sealed class PremiumService(
     /// </summary>
     public async Task<PaymentDto> RecordPaymentAsync(Guid adminId, RecordPaymentRequest request, CancellationToken ct)
     {
-        var plan = Plan(request.Plan);
-        if (request.AmountKrw <= 0)
+        var plan = Plan(request.Plan, request.Currency);
+        if (request.Amount <= 0)
         {
             throw new ValidationException("To‘langan summani kiriting.");
         }
@@ -189,14 +218,15 @@ public sealed class PremiumService(
         {
             Id = request.Id,
             UserId = user.Id,
-            AmountKrw = request.AmountKrw,
-            ExpectedKrw = PremiumMath.Discounted(plan.PriceKrw, promo?.DiscountPercent ?? 0),
+            Amount = request.Amount,
+            Currency = request.Currency,
+            ExpectedAmount = PremiumMath.Discounted(plan.Price(request.Currency), promo?.DiscountPercent ?? 0),
             Plan = plan.Plan,
             PaidAt = request.PaidAt ?? now,
             Method = PaymentMethod.BankTransfer,
             PromoCodeId = promo?.Id,
             DiscountPercent = promo?.DiscountPercent ?? 0,
-            CommissionKrw = promo?.TeacherUserId is null ? 0 : PremiumMath.Commission(request.AmountKrw, promo.CommissionPercent),
+            Commission = promo?.TeacherUserId is null ? 0 : PremiumMath.Commission(request.Amount, promo.CommissionPercent),
             Note = Cut(request.Note, 500),
             RecordedByUserId = adminId,
             Status = PaymentStatus.Confirmed,
@@ -316,9 +346,11 @@ public sealed class PremiumService(
     public async Task<IReadOnlyList<PromoCodeDto>> PromoCodesAsync(CancellationToken ct) =>
         await PromoDtosAsync(await db.PromoCodes.OrderByDescending(p => p.CreatedAt).ToListAsync(ct), ct);
 
-    private PlanOption Plan(SubscriptionPlan plan) =>
-        premium.CurrentValue.Plans.FirstOrDefault(p => p.Plan == plan && p.Months > 0 && p.PriceKrw > 0)
-            ?? throw new ValidationException("Bunday tarif yo‘q.");
+    private PlanOption Plan(SubscriptionPlan plan, Currency currency) =>
+        Enum.IsDefined(currency)
+            ? premium.CurrentValue.Plans.FirstOrDefault(p => p.Plan == plan && p.Months > 0 && p.Price(currency) > 0)
+                ?? throw new ValidationException(currency == Currency.Uzs ? "Bu tarifning so‘mdagi narxi yo‘q." : "Bunday tarif yo‘q.")
+            : throw new ValidationException("Valyuta noto‘g‘ri.");
 
     private static string Title(PlanOption p) => p.Months == 1 ? "1 oy" : $"{p.Months} oy";
 
@@ -419,8 +451,8 @@ public sealed class PremiumService(
         {
             var sub = subs.GetValueOrDefault(p.Id);
             var promo = p.PromoCodeId is { } id ? promos.GetValueOrDefault(id) : null;
-            return new PaymentDto(p.Id, p.UserId, names.GetValueOrDefault(p.UserId), p.Plan, p.AmountKrw, p.ExpectedKrw, promo, p.DiscountPercent,
-                p.CommissionKrw, p.Status, p.PaidAt, sub?.StartsAt ?? p.PaidAt, sub?.EndsAt ?? p.PaidAt, p.Note, names.GetValueOrDefault(p.RecordedByUserId));
+            return new PaymentDto(p.Id, p.UserId, names.GetValueOrDefault(p.UserId), p.Plan, p.Amount, p.ExpectedAmount, promo, p.DiscountPercent,
+                p.Commission, p.Status, p.PaidAt, sub?.StartsAt ?? p.PaidAt, sub?.EndsAt ?? p.PaidAt, p.Note, names.GetValueOrDefault(p.RecordedByUserId), p.Currency);
         }).ToList();
     }
 

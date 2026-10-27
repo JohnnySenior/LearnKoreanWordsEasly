@@ -759,19 +759,24 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("AmountKrw")
+                    b.Property<int>("Amount")
                         .HasColumnType("integer");
 
-                    b.Property<int>("CommissionKrw")
+                    b.Property<int>("Commission")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
                     b.Property<int>("DiscountPercent")
                         .HasColumnType("integer");
 
-                    b.Property<int>("ExpectedKrw")
+                    b.Property<int>("ExpectedAmount")
                         .HasColumnType("integer");
 
                     b.Property<string>("Method")
@@ -1027,8 +1032,13 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("AmountKrw")
+                    b.Property<int>("Amount")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<Guid>("MarkedByUserId")
                         .HasColumnType("uuid");
@@ -1044,7 +1054,7 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TeacherUserId", "Month")
+                    b.HasIndex("TeacherUserId", "Month", "Currency")
                         .IsUnique();
 
                     b.ToTable("commission_payouts", (string)null);

@@ -53,8 +53,11 @@ public sealed class CommissionPayout
     /// <summary>The first day of the month (Korea time) the commission was earned in.</summary>
     public DateOnly Month { get; set; }
 
-    /// <summary>The commission due when it was marked paid.</summary>
-    public int AmountKrw { get; set; }
+    /// <summary>The commission due when it was marked paid, in <see cref="Currency"/>.</summary>
+    public int Amount { get; set; }
+
+    /// <summary>Won and so‘m commissions of one month are paid out separately (L-48).</summary>
+    public Premium.Currency Currency { get; set; } = Premium.Currency.Krw;
 
     public DateTimeOffset PaidAt { get; set; }
 

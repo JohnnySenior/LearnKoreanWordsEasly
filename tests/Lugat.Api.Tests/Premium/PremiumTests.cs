@@ -110,7 +110,7 @@ public class PremiumTests
         Assert.Equal(before.PaymentCode, after.PaymentCode); // made once
         Assert.True(after.IsPremium);
         Assert.Equal(ApiFactory.Start.AddMonths(1), after.EndsAt);
-        Assert.Equal((5000, 5000, PaymentStatus.Confirmed), (payment.AmountKrw, payment.ExpectedKrw, payment.Status));
+        Assert.Equal((5000, 5000, PaymentStatus.Confirmed), (payment.Amount, payment.ExpectedAmount, payment.Status));
         Assert.Equal(HttpStatusCode.OK, mistakes.StatusCode);
         Assert.False(expired.IsPremium);
         Assert.Equal(HttpStatusCode.Forbidden, closed.StatusCode);
@@ -196,10 +196,10 @@ public class PremiumTests
         Assert.Equal(HttpStatusCode.OK, created.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode); // codes are unique regardless of case
         Assert.Equal(HttpStatusCode.Forbidden, byLearner.StatusCode);
-        Assert.Equal((true, "USTOZ10", 10, 12000, 10800), (check.Valid, check.Code, check.DiscountPercent, check.PriceKrw, check.FinalPriceKrw));
+        Assert.Equal((true, "USTOZ10", 10, 12000, 10800), (check.Valid, check.Code, check.DiscountPercent, check.Price, check.FinalPrice));
         Assert.False(unknown.Valid);
         Assert.NotNull(unknown.Message);
-        Assert.Equal((10800, 10, 3240, "USTOZ10"), (payment.ExpectedKrw, payment.DiscountPercent, payment.CommissionKrw, payment.PromoCode)); // 30% of 10,800
+        Assert.Equal((10800, 10, 3240, "USTOZ10"), (payment.ExpectedAmount, payment.DiscountPercent, payment.Commission, payment.PromoCode)); // 30% of 10,800
         Assert.Equal(1, promos.Single().Payments);
     }
 
@@ -251,6 +251,42 @@ public class PremiumTests
         Assert.Equal(HttpStatusCode.Forbidden, byLearner.StatusCode);
         Assert.Equal([(SubscriptionPlan.Monthly, 5000, 1), (SubscriptionPlan.Quarterly, 12000, 3)], plans.Plans.Select(p => (p.Plan, p.PriceKrw, p.Months)));
         Assert.Null(plans.Bank); // spec §15 Q4: the page says "Tez orada"
+        Assert.Equal([29000, 69000], plans.Plans.Select(p => p.PriceUzs));
+        Assert.Null(plans.BankUz); // no card configured: no so‘m choice on the page
+    }
+
+    [Fact]
+    public async Task A_learner_in_Uzbekistan_pays_in_som_to_the_card_and_the_teacher_earns_in_som()
+    {
+        // L-48: so‘m prices and a Humo card for learners paying from Uzbekistan; won and so‘m never mix.
+        await using var factory = NewFactory();
+        factory.Settings["Payments:Uz:BankName"] = "TBC Bank";
+        factory.Settings["Payments:Uz:AccountNumber"] = "9860 0000 0000 0000";
+        factory.Settings["Payments:Uz:AccountHolder"] = "Test Egasi";
+        factory.Settings["Payments:Uz:Kind"] = "Humo";
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var admin = await factory.SignedInClientAsync(Admin);
+        var teacher = await UserIdAsync(factory, Admin);
+        var userId = await UserIdAsync(factory, ApiFactory.UserA);
+        await admin.PostAsJsonAsync("/api/admin/promo-codes", new CreatePromoCodeRequest("ustoz10", 10, null, teacher, null), ApiFactory.Json);
+
+        var plans = (await client.GetFromJsonAsync<PremiumPlansDto>("/api/premium/plans", ApiFactory.Json))!;
+        var check = (await (await client.PostAsJsonAsync("/api/premium/promo/check", new PromoCheckRequest("ustoz10", SubscriptionPlan.Quarterly, Currency.Uzs), ApiFactory.Json))
+            .Content.ReadFromJsonAsync<PromoCheckDto>(ApiFactory.Json))!;
+        var response = await admin.PostAsJsonAsync("/api/admin/payments",
+            new RecordPaymentRequest(Guid.NewGuid(), userId, SubscriptionPlan.Quarterly, 62100, "ustoz10", null, "Humo chek", Currency.Uzs), ApiFactory.Json);
+        var payment = (await response.Content.ReadFromJsonAsync<PaymentDto>(ApiFactory.Json))!;
+        var status = await StatusAsync(client);
+        var badCurrency = await admin.PostAsync("/api/admin/payments", new StringContent(
+            $"{{\"id\":\"{Guid.NewGuid()}\",\"userId\":\"{userId}\",\"plan\":\"Monthly\",\"amount\":1,\"currency\":\"Usd\"}}", System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(("TBC Bank", "9860 0000 0000 0000", "Test Egasi", "Humo"), (plans.BankUz!.BankName, plans.BankUz.AccountNumber, plans.BankUz.AccountHolder, plans.BankUz.Kind));
+        Assert.Equal((true, 69000, 62100, Currency.Uzs), (check.Valid, check.Price, check.FinalPrice, check.Currency));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal((62100, 62100, 18630, Currency.Uzs), (payment.Amount, payment.ExpectedAmount, payment.Commission, payment.Currency)); // 30% of 62,100
+        Assert.True(status.IsPremium);
+        Assert.Equal(ApiFactory.Start.AddMonths(3), payment.EndsAt);
+        Assert.Equal(HttpStatusCode.BadRequest, badCurrency.StatusCode);
     }
 
     [Fact]
