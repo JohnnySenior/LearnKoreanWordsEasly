@@ -138,16 +138,19 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
         var codes = await db.PromoCodes.Where(p => p.TeacherUserId == teacherId).OrderBy(p => p.CreatedAt).ToListAsync(ct);
         var ids = codes.Select(c => (Guid?)c.Id).ToList();
         var payments = await db.Payments.Where(p => ids.Contains(p.PromoCodeId) && p.Status == PaymentStatus.Confirmed)
-            .Select(p => new { p.PaidAt, p.AmountKrw, p.CommissionKrw }).ToListAsync(ct);
-        var payouts = await db.CommissionPayouts.Where(p => p.TeacherUserId == teacherId).ToDictionaryAsync(p => p.Month, ct);
-        var months = payments.GroupBy(p => KoreaTime.MonthOf(p.PaidAt))
-            .OrderByDescending(g => g.Key)
-            .Select(g => new CommissionMonthDto(g.Key, g.Count(), g.Sum(p => p.AmountKrw), g.Sum(p => p.CommissionKrw),
-                payouts.ContainsKey(g.Key), payouts.GetValueOrDefault(g.Key)?.PaidAt))
+            .Select(p => new { p.PaidAt, p.Amount, p.Commission, p.Currency }).ToListAsync(ct);
+        var payouts = await db.CommissionPayouts.Where(p => p.TeacherUserId == teacherId).ToDictionaryAsync(p => (p.Month, p.Currency), ct);
+        // Won and so‘m stay apart (L-48): a month paid in both has a row for each.
+        var months = payments.GroupBy(p => (Month: KoreaTime.MonthOf(p.PaidAt), p.Currency))
+            .OrderByDescending(g => g.Key.Month).ThenBy(g => g.Key.Currency)
+            .Select(g => new CommissionMonthDto(g.Key.Month, g.Count(), g.Sum(p => p.Amount), g.Sum(p => p.Commission),
+                payouts.ContainsKey(g.Key), payouts.GetValueOrDefault(g.Key)?.PaidAt, g.Key.Currency))
             .ToList();
+        var totals = payments.GroupBy(p => p.Currency).OrderBy(g => g.Key)
+            .Select(g => new MoneyTotalDto(g.Key, g.Sum(p => p.Amount), g.Sum(p => p.Commission))).ToList();
         return new CommissionReportDto(
             codes.Select(c => new TeacherPromoDto(c.Code, c.DiscountPercent, c.CommissionPercent, c.IsActive)).ToList(),
-            months, payments.Count, payments.Sum(p => p.AmountKrw), payments.Sum(p => p.CommissionKrw));
+            months, payments.Count, totals);
     }
 
     private sealed record UnitRow(Guid UserId, CatalogLevel Level, int Number, UnitProgressStatus Status, int? Best, int Attempts, UnitPassedBy? PassedBy)

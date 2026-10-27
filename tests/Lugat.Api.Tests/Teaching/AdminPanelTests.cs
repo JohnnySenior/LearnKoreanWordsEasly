@@ -120,7 +120,7 @@ public class AdminPanelTests
             new RecordPaymentRequest(Guid.NewGuid(), await IdAsync(factory, Learner), SubscriptionPlan.Monthly, 4500, "USTOZ", null, null), ApiFactory.Json));
 
         var due = Assert.Single(await OkAsync<List<TeacherCommissionDto>>(await admin.GetAsync("/api/admin/commissions")));
-        Assert.Equal(("Ustoz", 1, 1350, false), (due.Teacher, due.Payments, due.CommissionKrw, due.Paid));
+        Assert.Equal(("Ustoz", 1, 1350, false), (due.Teacher, due.Payments, due.Commission, due.Paid));
         var request = new MarkCommissionPaidRequest(teacherId, due.Month);
         var paid = await OkAsync<TeacherCommissionDto>(await admin.PostAsJsonAsync("/api/admin/commissions/paid", request, ApiFactory.Json));
         var again = await OkAsync<TeacherCommissionDto>(await admin.PostAsJsonAsync("/api/admin/commissions/paid", request, ApiFactory.Json));
@@ -132,6 +132,37 @@ public class AdminPanelTests
         Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync($"/api/admin/promo-codes/{promo.Id}/active", new SetPromoActiveRequest(false), ApiFactory.Json)).StatusCode);
         var check = await OkAsync<PromoCheckDto>(await teacher.PostAsJsonAsync("/api/premium/promo/check", new PromoCheckRequest("ustoz", SubscriptionPlan.Monthly), ApiFactory.Json));
         Assert.False(check.Valid);
+    }
+
+    [Fact]
+    public async Task Won_and_som_commissions_of_one_month_are_counted_and_paid_apart()
+    {
+        // L-48: one learner paid in won, another in so‘m, both with the teacher's code, in the same month.
+        await using var factory = NewFactory();
+        var admin = await factory.SignedInClientAsync(Admin, "Ega");
+        var teacher = await factory.SignedInClientAsync(Teacher, "Ustoz");
+        await TeachingTests.GrantAsync(factory, Teacher, UserRoles.Teacher);
+        await factory.SignedInClientAsync(Learner, "Aziz");
+        var teacherId = await IdAsync(factory, Teacher);
+        await OkAsync<PromoCodeDto>(await admin.PostAsJsonAsync("/api/admin/promo-codes", new CreatePromoCodeRequest("USTOZ", 10, 30, teacherId, null), ApiFactory.Json));
+        var learner = await IdAsync(factory, Learner);
+        await OkAsync<PaymentDto>(await admin.PostAsJsonAsync("/api/admin/payments",
+            new RecordPaymentRequest(Guid.NewGuid(), learner, SubscriptionPlan.Monthly, 4500, "USTOZ", null, null), ApiFactory.Json));
+        await OkAsync<PaymentDto>(await admin.PostAsJsonAsync("/api/admin/payments",
+            new RecordPaymentRequest(Guid.NewGuid(), learner, SubscriptionPlan.Monthly, 26100, "USTOZ", null, null, Currency.Uzs), ApiFactory.Json));
+
+        var rows = await OkAsync<List<TeacherCommissionDto>>(await admin.GetAsync("/api/admin/commissions"));
+        var month = rows[0].Month;
+        await OkAsync<TeacherCommissionDto>(await admin.PostAsJsonAsync("/api/admin/commissions/paid", new MarkCommissionPaidRequest(teacherId, month, Currency.Uzs), ApiFactory.Json));
+        var after = await OkAsync<List<TeacherCommissionDto>>(await admin.GetAsync("/api/admin/commissions"));
+        var report = await OkAsync<CommissionReportDto>(await teacher.GetAsync("/api/teacher/commission"));
+        var revenue = (await OkAsync<MetricsDto>(await admin.GetAsync("/api/admin/metrics"))).Revenue;
+
+        Assert.Equal([(Currency.Krw, 4500, 1350), (Currency.Uzs, 26100, 7830)], rows.Select(r => (r.Currency, r.Amount, r.Commission)));
+        Assert.Equal([(Currency.Krw, false), (Currency.Uzs, true)], after.Select(r => (r.Currency, r.Paid)));
+        Assert.Equal([(Currency.Krw, 4500, 1350), (Currency.Uzs, 26100, 7830)], report.Totals.Select(t => (t.Currency, t.Amount, t.Commission)));
+        Assert.Equal([(Currency.Krw, false), (Currency.Uzs, true)], report.Months.Select(m => (m.Currency, m.Paid)));
+        Assert.Equal([(Currency.Krw, 4500), (Currency.Uzs, 26100)], revenue.Select(r => (r.Currency, r.Amount)));
     }
 
     [Fact]
@@ -163,7 +194,7 @@ public class AdminPanelTests
         Assert.Equal((3, 2, (int?)67), (m.D1.Cohort, m.D1.Returned, m.D1.Percent));
         Assert.Equal((0, (int?)null), (m.D7.Cohort, m.D7.Percent));
         Assert.Equal(1, m.PremiumNow);
-        Assert.Equal(12000, Assert.Single(m.Revenue).AmountKrw);
+        Assert.Equal(12000, Assert.Single(m.Revenue).Amount);
 
         var usage = await OkAsync<UsageReportDto>(await admin.GetAsync("/api/admin/usage?days=7"));
         Assert.Equal((2, 1, 0.01m), (usage.ByDay.Sum(d => d.Calls), usage.ByDay.Sum(d => d.Failed), usage.ByDay.Sum(d => d.Usd)));

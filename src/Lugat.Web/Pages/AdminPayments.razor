@@ -63,7 +63,14 @@
                 <button class="chip wide @(_plan == p ? "selected" : "")" role="radio" aria-checked="@(_plan == p)" @onclick="() => _plan = p">@(p == SubscriptionPlan.Monthly ? "1 oy" : "3 oy")</button>
             }
         </div>
-        <label class="field">To‘langan summa (₩)<input class="input" type="number" min="1" @bind="_amount" /></label>
+        <div class="chips" role="radiogroup" aria-label="Valyuta">
+            @foreach (var (currency, label) in new[] { (Currency.Krw, "₩ Koreya"), (Currency.Uzs, "so‘m O‘zbekiston") })
+            {
+                var c = currency;
+                <button class="chip wide @(_currency == c ? "selected" : "")" role="radio" aria-checked="@(_currency == c)" @onclick="() => _currency = c">@label</button>
+            }
+        </div>
+        <label class="field">To‘langan summa (@(_currency == Currency.Uzs ? "so‘m" : "₩"))<input class="input" type="number" min="1" @bind="_amount" /></label>
         <label class="field">Promo-kod (bo‘lsa)<input class="input" maxlength="32" @bind="_promo" /></label>
         <label class="field">Izoh<input class="input" maxlength="500" @bind="_note" /></label>
         <button class="button primary" disabled="@(_busy || _amount <= 0)" @onclick="RecordAsync">To‘lovni qayd etish</button>
@@ -80,8 +87,8 @@
             {
                 var payment = p;
                 <li>
-                    <strong>₩@p.AmountKrw.ToString("N0")</strong> · @(p.Plan == SubscriptionPlan.Monthly ? "1 oy" : "3 oy") · @(p.UserName ?? "—")
-                    <span class="muted small-text">@Format.DayMonth(p.StartsAt) – @Format.DayMonth(p.EndsAt)@(p.PromoCode is null ? "" : $" · {p.PromoCode} (−{p.DiscountPercent}%, komissiya ₩{p.CommissionKrw:N0})")</span>
+                    <strong>@Format.Money(p.Amount, p.Currency)</strong> · @(p.Plan == SubscriptionPlan.Monthly ? "1 oy" : "3 oy") · @(p.UserName ?? "—")
+                    <span class="muted small-text">@Format.DayMonth(p.StartsAt) – @Format.DayMonth(p.EndsAt)@(p.PromoCode is null ? "" : $" · {p.PromoCode} (−{p.DiscountPercent}%, komissiya {Format.Money(p.Commission, p.Currency)})")</span>
                     @if (p.Status == PaymentStatus.Refunded)
                     {
                         <span class="pill">Qaytarilgan</span>
@@ -132,6 +139,7 @@
     private AdminUserDto? _user;
     private SubscriptionPlan _plan = SubscriptionPlan.Monthly;
     private int _amount = 5000;
+    private Currency _currency = Currency.Krw;
     private string? _promo;
     private string? _note;
     private Guid _paymentId = Guid.NewGuid(); // one id per form, so a double click records one payment
@@ -190,13 +198,13 @@
 
         _busy = true;
         var result = await Api.SendJsonAsync<PaymentDto>(HttpMethod.Post, "api/admin/payments",
-            new RecordPaymentRequest(_paymentId, user.Id, _plan, _amount, string.IsNullOrWhiteSpace(_promo) ? null : _promo, null, _note));
+            new RecordPaymentRequest(_paymentId, user.Id, _plan, _amount, string.IsNullOrWhiteSpace(_promo) ? null : _promo, null, _note, _currency));
         _busy = false;
         _error = result.Error;
         if (result.Value is { } payment)
         {
             _status = $"Qayd etildi: Premium {Format.DayMonth(payment.EndsAt)} gacha." +
-                (payment.AmountKrw != payment.ExpectedKrw ? $" Diqqat: tarif narxi ₩{payment.ExpectedKrw:N0}." : "");
+                (payment.Amount != payment.ExpectedAmount ? $" Diqqat: tarif narxi {Format.Money(payment.ExpectedAmount, payment.Currency)}." : "");
             await SelectAsync(user with { IsPremium = true, PremiumEndsAt = payment.EndsAt });
         }
     }

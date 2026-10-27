@@ -172,14 +172,15 @@ public sealed class AdminService(IAppDbContext db, TimeProvider time, IOperation
         var rows = await (from p in db.Payments
                           join c in db.PromoCodes on p.PromoCodeId equals c.Id
                           where p.Status == PaymentStatus.Confirmed && c.TeacherUserId != null
-                          select new { Teacher = c.TeacherUserId!.Value, p.PaidAt, p.AmountKrw, p.CommissionKrw }).ToListAsync(ct);
+                          select new { Teacher = c.TeacherUserId!.Value, p.PaidAt, p.Amount, p.Commission, p.Currency }).ToListAsync(ct);
         var teacherIds = rows.Select(r => r.Teacher).Distinct().ToList();
         var names = await db.Users.Where(u => teacherIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
-        var payouts = await db.CommissionPayouts.ToDictionaryAsync(p => (p.TeacherUserId, p.Month), ct);
-        return rows.GroupBy(r => (r.Teacher, Month: KoreaTime.MonthOf(r.PaidAt)))
-            .Select(g => new TeacherCommissionDto(g.Key.Teacher, names.GetValueOrDefault(g.Key.Teacher), g.Key.Month, g.Count(), g.Sum(r => r.AmountKrw),
-                g.Sum(r => r.CommissionKrw), payouts.ContainsKey(g.Key), payouts.GetValueOrDefault(g.Key)?.PaidAt))
-            .OrderByDescending(r => r.Month).ThenBy(r => r.Teacher, StringComparer.CurrentCultureIgnoreCase)
+        var payouts = await db.CommissionPayouts.ToDictionaryAsync(p => (p.TeacherUserId, p.Month, p.Currency), ct);
+        // One row per teacher, month and currency: won and so‘m are never added together (L-48).
+        return rows.GroupBy(r => (r.Teacher, Month: KoreaTime.MonthOf(r.PaidAt), r.Currency))
+            .Select(g => new TeacherCommissionDto(g.Key.Teacher, names.GetValueOrDefault(g.Key.Teacher), g.Key.Month, g.Count(), g.Sum(r => r.Amount),
+                g.Sum(r => r.Commission), payouts.ContainsKey(g.Key), payouts.GetValueOrDefault(g.Key)?.PaidAt, g.Key.Currency))
+            .OrderByDescending(r => r.Month).ThenBy(r => r.Teacher, StringComparer.CurrentCultureIgnoreCase).ThenBy(r => r.Currency)
             .ToList();
     }
 
@@ -187,7 +188,7 @@ public sealed class AdminService(IAppDbContext db, TimeProvider time, IOperation
     public async Task<TeacherCommissionDto> MarkPaidAsync(Guid adminId, MarkCommissionPaidRequest request, CancellationToken ct)
     {
         var month = new DateOnly(request.Month.Year, request.Month.Month, 1);
-        var due = (await CommissionsAsync(ct)).SingleOrDefault(c => c.TeacherUserId == request.TeacherUserId && c.Month == month)
+        var due = (await CommissionsAsync(ct)).SingleOrDefault(c => c.TeacherUserId == request.TeacherUserId && c.Month == month && c.Currency == request.Currency)
             ?? throw new NotFoundException("Bu oy uchun komissiya yo‘q.");
         if (!due.Paid)
         {
@@ -196,11 +197,12 @@ public sealed class AdminService(IAppDbContext db, TimeProvider time, IOperation
                 Id = Guid.CreateVersion7(time.GetUtcNow()),
                 TeacherUserId = request.TeacherUserId,
                 Month = month,
-                AmountKrw = due.CommissionKrw,
+                Amount = due.Commission,
+                Currency = due.Currency,
                 PaidAt = time.GetUtcNow(),
                 MarkedByUserId = adminId,
             });
-            Audit(adminId, "payout", request.TeacherUserId, $"{month:yyyy-MM}: ₩{due.CommissionKrw:N0} to‘landi");
+            Audit(adminId, "payout", request.TeacherUserId, $"{month:yyyy-MM}: {Money.Format(due.Commission, due.Currency)} to‘landi");
             try
             {
                 await db.SaveChangesAsync(ct);
@@ -211,7 +213,7 @@ public sealed class AdminService(IAppDbContext db, TimeProvider time, IOperation
             }
         }
 
-        return (await CommissionsAsync(ct)).Single(c => c.TeacherUserId == request.TeacherUserId && c.Month == month);
+        return (await CommissionsAsync(ct)).Single(c => c.TeacherUserId == request.TeacherUserId && c.Month == month && c.Currency == request.Currency);
     }
 
     /// <summary>AI and voice spending (spec §10 "Sarf") by Korea day and by feature, plus this month against the budget.</summary>
@@ -258,9 +260,9 @@ public sealed class AdminService(IAppDbContext db, TimeProvider time, IOperation
         var premiumNow = await db.Subscriptions.Where(s => s.StartsAt <= now && s.EndsAt > now).Select(s => s.UserId).Distinct().CountAsync(ct);
         var revenueSince = KoreaTime.StartOf(KoreaTime.MonthOf(now).AddMonths(-5));
         var revenue = (await db.Payments.Where(p => p.Status == PaymentStatus.Confirmed && p.PaidAt >= revenueSince)
-                .Select(p => new { p.PaidAt, p.AmountKrw, p.CommissionKrw }).ToListAsync(ct))
-            .GroupBy(p => KoreaTime.MonthOf(p.PaidAt)).OrderByDescending(g => g.Key)
-            .Select(g => new RevenueMonthDto(g.Key, g.Count(), g.Sum(p => p.AmountKrw), g.Sum(p => p.CommissionKrw))).ToList();
+                .Select(p => new { p.PaidAt, p.Amount, p.Commission, p.Currency }).ToListAsync(ct))
+            .GroupBy(p => (Month: KoreaTime.MonthOf(p.PaidAt), p.Currency)).OrderByDescending(g => g.Key.Month).ThenBy(g => g.Key.Currency)
+            .Select(g => new RevenueMonthDto(g.Key.Month, g.Count(), g.Sum(p => p.Amount), g.Sum(p => p.Commission), g.Key.Currency)).ToList();
 
         var tests = await db.TestRuns.Where(r => r.Purpose == TestPurpose.UnitFinal && r.Status == TestRunStatus.Finished && r.UnitId != null)
             .GroupBy(r => r.UnitId)

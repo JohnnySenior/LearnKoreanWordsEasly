@@ -1,4 +1,5 @@
 using Lugat.Domain.Catalog;
+using Lugat.Domain.Premium;
 
 namespace Lugat.Contracts;
 
@@ -43,7 +44,10 @@ public sealed record StudentDetailDto(Guid UserId, string? Name, string? Current
 public sealed record TeacherPromoDto(string Code, int DiscountPercent, int CommissionPercent, bool IsActive);
 
 /// <param name="Month">The first day of the month, Korea time.</param>
-public sealed record CommissionMonthDto(DateOnly Month, int Payments, int AmountKrw, int CommissionKrw, bool Paid, DateTimeOffset? PaidAt);
+public sealed record CommissionMonthDto(DateOnly Month, int Payments, int Amount, int Commission, bool Paid, DateTimeOffset? PaidAt, Currency Currency = Currency.Krw);
 
 /// <summary>Counts and sums only: who paid is never shown to the teacher (spec §9.3).</summary>
-public sealed record CommissionReportDto(IReadOnlyList<TeacherPromoDto> Codes, IReadOnlyList<CommissionMonthDto> Months, int Payments, int AmountKrw, int CommissionKrw);
+/// <param name="Totals">Paid and commission, one row per currency (won and so‘m are never added together, L-48).</param>
+public sealed record CommissionReportDto(IReadOnlyList<TeacherPromoDto> Codes, IReadOnlyList<CommissionMonthDto> Months, int Payments, IReadOnlyList<MoneyTotalDto> Totals);
+
+public sealed record MoneyTotalDto(Currency Currency, int Amount, int Commission);

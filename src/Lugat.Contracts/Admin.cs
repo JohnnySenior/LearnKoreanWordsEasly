@@ -35,9 +35,9 @@ public sealed record AdjustPremiumRequest(int Days, string Reason);
 
 public sealed record SetPromoActiveRequest(bool IsActive);
 
-public sealed record TeacherCommissionDto(Guid TeacherUserId, string? Teacher, DateOnly Month, int Payments, int AmountKrw, int CommissionKrw, bool Paid, DateTimeOffset? PaidAt);
+public sealed record TeacherCommissionDto(Guid TeacherUserId, string? Teacher, DateOnly Month, int Payments, int Amount, int Commission, bool Paid, DateTimeOffset? PaidAt, Currency Currency = Currency.Krw);
 
-public sealed record MarkCommissionPaidRequest(Guid TeacherUserId, DateOnly Month);
+public sealed record MarkCommissionPaidRequest(Guid TeacherUserId, DateOnly Month, Currency Currency = Currency.Krw);
 
 // Spending (spec §10 "Sarf"): AI and voice calls from ai_usage.
 
@@ -57,7 +57,7 @@ public sealed record RetentionDto(int Cohort, int Returned, int? Percent);
 
 public sealed record UnitPassRateDto(string Unit, int Attempts, int Passed, int? Percent);
 
-public sealed record RevenueMonthDto(DateOnly Month, int Payments, int AmountKrw, int CommissionKrw);
+public sealed record RevenueMonthDto(DateOnly Month, int Payments, int Amount, int Commission, Currency Currency = Currency.Krw);
 
 /// <summary>The pilot figure (spec §9.2): of the learners who joined at least 14 days ago, how many were active in their second week.</summary>
 public sealed record GroupPilotDto(string Group, string? Teacher, int Members, int Eligible, int ActiveSecondWeek, int? Percent);

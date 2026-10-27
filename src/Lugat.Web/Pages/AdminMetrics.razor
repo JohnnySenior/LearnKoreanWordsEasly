@@ -1,4 +1,5 @@
 @page "/admin/korsatkichlar"
+@using Lugat.Domain.Premium
 @using Lugat.Contracts
 @using Lugat.Domain.Users
 @inject SessionService Api
@@ -82,7 +83,7 @@
                 <tbody>
                     @foreach (var r in _m.Revenue)
                     {
-                        <tr><td>@Format.Month(r.Month)</td><td class="num">@r.Payments</td><td class="num">@Format.Won(r.AmountKrw)</td><td class="num">@Format.Won(r.CommissionKrw)</td></tr>
+                        <tr><td>@Format.Month(r.Month)</td><td class="num">@r.Payments</td><td class="num">@Format.Money(r.Amount, r.Currency)</td><td class="num">@Format.Money(r.Commission, r.Currency)</td></tr>
                     }
                 </tbody>
             </table>

@@ -1,4 +1,5 @@
 @page "/admin/komissiya"
+@using Lugat.Domain.Premium
 @using Lugat.Contracts
 @using Lugat.Domain.Users
 @inject SessionService Api
@@ -41,21 +42,21 @@ else
                         <td>@Format.Month(r.Month)</td>
                         <td>@(r.Teacher ?? "—")</td>
                         <td class="num">@r.Payments</td>
-                        <td class="num">@Format.Won(r.AmountKrw)</td>
-                        <td class="num">@Format.Won(r.CommissionKrw)</td>
+                        <td class="num">@Format.Money(r.Amount, r.Currency)</td>
+                        <td class="num">@Format.Money(r.Commission, r.Currency)</td>
                         <td>
                             @if (r.Paid)
                             {
                                 <span class="pill">To‘landi</span>
                             }
-                            else if (_confirm == (r.TeacherUserId, r.Month))
+                            else if (_confirm == (r.TeacherUserId, r.Month, r.Currency))
                             {
                                 <button class="button small" disabled="@_busy" @onclick="() => MarkAsync(row)">Ha, to‘landi</button>
                                 <button class="link-btn muted" @onclick="() => _confirm = null">Bekor</button>
                             }
                             else
                             {
-                                <button class="link-btn" @onclick="() => _confirm = (row.TeacherUserId, row.Month)">To‘landi deb belgilash</button>
+                                <button class="link-btn" @onclick="() => _confirm = (row.TeacherUserId, row.Month, row.Currency)">To‘landi deb belgilash</button>
                             }
                         </td>
                     </tr>
@@ -68,7 +69,7 @@ else
 
 @code {
     private List<TeacherCommissionDto>? _rows;
-    private (Guid, DateOnly)? _confirm;
+    private (Guid, DateOnly, Currency)? _confirm;
     private string? _error;
     private bool _busy;
 
@@ -91,7 +92,7 @@ else
     private async Task MarkAsync(TeacherCommissionDto row)
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<TeacherCommissionDto>(HttpMethod.Post, "api/admin/commissions/paid", new MarkCommissionPaidRequest(row.TeacherUserId, row.Month));
+        var result = await Api.SendJsonAsync<TeacherCommissionDto>(HttpMethod.Post, "api/admin/commissions/paid", new MarkCommissionPaidRequest(row.TeacherUserId, row.Month, row.Currency));
         (_busy, _confirm) = (false, null);
         _error = result.Error;
         await LoadAsync();

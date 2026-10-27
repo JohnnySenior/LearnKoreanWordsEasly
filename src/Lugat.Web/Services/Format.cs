@@ -1,3 +1,4 @@
+using Lugat.Domain.Premium;
 using Lugat.Domain.Learning;
 using Lugat.Domain.Study;
 
@@ -49,7 +50,10 @@ public static class Format
         };
     }
 
-    public static string Won(int amount) => $"₩{amount:N0}";
+    public static string Won(int amount) => Money(amount, Currency.Krw);
+
+    /// <summary>"₩5,000" or "29 000 so‘m" (L-48).</summary>
+    public static string Money(int amount, Currency currency) => Lugat.Domain.Premium.Money.Format(amount, currency);
 
     /// <summary>"15 daq", "5 soat", "1 kun", "2 oy".</summary>
     public static string Interval(int seconds) => seconds switch

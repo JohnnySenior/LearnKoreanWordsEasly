@@ -1,4 +1,5 @@
 @page "/oqituvchi"
+@using Lugat.Domain.Premium
 @using Lugat.Contracts
 @using Lugat.Domain.Users
 @inject SessionService Api
@@ -70,8 +71,11 @@
 
         <div class="figures">
             <div><strong>@_commission.Payments</strong><span>to‘lov</span></div>
-            <div><strong>@Format.Won(_commission.AmountKrw)</strong><span>to‘langan summa</span></div>
-            <div><strong>@Format.Won(_commission.CommissionKrw)</strong><span>komissiya</span></div>
+            @foreach (var t in _commission.Totals.DefaultIfEmpty(new MoneyTotalDto(Currency.Krw, 0, 0)))
+            {
+                <div><strong>@Format.Money(t.Amount, t.Currency)</strong><span>to‘langan summa</span></div>
+                <div><strong>@Format.Money(t.Commission, t.Currency)</strong><span>komissiya</span></div>
+            }
         </div>
         @if (_commission.Months.Count > 0)
         {
@@ -84,8 +88,8 @@
                             <tr>
                                 <td>@Format.Month(m.Month)</td>
                                 <td class="num">@m.Payments</td>
-                                <td class="num">@Format.Won(m.AmountKrw)</td>
-                                <td class="num">@Format.Won(m.CommissionKrw)</td>
+                                <td class="num">@Format.Money(m.Amount, m.Currency)</td>
+                                <td class="num">@Format.Money(m.Commission, m.Currency)</td>
                                 <td>@(m.Paid ? "To‘landi" : "Kutilmoqda")</td>
                             </tr>
                         }

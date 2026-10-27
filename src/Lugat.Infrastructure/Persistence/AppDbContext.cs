@@ -98,6 +98,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         configurationBuilder.Properties<Domain.Premium.SubscriptionSource>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Premium.PaymentMethod>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Premium.PaymentStatus>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Premium.Currency>().HaveConversion<string>().HaveMaxLength(8);
         configurationBuilder.Properties<LearningItemKind>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ReviewDirection>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<LearningPhase>().HaveConversion<string>().HaveMaxLength(32);
@@ -209,7 +210,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         b.Entity<Domain.Teaching.CommissionPayout>(e =>
         {
             e.ToTable("commission_payouts");
-            e.HasIndex(x => new { x.TeacherUserId, x.Month }).IsUnique();
+            e.HasIndex(x => new { x.TeacherUserId, x.Month, x.Currency }).IsUnique();
             e.HasOne<User>().WithMany().HasForeignKey(x => x.TeacherUserId).OnDelete(DeleteBehavior.Restrict);
         });
 

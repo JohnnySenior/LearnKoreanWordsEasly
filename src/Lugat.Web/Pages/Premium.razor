@@ -39,16 +39,29 @@
     }
 </section>
 
+@if (_plans.BankUz is not null)
+{
+    @* L-48: learners in Uzbekistan pay in so‘m to a card there; prices are set on their own. *@
+    <div class="seg" role="radiogroup" aria-label="Qayerdan to‘laysiz">
+        @foreach (var (currency, label) in new[] { (Currency.Krw, "Koreyadan (₩)"), (Currency.Uzs, "O‘zbekistondan (so‘m)") })
+        {
+            var choice = currency;
+            <button class="@(_currency == choice ? "selected" : "")" role="radio" aria-checked="@(_currency == choice)" @onclick="() => SelectCurrencyAsync(choice)">@label</button>
+        }
+    </div>
+}
+
 <div class="plan-grid" role="radiogroup" aria-label="Tarif">
     @foreach (var p in _plans.Plans)
     {
         var plan = p;
-        var monthly = _plans.Plans.FirstOrDefault(x => x.Months == 1)?.PriceKrw;
-        var saving = monthly is { } m && plan.Months > 1 && m * plan.Months > plan.PriceKrw ? 100 - plan.PriceKrw * 100 / (m * plan.Months) : 0;
+        var price = plan.Price(_currency);
+        var monthly = _plans.Plans.FirstOrDefault(x => x.Months == 1)?.Price(_currency);
+        var saving = monthly is { } m && plan.Months > 1 && m * plan.Months > price ? 100 - price * 100 / (m * plan.Months) : 0;
         <button class="plan @(_plan == plan.Plan ? "selected" : "")" role="radio" aria-checked="@(_plan == plan.Plan)" @onclick="() => SelectAsync(plan.Plan)">
             <span class="plan-head"><span>@plan.Title</span>@if (saving > 0) {<span class="plan-save">−@saving%</span>}</span>
-            <b>@Format.Won(plan.PriceKrw)</b>
-            <span class="plan-note">@(plan.Months == 1 ? "30 kun" : $"{Format.Won(plan.PriceKrw / plan.Months)} / oy")</span>
+            <b>@Format.Money(price, _currency)</b>
+            <span class="plan-note">@(plan.Months == 1 ? "30 kun" : $"{Format.Money(price / plan.Months, _currency)} / oy")</span>
         </button>
     }
 </div>
@@ -62,12 +75,12 @@
 </section>
 
 <dl class="bank-facts">
-    <dt>Bank</dt><dd>@(_plans.Bank?.BankName ?? "Tez orada")</dd>
-    <dt>Hisob</dt><dd>@(_plans.Bank?.AccountNumber ?? "Tez orada")</dd>
-    @if (_plans.Bank is { } bank)
+    <dt>Bank</dt><dd>@(Bank?.BankName ?? "Tez orada")</dd>
+    <dt>@(Bank?.Kind is { } kind ? $"{kind} karta" : "Hisob")</dt><dd>@(Bank?.AccountNumber ?? "Tez orada")</dd>
+    @if (Bank is { } bank)
     {
         <dt>Egasi</dt><dd>@bank.AccountHolder</dd>
-        <dt>Summa</dt><dd><strong>@Format.Won(Price)</strong></dd>
+        <dt>Summa</dt><dd><strong>@Format.Money(Price, _currency)</strong></dd>
     }
 </dl>
 
@@ -79,11 +92,11 @@
     </div>
     @if (_check is { } c)
     {
-        <p class="promo-result" role="status">@(c.Valid ? $"Chegirma {c.DiscountPercent}% · {Format.Won(c.FinalPriceKrw)}" : c.Message)</p>
+        <p class="promo-result" role="status">@(c.Valid ? $"Chegirma {c.DiscountPercent}% · {Format.Money(c.FinalPrice, c.Currency)}" : c.Message)</p>
     }
 </section>
 
-@if (_plans.Bank is not null && _plans.ContactTelegram is { } contact)
+@if (Bank is not null && _plans.ContactTelegram is { } contact)
 {
     <div class="sticky-space"></div>
     <div class="sticky-action">
@@ -96,6 +109,10 @@
     private PremiumStatusDto? _status;
     private PremiumPlansDto? _plans;
     private SubscriptionPlan _plan = SubscriptionPlan.Monthly;
+    private Currency _currency = Currency.Krw;
+    private const string CurrencyKey = "koreyscha.currency";
+
+    private BankDetailsDto? Bank => _currency == Currency.Uzs ? _plans?.BankUz : _plans?.Bank;
     private string? _promo;
     private PromoCheckDto? _check;
     private string? _error;
@@ -104,7 +121,7 @@
 
     private async Task CopyAsync() => _copied = await Browser.CopyTextAsync(_status!.PaymentCode);
 
-    private int Price => _check is { Valid: true } c ? c.FinalPriceKrw : _plans?.Plans.FirstOrDefault(p => p.Plan == _plan)?.PriceKrw ?? 0;
+    private int Price => _check is { Valid: true } c ? c.FinalPrice : _plans?.Plans.FirstOrDefault(p => p.Plan == _plan)?.Price(_currency) ?? 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -113,6 +130,17 @@
         (_status, _plans) = (status.Value, plans.Value);
         _error = status.Error ?? plans.Error;
         _plan = _plans?.Plans.FirstOrDefault()?.Plan ?? _plan;
+        if (_plans?.BankUz is not null)
+        {
+            // The last choice on this device, else so‘m for a learner on Tashkent time.
+            _currency = await Browser.StorageGetAsync(CurrencyKey) switch
+            {
+                nameof(Currency.Uzs) => Currency.Uzs,
+                nameof(Currency.Krw) => Currency.Krw,
+                _ => Api.State.Me?.TimeZone == "Asia/Tashkent" ? Currency.Uzs : Currency.Krw,
+            };
+        }
+
         if (_status?.PromoCode is { } teacherCode && _plans is not null)
         {
             // The teacher's code the learner came with (spec §9.1): filled in, with the discount shown.
@@ -130,11 +158,21 @@
         }
     }
 
+    private async Task SelectCurrencyAsync(Currency currency)
+    {
+        _currency = currency;
+        await Browser.StorageSetAsync(CurrencyKey, currency.ToString());
+        if (_check is { Valid: true })
+        {
+            await CheckPromoAsync();
+        }
+    }
+
     private async Task CheckPromoAsync()
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<PromoCheckDto>(HttpMethod.Post, "api/premium/promo/check", new PromoCheckRequest(_promo ?? "", _plan));
-        _check = result.Value ?? new PromoCheckDto(false, _promo ?? "", 0, 0, 0, result.Error);
+        var result = await Api.SendJsonAsync<PromoCheckDto>(HttpMethod.Post, "api/premium/promo/check", new PromoCheckRequest(_promo ?? "", _plan, _currency));
+        _check = result.Value ?? new PromoCheckDto(false, _promo ?? "", 0, 0, 0, result.Error, _currency);
         _busy = false;
     }
 }

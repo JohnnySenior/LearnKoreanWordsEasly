@@ -8,18 +8,24 @@ namespace Lugat.Contracts;
 /// <param name="PromoCode">The teacher's code the learner came with, filled in on the page (spec §9.1).</param>
 public sealed record PremiumStatusDto(bool IsPremium, DateTimeOffset? EndsAt, SubscriptionPlan? Plan, string PaymentCode, bool TrapNotesFree, string? PromoCode = null);
 
-public sealed record PlanDto(SubscriptionPlan Plan, string Title, int PriceKrw, int Months);
+/// <param name="PriceUzs">The price for learners paying from Uzbekistan, in so‘m (L-48).</param>
+public sealed record PlanDto(SubscriptionPlan Plan, string Title, int PriceKrw, int Months, int PriceUzs = 0)
+{
+    public int Price(Currency currency) => currency == Currency.Uzs ? PriceUzs : PriceKrw;
+}
 
 /// <param name="Bank">Null until the bank details are configured: the page says "Tez orada" (spec §15 Q4).</param>
 /// <param name="ContactTelegram">Where to send the receipt, without "@".</param>
-public sealed record PremiumPlansDto(IReadOnlyList<PlanDto> Plans, BankDetailsDto? Bank, string? ContactTelegram, int TrialDays);
+/// <param name="BankUz">The card for paying in so‘m from Uzbekistan; null when not configured (L-48).</param>
+public sealed record PremiumPlansDto(IReadOnlyList<PlanDto> Plans, BankDetailsDto? Bank, string? ContactTelegram, int TrialDays, BankDetailsDto? BankUz = null);
 
-public sealed record BankDetailsDto(string BankName, string AccountNumber, string AccountHolder);
+/// <param name="Kind">The card type ("Humo", "Uzcard") for a card; null for a bank account.</param>
+public sealed record BankDetailsDto(string BankName, string AccountNumber, string AccountHolder, string? Kind = null);
 
-public sealed record PromoCheckRequest(string Code, SubscriptionPlan Plan);
+public sealed record PromoCheckRequest(string Code, SubscriptionPlan Plan, Currency Currency = Currency.Krw);
 
 /// <param name="Message">Why the code does not work, in Uzbek.</param>
-public sealed record PromoCheckDto(bool Valid, string Code, int DiscountPercent, int PriceKrw, int FinalPriceKrw, string? Message);
+public sealed record PromoCheckDto(bool Valid, string Code, int DiscountPercent, int Price, int FinalPrice, string? Message, Currency Currency = Currency.Krw);
 
 // Admin (spec §7.3, §10): find the payer, record the payment, refund.
 
@@ -27,24 +33,26 @@ public sealed record AdminUserDto(Guid Id, string? DisplayName, string? PaymentC
 
 /// <param name="Id">Chosen by the page once; recording again returns the same payment (API01).</param>
 /// <param name="PaidAt">When the money arrived; now when not given.</param>
-public sealed record RecordPaymentRequest(Guid Id, Guid UserId, SubscriptionPlan Plan, int AmountKrw, string? PromoCode, DateTimeOffset? PaidAt, string? Note);
+/// <param name="Amount">What arrived, in <paramref name="Currency"/>.</param>
+public sealed record RecordPaymentRequest(Guid Id, Guid UserId, SubscriptionPlan Plan, int Amount, string? PromoCode, DateTimeOffset? PaidAt, string? Note, Currency Currency = Currency.Krw);
 
 public sealed record PaymentDto(
     Guid Id,
     Guid UserId,
     string? UserName,
     SubscriptionPlan Plan,
-    int AmountKrw,
-    int ExpectedKrw,
+    int Amount,
+    int ExpectedAmount,
     string? PromoCode,
     int DiscountPercent,
-    int CommissionKrw,
+    int Commission,
     PaymentStatus Status,
     DateTimeOffset PaidAt,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
     string? Note,
-    string? RecordedBy);
+    string? RecordedBy,
+    Currency Currency = Currency.Krw);
 
 public sealed record RefundPaymentRequest(string? Note);
 
