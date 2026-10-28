@@ -105,9 +105,11 @@ public sealed record WordUsageDto(
     string? Warning);
 
 /// <param name="Ready">Words whose usage is prepared; the rest still need the AI.</param>
-public sealed record TableUsageDto(Guid UnitId, string Unit, int Total, int Ready, IReadOnlyList<WordUsageDto> Usages);
+/// <param name="Deck">For own words (L-51): the deck key, with <paramref name="UnitId"/> empty.</param>
+public sealed record TableUsageDto(Guid UnitId, string Unit, int Total, int Ready, IReadOnlyList<WordUsageDto> Usages, string? Deck = null);
 
-public sealed record UsageTableSummaryDto(Guid UnitId, string Unit, int Total, int Ready, int Questions);
+/// <param name="Deck">For own words (L-51): the deck key (<see cref="WordDeckOptionDto.Key"/>), with <paramref name="UnitId"/> empty.</param>
+public sealed record UsageTableSummaryDto(Guid UnitId, string Unit, int Total, int Ready, int Questions, string? Deck = null);
 
 /// <summary>A particle or verb ending chosen wrongly in the ladder's gaps (D-54).</summary>
 /// <param name="Example">The sentence with the gap, as it was asked.</param>

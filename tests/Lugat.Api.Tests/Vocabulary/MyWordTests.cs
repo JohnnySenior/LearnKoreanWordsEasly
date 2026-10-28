@@ -287,6 +287,47 @@ public class MyWordTests
         Assert.All(writing, p => Assert.Contains(p.Prompt, new[] { "오이", "배추", "sabzavot 오이", "sabzavot 배추" }));
     }
 
+    /// <summary>A well-formed usage answer (one question each) for every "&lt;id&gt;. &lt;korean&gt;" line.</summary>
+    private static string Usage(string userContent) =>
+        $$"""{"words":[{{string.Join(",", System.Text.RegularExpressions.Regex.Matches(userContent, @"^(\d+)\. (\S+)", System.Text.RegularExpressions.RegexOptions.Multiline)
+            .Select(m => $$$"""
+                {"id":{{{m.Groups[1].Value}}},"phrases":[],"trapUz":null,"example":{"korean":"저는 {{{m.Groups[2].Value}}}.","uzbek":"Misol gap."},
+                 "questions":[{"uzbek":"O‘zbekcha gap.","sentence":"저는 ___.","answer":"{{{m.Groups[2].Value}}}","wrong":["다른말"],"explanationUz":"Shu so‘z mos."}]}
+                """))}}]}""";
+
+    [Fact]
+    public async Task Which_word_is_right_can_be_prepared_and_practised_for_a_deck_of_own_words()
+    {
+        string[] words = ["감자", "양파", "당근"];
+        _ai.Answer = r => r.Feature == PersonalWordService.Feature ? Words(words.Select(w => Card(w, "sabzavot " + w)).ToArray()) : Usage(r.UserContent);
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var deck = (await (await client.PostAsJsonAsync("/api/word-decks", new DeckNameRequest("Bozor"), Json)).Content.ReadFromJsonAsync<WordDeckDto>(Json))!;
+        foreach (var c in (await LookupAsync(client, "sabzavot")).Candidates)
+        {
+            await AddAsync(client, Add(c, deck.Id));
+        }
+
+        var key = deck.Id.ToString();
+        var before = (await client.GetFromJsonAsync<List<UsageTableSummaryDto>>("/api/vocabulary/usage", Json))!;
+        var tooEarly = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 10, Usage: true, Decks: [key]), Json);
+        var prepared = (await (await client.PostAsync($"/api/vocabulary/decks/{key}/usage", null)).Content.ReadFromJsonAsync<TableUsageDto>(Json))!;
+        var after = (await client.GetFromJsonAsync<List<UsageTableSummaryDto>>("/api/vocabulary/usage", Json))!;
+        var test = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 10, Usage: true, Decks: [key]), Json);
+        var foreign = await (await factory.SignedInClientAsync(ApiFactory.UserB)).PostAsync($"/api/vocabulary/decks/{key}/usage", null);
+
+        var row = Assert.Single(before);
+        Assert.Equal(("Bozor", key, 3, 0), (row.Unit, row.Deck, row.Total, row.Ready));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, tooEarly.StatusCode);
+        Assert.Equal((3, 3, key), (prepared.Total, prepared.Ready, prepared.Deck));
+        Assert.Equal((3, 3), (after.Single().Ready, after.Single().Questions));
+        Assert.Equal(HttpStatusCode.Created, test.StatusCode);
+        var run = (await test.Content.ReadFromJsonAsync<TestDto>(Json))!;
+        Assert.Equal(3, run.Questions.Count);
+        Assert.All(run.Questions, q => Assert.Contains(q.Options, o => words.Contains(o)));
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+    }
+
     [Theory]
     [InlineData("""{"words":[{"korean":"감자","translationUz":"картошка","romanization":"gamja","exampleKo":"감자 좋아요.","exampleUz":"Kartoshka yaxshi.","trapUz":null}]}""")]
     [InlineData("""{"words":[{"korean":"potato","translationUz":"kartoshka","romanization":"gamja","exampleKo":"감자 좋아요.","exampleUz":"Kartoshka yaxshi.","trapUz":null}]}""")]

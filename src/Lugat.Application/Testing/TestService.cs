@@ -230,7 +230,7 @@ public sealed class TestService(
     {
         var count = Counts.Contains(request.Count) ? request.Count : Counts[0];
         var reported = await QuestionReportService.ReportedSentencesAsync(db, ct);
-        var all = (await usage.QuestionsAsync(ownerId, request.UnitIds?.ToList(), ct))
+        var all = (await usage.QuestionsAsync(ownerId, request.UnitIds?.ToList(), ct, request.Decks))
             .Where(x => !reported.Contains(x.Question.Sentence)) // reported as wrong, until the admin resolves it (L-37)
             .ToList();
         if (all.Count == 0)

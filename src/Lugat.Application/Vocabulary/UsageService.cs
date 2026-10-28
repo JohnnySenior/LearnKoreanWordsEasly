@@ -35,6 +35,7 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         var rows = await Words(ownerId)
             .Select(s => new
             {
+                s.Id,
                 s.UnitId,
                 s.Order,
                 Own = db.WordUsages.Where(u => u.OwnerId == ownerId && u.LearningItemId == s.Id && u.ContentVersion == s.ContentVersion)
@@ -44,11 +45,25 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
             .ToListAsync(ct);
         var words = rows.Select(r => new
         {
+            r.Id,
             r.UnitId,
             r.Order,
             Usage = r.Catalog is { Count: > 0 } || r.Own is not null ? new { Questions = (r.Catalog ?? []).Concat(r.Own ?? []).ToList() } : null,
         }).ToList();
         var labels = await Study.LearnerItems.UnitLabelsAsync(db, words.Select(w => w.UnitId), ct);
+        // Own words by deck (L-51), after the units; a catalog word in a deck also counts in its unit.
+        var decks = new List<UsageTableSummaryDto>();
+        foreach (var deck in await PersonalWordService.DeckOptionsAsync(db, ownerId, ct))
+        {
+            var ids = (await PersonalWordService.DeckItems(db, ownerId, [deck.Key]).ToListAsync(ct)).ToHashSet();
+            var own = words.Where(w => ids.Contains(w.Id)).ToList();
+            if (own.Count > 0)
+            {
+                decks.Add(new UsageTableSummaryDto(Guid.Empty, deck.Name, own.Count, own.Count(w => w.Usage is not null),
+                    own.Sum(w => w.Usage?.Questions.Count ?? 0), deck.Key));
+            }
+        }
+
         return words
             .Where(w => w.UnitId is not null)
             .GroupBy(w => w.UnitId!.Value)
@@ -59,6 +74,7 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
                 g.Count(),
                 g.Count(w => w.Usage is not null),
                 g.Sum(w => w.Usage?.Questions.Count ?? 0)))
+            .Concat(decks)
             .ToList();
     }
 
@@ -66,22 +82,52 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
     {
         var words = await TableWordsAsync(ownerId, unitId, ct);
         var usages = await CurrentAsync(ownerId, words, ct);
-        return await ToDtoAsync(unitId, words, usages, ct);
+        return await ToDtoAsync(await UnitSourceAsync(unitId, ct), words, usages, ct);
+    }
+
+    public async Task<TableUsageDto> DeckAsync(Guid ownerId, string deck, CancellationToken ct)
+    {
+        var (source, words) = await DeckWordsAsync(ownerId, deck, ct);
+        return await ToDtoAsync(source, words, await CurrentAsync(ownerId, words, ct), ct);
+    }
+
+    public async Task<TableUsageDto> PrepareTableAsync(Guid ownerId, Guid unitId, CancellationToken ct) =>
+        await PrepareAsync(ownerId, await UnitSourceAsync(unitId, ct), await TableWordsAsync(ownerId, unitId, ct), ct);
+
+    /// <summary>The same for a deck of own words (L-51): catalog words bring their checked questions, AI words need one call per 10.</summary>
+    public async Task<TableUsageDto> PrepareDeckAsync(Guid ownerId, string deck, CancellationToken ct)
+    {
+        var (source, words) = await DeckWordsAsync(ownerId, deck, ct);
+        return await PrepareAsync(ownerId, source, words, ct);
+    }
+
+    /// <summary>What a usage table is: a unit, or a deck of own words.</summary>
+    private sealed record Source(Guid UnitId, string Label, string? Deck);
+
+    private async Task<Source> UnitSourceAsync(Guid unitId, CancellationToken ct) =>
+        new(unitId, (await Study.LearnerItems.UnitLabelsAsync(db, [unitId], ct)).GetValueOrDefault(unitId, "—"), null);
+
+    private async Task<(Source, List<LearningItem>)> DeckWordsAsync(Guid ownerId, string deck, CancellationToken ct)
+    {
+        var option = (await PersonalWordService.DeckOptionsAsync(db, ownerId, ct)).FirstOrDefault(d => d.Key == deck)
+            ?? throw new NotFoundException("Bu to‘plamda so‘z yo‘q.");
+        var own = PersonalWordService.DeckItems(db, ownerId, [deck]);
+        var words = await Words(ownerId).Where(s => own.Contains(s.Id)).OrderBy(s => s.Korean).ToListAsync(ct);
+        return words.Count == 0 ? throw new NotFoundException("Bu to‘plamda so‘z yo‘q.") : (new Source(Guid.Empty, option.Name, deck), words);
     }
 
     /// <summary>
-    /// Prepares the next <see cref="WordsPerCall"/> words of the unit that have no usage yet (one AI call) and
-    /// returns the unit. The page calls it again until every word is ready, so no request runs for minutes.
+    /// Prepares the next <see cref="WordsPerCall"/> words of the table that have no usage yet (one AI call) and
+    /// returns the table. The page calls it again until every word is ready, so no request runs for minutes.
     /// </summary>
-    public async Task<TableUsageDto> PrepareTableAsync(Guid ownerId, Guid unitId, CancellationToken ct)
+    private async Task<TableUsageDto> PrepareAsync(Guid ownerId, Source source, List<LearningItem> words, CancellationToken ct)
     {
-        var words = await TableWordsAsync(ownerId, unitId, ct);
         var usages = await CurrentAsync(ownerId, words, ct);
         var catalog = await CatalogQuestionsAsync(words, ct);
         var missing = words.Where(w => !usages.ContainsKey(w.Id) && !catalog.Contains(w.Id)).Take(WordsPerCall).ToList();
         if (missing.Count == 0)
         {
-            return await ToDtoAsync(unitId, words, usages, ct);
+            return await ToDtoAsync(source, words, usages, ct);
         }
 
         var result = await ai.CompleteJsonAsync(ownerId, BuildRequest(missing), ct);
@@ -109,16 +155,20 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
         }
 
         await db.SaveChangesAsync(ct);
-        return await ToDtoAsync(unitId, words, usages, ct);
+        return await ToDtoAsync(source, words, usages, ct);
     }
 
     /// <summary>Usage questions of the learner's words, for a "which word is right?" test (D-46).</summary>
-    public async Task<List<(LearningItem Word, UsageQuestion Question)>> QuestionsAsync(Guid ownerId, IReadOnlyCollection<Guid>? units, CancellationToken ct)
+    /// <param name="decks">Own-word decks (L-51), together with <paramref name="units"/>; neither means every word.</param>
+    public async Task<List<(LearningItem Word, UsageQuestion Question)>> QuestionsAsync(Guid ownerId, IReadOnlyCollection<Guid>? units, CancellationToken ct,
+        IReadOnlyCollection<string>? decks = null)
     {
         var query = Words(ownerId);
-        if (units is { Count: > 0 })
+        if (units is { Count: > 0 } || decks is { Count: > 0 })
         {
-            query = query.Where(s => s.UnitId != null && units.Contains(s.UnitId.Value));
+            var tables = units ?? [];
+            var mine = PersonalWordService.DeckItems(db, ownerId, decks);
+            query = query.Where(s => (s.UnitId != null && tables.Contains(s.UnitId.Value)) || mine.Contains(s.Id));
         }
 
         var own = await (from s in query
@@ -158,19 +208,20 @@ public sealed class UsageService(IAppDbContext db, AiGateway ai, TimeProvider ti
     }
 
     /// <summary>A word counts as ready with its own usage or with the catalog's checked questions.</summary>
-    private async Task<TableUsageDto> ToDtoAsync(Guid unitId, List<LearningItem> words, Dictionary<Guid, WordUsage> usages, CancellationToken ct)
+    private async Task<TableUsageDto> ToDtoAsync(Source source, List<LearningItem> words, Dictionary<Guid, WordUsage> usages, CancellationToken ct)
     {
         var catalog = await CatalogQuestionsAsync(words, ct);
         return new TableUsageDto(
-            unitId,
-            (await Study.LearnerItems.UnitLabelsAsync(db, [unitId], ct)).GetValueOrDefault(unitId, "—"),
+            source.UnitId,
+            source.Label,
             words.Count,
             words.Count(w => usages.ContainsKey(w.Id) || catalog.Contains(w.Id)),
         words.Where(w => usages.ContainsKey(w.Id)).Select(w =>
         {
             var u = usages[w.Id];
             return new WordUsageDto(w.Id, w.Korean, w.Uzbek, u.Phrases, u.TrapUz, u.Example, u.Questions.Count, u.Warning);
-        }).ToList());
+        }).ToList(),
+        source.Deck);
     }
 
     public static AiJsonRequest BuildRequest(IReadOnlyList<LearningItem> words)

@@ -532,6 +532,6 @@ O‘quvchi ishda, do‘konda yoki ko‘chada kursda hali yo‘q so‘zga duch ke
 - Yozma mashq: "Qaysi so‘zlar?" qatorida to‘plamlar ham bor (`/api/writing/queue?deck=`).
 - Gap zinapoyasi va Xatolarim o‘quvchining barcha boshlangan so‘zlaridan foydalanadi, o‘z so‘zlari ham shunga kiradi.
 - Bo‘lim testiga ("Bilaman" va bo‘limni yakunlash) o‘z so‘zlari kirmaydi.
-- Hali qilinmagan: "Qaysi so‘z to‘g‘ri?" o‘z so‘zlari uchun (AI so‘zlariga savol tayyorlash kerak).
+- "So‘z qo‘llanishi" ("Qaysi so‘z to‘g‘ri?"): to‘plamlar bo‘limlar tagida chiqadi. Lug‘at so‘zi tekshirilgan savollari bilan darhol tayyor; AI so‘zlari uchun "Tayyorlash" (10 ta so‘zga bitta AI chaqiruvi, `/api/vocabulary/decks/{key}/usage`). Mashqni bo‘lim va to‘plamlardan birga tuzish mumkin.
 
 **Ma’lum chegara:** hali nashr qilinmagan bo‘limdagi tekshirilgan so‘z shaxsiy nusxa sifatida qo‘shiladi; bo‘lim keyin nashr qilinib ochilsa, u so‘z kursda ham chiqadi.
