@@ -31,7 +31,10 @@ public sealed record CatalogSampleWord(
     [property: JsonPropertyName("example_uz")] string? ExampleUz,
     [property: JsonPropertyName("trap_uz")] string? TrapUz,
     string? Theme,
-    string? Source);
+    string? Source,
+    [property: JsonPropertyName("trap_cue")] string? TrapCue = null,
+    [property: JsonPropertyName("trap_wrong")] string? TrapWrong = null,
+    [property: JsonPropertyName("trap_right")] string? TrapRight = null);
 
 /// <summary>
 /// Loads the sample content (spec §2.4 step 6). Its content was written and checked by Johnny, so the words come in
@@ -74,6 +77,9 @@ public sealed class CatalogSeeder(IAppDbContext db, TimeProvider time, IOperatio
 
             (word.TranslationUz, word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.Theme) =
                 (fields.TranslationUz, fields.Romanization, fields.ExampleKo, fields.ExampleUz, fields.TrapUz, fields.Theme);
+            // The file is checked content: a scene in it is shown as it is (L-52); a broken one is left out.
+            var (scene, _) = CatalogContent.CheckScene(s.TrapCue, s.TrapWrong, s.TrapRight, fields.TrapUz);
+            (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapScenePending) = (scene?.Cue, scene?.Wrong, scene?.Right, false);
             word.Source = s.Source ?? CatalogWord.DefaultSource;
             (word.Status, word.ReviewedAt, word.UpdatedAt) = (CatalogWordStatus.Reviewed, now, now);
             levels.Add(level);

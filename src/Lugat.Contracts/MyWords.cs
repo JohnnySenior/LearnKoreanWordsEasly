@@ -18,7 +18,8 @@ public sealed record MyWordCandidateDto(
     PersonalWordSource Source,
     Guid? CatalogWordId,
     string? Unit,
-    bool AlreadyAdded);
+    bool AlreadyAdded,
+    TrapSceneDto? TrapScene = null);
 
 /// <param name="AiLeftToday">Free AI look-ups left today; null with Premium (no limit).</param>
 public sealed record MyWordLookupDto(IReadOnlyList<MyWordCandidateDto> Candidates, bool UsedAi, int? AiLeftToday);
@@ -34,7 +35,8 @@ public sealed record AddMyWordRequest(
     string? TrapUz,
     PersonalWordSource Source,
     Guid? CatalogWordId,
-    Guid? DeckId);
+    Guid? DeckId,
+    TrapSceneDto? TrapScene = null);
 
 public enum MyWordState
 {

@@ -58,6 +58,11 @@ public static class CatalogEndpoints
             catalog.UpdateWordAsync(user.GetUserId(), id, body, ct));
         editor.MapPost("/catalog/words/{id:guid}/review", (Guid id, ReviewCatalogWordRequest body, ClaimsPrincipal user, CatalogAdminService catalog, CancellationToken ct) =>
             catalog.ReviewAsync(user.GetUserId(), id, body.Version, ct));
+        // Trap scenes (L-52): the AI drafts them from the trap notes, an editor confirms.
+        editor.MapPost("/units/{id:guid}/trap-scenes", (Guid id, ClaimsPrincipal user, TrapSceneService scenes, CancellationToken ct) =>
+            scenes.DraftNextAsync(user.GetUserId(), id, ct));
+        editor.MapPost("/catalog/words/{id:guid}/trap-scene/approve", (Guid id, ReviewCatalogWordRequest body, ClaimsPrincipal user, CatalogAdminService catalog, CancellationToken ct) =>
+            catalog.ApproveSceneAsync(user.GetUserId(), id, body.Version, ct));
 
         return app;
     }

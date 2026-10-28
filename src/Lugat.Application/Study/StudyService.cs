@@ -435,6 +435,17 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
                 .Where(u => u.OwnerId == card.OwnerId && u.LearningItemId == sense.Id && u.ContentVersion == sense.ContentVersion)
                 .Select(u => u.TrapUz).FirstOrDefaultAsync(ct)
             ?? await Vocabulary.PersonalWordService.Trap(db, card.OwnerId, sense.Id).FirstOrDefaultAsync(ct);
+        // The trap acted out (L-52): the catalog's confirmed scene, else the one on the learner's own word.
+        var scene = sense.CatalogWordId is { } sceneWordId
+            ? (await db.CatalogWords.AsNoTracking().Where(w => w.Id == sceneWordId).ToListAsync(ct)).Select(Catalog.CatalogAdminService.LearnerScene).FirstOrDefault()
+            : null;
+        if (scene is null && await db.PersonalWords.AsNoTracking()
+                .Where(w => w.OwnerId == card.OwnerId && w.LearningItemId == sense.Id && w.TrapWrong != null && w.TrapRight != null)
+                .Select(w => new { w.TrapCue, w.TrapWrong, w.TrapRight }).FirstOrDefaultAsync(ct) is { } own)
+        {
+            scene = new Catalog.TrapScene(own.TrapCue, own.TrapWrong!, own.TrapRight!);
+        }
+
         var unit = sense.UnitId is { } unitRef ? (await LearnerItems.UnitLabelsAsync(db, [unitRef], ct)).GetValueOrDefault(unitRef) : null;
         return new CardPromptDto(
             position,
@@ -450,7 +461,8 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             state.IsDue(now),
             previews,
             trap,
-            koreanToUzbek ? null : await Vocabulary.MeaningTwins.HintAsync(db, card.OwnerId, sense, ct));
+            koreanToUzbek ? null : await Vocabulary.MeaningTwins.HintAsync(db, card.OwnerId, sense, ct),
+            scene is null ? null : new TrapSceneDto(scene.Cue, scene.Wrong, scene.Right));
     }
 
     private IQueryable<ActiveCard> ActiveCards(Guid ownerId) =>

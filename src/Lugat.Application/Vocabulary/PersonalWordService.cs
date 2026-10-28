@@ -79,7 +79,7 @@ public sealed class PersonalWordService(
         var added = await AddedKoreanAsync(ownerId, ct);
         var candidates = written
             .Select(w => new MyWordCandidateDto(w.Korean, w.Fields.TranslationUz!, w.Fields.Romanization, w.Fields.ExampleKo, w.Fields.ExampleUz,
-                w.Fields.TrapUz, PersonalWordSource.Ai, null, null, added.Contains(w.Korean)))
+                w.Fields.TrapUz, PersonalWordSource.Ai, null, null, added.Contains(w.Korean), SceneDto(w.Scene)))
             .ToList();
         return new MyWordLookupDto(candidates, true, unlimited ? null : FreeAiPerDay - used - 1);
     }
@@ -108,7 +108,7 @@ public sealed class PersonalWordService(
                 ?? throw new NotFoundException("Bu so‘z lug‘atda topilmadi.");
             var shared = await db.LearningItems.SingleOrDefaultAsync(i => i.CatalogWordId == source.Id && i.IsActive, ct);
             item = shared ?? NewItem(ownerId, source.Word, source.TranslationUz!, now);
-            word = NewWord(request, ownerId, item, now, source.Romanization, source.ExampleKo, source.ExampleUz, source.TrapUz);
+            word = NewWord(request, ownerId, item, now, source.Romanization, source.ExampleKo, source.ExampleUz, source.TrapUz, CatalogAdminService.LearnerScene(source));
             word.CatalogWordId = source.Id;
         }
         else
@@ -126,7 +126,9 @@ public sealed class PersonalWordService(
             }
 
             item = NewItem(ownerId, korean, fields.TranslationUz, now);
-            word = NewWord(request, ownerId, item, now, fields.Romanization, fields.ExampleKo, fields.ExampleUz, fields.TrapUz);
+            // The AI's scene, as the learner confirmed it; a broken one is dropped, the word is still added.
+            var (scene, _) = CatalogContent.CheckScene(request.TrapScene?.Cue, request.TrapScene?.Wrong, request.TrapScene?.Right, fields.TrapUz);
+            word = NewWord(request, ownerId, item, now, fields.Romanization, fields.ExampleKo, fields.ExampleUz, fields.TrapUz, scene);
         }
 
         if (await db.PersonalWords.AnyAsync(w => w.OwnerId == ownerId && w.LearningItemId == item.Id, ct)
@@ -340,7 +342,7 @@ public sealed class PersonalWordService(
         var ids = found.Select(w => (Guid?)w.Id).ToList();
         var added = (await db.PersonalWords.Where(p => p.OwnerId == ownerId && ids.Contains(p.CatalogWordId)).Select(p => p.CatalogWordId).ToListAsync(ct)).ToHashSet();
         return found.Select(w => new MyWordCandidateDto(w.Word, w.TranslationUz!, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz, PersonalWordSource.Catalog, w.Id,
-                w.UnitId is { } u ? labels.GetValueOrDefault(u) : null, added.Contains(w.Id)))
+                w.UnitId is { } u ? labels.GetValueOrDefault(u) : null, added.Contains(w.Id), SceneDto(CatalogAdminService.LearnerScene(w))))
             .ToList();
     }
 
@@ -409,7 +411,7 @@ public sealed class PersonalWordService(
     };
 
     private static PersonalWord NewWord(AddMyWordRequest request, Guid ownerId, LearningItem item, DateTimeOffset now,
-        string? romanization, string? exampleKo, string? exampleUz, string? trap) => new()
+        string? romanization, string? exampleKo, string? exampleUz, string? trap, TrapScene? scene) => new()
     {
         Id = request.Id,
         OwnerId = ownerId,
@@ -420,8 +422,13 @@ public sealed class PersonalWordService(
         ExampleKo = exampleKo,
         ExampleUz = exampleUz,
         TrapUz = trap,
+        TrapCue = scene?.Cue,
+        TrapWrong = scene?.Wrong,
+        TrapRight = scene?.Right,
         CreatedAt = now,
     };
+
+    private static TrapSceneDto? SceneDto(TrapScene? scene) => scene is null ? null : new TrapSceneDto(scene.Cue, scene.Wrong, scene.Right);
 
     public static AiJsonRequest BuildRequest(string text, bool korean) => new(
         Feature,
@@ -432,7 +439,7 @@ public sealed class PersonalWordService(
         2000);
 
     /// <summary>Candidates that pass the catalog's content rules (spec §2.3); the rest are dropped.</summary>
-    public static List<(string Korean, CatalogContentFields Fields)> Parse(string json)
+    public static List<(string Korean, CatalogContentFields Fields, TrapScene? Scene)> Parse(string json)
     {
         WordsResult? r;
         try
@@ -444,7 +451,7 @@ public sealed class PersonalWordService(
             return [];
         }
 
-        var result = new List<(string, CatalogContentFields)>();
+        var result = new List<(string, CatalogContentFields, TrapScene?)>();
         foreach (var w in r?.Words ?? [])
         {
             var korean = (w.Korean ?? "").Trim();
@@ -460,7 +467,9 @@ public sealed class PersonalWordService(
             }
 
             var (withTrap, _) = CatalogContent.Check(fields with { TrapUz = w.TrapUz });
-            result.Add((korean, withTrap ?? fields));
+            var kept = withTrap ?? fields;
+            var (scene, _) = CatalogContent.CheckScene(w.TrapCue, w.TrapWrong, w.TrapRight, kept.TrapUz);
+            result.Add((korean, kept, scene));
             if (result.Count == MaxCandidates)
             {
                 break;
@@ -472,7 +481,8 @@ public sealed class PersonalWordService(
 
     private sealed record WordsResult(List<WordItem>? Words);
 
-    private sealed record WordItem(string? Korean, string? TranslationUz, string? Romanization, string? ExampleKo, string? ExampleUz, string? TrapUz);
+    private sealed record WordItem(string? Korean, string? TranslationUz, string? Romanization, string? ExampleKo, string? ExampleUz, string? TrapUz,
+        string? TrapCue = null, string? TrapWrong = null, string? TrapRight = null);
 
     private const string Instructions = """
         You write vocabulary cards for adult Uzbek speakers learning Korean; many work in Korea. The learner met a
@@ -493,6 +503,10 @@ public sealed class PersonalWordService(
         - exampleUz: its natural Uzbek translation.
         - trapUz: where an Uzbek speaker really goes wrong with this word (word-for-word translation, politeness, a
           similar word), in 1-2 short Uzbek sentences with the Korean in Hangul; null when there is nothing real.
+        - trapWrong, trapRight: when trapUz names a real mistake, the exact Korean an Uzbek speaker wrongly says and
+          the Korean to say instead (a word or a phrase of at most 5 words, in Hangul); trapCue: the situation in
+          Uzbek, at most 8 words, ending with ":" ("«Ishga boraman» deyishda:"). All three null when there is no
+          such pair; never invent one.
         Write Uzbek in Latin script with o‘ g‘ and ’; never Cyrillic. Use only natural Korean you are sure of.
         """;
 
@@ -507,14 +521,17 @@ public sealed class PersonalWordService(
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["korean", "translationUz", "romanization", "exampleKo", "exampleUz", "trapUz"],
+                "required": ["korean", "translationUz", "romanization", "exampleKo", "exampleUz", "trapUz", "trapCue", "trapWrong", "trapRight"],
                 "properties": {
                   "korean": { "type": "string" },
                   "translationUz": { "type": "string" },
                   "romanization": { "type": "string" },
                   "exampleKo": { "type": "string" },
                   "exampleUz": { "type": "string" },
-                  "trapUz": { "type": ["string", "null"] }
+                  "trapUz": { "type": ["string", "null"] },
+                  "trapCue": { "type": ["string", "null"] },
+                  "trapWrong": { "type": ["string", "null"] },
+                  "trapRight": { "type": ["string", "null"] }
                 }
               }
             }

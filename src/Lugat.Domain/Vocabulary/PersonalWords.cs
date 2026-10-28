@@ -49,6 +49,13 @@ public sealed class PersonalWord
 
     public string? TrapUz { get; set; }
 
+    /// <summary>The trap acted out on the card (L-52), as on a catalog word.</summary>
+    public string? TrapCue { get; set; }
+
+    public string? TrapWrong { get; set; }
+
+    public string? TrapRight { get; set; }
+
     /// <summary>
     /// The day its new cards may join the daily review: at most <see cref="NewPerDay"/> own words a day, so adding fifty
     /// at once does not bury the next days.

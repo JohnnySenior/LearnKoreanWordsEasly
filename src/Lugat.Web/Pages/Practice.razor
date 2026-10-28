@@ -132,7 +132,11 @@ else
             {
                 <p class="answer">@card.Answer</p>
             }
-            @if (card.UsageTrap is not null)
+            @if (card.TrapScene is { } scene)
+            {
+                <TrapScene Scene="scene" Note="@card.UsageTrap" />
+            }
+            else if (card.UsageTrap is not null)
             {
                 <div class="trap"><span class="trap-title"><Icon Name="triangle-alert" Size="14" Stroke="2.2" /> O‘zbekcha tuzoq</span><p>@card.UsageTrap</p></div>
             }

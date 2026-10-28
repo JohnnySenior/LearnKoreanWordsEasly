@@ -17,6 +17,9 @@ public sealed record CatalogContentFields(
     public bool IsComplete => TranslationUz is not null && Romanization is not null && ExampleKo is not null && ExampleUz is not null;
 }
 
+/// <summary>The trap acted out on the card (L-52): an optional Uzbek situation, the Uzbek speaker's Korean, the right Korean.</summary>
+public sealed record TrapScene(string? Cue, string Wrong, string Right);
+
 /// <summary>
 /// The rules of spec §2.3 in one place, for editors and for AI drafts alike: Uzbek in Latin script with one
 /// apostrophe form, 1-3 meanings separated by ";", Revised Romanization in Latin letters, one Korean example of at
@@ -79,6 +82,50 @@ public static partial class CatalogContent
         }
 
         return (new CatalogContentFields(translation, romanization, exampleKo, exampleUz, trap, theme), null);
+    }
+
+    public const int MaxSceneKorean = 60;
+
+    public const int MaxSceneCue = 120;
+
+    /// <summary>
+    /// Checks a trap scene (L-52): all blank is no scene; otherwise both Korean lines in Hangul, different, short,
+    /// and a trap note to explain them. Returns the cleaned scene or the problem in Uzbek.
+    /// </summary>
+    public static (TrapScene? Scene, string? Problem) CheckScene(string? cue, string? wrong, string? right, string? trapUz)
+    {
+        var (c, w, r) = (Blank(TextNormalizer.Uzbek(cue)), Blank(wrong), Blank(right));
+        if (c is null && w is null && r is null)
+        {
+            return (null, null);
+        }
+
+        if (w is null || r is null)
+        {
+            return (null, "Tuzoq sahnasida xato va to‘g‘ri variant birga to‘ldirilsin (yoki ikkalasi ham bo‘sh).");
+        }
+
+        if (Blank(trapUz) is null)
+        {
+            return (null, "Tuzoq sahnasi tuzoq izohi bilan birga bo‘ladi: avval izohni yozing.");
+        }
+
+        if (w.Length > MaxSceneKorean || r.Length > MaxSceneKorean || !SentenceCheckService.ContainsHangul(w) || !SentenceCheckService.ContainsHangul(r))
+        {
+            return (null, $"Xato va to‘g‘ri variant koreyscha (Hangul) bo‘lsin, {MaxSceneKorean} belgigacha.");
+        }
+
+        if (string.Equals(w.Replace(" ", ""), r.Replace(" ", ""), StringComparison.Ordinal))
+        {
+            return (null, "Xato va to‘g‘ri variant bir xil bo‘lmasin.");
+        }
+
+        if (c is not null && (c.Length > MaxSceneCue || !SentenceCheckService.IsUzbekLatin(c)))
+        {
+            return (null, $"Vaziyat o‘zbekcha lotin yozuvida bo‘lsin ({MaxSceneCue} belgigacha).");
+        }
+
+        return (new TrapScene(c, w, r), null);
     }
 
     /// <summary>Word count (어절): Korean words are separated by spaces.</summary>

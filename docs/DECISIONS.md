@@ -535,3 +535,31 @@ O‘quvchi ishda, do‘konda yoki ko‘chada kursda hali yo‘q so‘zga duch ke
 - "So‘z qo‘llanishi" ("Qaysi so‘z to‘g‘ri?"): to‘plamlar bo‘limlar tagida chiqadi. Lug‘at so‘zi tekshirilgan savollari bilan darhol tayyor; AI so‘zlari uchun "Tayyorlash" (10 ta so‘zga bitta AI chaqiruvi, `/api/vocabulary/decks/{key}/usage`). Mashqni bo‘lim va to‘plamlardan birga tuzish mumkin.
 
 **Ma’lum chegara:** hali nashr qilinmagan bo‘limdagi tekshirilgan so‘z shaxsiy nusxa sifatida qo‘shiladi; bo‘lim keyin nashr qilinib ochilsa, u so‘z kursda ham chiqadi.
+
+## L-52 · 2026-10-28 · Tuzoq sahnasi
+
+Kartochkadagi o‘zbekcha tuzoq endi oddiy matn emas, kichik sahna bo‘lib chiqadi:
+1. vaziyat ("«Ishga boraman» deyishda:");
+2. o‘zbek odatda aytadigan koreyscha (회사에서 가요) — ustidan qizil chiziq va ✗;
+3. to‘g‘risi (회사에 가요) ✓ bilan va tinglash tugmasi bilan;
+4. oxirida mavjud tuzoq izohi.
+
+"Qayta ko‘rsatish" bor. Animatsiyani faqat CSS qiladi; `prefers-reduced-motion` bo‘lsa hammasi birdan chiqadi. Quizpilot darsidan olingan g‘oya (Johnny bilan boshqa chatda kelishilgan, A bosqich). Spec §1.4 ga mos: o‘yin elementi yo‘q, faqat ko‘rsatish usuli.
+
+**Kontent:**
+- `CatalogWord` va `PersonalWord` ga uchta ixtiyoriy maydon qo‘shildi: `TrapCue`, `TrapWrong`, `TrapRight`. `TrapUz` o‘zgarmaydi va izoh bo‘lib qoladi.
+- Qoidalar (`CatalogContent.CheckScene`):
+  - ikkala koreyscha qator birga bo‘ladi, Hangul’da, 60 belgigacha, bir-biridan farqli;
+  - vaziyat ixtiyoriy, o‘zbekcha lotinda, 120 belgigacha;
+  - sahna faqat tuzoq izohi bor so‘zda bo‘ladi.
+- Ikkalasi bo‘sh bo‘lsa, kartochka hozirgidek matn ko‘rsatadi.
+
+**Jarayon (spec §2.4):**
+- /kontent dagi "Tuzoq sahnalari" tugmasi 10 tadan so‘z uchun bitta AI chaqiruvi qiladi (`trap-scene`).
+- AI faqat izohda yozilgan haqiqiy xato–to‘g‘ri juftligini ajratadi. Juftlik bo‘lmasa (masalan, 하다 dagi "yaxshi xabar"), sahna bo‘sh qoladi va bu so‘z qayta so‘ralmaydi (`TrapSceneAskedAt`).
+- AI qoralamasi `TrapScenePending` holatida bo‘ladi va muharrir tasdiqlamaguncha o‘quvchiga ko‘rinmaydi. Tasdiqlashning ikki yo‘li bor: "Sahnani shundayicha tasdiqlash" yoki so‘zni saqlash.
+- Izoh o‘zgarsa, AI yana so‘ralishi mumkin.
+
+**Mening so‘zlarim:** AI so‘ziga ham sahnani AI yozadi. U so‘z kartasida "AI izohi" belgisi bilan ko‘rinadi, muharrir tekshiruvi yo‘q (L-51 dagidek). Lug‘atdan qo‘shilgan so‘z esa lug‘atning tasdiqlangan sahnasini oladi.
+
+**Ovoz:** to‘g‘ri variantni Azure (ko-KR) o‘qiydi, avtomatik emas, tugma bosilganda: telefon brauzerlari ovozni faqat bosishdan keyin chalishga ruxsat beradi. Bo‘lim kirishi (B bosqich) uchun o‘zbekcha diktor ovozi keyin Azure va ElevenLabs namunalarini solishtirib tanlanadi.

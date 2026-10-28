@@ -251,6 +251,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.ExampleKo).HasMaxLength(200);
             e.Property(x => x.ExampleUz).HasMaxLength(300);
             e.Property(x => x.TrapUz).HasMaxLength(1000);
+            e.Property(x => x.TrapCue).HasMaxLength(120);
+            e.Property(x => x.TrapWrong).HasMaxLength(60);
+            e.Property(x => x.TrapRight).HasMaxLength(60);
             e.Property(x => x.Theme).HasMaxLength(40);
             e.Property(x => x.Source).HasMaxLength(200);
             e.Property(x => x.AiProvider).HasMaxLength(64);
@@ -338,6 +341,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.ExampleKo).HasMaxLength(200);
             e.Property(x => x.ExampleUz).HasMaxLength(300);
             e.Property(x => x.TrapUz).HasMaxLength(1000);
+            e.Property(x => x.TrapCue).HasMaxLength(120);
+            e.Property(x => x.TrapWrong).HasMaxLength(60);
+            e.Property(x => x.TrapRight).HasMaxLength(60);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<WordDeck>().WithMany().HasForeignKey(x => x.DeckId).OnDelete(DeleteBehavior.SetNull);
