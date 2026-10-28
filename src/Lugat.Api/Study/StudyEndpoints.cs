@@ -34,8 +34,8 @@ public static class StudyEndpoints
             s.UndoAsync(user.GetUserId(), eventId, ct));
 
         var writing = app.MapGroup("/api/writing").RequireAuthorization();
-        writing.MapGet("/queue", (ReviewDirection? direction, int? count, Guid? unit, ClaimsPrincipal user, Application.Writing.WritingService s, CancellationToken ct) =>
-            s.QueueAsync(user.GetUserId(), direction, count ?? 20, unit, ct));
+        writing.MapGet("/queue", (ReviewDirection? direction, int? count, Guid? unit, string? deck, ClaimsPrincipal user, Application.Writing.WritingService s, CancellationToken ct) =>
+            s.QueueAsync(user.GetUserId(), direction, count ?? 20, unit, ct, deck));
         writing.MapPost("/answers", (WritingCheckRequest body, ClaimsPrincipal user, Application.Writing.WritingService s, CancellationToken ct) =>
             s.CheckAsync(user.GetUserId(), body, ct));
         writing.MapGet("/stats", (ClaimsPrincipal user, Application.Writing.WritingService s, CancellationToken ct) =>

@@ -24,7 +24,22 @@
                 <button class="chip @(_tables.Contains(n) ? "selected" : "")" aria-pressed="@_tables.Contains(n)" title="@($"{t.Words} ta so‘z")" @onclick="() => Toggle(n)">@t.Unit</button>
             }
         </div>
-        <p class="muted small-text">@(_tables.Count == 0 ? "Bo‘lim tanlanmagan" : $"{_options.Tables.Where(t => _tables.Contains(t.UnitId)).Sum(t => t.Words)} ta so‘z")</p>
+    }
+    @if (_options.Decks is { Count: > 0 } decks)
+    {
+        @* L-51: the learner's own words, by deck; they can be mixed with units. *@
+        <span class="kicker" style="margin-top:14px">Mening so‘zlarim</span>
+        <div class="chips" role="group" aria-label="Mening so‘zlarim">
+            @foreach (var d in decks)
+            {
+                var key = d.Key;
+                <button class="chip wide @(_decks.Contains(key) ? "selected" : "")" aria-pressed="@_decks.Contains(key)" title="@($"{d.Words} ta so‘z")" @onclick="() => ToggleDeck(key)">@d.Name</button>
+            }
+        </div>
+    }
+    @if (_options.Tables.Count > 0 || _options.Decks is { Count: > 0 })
+    {
+        <p class="muted small-text">@(Ready ? $"{Words} ta so‘z" : "Bo‘lim tanlanmagan")</p>
     }
     <span class="kicker" style="margin-top:14px">Savollar soni</span>
     <div class="seg" role="radiogroup" aria-label="Savollar soni">
@@ -55,6 +70,7 @@
 
     private TestOptionsDto? _options;
     private readonly HashSet<Guid> _tables = [];
+    private readonly HashSet<string> _decks = [];
     private int _count;
     private bool _busy;
     private string? _error;
@@ -65,7 +81,14 @@
         ? [(20, "Qisqa: 20"), (0, "Barcha so‘zlar")]
         : [(10, "10"), (20, "20"), (30, "30")];
 
-    private bool Ready => _tables.Count > 0;
+    private bool Ready => _tables.Count > 0 || _decks.Count > 0;
+
+    /// <summary>An own word that is also a chosen unit's word is counted twice here; the server asks it once.</summary>
+    private int Words => (_options?.Tables.Where(t => _tables.Contains(t.UnitId)).Sum(t => t.Words) ?? 0)
+        + (_options?.Decks?.Where(d => _decks.Contains(d.Key)).Sum(d => d.Words) ?? 0);
+
+    /// <summary>The chosen decks in the listed order.</summary>
+    private List<string> ChosenDecks() => _options?.Decks?.Select(d => d.Key).Where(_decks.Contains).ToList() ?? [];
 
     /// <summary>The chosen units in course order.</summary>
     private List<Guid> Chosen() => _options?.Tables.Select(t => t.UnitId).Where(_tables.Contains).ToList() ?? [];
@@ -86,6 +109,10 @@
         {
             _tables.Add(first.UnitId);
         }
+        else if (_options?.Decks?.FirstOrDefault() is { } deck)
+        {
+            _decks.Add(deck.Key);
+        }
     }
 
     private void Toggle(Guid table)
@@ -97,6 +124,15 @@
         }
     }
 
+    private void ToggleDeck(string key)
+    {
+        _pendingId = null;
+        if (!_decks.Remove(key))
+        {
+            _decks.Add(key);
+        }
+    }
+
     private async Task CreateAsync()
     {
         _busy = true;
@@ -104,8 +140,8 @@
         var id = _pendingId ??= Guid.NewGuid();
         var request = Mode switch
         {
-            TestCategory.Oral => new CreateTestRequest(id, Chosen(), _count, Oral: true),
-            _ => new CreateTestRequest(id, Chosen(), _count),
+            TestCategory.Oral => new CreateTestRequest(id, Chosen(), _count, Oral: true, Decks: ChosenDecks()),
+            _ => new CreateTestRequest(id, Chosen(), _count, Decks: ChosenDecks()),
         };
         var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", request, SessionService.AiTimeout);
         _busy = false;

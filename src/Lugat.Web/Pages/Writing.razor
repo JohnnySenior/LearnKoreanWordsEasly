@@ -31,14 +31,21 @@
                 <button class="chip wide @(_count == n ? "selected" : "")" role="radio" aria-checked="@(_count == n)" @onclick="() => _count = n">@n</button>
             }
         </div>
-        @if (_tables.Count > 0)
+        @if (_tables.Count > 0 || _decks.Count > 0)
         {
             <p class="muted small-text">Qaysi so‘zlar?</p>
             <div class="chips" role="radiogroup" aria-label="So‘zlar">
-                <button class="chip wide @(_table is null ? "selected" : "")" role="radio" aria-checked="@(_table is null)" @onclick="() => _table = null">Boshlangan so‘zlar</button>
+                <button class="chip wide @(_table is null && _deck is null ? "selected" : "")" role="radio" aria-checked="@(_table is null && _deck is null)" @onclick="() => Pick(null, null)">Boshlangan so‘zlar</button>
                 @foreach (var t in _tables)
                 {
-                    <button class="chip wide @(_table == t.UnitId ? "selected" : "")" role="radio" aria-checked="@(_table == t.UnitId)" @onclick="() => _table = t.UnitId">@t.Unit-bo‘lim</button>
+                    var unit = t.UnitId;
+                    <button class="chip wide @(_table == unit ? "selected" : "")" role="radio" aria-checked="@(_table == unit)" @onclick="() => Pick(unit, null)">@t.Unit-bo‘lim</button>
+                }
+                @foreach (var d in _decks)
+                {
+                    @* L-51: own words, by deck *@
+                    var key = d.Key;
+                    <button class="chip wide @(_deck == key ? "selected" : "")" role="radio" aria-checked="@(_deck == key)" @onclick="() => Pick(null, key)">@d.Name</button>
                 }
             </div>
         }
@@ -125,6 +132,8 @@ else
 
     private Guid? _table;
     private List<TestTableOptionDto> _tables = [];
+    private string? _deck;
+    private List<WordDeckOptionDto> _decks = [];
     private List<WritingPromptDto>? _queue;
     private readonly List<WritingVerdict> _verdicts = [];
     private int _index;
@@ -136,14 +145,19 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _tables = (await Api.GetAsync<TestOptionsDto>("api/tests/options")).Value?.Tables.ToList() ?? [];
+        var options = (await Api.GetAsync<TestOptionsDto>("api/tests/options")).Value;
+        _tables = options?.Tables.ToList() ?? [];
+        _decks = options?.Decks?.ToList() ?? [];
         _table = _tables.Any(t => t.UnitId == Unit) ? Unit : null;
     }
+
+    private void Pick(Guid? unit, string? deck) => (_table, _deck) = (unit, deck);
 
     private async Task StartAsync()
     {
         _busy = true;
-        var query = $"api/writing/queue?count={_count}" + (_direction is { } d ? $"&direction={d}" : "") + (_table is { } t ? $"&unit={t}" : "");
+        var query = $"api/writing/queue?count={_count}" + (_direction is { } d ? $"&direction={d}" : "") + (_table is { } t ? $"&unit={t}" : "")
+            + (_deck is { } k ? $"&deck={Uri.EscapeDataString(k)}" : "");
         var result = await Api.GetAsync<List<WritingPromptDto>>(query);
         _busy = false;
         _error = result.Ok ? null : result.Error;
