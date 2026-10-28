@@ -368,3 +368,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Railway: `Payments__Uz__*` (Johnny bergan TBC Humo karta).
 - [ ] Johnny: telefonda Premium → "O‘zbekistondan (so‘m)" ni ko‘rish; birinchi haqiqiy so‘m to‘lovini admin’da "so‘m" bilan qayd etish.
 
+**Sinovda bitta "Keyingisi" (2026-10-28):**
+- [x] Talaffuz savoliga javobdan keyin ikkita tugma chiqardi ("Keyingi →" va "Keyingisi"). Ichkisi olib tashlandi; pastdagi "Keyingisi" javob berilgan savoldan keyingi javobsiz savolga o‘tadi, oxirgi savolda ham javobsiz qolgan bo‘lsa unga qaytaradi.
+- [ ] Johnny: telefonda Talaffuz sinovida tekshirish (bu konteynerda mikrofon va Azure yo‘q).
+

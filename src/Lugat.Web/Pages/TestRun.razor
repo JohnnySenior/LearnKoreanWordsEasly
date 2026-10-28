@@ -287,10 +287,6 @@
         <span class="kicker">Koreyschasini ovoz chiqarib ayting</span>
         <p class="prompt">@question.Prompt</p>
         <OralAnswer TestId="Id" Question="question" Disabled="_busy" OnAnswered="OralAnsweredAsync" />
-        @if (question.Given is not null || question.Technical)
-        {
-            <button class="button block" style="margin-top:12px" @onclick="NextUnanswered">Keyingi →</button>
-        }
     </section>
 }
 else if (question.Kind == TestQuestionKind.OralMeaning)
@@ -404,7 +400,7 @@ else
     }
     else
     {
-        <button class="btn btn-primary block big" disabled="@(_position >= _test.Questions.Count - 1)" @onclick="() => Go(_position + 1)"><span>Keyingisi</span><Icon Name="arrow-right" /></button>
+        <button class="btn btn-primary block big" disabled="@(!CanGoNext)" @onclick="Next"><span>Keyingisi</span><Icon Name="arrow-right" /></button>
         <div class="test-foot-links">
             <button class="btn btn-ghost small" disabled="@(_position == 0)" @onclick="() => Go(_position - 1)">← Oldingi</button>
             <button class="btn btn-ghost small" @onclick="() => _confirmFinish = true">Hozir yakunlash</button>
@@ -429,11 +425,30 @@ else
 
     private bool IsOral => _test?.Questions.Any(q => q.Kind is TestQuestionKind.OralKorean or TestQuestionKind.OralMeaning) == true;
 
-    /// <summary>An oral answer stays on screen so the learner sees what was heard; "Keyingi" moves on.</summary>
+    /// <summary>An oral answer stays on screen so the learner sees what was heard; "Keyingisi" below moves on.</summary>
     private void OralAnsweredAsync(TestDto updated)
     {
         _test = updated;
         _error = null;
+    }
+
+    private bool CurrentAnswered => _test!.Questions[_position] is var q && (q.Given is not null || q.Technical);
+
+    // From the last question it still goes back to one left unanswered.
+    private bool CanGoNext => _position < _test!.Questions.Count - 1
+        || (CurrentAnswered && _test.Questions.Any(q => q.Given is null && !q.Technical));
+
+    // One "Keyingisi" for every question: after an answer it skips to the next unanswered one, else to the next.
+    private void Next()
+    {
+        if (CurrentAnswered)
+        {
+            NextUnanswered();
+        }
+        else
+        {
+            Go(_position + 1);
+        }
     }
 
     private void NextUnanswered()
