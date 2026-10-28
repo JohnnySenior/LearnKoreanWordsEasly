@@ -166,7 +166,8 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         return new UnitAdminDto(
             Summary(unit, words.Count(w => w.TranslationUz != null), words.Count(w => w.Status == CatalogWordStatus.Reviewed)),
             dtos,
-            words.Count(CatalogDraftService.NeedsDraft));
+            words.Count(CatalogDraftService.NeedsDraft),
+            words.Count(TrapSceneService.NeedsScene));
     }
 
     /// <summary>
@@ -179,6 +180,12 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         if (fields is null)
         {
             throw new ValidationException(problem!);
+        }
+
+        var (scene, sceneProblem) = CatalogContent.CheckScene(request.TrapCue, request.TrapWrong, request.TrapRight, fields.TrapUz);
+        if (sceneProblem is not null)
+        {
+            throw new ValidationException(sceneProblem);
         }
 
         var questions = new List<UsageQuestion>();
@@ -202,10 +209,17 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         }
 
         var now = time.GetUtcNow();
-        if (Fields(word) != fields)
+        // Saving the word is the editor's confirmation of its trap scene too, an AI draft included (L-52).
+        var sceneChanged = Scene(word) != scene || word.TrapScenePending;
+        if (Fields(word) != fields || sceneChanged)
         {
             (word.TranslationUz, word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.Theme) =
                 (fields.TranslationUz, fields.Romanization, fields.ExampleKo, fields.ExampleUz, fields.TrapUz, fields.Theme);
+            (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapScenePending) = (scene?.Cue, scene?.Wrong, scene?.Right, false);
+            if (word.TrapUz != fields.TrapUz || scene is null)
+            {
+                word.TrapSceneAskedAt = null; // a new note may name a mistake the AI can act out
+            }
             word.ContentVersion++;
             word.UpdatedAt = now;
             if (word.Status == CatalogWordStatus.Reviewed)
@@ -236,6 +250,29 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         await SaveAsync(ct);
         return (await ToDtosAsync([word], ct))[0];
     }
+
+    /// <summary>An editor confirms an AI-drafted trap scene as it is (L-52); from then on learners see it.</summary>
+    public async Task<CatalogWordAdminDto> ApproveSceneAsync(Guid editorId, Guid wordId, uint version, CancellationToken ct)
+    {
+        await using var lease = await operations.AcquireAsync(LockKey, ct);
+        var word = await LoadAsync(wordId, version, ct);
+        if (!word.TrapScenePending)
+        {
+            return (await ToDtosAsync([word], ct))[0];
+        }
+
+        var now = time.GetUtcNow();
+        (word.TrapScenePending, word.UpdatedAt) = (false, now);
+        word.ContentVersion++;
+        await SaveAsync(ct);
+        return (await ToDtosAsync([word], ct))[0];
+    }
+
+    /// <summary>The scene learners may see: set and confirmed by an editor.</summary>
+    public static TrapScene? LearnerScene(CatalogWord w) =>
+        !w.TrapScenePending && w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapScene(w.TrapCue, wrong, right) : null;
+
+    private static TrapScene? Scene(CatalogWord w) => w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapScene(w.TrapCue, wrong, right) : null;
 
     /// <summary>"Tekshirildi": a person confirms the word (spec §2.4 step 4); the reviewer is kept.</summary>
     public async Task<CatalogWordAdminDto> ReviewAsync(Guid editorId, Guid wordId, uint version, CancellationToken ct)
@@ -325,6 +362,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             w.ReviewedAt, w.AiProvider,
             (usages.GetValueOrDefault(w.Id)?.Questions ?? []).Select(q => new CatalogQuestionDto(q.Uzbek, q.Sentence, q.Answer, q.Wrong, q.ExplanationUz)).ToList(),
             w.Version,
-            w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Of(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [])).ToList();
+            w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Of(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [],
+            w.TrapCue, w.TrapWrong, w.TrapRight, w.TrapScenePending)).ToList();
     }
 }

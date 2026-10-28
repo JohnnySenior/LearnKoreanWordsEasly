@@ -35,6 +35,10 @@
     {
         <button class="button primary" disabled="@_busy" @onclick="DraftAsync">AI qoralama (@_unit.Remaining so‘z)</button>
     }
+    @if (_unit.ScenesRemaining > 0)
+    {
+        <button class="button" disabled="@_busy" @onclick="DraftScenesAsync">Tuzoq sahnalari (@_unit.ScenesRemaining so‘z)</button>
+    }
     @if (!Published)
     {
         <button class="button" disabled="@(_busy || _unit.Unit.Reviewed < _unit.Unit.Words)" @onclick="PublishAsync">Nashr qilish</button>
@@ -43,6 +47,8 @@
 <p class="muted small-text">
     AI qoralamasi 10 tadan so‘z yozadi; tekshiruvdan o‘tmagan javob saqlanmaydi. Har so‘zni o‘qib, tuzatib, «Tekshirildi» qiling.
     Barcha so‘z tekshirilgach bo‘limni nashr qilish mumkin; nashrdan keyin so‘zlar boshqa bo‘limga ko‘chmaydi.
+    «Tuzoq sahnalari»: AI tuzoq izohidan xato va to‘g‘ri koreyscha variantni ajratadi (izohda haqiqiy xato bo‘lmasa, bo‘sh qoldiradi).
+    Sahna siz tasdiqlaguningizcha o‘quvchiga ko‘rinmaydi.
 </p>
 
 @foreach (var w in _unit.Words)
@@ -65,6 +71,22 @@
         <label class="field">Misol (koreyscha, ≤ 8 so‘z)<input class="input" lang="ko" maxlength="200" @bind="edit.ExampleKo" /></label>
         <label class="field">Misol tarjimasi<input class="input" maxlength="300" @bind="edit.ExampleUz" /></label>
         <label class="field">Tuzoq (bo‘lmasa bo‘sh qoldiring)<textarea class="input" maxlength="1000" @bind="edit.TrapUz"></textarea></label>
+        <fieldset class="scene-fields">
+            <legend>Tuzoq sahnasi
+                @if (word.TrapScenePending)
+                {
+                    <span class="pill pill-warn">AI qoralamasi — tekshiring</span>
+                }
+            </legend>
+            <label class="field">Vaziyat (ixtiyoriy, masalan «Ishga boraman» deyishda:)<input class="input" maxlength="120" @bind="edit.TrapCue" /></label>
+            <label class="field">Xato (o‘zbek odatda shunday deydi)<input class="input" lang="ko" maxlength="60" @bind="edit.TrapWrong" /></label>
+            <label class="field">To‘g‘ri<input class="input" lang="ko" maxlength="60" @bind="edit.TrapRight" /></label>
+            <p class="muted small-text">Ikkalasi bo‘sh bo‘lsa, kartochkada tuzoq oddiy matn bo‘lib chiqadi. Saqlash sahnani ham tasdiqlaydi.</p>
+            @if (word.TrapScenePending)
+            {
+                <button class="button small" disabled="@_busy" @onclick="() => ApproveSceneAsync(word)">Sahnani shundayicha tasdiqlash</button>
+            }
+        </fieldset>
         <label class="field">Mavzu<input class="input" maxlength="40" @bind="edit.Theme" /></label>
         @if (edit.Questions.Count > 0)
         {
@@ -113,6 +135,9 @@
         public string? ExampleKo { get; set; }
         public string? ExampleUz { get; set; }
         public string? TrapUz { get; set; }
+        public string? TrapCue { get; set; }
+        public string? TrapWrong { get; set; }
+        public string? TrapRight { get; set; }
         public string? Theme { get; set; }
         public List<CatalogQuestionDto> Questions { get; set; } = [];
     }
@@ -153,6 +178,9 @@
         ExampleKo = w.ExampleKo,
         ExampleUz = w.ExampleUz,
         TrapUz = w.TrapUz,
+        TrapCue = w.TrapCue,
+        TrapWrong = w.TrapWrong,
+        TrapRight = w.TrapRight,
         Theme = w.Theme,
         Questions = w.Questions.ToList(),
     };
@@ -192,7 +220,8 @@
         _wordErrors.Remove(word.Id);
         var edit = _edits[word.Id];
         var saved = await Api.SendJsonAsync<CatalogWordAdminDto>(HttpMethod.Put, $"api/admin/catalog/words/{word.Id}", new UpdateCatalogWordRequest(
-            edit.TranslationUz, edit.Romanization, edit.ExampleKo, edit.ExampleUz, edit.TrapUz, edit.Theme, edit.Questions, word.Version));
+            edit.TranslationUz, edit.Romanization, edit.ExampleKo, edit.ExampleUz, edit.TrapUz, edit.Theme, edit.Questions, word.Version,
+            edit.TrapCue, edit.TrapWrong, edit.TrapRight));
         var current = saved.Value;
         if (current is not null && review && current.Status != CatalogWordStatus.Reviewed)
         {
@@ -209,6 +238,56 @@
             _wordErrors[word.Id] = error;
         }
 
+        Apply(current);
+        _busy = false;
+    }
+
+    private async Task ApproveSceneAsync(CatalogWordAdminDto word)
+    {
+        _busy = true;
+        _wordErrors.Remove(word.Id);
+        var result = await Api.SendJsonAsync<CatalogWordAdminDto>(HttpMethod.Post, $"api/admin/catalog/words/{word.Id}/trap-scene/approve", new ReviewCatalogWordRequest(word.Version));
+        if (result.Error is { } error)
+        {
+            _wordErrors[word.Id] = error;
+        }
+
+        Apply(result.Value);
+        _busy = false;
+    }
+
+    /// <summary>One AI call per 10 words with a trap note, until none is left; each draft waits for an editor (L-52).</summary>
+    private async Task DraftScenesAsync()
+    {
+        _busy = true;
+        _error = null;
+        while (_unit is { ScenesRemaining: > 0 })
+        {
+            _status = $"AI tuzoq sahnalarini yozmoqda… qoldi: {_unit.ScenesRemaining} so‘z";
+            StateHasChanged();
+            var before = _unit.ScenesRemaining;
+            var result = await Api.SendJsonAsync<UnitAdminDto>(HttpMethod.Post, $"api/admin/units/{Id}/trap-scenes", timeout: TimeSpan.FromMinutes(3));
+            if (result.Value is not { } unit)
+            {
+                _error = result.Error;
+                break;
+            }
+
+            Show(unit);
+            if (unit.ScenesRemaining >= before)
+            {
+                _error = "AI javob bermadi. Keyinroq qayta urinib ko‘ring.";
+                break;
+            }
+        }
+
+        var pending = _unit?.Words.Count(w => w.TrapScenePending) ?? 0;
+        _status = _error is null ? $"Tayyor: {pending} ta sahna tasdiqlashni kutmoqda." : null;
+        _busy = false;
+    }
+
+    private void Apply(CatalogWordAdminDto? current)
+    {
         if (current is not null && _unit is { } unit)
         {
             var words = unit.Words.Select(w => w.Id == current.Id ? current : w).ToList();
@@ -219,8 +298,6 @@
             };
             Replace(current);
         }
-
-        _busy = false;
     }
 
     private async Task PublishAsync()

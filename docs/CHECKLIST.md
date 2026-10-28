@@ -400,3 +400,11 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] "So‘z qo‘llanishi" to‘plamlar uchun: tayyorlash, mashq, boshqa o‘quvchi uchun 404. Test: `Which_word_is_right_can_be_prepared_and_practised_for_a_deck_of_own_words`. Chromium 390px: sahifada "Umumiy" va to‘plam qatorlari, scroll yo‘q.
 - [x] Yozma mashq sukut bo‘yicha "Koreyscha yozish" (PR #45).
 - [ ] Johnny: telefonda bitta lug‘at so‘zi va bitta AI so‘zi qo‘shib, ertasi kungi takrorda chiqishini ko‘rish.
+
+**Tuzoq sahnasi (L-52, 2026-10-28):**
+- [x] Model va migratsiya `TrapScenes` (faqat yangi ustunlar), qoidalar `CheckScene`.
+- [x] /kontent: sahna maydonlari, "Tuzoq sahnalari" (AI, 10 tadan), "Sahnani shundayicha tasdiqlash"; tasdiqlanmagan sahna o‘quvchiga ko‘rinmaydi.
+- [x] Kartochka: vaziyat → xato ✗ (chiziladi) → to‘g‘ri ✓ + tinglash → izoh; "Qayta ko‘rsatish"; reduced-motion.
+- [x] Mening so‘zlarim: AI so‘zining sahnasi, lug‘at so‘zining tasdiqlangan sahnasi.
+- [x] Testlar: `TrapSceneTests` (10). Chromium 390px yorug‘/qorong‘i: kartochka va /kontent, scroll yo‘q, sahifa xatosi yo‘q.
+- [ ] Johnny: production’da /kontent → A-1 bo‘lim → "Tuzoq sahnalari", natijani o‘qib tasdiqlash; keyin telefonda kartochkani ko‘rish.

@@ -119,10 +119,15 @@ public sealed record CatalogWordAdminDto(
     string? AiProvider,
     IReadOnlyList<CatalogQuestionDto> Questions,
     uint Version,
-    IReadOnlyList<string>? SameMeaning = null);
+    IReadOnlyList<string>? SameMeaning = null,
+    string? TrapCue = null,
+    string? TrapWrong = null,
+    string? TrapRight = null,
+    bool TrapScenePending = false);
 
 /// <param name="Remaining">Words still waiting for an AI draft.</param>
-public sealed record UnitAdminDto(UnitAdminSummaryDto Unit, IReadOnlyList<CatalogWordAdminDto> Words, int Remaining);
+/// <param name="ScenesRemaining">Words with a trap note the AI has not yet been asked to act out (L-52).</param>
+public sealed record UnitAdminDto(UnitAdminSummaryDto Unit, IReadOnlyList<CatalogWordAdminDto> Words, int Remaining, int ScenesRemaining = 0);
 
 /// <summary>All content fields; the official ones (word, homonym, part of speech, level, rank) cannot be changed.</summary>
 public sealed record UpdateCatalogWordRequest(
@@ -133,6 +138,9 @@ public sealed record UpdateCatalogWordRequest(
     string? TrapUz,
     string? Theme,
     IReadOnlyList<CatalogQuestionDto>? Questions,
-    uint Version);
+    uint Version,
+    string? TrapCue = null,
+    string? TrapWrong = null,
+    string? TrapRight = null);
 
 public sealed record ReviewCatalogWordRequest(uint Version);

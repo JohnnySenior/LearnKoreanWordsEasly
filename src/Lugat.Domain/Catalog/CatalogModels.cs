@@ -76,6 +76,22 @@ public sealed class CatalogWord
     /// <summary>A real trap for an Uzbek speaker; null when there is none (never invented, D-46).</summary>
     public string? TrapUz { get; set; }
 
+    /// <summary>
+    /// The trap acted out on the card (L-52): the situation in Uzbek (optional), what an Uzbek speaker says, and the
+    /// right Korean. Both Korean lines or neither; only with a <see cref="TrapUz"/>. Never invented.
+    /// </summary>
+    public string? TrapCue { get; set; }
+
+    public string? TrapWrong { get; set; }
+
+    public string? TrapRight { get; set; }
+
+    /// <summary>An AI draft of the scene that no editor has confirmed yet: learners see the plain trap until then.</summary>
+    public bool TrapScenePending { get; set; }
+
+    /// <summary>When the AI was last asked for this word's scene, so a word it found none for is not asked again.</summary>
+    public DateTimeOffset? TrapSceneAskedAt { get; set; }
+
     public string? Theme { get; set; }
 
     public string Source { get; set; } = DefaultSource;

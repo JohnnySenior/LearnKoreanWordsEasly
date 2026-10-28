@@ -1,0 +1,28 @@
+@using Lugat.Contracts
+@* The trap acted out (L-52): the situation, what an Uzbek speaker says, struck out, then the right Korean and the
+   note. CSS alone plays it, so "Qayta ko‘rsatish" only re-creates the stage; reduced motion shows it all at once. *@
+<div class="trap trap-scene">
+    <span class="trap-title"><Icon Name="triangle-alert" Size="14" Stroke="2.2" /> O‘zbekcha tuzoq</span>
+    <div class="scene-stage" @key="_run">
+        @if (Scene.Cue is not null)
+        {
+            <p class="scene-cue">@Scene.Cue</p>
+        }
+        <p class="scene-line scene-wrong" lang="ko"><span class="scene-w">@Scene.Wrong<i class="scene-strike" aria-hidden="true"></i></span><span class="scene-mark x" aria-label="xato">✗</span></p>
+        <div class="scene-line scene-right"><span lang="ko">@Scene.Right</span><span class="scene-mark v" aria-label="to‘g‘ri">✓</span><Speak Text="@Scene.Right" /></div>
+        @if (Note is not null)
+        {
+            <p class="scene-why">@Note</p>
+        }
+        <button type="button" class="scene-again" @onclick="() => _run++">Qayta ko‘rsatish</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TrapSceneDto Scene { get; set; } = default!;
+
+    /// <summary>The trap note, shown last as the explanation.</summary>
+    [Parameter] public string? Note { get; set; }
+
+    private int _run;
+}
