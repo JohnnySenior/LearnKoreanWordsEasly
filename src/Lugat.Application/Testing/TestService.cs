@@ -273,12 +273,11 @@ public sealed class TestService(
             chosen = chosen.Take(request.Count).ToList();
         }
 
-        // Directions alternate over the shuffled words, so both are covered about equally (TEST02).
-        var questions = chosen.Select((w, i) => i % 2 == 0
-                ? new TestQuestion(i, TestQuestionKind.OralKorean, w.Uzbek, null, null, [], w.Korean, w.KoreanNote, null, w.Id, false)
-                : new TestQuestion(i, TestQuestionKind.OralMeaning, w.Korean, null, w.Uzbek, [TestGrader.Knew, TestGrader.DidNotKnow], TestGrader.Knew, null, null, w.Id, false))
+        // "Talaffuz" is speaking only (L-49): the Uzbek meaning is shown, the learner says the Korean word and
+        // Azure grades it. The self-checked "say the meaning" question is no longer asked here.
+        var questions = chosen
+            .Select((w, i) => new TestQuestion(i, TestQuestionKind.OralKorean, w.Uzbek, null, null, [], w.Korean, w.KoreanNote, null, w.Id, false))
             .ToList();
-        questions = Shuffle(questions).Select((q, i) => q with { Index = i }).ToList();
         return new TestRun
         {
             Title = $"Talaffuz · {await UnitTitleAsync(words, ct)}",

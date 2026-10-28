@@ -372,3 +372,9 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Talaffuz savoliga javobdan keyin ikkita tugma chiqardi ("Keyingi →" va "Keyingisi"). Ichkisi olib tashlandi; pastdagi "Keyingisi" javob berilgan savoldan keyingi javobsiz savolga o‘tadi, oxirgi savolda ham javobsiz qolgan bo‘lsa unga qaytaradi.
 - [ ] Johnny: telefonda Talaffuz sinovida tekshirish (bu konteynerda mikrofon va Azure yo‘q).
 
+**Talaffuz faqat gapirish, Enter bilan ishlash (L-49, 2026-10-28):**
+- [x] Talaffuz sinovi: hamma savol "o‘zbekcha ma’no → koreyschasini ayting" (Azure baholaydi); "Bildim/Bilmadim" savoli yo‘q. Test yangilandi.
+- [x] Enter asosiy tugmani bosadi (`data-enter`); maydon va Tab bilan tanlangan tugma o‘z Enter’ini saqlaydi; JS testlari (`tests/web/enter.test.mjs`).
+- [x] Chromium, faqat klaviatura: yozma mashq (yozish → Enter tekshiradi → Enter keyingisi, kursor maydonda); lug‘at sinovi (yozma savollar Enter bilan, variantli savolda Enter javobsiz savolni tashlab ketmaydi).
+- [ ] Johnny: noutbukda Talaffuz va yozma mashqni sichqonchasiz sinab ko‘rish.
+

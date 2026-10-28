@@ -457,3 +457,28 @@ O‘zbekistondagi o‘quvchilar vonda (₩) to‘lay olmaydi. Johnny boshlanishi
 - Promo-kod chegirmasi va o‘qituvchi komissiyasi (%) to‘lov qilingan valyutada hisoblanadi.
 - Von va so‘m hech qachon qo‘shilmaydi. Admin komissiya ro‘yxati, o‘qituvchi hisoboti va tushum jadvalida har bir valyuta alohida qatorda chiqadi.
 - "To‘landi" belgisi har bir valyuta uchun alohida qo‘yiladi.
+
+## L-49 · 2026-10-28 · Talaffuz — faqat gapirish; Enter bilan ishlash
+
+**Talaffuz sinovi:**
+- Avval savollar ikki turda navbatma-navbat kelardi:
+  - o‘zbekcha ma’no ko‘rsatiladi, o‘quvchi koreyschasini aytadi va Azure baholaydi;
+  - koreyscha so‘z ko‘rsatiladi, o‘quvchi ma’nosini aytib, o‘zi "Bildim / Bilmadim" ni belgilaydi.
+- Johnny ta’kidladi: ikkinchi tur talaffuzni tekshirmaydi, shuning uchun "Talaffuz" nomiga mos emas.
+- Endi barcha savollar `OralKorean` turida: o‘zbekcha ma’no chiqadi, koreyschasini aytasiz, Azure tekshiradi.
+- `OralMeaning` turi kodda qoladi. U eski sinovlarni ko‘rsatish va natija hisobi uchun kerak.
+
+**Enter:**
+- Noutbukda har bir savoldan keyin sichqoncha kerak bo‘lardi.
+- Endi har sahifadagi asosiy tugma `data-enter` bilan belgilanadi va Enter uni bosadi. Bunga quyidagilar kiradi:
+  - sinovda: "Keyingi", "Keyingisi", "Yakunlash";
+  - yozma mashqda: "Tekshirish", "Keyingi";
+  - tinglash va zinapoyada: "Keyingi";
+  - kartochkada: "Javobni ko‘rsatish".
+  - Umumiy qoida `app.js` dagi `enterTarget` funksiyasida.
+- Istisnolar:
+  - kursor turgan matn maydoni Enter’ni o‘zi ishlatadi (javob shu maydondan yuboriladi);
+  - Tab bilan tanlangan tugma o‘zi bosiladi;
+  - sichqoncha bilan bosilgan tugma (mikrofon, variant) Enter’ni asosiy tugmadan olib qo‘ymaydi.
+- Sinovda Enter "Keyingisi" ni faqat javob berilgan savolda bosadi, shuning uchun javobsiz savol tasodifan tashlab ketilmaydi.
+- Yozma mashqda va sinovning yoziladigan savollarida kursor o‘zi javob maydoniga o‘tadi.

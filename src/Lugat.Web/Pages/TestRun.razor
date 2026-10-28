@@ -363,9 +363,9 @@ else
     {
         <label class="field">
             Javobingiz (koreyscha)
-            <input class="input sentence" lang="ko" maxlength="40" autocomplete="off" @bind="_typed" @bind:event="oninput" @onkeydown="TypedKeyAsync" disabled="@_busy" />
+            <input class="input sentence" lang="ko" maxlength="40" autocomplete="off" @ref="_typedInput" @bind="_typed" @bind:event="oninput" @onkeydown="TypedKeyAsync" disabled="@_busy" />
         </label>
-        <button class="button primary big" disabled="@(_busy || string.IsNullOrWhiteSpace(_typed))" @onclick="() => AnswerAsync(question, _typed)">Keyingi</button>
+        <button class="button primary big" data-enter disabled="@(_busy || string.IsNullOrWhiteSpace(_typed))" @onclick="() => AnswerAsync(question, _typed)">Keyingi</button>
     }
     else
     {
@@ -392,7 +392,7 @@ else
     <p class="muted small-text">@(_test.Unit is { } u ? $"O‘tish uchun {u.PassMark} ta to‘g‘ri javob kerak. " : "")Javoblar oxirida ko‘rsatiladi.@(_test.Warning is null ? "" : $" {_test.Warning}")</p>
     @if (_test.Answered == _test.Questions.Count || _confirmFinish)
     {
-        <button class="btn btn-primary block big" disabled="@_busy" @onclick="FinishAsync"><span>Yakunlash va natijani ko‘rish</span><Icon Name="arrow-right" /></button>
+        <button class="btn btn-primary block big" data-enter disabled="@_busy" @onclick="FinishAsync"><span>Yakunlash va natijani ko‘rish</span><Icon Name="arrow-right" /></button>
         @if (_test.Answered < _test.Questions.Count)
         {
             <p class="muted small-text">@(_test.Questions.Count - _test.Answered) ta savolga javob berilmagan, ular xato hisoblanadi.</p>
@@ -400,7 +400,8 @@ else
     }
     else
     {
-        <button class="btn btn-primary block big" disabled="@(!CanGoNext)" @onclick="Next"><span>Keyingisi</span><Icon Name="arrow-right" /></button>
+        @* Enter moves on only from an answered question, so it never skips one by accident. *@
+        <button class="btn btn-primary block big" data-enter="@(CurrentAnswered ? "" : null)" disabled="@(!CanGoNext)" @onclick="Next"><span>Keyingisi</span><Icon Name="arrow-right" /></button>
         <div class="test-foot-links">
             <button class="btn btn-ghost small" disabled="@(_position == 0)" @onclick="() => Go(_position - 1)">← Oldingi</button>
             <button class="btn btn-ghost small" @onclick="() => _confirmFinish = true">Hozir yakunlash</button>
@@ -477,6 +478,26 @@ else
         _position = Math.Clamp(position, 0, _test!.Questions.Count - 1);
         _typed = _test.Questions[_position].Given ?? "";
         _error = null;
+        _focusTyped = true;
+    }
+
+    private ElementReference _typedInput;
+    private bool _focusTyped;
+
+    // A typed question is answered straight away, without reaching for the mouse (L-49).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusTyped && _test is { Status: TestRunStatus.InProgress } && TestGrader.IsTyped(_test.Questions[_position].Kind))
+        {
+            _focusTyped = false;
+            try
+            {
+                await _typedInput.FocusAsync();
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
     }
 
     private async Task TypedKeyAsync(KeyboardEventArgs e)
