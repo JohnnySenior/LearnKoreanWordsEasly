@@ -1158,3 +1158,7 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .landing-plans > div + div { padding-left: 12px; border-left: 1px solid var(--color-divider); }
 .landing-plans ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
 .landing-cta { margin-top: 8px; }
+
+/* In-app browser notice of the install guide (L-50). */
+.install-inapp { margin: 0 0 8px; }
+.install-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }

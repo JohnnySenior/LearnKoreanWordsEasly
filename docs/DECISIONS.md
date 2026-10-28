@@ -482,3 +482,23 @@ O‘zbekistondagi o‘quvchilar vonda (₩) to‘lay olmaydi. Johnny boshlanishi
   - sichqoncha bilan bosilgan tugma (mikrofon, variant) Enter’ni asosiy tugmadan olib qo‘ymaydi.
 - Sinovda Enter "Keyingisi" ni faqat javob berilgan savolda bosadi, shuning uchun javobsiz savol tasodifan tashlab ketilmaydi.
 - Yozma mashqda va sinovning yoziladigan savollarida kursor o‘zi javob maydoniga o‘tadi.
+
+## L-50 · 2026-10-28 · O‘rnatish: ilova ichidagi brauzer
+
+Reklamadan kelgan odam havolani Instagram, Facebook yoki Telegram ichida ochadi. Bu ilovalarning ichki brauzerida saytni bosh ekranga qo‘shib bo‘lmaydi. Ilgari bu holat uchun sahifaning pastida faqat kichik kulrang izoh bor edi.
+
+**Ichki brauzer aniqlanadi (`installState` → `inapp-ios:Instagram` / `inapp-android:` va hokazo):**
+- ilovalar nomi bo‘yicha: Instagram, Facebook, Telegram, TikTok, Threads, KakaoTalk, LINE;
+- yoki umumiy belgi bo‘yicha: Android’da WebView, iPhone’da "Safari/" belgisi yo‘q sahifa.
+
+**Bunday holatda:**
+- katta ogohlantirish chiqadi: "Sahifa … ichida ochilgan";
+- "Safari/Chrome’da ochish" ning 3 qadami ko‘rsatiladi;
+- "Havolani nusxalash" tugmasi bor (manzildagi `?src=` reklama belgisi saqlanadi);
+- Android’da "Chrome’da ochish" tugmasi ham bor (`intent://`).
+
+**Alohida qadamlar:**
+- iPhone’dagi Chrome, Firefox va Edge — Ulashish → "Bosh ekranga qo‘shish";
+- Samsung Internet — ☰ → "Sahifani qo‘shish" → "Bosh ekran".
+
+**Cheklov:** iPhone’da Telegram havolani Safari ko‘rinishidagi oynada ochadi va uni oddiy Safari’dan ajratib bo‘lmaydi. Shuning uchun Safari qadamlari ostida "kompas belgisini bosib Safari’da oching" degan izoh qoldi.
