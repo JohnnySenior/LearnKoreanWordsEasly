@@ -201,3 +201,29 @@ export async function applyUpdate() {
     });
     registration.waiting.postMessage({ type: 'SKIP_WAITING' });
 }
+
+// Enter presses the page's main button (L-49): "Keyingi", "Tekshirish", "Keyingisi"… marked with data-enter, so a
+// learner on a laptop does not need the mouse. A field keeps its own Enter (an answer is sent from it), and a button
+// reached with Tab keeps its native one; a button only clicked with the mouse (the microphone, an option) does not.
+export function enterTarget(active, candidates) {
+    if (active) {
+        const tag = active.tagName;
+        if (tag === 'TEXTAREA' || tag === 'SELECT' || active.isContentEditable) return null;
+        if (tag === 'INPUT' && !active.disabled) return null;
+        if ((tag === 'BUTTON' || tag === 'A') && (active.hasAttribute('data-enter') || active.matches(':focus-visible'))) return null;
+    }
+    return candidates.find(el => !el.disabled && el.offsetParent !== null) ?? null;
+}
+
+export function installEnterKey() {
+    if (window.__enterKey) return;
+    window.__enterKey = true;
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' || e.isComposing || e.repeat || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        const target = enterTarget(document.activeElement, [...document.querySelectorAll('[data-enter]')]);
+        if (target) {
+            e.preventDefault();
+            target.click();
+        }
+    });
+}

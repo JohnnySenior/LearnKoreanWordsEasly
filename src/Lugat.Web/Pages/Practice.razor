@@ -108,7 +108,7 @@ else
     {
         <section class="flashcard-hidden">
             <p class="muted">@(card.Direction == ReviewDirection.KoreanToUzbek ? "Ma’nosini eslang, keyin tekshiring." : "Koreyschasini eslang, keyin tekshiring.")</p>
-            <button class="btn btn-primary block reveal-btn" @onclick="Reveal"><span>Javobni ko‘rsatish</span><Icon Name="eye" /></button>
+            <button class="btn btn-primary block reveal-btn" data-enter @onclick="Reveal"><span>Javobni ko‘rsatish</span><Icon Name="eye" /></button>
         </section>
     }
     else

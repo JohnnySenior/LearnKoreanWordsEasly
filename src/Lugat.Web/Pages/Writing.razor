@@ -83,12 +83,12 @@ else
         }
 
         <input class="input @(typingKorean ? "ko" : "")" lang="@(typingKorean ? "ko" : "uz")" autocomplete="off" autocapitalize="off" spellcheck="false"
-               maxlength="200" @bind="_answer" @bind:event="oninput" @onkeydown="OnKeyDownAsync" disabled="@(_busy || _result is not null)"
+               maxlength="200" @ref="_input" @bind="_answer" @bind:event="oninput" @onkeydown="OnKeyDownAsync" disabled="@(_busy || _result is not null)"
                aria-label="Javob" />
 
         @if (_result is null)
         {
-            <button class="button primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_answer))" @onclick="CheckAsync">Tekshirish</button>
+            <button class="button primary" data-enter disabled="@(_busy || string.IsNullOrWhiteSpace(_answer))" @onclick="CheckAsync">Tekshirish</button>
             <button class="button" disabled="@_busy" @onclick="DontKnowAsync">Bilmayman</button>
         }
         else
@@ -103,7 +103,7 @@ else
             {
                 <p class="small-text">@_result.Note</p>
             }
-            <button class="button primary" @onclick="Next">Keyingi</button>
+            <button class="button primary" data-enter @onclick="Next">Keyingi</button>
         }
     </section>
 }
@@ -209,6 +209,27 @@ else
         _answer = "";
         _result = null;
         _attemptId = Guid.NewGuid();
+        _focusInput = true;
+    }
+
+    private ElementReference _input;
+    private bool _focusInput;
+
+    // The next word is typed straight away, without reaching for the mouse (L-49).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusInput && _queue is not null && _result is null)
+        {
+            _focusInput = false;
+            try
+            {
+                await _input.FocusAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                // Not on screen (the round has ended).
+            }
+        }
     }
 
     private void Reset() => _queue = null;

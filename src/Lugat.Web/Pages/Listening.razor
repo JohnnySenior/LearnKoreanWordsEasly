@@ -115,7 +115,7 @@
                     </ul>
                 }
             </section>
-            <button class="button primary block" @onclick="Next">@(NextIndex(item.Index) is null ? "Natijani ko‘rish" : "Keyingi savol")</button>
+            <button class="button primary block" data-enter @onclick="Next">@(NextIndex(item.Index) is null ? "Natijani ko‘rish" : "Keyingi savol")</button>
         }
         else
         {

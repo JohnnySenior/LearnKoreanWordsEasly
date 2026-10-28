@@ -91,7 +91,7 @@
         {
             <p class="usage-trap small-text"><strong>Tuzoqlar daftariga yozildi.</strong> <span lang="ko">@trap.Wrong</span> → <span lang="ko">@trap.Right</span>. @trap.ExplanationUz</p>
         }
-        <button class="button primary block" @onclick="Continue">@(_ladder.Current is null ? "Natijani ko‘rish" : "Keyingi")</button>
+        <button class="button primary block" data-enter @onclick="Continue">@(_ladder.Current is null ? "Natijani ko‘rish" : "Keyingi")</button>
     </section>
     return;
 }
@@ -137,7 +137,7 @@
                         }
                     }
                 </div>
-                <button class="button primary block" disabled="@(_busy || _picked.Count != task.Chunks.Count)" @onclick="() => AnswerAsync(task, string.Join(' ', _picked.Select(p => task.Chunks[p])))">Tekshirish</button>
+                <button class="button primary block" data-enter disabled="@(_busy || _picked.Count != task.Chunks.Count)" @onclick="() => AnswerAsync(task, string.Join(' ', _picked.Select(p => task.Chunks[p])))">Tekshirish</button>
                 break;
             default:
                 <p class="usage-uz">@task.Uzbek</p>

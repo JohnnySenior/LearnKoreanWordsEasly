@@ -153,7 +153,7 @@ public class TestEndpointsTests
     }
 
     [Fact]
-    public async Task Oral_readiness_asks_every_word_once_in_alternating_directions_and_grades_what_was_heard()
+    public async Task Oral_readiness_asks_every_word_once_to_be_said_in_Korean_and_grades_what_was_heard()
     {
         var azure = new FakePronunciation();
         await using var factory = new ApiFactory
@@ -166,17 +166,14 @@ public class TestEndpointsTests
 
         var response = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 0, Oral: true), Json);
         var test = (await response.Content.ReadFromJsonAsync<TestDto>(Json))!;
-        var say = test.Questions.Where(q => q.Kind == TestQuestionKind.OralKorean).ToList();
-        var mean = test.Questions.Where(q => q.Kind == TestQuestionKind.OralMeaning).ToList();
+        var say = test.Questions.ToList();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal(6, test.Questions.Count);
-        Assert.Equal((3, 3), (say.Count, mean.Count));
-        Assert.Equal(6, say.Select(q => q.Prompt).Concat(mean.Select(q => q.Translation)).Distinct().Count()); // each word once
+        Assert.All(test.Questions, q => Assert.Equal(TestQuestionKind.OralKorean, q.Kind)); // L-49: speaking only
+        Assert.Equal(6, say.Select(q => q.Prompt).Distinct().Count()); // each word once
         Assert.All(test.Questions, q => Assert.Null(q.Correct));
         Assert.All(say, q => Assert.EndsWith("…", q.Hint));
-        Assert.All(mean, q => Assert.Equal(["Bildim", "Bilmadim"], q.Options));
-        Assert.All(mean, q => Assert.NotNull(q.Translation)); // what the learner checks themselves against
 
         // 1st: heard exactly; 2nd: one sound off; 3rd: another word. An oral question cannot be answered by typing.
         var heard = new Queue<Func<string, string>>([r => r, r => r[..^1] + (char)(r[^1] + 1), _ => "바다"]);
@@ -185,22 +182,19 @@ public class TestEndpointsTests
         await OralAsync(client, test, say[1].Index);
         var afterOral = await OralAsync(client, test, say[2].Index);
         var typed = await client.PostAsJsonAsync($"/api/tests/{test.Id}/answers", new TestAnswerRequest(say[0].Index, "학교"), Json);
-        await client.PostAsJsonAsync($"/api/tests/{test.Id}/answers", new TestAnswerRequest(mean[0].Index, "Bildim"), Json);
-        await client.PostAsJsonAsync($"/api/tests/{test.Id}/answers", new TestAnswerRequest(mean[1].Index, "Bilmadim"), Json);
         var done = (await (await client.PostAsync($"/api/tests/{test.Id}/finish", null)).Content.ReadFromJsonAsync<TestDto>(Json))!;
         Dictionary<int, TestQuestionDto> byIndex = done.Questions.ToDictionary(q => q.Index);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, typed.StatusCode);
         Assert.Null(afterOral.Questions.Single(q => q.Index == say[2].Index).IsCorrect); // the verdict waits for the end
         Assert.Equal("바다.", afterOral.Questions.Single(q => q.Index == say[2].Index).Given); // the transcript does not
-        Assert.Equal(say.Select(q => q.Prompt), azure.Calls.Select(c => done.Questions.Single(q => q.Correct == c.Reference).Prompt));
+        Assert.Equal(say.Take(3).Select(q => q.Prompt), azure.Calls.Select(c => done.Questions.Single(q => q.Correct == c.Reference).Prompt));
         Assert.True(byIndex[say[0].Index] is { IsCorrect: true, Assisted: true, Hard: false, PronScore: 70 });
         Assert.True(byIndex[say[1].Index] is { IsCorrect: false, Hard: false }); // two syllables: one sound off is another word
         Assert.Contains("Eshitildi", byIndex[say[1].Index].Note);
         Assert.True(byIndex[say[2].Index] is { IsCorrect: false });
-        Assert.Equal((true, false), (byIndex[mean[0].Index].IsCorrect, byIndex[mean[1].Index].IsCorrect));
-        Assert.Equal(2, done.Score);
-        Assert.Contains(done.ByKind, k => k is { Kind: TestQuestionKind.OralKorean, Correct: 1, Total: 3 });
+        Assert.Equal(1, done.Score);
+        Assert.Contains(done.ByKind, k => k is { Kind: TestQuestionKind.OralKorean, Correct: 1, Total: 6 });
     }
 
     [Fact]
@@ -219,7 +213,8 @@ public class TestEndpointsTests
         using var form = new MultipartFormDataContent { { new ByteArrayContent(data), "audio", "speech.wav" } };
         var silent = await client.PostAsync($"/api/tests/{test.Id}/oral/{oral.Index}", form);
         var technical = (await (await client.PostAsync($"/api/tests/{test.Id}/oral/{oral.Index}/technical", null)).Content.ReadFromJsonAsync<TestDto>(Json))!;
-        var wrongKind = await client.PostAsync($"/api/tests/{test.Id}/oral/{test.Questions.First(q => q.Kind == TestQuestionKind.OralMeaning).Index}/technical", null);
+        var vocabulary = await CreateAsync(client); // a written question cannot be marked "microphone failed"
+        var wrongKind = await client.PostAsync($"/api/tests/{vocabulary.Id}/oral/0/technical", null);
         var badCount = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 10, Oral: true), Json);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, silent.StatusCode);
