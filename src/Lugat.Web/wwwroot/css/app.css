@@ -1162,3 +1162,8 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 /* In-app browser notice of the install guide (L-50). */
 .install-inapp { margin: 0 0 8px; }
 .install-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+
+/* Mening so‘zlarim (L-51) */
+.word-list { list-style: none; padding: 0; margin: 12px 0; }
+.word-list li { padding: 12px 0; border-bottom: 1px solid var(--color-rule-soft); }
+.word-list .field { margin: 8px 0 0; }

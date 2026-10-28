@@ -6,6 +6,7 @@ using Lugat.Api.Catalog;
 using Lugat.Api.Ladder;
 using Lugat.Api.Infrastructure;
 using Lugat.Api.Me;
+using Lugat.Api.MyWords;
 using Lugat.Api.Premium;
 using Lugat.Api.Speech;
 using Lugat.Api.Study;
@@ -182,6 +183,7 @@ app.MapTestEndpoints();
 app.MapLadderEndpoints(app.Configuration);
 app.MapTeachingEndpoints();
 app.MapAdminEndpoints();
+app.MapMyWordEndpoints();
 
 // Unknown API routes must be a JSON 404, not the SPA shell.
 app.Map("/api/{**rest}", () => TypedResults.Problem(statusCode: StatusCodes.Status404NotFound));

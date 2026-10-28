@@ -1493,6 +1493,89 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Vocabulary.PersonalWord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CatalogWordId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeckId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExampleKo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ExampleUz")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateOnly>("IntroduceOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("LearningItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Romanization")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("TrapUz")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeckId");
+
+                    b.HasIndex("LearningItemId");
+
+                    b.HasIndex("OwnerId", "IntroduceOn");
+
+                    b.HasIndex("OwnerId", "LearningItemId")
+                        .IsUnique();
+
+                    b.ToTable("personal_words", (string)null);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Vocabulary.WordDeck", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("word_decks", (string)null);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Vocabulary.WordUsage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1858,6 +1941,35 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Vocabulary.PersonalWord", b =>
+                {
+                    b.HasOne("Lugat.Domain.Vocabulary.WordDeck", null)
+                        .WithMany()
+                        .HasForeignKey("DeckId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Lugat.Domain.Vocabulary.LearningItem", null)
+                        .WithMany()
+                        .HasForeignKey("LearningItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Lugat.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Vocabulary.WordDeck", b =>
+                {
+                    b.HasOne("Lugat.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Lugat.Domain.Vocabulary.WordUsage", b =>

@@ -38,6 +38,10 @@ public interface IAppDbContext
 
     DbSet<LearningItem> LearningItems { get; }
 
+    DbSet<WordDeck> WordDecks { get; }
+
+    DbSet<PersonalWord> PersonalWords { get; }
+
     DbSet<Domain.Catalog.UserUnitProgress> UnitProgress { get; }
 
     DbSet<WordUsage> WordUsages { get; }

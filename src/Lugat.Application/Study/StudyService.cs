@@ -29,7 +29,9 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         var currentIds = await units.CurrentUnitIdsAsync(ownerId, ct);
         var cards = ActiveCards(ownerId);
         var dueNow = await cards.CountAsync(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt <= now, ct);
-        var newAvailable = await cards.CountAsync(c => c.Card.Phase == LearningPhase.New && c.Sense.UnitId != null && currentIds.Contains(c.Sense.UnitId.Value), ct);
+        var own = Vocabulary.PersonalWordService.Introduced(db, ownerId, await Vocabulary.PersonalWordService.LocalDayAsync(db, ownerId, now, ct));
+        var newAvailable = await cards.CountAsync(c => c.Card.Phase == LearningPhase.New
+            && (c.Sense.UnitId != null && currentIds.Contains(c.Sense.UnitId.Value) || own.Contains(c.Sense.Id)), ct);
         var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)
             .OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync(ct);
 
@@ -118,9 +120,12 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         }
         else
         {
-            // Daily review (spec §4.6): due cards of every opened unit; new words only from the current unit.
+            // Daily review (spec §4.6): due cards of every opened unit; new words only from the current unit and the
+            // learner's own words whose day has come (L-51, at most 10 a day).
             var current = await units.CurrentUnitIdsAsync(ownerId, ct);
-            focus = s => s.UnitId is { } u && current.Contains(u);
+            var own = (await Vocabulary.PersonalWordService.Introduced(db, ownerId, await Vocabulary.PersonalWordService.LocalDayAsync(db, ownerId, now, ct))
+                .ToListAsync(ct)).ToHashSet();
+            focus = s => s.UnitId is { } u && current.Contains(u) || own.Contains(s.Id);
         }
 
         var candidates = rows
@@ -428,7 +433,8 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
                 : null)
             ?? await db.WordUsages.AsNoTracking()
                 .Where(u => u.OwnerId == card.OwnerId && u.LearningItemId == sense.Id && u.ContentVersion == sense.ContentVersion)
-                .Select(u => u.TrapUz).FirstOrDefaultAsync(ct);
+                .Select(u => u.TrapUz).FirstOrDefaultAsync(ct)
+            ?? await Vocabulary.PersonalWordService.Trap(db, card.OwnerId, sense.Id).FirstOrDefaultAsync(ct);
         var unit = sense.UnitId is { } unitRef ? (await LearnerItems.UnitLabelsAsync(db, [unitRef], ct)).GetValueOrDefault(unitRef) : null;
         return new CardPromptDto(
             position,
