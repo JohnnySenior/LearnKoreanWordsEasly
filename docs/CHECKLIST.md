@@ -378,3 +378,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Chromium, faqat klaviatura: yozma mashq (yozish → Enter tekshiradi → Enter keyingisi, kursor maydonda); lug‘at sinovi (yozma savollar Enter bilan, variantli savolda Enter javobsiz savolni tashlab ketmaydi).
 - [ ] Johnny: noutbukda Talaffuz va yozma mashqni sichqonchasiz sinab ko‘rish.
 
+**O‘rnatish yo‘riqnomasi (L-50, 2026-10-28):**
+- [x] Instagram/Facebook/Telegram/TikTok ichki brauzeri va noma’lum WebView aniqlanadi: ogohlantirish, 3 qadam, "Havolani nusxalash", Android’da "Chrome’da ochish".
+- [x] iPhone’dagi Chrome/Firefox/Edge va Samsung Internet uchun alohida qadamlar.
+- [x] Kirish sahifasida Premium narxi so‘mda ham.
+- [x] JS testlari (16): har bir brauzer holati. Chromium 390px (Instagram iOS, Facebook Android, Safari UA): gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+- [ ] Johnny: haqiqiy Instagram/Telegram havolasidan ochib ko‘rish (iPhone va Android).
+

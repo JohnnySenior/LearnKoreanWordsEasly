@@ -136,12 +136,36 @@ export async function googleButton(elementId, clientId, dotnet) {
 
 // How this device installs the app: "installed" (opened from the home screen), "prompt" (Chrome's install offer is
 // waiting), "ios" (Safari: Share → Add to Home Screen), or "manual" (browser menu).
+// Apps whose own browser opens our link from an ad or a post: they cannot add a site to the home screen, so the
+// learner is sent to Safari or Chrome first. Telegram on iPhone opens links in a Safari view that looks like Safari
+// and cannot be told apart; the Safari steps say what to do there.
+const inAppBrowsers = [
+    ['Instagram', /Instagram/],
+    ['Facebook', /FBAN|FBAV|FB_IAB|FBIOS/],
+    ['Telegram', /Telegram/i],
+    ['TikTok', /musical_ly|BytedanceWebview|TikTok/i],
+    ['Threads', /Barcelona/],
+    ['KakaoTalk', /KAKAOTALK/i],
+    ['LINE', / Line\//],
+];
+
+// How this device puts the app on the home screen (L-50): "installed", "prompt" (Chrome's own dialog),
+// "inapp-ios:Instagram" / "inapp-android:" (an app's browser, named when known), "ios" (Safari),
+// "ios-other" (Chrome or another browser on iPhone), "samsung" (Samsung Internet) or "manual".
 export function installState() {
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) return 'installed';
-    if (window.__installPrompt) return 'prompt';
     const ua = navigator.userAgent;
     const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    return ios ? 'ios' : 'manual';
+    const android = /Android/.test(ua);
+    const app = inAppBrowsers.find(([, pattern]) => pattern.test(ua))?.[0];
+    const otherIosBrowser = /CriOS|FxiOS|EdgiOS|OPiOS|YaBrowser/.test(ua);
+    // A plain in-app view: on Android a WebView ("; wv)"), on iPhone a page without Safari's own "Safari/" token.
+    const webView = (android && /; wv\)/.test(ua)) || (ios && !/Safari\//.test(ua) && !otherIosBrowser);
+    if (app || webView) return `inapp-${ios ? 'ios' : 'android'}:${app ?? ''}`;
+    if (window.__installPrompt) return 'prompt';
+    if (ios) return otherIosBrowser ? 'ios-other' : 'ios';
+    if (/SamsungBrowser/.test(ua)) return 'samsung';
+    return 'manual';
 }
 
 // Shows Chrome's install dialog; true when the learner accepted. The offer can be used once.
