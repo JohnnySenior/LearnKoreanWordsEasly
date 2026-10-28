@@ -396,5 +396,6 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Kunlik takrorga kuniga 10 ta yangi o‘z so‘zi; 11-si ertaga. Tuzoq kartada.
 - [x] To‘plamlar: yaratish, nom takrori 409, ko‘chirish, nomini o‘zgartirish, o‘chirishda so‘zlar "Umumiy"ga. Migratsiya `PersonalWords` (faqat yangi jadvallar).
 - [x] Testlar: `MyWordTests` (12). Chromium 390/1280, yorug‘/qorong‘i: gorizontal scroll yo‘q, sahifa xatosi yo‘q.
-- [ ] Keyingi PR: mashqlarda (Yozma, Talaffuz, Aralash sinov) "Mening so‘zlarim"/to‘plam tanlovi.
+- [x] Mashqlarda: Aralash sinov, Talaffuz va Yozma mashqda to‘plam tanlovi; bo‘lim ro‘yxati o‘zgarmaydi; tanlov bo‘sh bo‘lsa 422. Test: `Exercises_can_be_built_from_own_words_by_deck…`. Chromium 390px: uch sahifa, scroll yo‘q, Yozma mashq "Ish" to‘plamidan so‘z berdi.
+- [ ] Keyingi: "Qaysi so‘z to‘g‘ri?" o‘z so‘zlari uchun.
 - [ ] Johnny: telefonda bitta lug‘at so‘zi va bitta AI so‘zi qo‘shib, ertasi kungi takrorda chiqishini ko‘rish.

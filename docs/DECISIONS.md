@@ -527,6 +527,11 @@ O‘quvchi ishda, do‘konda yoki ko‘chada kursda hali yo‘q so‘zga duch ke
 
 **O‘chirish:** AI so‘zi faol emas bo‘ladi (tarix saqlanadi), lug‘atdagi so‘z kurs so‘zi bo‘lib qoladi.
 
-**Keyingi PR:** Yozma mashq, Talaffuz va Aralash sinovda "Mening so‘zlarim"/to‘plam tanlovi; "Qaysi so‘z to‘g‘ri?" uchun tayyorlash. Bo‘lim testiga o‘z so‘zlari kirmaydi.
+**Mashqlarda (2026-10-28, ikkinchi PR):**
+- Aralash sinov va Talaffuz: "Mening so‘zlarim" ostida to‘plam chiplari ("Umumiy" va nomli to‘plamlar; to‘plam bo‘lmasa bitta "Mening so‘zlarim"). Bo‘limlar bilan birga tanlash mumkin; ikkalasida bor so‘z bir marta so‘raladi. Sinov nomi: "Mening so‘zlarim" yoki "A-1-bo‘lim + Mening so‘zlarim".
+- Yozma mashq: "Qaysi so‘zlar?" qatorida to‘plamlar ham bor (`/api/writing/queue?deck=`).
+- Gap zinapoyasi va Xatolarim o‘quvchining barcha boshlangan so‘zlaridan foydalanadi, o‘z so‘zlari ham shunga kiradi.
+- Bo‘lim testiga ("Bilaman" va bo‘limni yakunlash) o‘z so‘zlari kirmaydi.
+- Hali qilinmagan: "Qaysi so‘z to‘g‘ri?" o‘z so‘zlari uchun (AI so‘zlariga savol tayyorlash kerak).
 
 **Ma’lum chegara:** hali nashr qilinmagan bo‘limdagi tekshirilgan so‘z shaxsiy nusxa sifatida qo‘shiladi; bo‘lim keyin nashr qilinib ochilsa, u so‘z kursda ham chiqadi.

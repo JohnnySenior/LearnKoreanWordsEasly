@@ -264,6 +264,44 @@ public sealed class PersonalWordService(
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>The deck key of own words in no deck (<see cref="WordDeckOptionDto.Key"/>).</summary>
+    public const string Unsorted = "umumiy";
+
+    /// <summary>Learning items of the learner's own words in these decks (keys of <see cref="DeckOptionsAsync"/>).</summary>
+    public static IQueryable<Guid> DeckItems(IAppDbContext db, Guid ownerId, IReadOnlyCollection<string>? decks)
+    {
+        var keys = decks ?? [];
+        var unsorted = keys.Contains(Unsorted);
+        var ids = keys.Select(k => Guid.TryParse(k, out var id) ? id : (Guid?)null).OfType<Guid>().ToList();
+        return db.PersonalWords
+            .Where(w => w.OwnerId == ownerId && ((unsorted && w.DeckId == null) || (w.DeckId != null && ids.Contains(w.DeckId.Value))))
+            .Select(w => w.LearningItemId);
+    }
+
+    /// <summary>
+    /// The decks exercises can be built from, with their active words. Words in no deck are "Umumiy", or
+    /// "Mening so‘zlarim" when the learner has no decks.
+    /// </summary>
+    public static async Task<List<WordDeckOptionDto>> DeckOptionsAsync(IAppDbContext db, Guid ownerId, CancellationToken ct)
+    {
+        var counts = await (from w in db.PersonalWords
+                join i in db.LearningItems on w.LearningItemId equals i.Id
+                where w.OwnerId == ownerId && i.IsActive
+                group w by w.DeckId into g
+                select new { g.Key, Words = g.Count() })
+            .ToListAsync(ct);
+        var decks = await db.WordDecks.AsNoTracking().Where(d => d.OwnerId == ownerId).OrderBy(d => d.Name).ToListAsync(ct);
+        var result = new List<WordDeckOptionDto>();
+        if (counts.FirstOrDefault(c => c.Key == null) is { } unsorted)
+        {
+            result.Add(new WordDeckOptionDto(Unsorted, decks.Count == 0 ? "Mening so‘zlarim" : "Umumiy", unsorted.Words));
+        }
+
+        result.AddRange(decks.Where(d => counts.Any(c => c.Key == d.Id))
+            .Select(d => new WordDeckOptionDto(d.Id.ToString(), d.Name, counts.First(c => c.Key == d.Id).Words)));
+        return result;
+    }
+
     /// <summary>Own words whose new cards may join today's review (<see cref="PersonalWord.IntroduceOn"/>).</summary>
     public static IQueryable<Guid> Introduced(IAppDbContext db, Guid ownerId, DateOnly today) =>
         db.PersonalWords.Where(w => w.OwnerId == ownerId && w.IntroduceOn <= today).Select(w => w.LearningItemId);

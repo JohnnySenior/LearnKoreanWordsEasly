@@ -26,12 +26,18 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
     /// Words to type: one unit's words when <paramref name="unitId"/> is given, otherwise words already started
     /// in flash cards (or the first opened unit when nothing is started yet). Words typed wrong lately come first.
     /// </summary>
-    public async Task<IReadOnlyList<WritingPromptDto>> QueueAsync(Guid ownerId, ReviewDirection? direction, int count, Guid? unitId, CancellationToken ct)
+    public async Task<IReadOnlyList<WritingPromptDto>> QueueAsync(Guid ownerId, ReviewDirection? direction, int count, Guid? unitId, CancellationToken ct, string? deck = null)
     {
         count = Math.Clamp(count, 1, MaxCount);
         var senses = Study.LearnerItems.Of(db, ownerId);
         List<LearningItem> pool;
-        if (unitId is { } unit)
+        if (deck is not null)
+        {
+            // One deck of own words (L-51): "umumiy" or a deck id.
+            var own = Vocabulary.PersonalWordService.DeckItems(db, ownerId, [deck]);
+            pool = await senses.Where(s => own.Contains(s.Id)).ToListAsync(ct);
+        }
+        else if (unitId is { } unit)
         {
             pool = await senses.Where(s => s.UnitId == unit).ToListAsync(ct);
         }

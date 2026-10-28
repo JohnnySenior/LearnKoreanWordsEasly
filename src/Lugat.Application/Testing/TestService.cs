@@ -43,15 +43,38 @@ public sealed class TestService(
             .ToListAsync(ct);
         var labels = await Study.LearnerItems.UnitLabelsAsync(db, units.Select(u => (Guid?)u.UnitId), ct);
         return new TestOptionsDto(units.OrderBy(u => u.Order)
-            .Select(u => new TestTableOptionDto(u.UnitId, labels.GetValueOrDefault(u.UnitId, "—"), u.Words)).ToList());
+            .Select(u => new TestTableOptionDto(u.UnitId, labels.GetValueOrDefault(u.UnitId, "—"), u.Words)).ToList(),
+            await Vocabulary.PersonalWordService.DeckOptionsAsync(db, ownerId, ct));
     }
 
-    /// <summary>"A-1, A-2" for up to three units, otherwise "5 ta bo‘lim".</summary>
-    private async Task<string> UnitTitleAsync(IEnumerable<LearningItem> words, CancellationToken ct)
+    /// <summary>"A-1, A-2" for up to three units, otherwise "5 ta bo‘lim"; own words add "Mening so‘zlarim" (L-51).</summary>
+    private async Task<string> UnitTitleAsync(IEnumerable<LearningItem> words, CancellationToken ct, bool own = false)
     {
         var ordered = words.Where(w => w.UnitId is not null).GroupBy(w => w.UnitId).OrderBy(g => g.Min(w => w.Order)).Select(g => g.Key).ToList();
         var labels = await Study.LearnerItems.UnitLabelsAsync(db, ordered, ct);
-        return ordered.Count <= 3 ? string.Join(", ", ordered.Select(u => labels.GetValueOrDefault(u!.Value, "—"))) + "-bo‘lim" : $"{ordered.Count} ta bo‘lim";
+        var units = ordered.Count == 0 ? null
+            : ordered.Count <= 3 ? string.Join(", ", ordered.Select(u => labels.GetValueOrDefault(u!.Value, "—"))) + "-bo‘lim" : $"{ordered.Count} ta bo‘lim";
+        return own ? units is null ? "Mening so‘zlarim" : $"{units} + Mening so‘zlarim" : units ?? "—";
+    }
+
+    /// <summary>
+    /// The words of the chosen units and own-word decks (L-51), each once. A word of an own deck may also be a unit's
+    /// word; it is asked once.
+    /// </summary>
+    private async Task<(List<LearningItem> Words, bool Own)> ChosenWordsAsync(Guid ownerId, CreateTestRequest request, CancellationToken ct)
+    {
+        var tables = (request.UnitIds ?? []).Distinct().ToList();
+        var decks = (request.Decks ?? []).Distinct().ToList();
+        if (tables.Count == 0 && decks.Count == 0)
+        {
+            throw new ValidationException(request.Oral ? "Og‘zaki sinov uchun bo‘lim tanlang." : "Sinov uchun bo‘lim tanlang.");
+        }
+
+        var own = Vocabulary.PersonalWordService.DeckItems(db, ownerId, decks);
+        var words = await Study.LearnerItems.Of(db, ownerId)
+            .Where(s => (s.UnitId != null && tables.Contains(s.UnitId.Value)) || own.Contains(s.Id))
+            .ToListAsync(ct);
+        return (words, decks.Count > 0);
     }
 
     /// <summary>How many tests the history shows (newest first).</summary>
@@ -255,13 +278,7 @@ public sealed class TestService(
             throw new ValidationException("Og‘zaki sinov 20 ta savol yoki barcha so‘zlar bo‘lsin.");
         }
 
-        var tables = (request.UnitIds ?? []).Distinct().ToList();
-        if (tables.Count == 0)
-        {
-            throw new ValidationException("Og‘zaki sinov uchun bo‘lim tanlang.");
-        }
-
-        var words = await Study.LearnerItems.Of(db, ownerId).Where(s => s.UnitId != null && tables.Contains(s.UnitId.Value)).ToListAsync(ct);
+        var (words, own) = await ChosenWordsAsync(ownerId, request, ct);
         if (words.Count == 0)
         {
             throw new ValidationException("Tanlangan bo‘limlarda so‘z yo‘q.");
@@ -280,7 +297,7 @@ public sealed class TestService(
             .ToList();
         return new TestRun
         {
-            Title = $"Talaffuz · {await UnitTitleAsync(words, ct)}",
+            Title = $"Talaffuz · {await UnitTitleAsync(words, ct, own)}",
             Questions = questions,
         };
     }
@@ -373,13 +390,7 @@ public sealed class TestService(
             throw new ValidationException("Savollar soni 10, 20 yoki 30 bo‘lsin.");
         }
 
-        var tables = (request.UnitIds ?? []).Distinct().ToList();
-        if (tables.Count == 0)
-        {
-            throw new ValidationException("Sinov uchun bo‘lim tanlang.");
-        }
-
-        var words = await Study.LearnerItems.Of(db, ownerId).Where(s => s.UnitId != null && tables.Contains(s.UnitId.Value)).ToListAsync(ct);
+        var (words, own) = await ChosenWordsAsync(ownerId, request, ct);
         if (words.Count < 4)
         {
             throw new ValidationException("Tanlangan bo‘limlarda kamida 4 ta so‘z bo‘lishi kerak.");
@@ -407,7 +418,7 @@ public sealed class TestService(
             throw new ValidationException("Savol tuzib bo‘lmadi: variantlar uchun kamida 4 ta so‘z kerak.");
         }
 
-        return new TestRun { Title = await UnitTitleAsync(words, ct), Questions = questions, Provider = provider, Warning = warning };
+        return new TestRun { Title = await UnitTitleAsync(words, ct, own), Questions = questions, Provider = provider, Warning = warning };
     }
 
     private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;

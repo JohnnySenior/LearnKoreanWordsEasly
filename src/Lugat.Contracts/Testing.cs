@@ -5,18 +5,24 @@ namespace Lugat.Contracts;
 /// <param name="Unit">"A-3".</param>
 public sealed record TestTableOptionDto(Guid UnitId, string Unit, int Words);
 
+/// <param name="Key">"umumiy" for own words in no deck, else the deck id (L-51).</param>
+public sealed record WordDeckOptionDto(string Key, string Name, int Words);
+
 /// <summary>What a test can be built from (GET /api/tests/options).</summary>
-public sealed record TestOptionsDto(IReadOnlyList<TestTableOptionDto> Tables);
+/// <param name="Decks">The learner's own words ("Mening so‘zlarim"), by deck.</param>
+public sealed record TestOptionsDto(IReadOnlyList<TestTableOptionDto> Tables, IReadOnlyList<WordDeckOptionDto>? Decks = null);
 
 /// <param name="Id">Chosen by the client once and reused on retries (API01).</param>
 /// <param name="RetryOf">Build the test from the mistakes of this finished test (no other fields needed).</param>
+/// <param name="Decks">Own words to include: <see cref="WordDeckOptionDto.Key"/> values (L-51).</param>
 public sealed record CreateTestRequest(
     Guid Id,
     IReadOnlyList<Guid>? UnitIds,
     int Count,
     Guid? RetryOf = null,
     bool Oral = false,
-    bool Usage = false);
+    bool Usage = false,
+    IReadOnlyList<string>? Decks = null);
 
 public sealed record TestAnswerRequest(int Index, string Answer);
 

@@ -247,6 +247,46 @@ public class MyWordTests
         Assert.Equal(HttpStatusCode.OK, readd.StatusCode); // it can be added again later
     }
 
+    [Fact]
+    public async Task Exercises_can_be_built_from_own_words_by_deck_and_the_unit_list_is_unchanged()
+    {
+        string[] words = ["감자", "양파", "당근", "오이", "배추"];
+        _ai.Answer = r => r.Feature == PersonalWordService.Feature ? Words(words.Select(w => Card(w, "sabzavot " + w)).Take(3).ToArray()) : "{}";
+        await using var factory = NewFactory();
+        var client = await SignedInWithUnitAsync(factory);
+        var noDecks = (await client.GetFromJsonAsync<TestOptionsDto>("/api/tests/options", Json))!;
+        var deck = (await (await client.PostAsJsonAsync("/api/word-decks", new DeckNameRequest("Bozor"), Json)).Content.ReadFromJsonAsync<WordDeckDto>(Json))!;
+        foreach (var c in (await LookupAsync(client, "sabzavot")).Candidates)
+        {
+            await AddAsync(client, Add(c, deck.Id));
+        }
+
+        foreach (var w in words[3..])
+        {
+            await AddAsync(client, Add(new MyWordCandidateDto(w, "sabzavot " + w, "x", $"저는 {w} 좋아요.", "Misol gap.", null, PersonalWordSource.Ai, null, null, false)));
+        }
+
+        var options = (await client.GetFromJsonAsync<TestOptionsDto>("/api/tests/options", Json))!;
+        var test = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [], 10, Decks: [deck.Id.ToString(), PersonalWordService.Unsorted]), Json);
+        var oral = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 0, Oral: true, Decks: [deck.Id.ToString()]), Json);
+        var nothing = await client.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [], 10, Decks: []), Json);
+        var writing = (await client.GetFromJsonAsync<List<WritingPromptDto>>($"/api/writing/queue?count=30&deck={PersonalWordService.Unsorted}", Json))!;
+
+        Assert.Empty(noDecks.Decks!);
+        Assert.Empty(options.Tables); // own words never make a unit appear
+        Assert.Equal(new[] { ("Umumiy", 2), ("Bozor", 3) }, options.Decks!.Select(d => (d.Name, d.Words)));
+        Assert.Equal(HttpStatusCode.Created, test.StatusCode);
+        var vocabulary = (await test.Content.ReadFromJsonAsync<TestDto>(Json))!;
+        Assert.Equal("Mening so‘zlarim", vocabulary.Title);
+        Assert.Equal(HttpStatusCode.Created, oral.StatusCode);
+        var spoken = (await oral.Content.ReadFromJsonAsync<TestDto>(Json))!;
+        Assert.Equal("Talaffuz · Mening so‘zlarim", spoken.Title);
+        Assert.Equal(3, spoken.Questions.Count); // only the "Bozor" deck
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, nothing.StatusCode);
+        Assert.Equal(2, writing.Count); // the two words in "Umumiy", each once
+        Assert.All(writing, p => Assert.Contains(p.Prompt, new[] { "오이", "배추", "sabzavot 오이", "sabzavot 배추" }));
+    }
+
     [Theory]
     [InlineData("""{"words":[{"korean":"감자","translationUz":"картошка","romanization":"gamja","exampleKo":"감자 좋아요.","exampleUz":"Kartoshka yaxshi.","trapUz":null}]}""")]
     [InlineData("""{"words":[{"korean":"potato","translationUz":"kartoshka","romanization":"gamja","exampleKo":"감자 좋아요.","exampleUz":"Kartoshka yaxshi.","trapUz":null}]}""")]
