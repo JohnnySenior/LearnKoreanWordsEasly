@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Catalog.CatalogDraftService>();
         services.AddScoped<Application.Catalog.CatalogSeeder>();
         services.AddScoped<StudyService>();
+        services.AddScoped<Application.Vocabulary.PersonalWordService>();
         services.AddSingleton<ISpacedRepetitionScheduler, LadderSchedulerV1>();
 
         services.AddSingleton(TelegramBotOptions.From(config));

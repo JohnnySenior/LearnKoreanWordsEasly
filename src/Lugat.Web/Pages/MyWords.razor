@@ -1,0 +1,402 @@
+@page "/sozlarim"
+@using Lugat.Contracts
+@using Lugat.Domain.Vocabulary
+@inject SessionService Api
+@inject BrowserInterop Browser
+@inject NavigationManager Nav
+
+<PageTitle>Mening so‘zlarim — Koreyscha</PageTitle>
+
+@* L-51: a word the learner met outside the course. The checked catalog first; the AI only for a word it lacks, and
+   the learner sees the card before adding it. Added words join the daily review, at most 10 new ones a day. *@
+<a class="back" href="bolimlar">← Bo‘limlar</a>
+<header class="page-head">
+    <div>
+        <h1>Mening so‘zlarim</h1>
+        <span class="muted small-text">Ishda, do‘konda, ko‘chada uchratgan so‘zni yozing: avval lug‘atdan, bo‘lmasa AI izohlab beradi</span>
+    </div>
+</header>
+
+<label class="field">
+    Koreyscha yoki o‘zbekcha so‘z
+    <input class="input" maxlength="50" placeholder="masalan: 월급 yoki maosh" @bind="_text" @bind:event="oninput" @onkeydown="KeyAsync" />
+</label>
+<button class="button primary block" disabled="@(_busy || string.IsNullOrWhiteSpace(_text))" @onclick="LookupAsync">
+    <span>@(_busy ? "Qidirilmoqda…" : "Qidirish")</span>
+</button>
+@if (_data?.AiLeftToday is { } left)
+{
+    <p class="muted small-text">Lug‘atdagi so‘zlar cheksiz. Lug‘atda yo‘q so‘zni AI izohlaydi: bugun yana @left ta (Premium bilan cheksiz).</p>
+}
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert" style="margin-top:10px">@_error</div>
+}
+
+@if (_candidates is { Count: > 0 })
+{
+    <ul class="word-list">
+        @foreach (var c in _candidates)
+        {
+            var candidate = c;
+            <li>
+                <div class="row-between">
+                    <span><strong class="ko" lang="ko">@c.Korean</strong>@if (c.Romanization is not null) {<span class="muted"> [@c.Romanization]</span>}</span>
+                    @if (c.Source == PersonalWordSource.Ai)
+                    {
+                        <Tag Kind="accent">AI izohi</Tag>
+                    }
+                    else
+                    {
+                        <Tag>Lug‘atdan@(c.Unit is null ? "" : $" · {c.Unit}")</Tag>
+                    }
+                </div>
+                @if (c.Source == PersonalWordSource.Ai)
+                {
+                    <label class="field">Ma’nosi (kerak bo‘lsa tuzating)<input class="input" maxlength="300" @bind="_meanings[candidate.Korean]" /></label>
+                }
+                else
+                {
+                    <p style="margin:4px 0">@c.Uzbek</p>
+                }
+                @if (c.ExampleKo is not null)
+                {
+                    <p class="sentence" lang="ko" style="margin:4px 0">@c.ExampleKo</p>
+                    <p class="muted small-text" style="margin:0">@c.ExampleUz</p>
+                }
+                @if (c.TrapUz is not null)
+                {
+                    <p class="small-text" style="margin:6px 0 0"><Icon Name="triangle-alert" Size="14" /> @c.TrapUz</p>
+                }
+                @if (c.Source == PersonalWordSource.Ai)
+                {
+                    <p class="muted small-text">AI yozgan: ishonchsiz bo‘lsa o‘qituvchingizdan so‘rang.</p>
+                }
+                @if (c.AlreadyAdded)
+                {
+                    <p class="muted small-text"><Icon Name="check" Size="14" /> Ro‘yxatingizda bor</p>
+                }
+                else
+                {
+                    <div class="row-between" style="margin-top:8px;align-items:center">
+                        <select class="input" style="flex:1;min-width:0" aria-label="To‘plam" @bind="_deckChoice">
+                            <option value="">Umumiy</option>
+                            @foreach (var d in _data?.Decks ?? [])
+                            {
+                                <option value="@d.Id">@d.Name</option>
+                            }
+                        </select>
+                        <button class="button small" disabled="@_busy" @onclick="() => AddAsync(candidate)">Qo‘shish</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@if (_data is null)
+{
+    <p class="muted" style="margin-top:16px">Yuklanmoqda…</p>
+    return;
+}
+
+<h2 style="margin-top:24px">Ro‘yxat (@_data.Words.Count)</h2>
+@if (_data.Words.Count == 0 && _data.Decks.Count == 0)
+{
+    <p class="muted">Hozircha so‘z yo‘q. Yuqorida birinchi so‘zingizni qidiring.</p>
+}
+else
+{
+    <div class="chips" role="radiogroup" aria-label="To‘plam">
+        <button class="chip wide @(_deck is null ? "selected" : "")" role="radio" aria-checked="@(_deck is null)" @onclick="() => _deck = null">Hammasi</button>
+        <button class="chip wide @(_deck == Unsorted ? "selected" : "")" role="radio" aria-checked="@(_deck == Unsorted)" @onclick="() => _deck = Unsorted">Umumiy (@_data.Unsorted)</button>
+        @foreach (var d in _data.Decks)
+        {
+            var id = d.Id.ToString();
+            <button class="chip wide @(_deck == id ? "selected" : "")" role="radio" aria-checked="@(_deck == id)" @onclick="() => _deck = id">@d.Name (@d.Words)</button>
+        }
+    </div>
+    <div class="chips" role="radiogroup" aria-label="Holat">
+        @foreach (var (value, label) in States)
+        {
+            var v = value;
+            <button class="chip wide @(_state == v ? "selected" : "")" role="radio" aria-checked="@(_state == v)" @onclick="() => _state = v">@label</button>
+        }
+    </div>
+    <label class="field">Ro‘yxatdan qidirish<input class="input" maxlength="50" @bind="_query" @bind:event="oninput" /></label>
+
+    var shown = Shown();
+    @if (shown.Count > 0)
+    {
+        <button class="button primary block" disabled="@_busy" @onclick="() => DrillAsync(shown)">
+            <span>Kartochkada takrorlash</span><span class="aside">@Math.Min(shown.Count, MaxDrill) so‘z</span>
+        </button>
+    }
+    <ul class="word-list">
+        @foreach (var w in shown)
+        {
+            var word = w;
+            <li>
+                <div class="row-between">
+                    <span><strong class="ko" lang="ko">@w.Korean</strong> — @w.Uzbek</span>
+                    <Tag Kind="outline">@StateLabel(w.State)</Tag>
+                </div>
+                <span class="muted small-text">
+                    @(w.Source == PersonalWordSource.Ai ? "AI izohi" : "Lug‘atdan") · @Format.DayMonth(w.CreatedAt)@(w.IntroduceOn > Today ? $" · takrorga {Format.Day(w.IntroduceOn)} kuni qo‘shiladi" : "")
+                </span>
+                <div class="row-between" style="margin-top:6px;align-items:center">
+                    <select class="input" style="flex:1;min-width:0" aria-label="To‘plamga ko‘chirish" @onchange="e => MoveAsync(word, (string?)e.Value)">
+                        <option value="" selected="@(w.DeckId is null)">Umumiy</option>
+                        @foreach (var d in _data.Decks)
+                        {
+                            <option value="@d.Id" selected="@(w.DeckId == d.Id)">@d.Name</option>
+                        }
+                    </select>
+                    @if (_removing == w.Id)
+                    {
+                        <Confirm Question="O‘chirilsinmi?" ValueChanged="v => RemoveAsync(word, v)" />
+                    }
+                    else
+                    {
+                        <button class="button small" disabled="@_busy" @onclick="() => _removing = word.Id">O‘chirish</button>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+    @if (shown.Count == 0)
+    {
+        <p class="muted">Bu tanlovda so‘z yo‘q.</p>
+    }
+}
+
+<h2 style="margin-top:24px">To‘plamlar</h2>
+<p class="muted small-text">Mavzu bo‘yicha guruhlang: «Ish», «Bozor», «Shifoxona». To‘plam o‘chirilsa, so‘zlari «Umumiy»ga o‘tadi.</p>
+<div class="row-between" style="align-items:center">
+    <input class="input" style="flex:1;min-width:0" maxlength="40" placeholder="Yangi to‘plam nomi" aria-label="Yangi to‘plam nomi" @bind="_newDeck" @bind:event="oninput" />
+    <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_newDeck))" @onclick="CreateDeckAsync">Yaratish</button>
+</div>
+@if (_data.Decks.FirstOrDefault(d => d.Id.ToString() == _deck) is { } selected)
+{
+    <div class="row-between" style="margin-top:10px;align-items:center">
+        <input class="input" style="flex:1;min-width:0" maxlength="40" aria-label="To‘plamning yangi nomi" @bind="_rename" @bind:event="oninput" placeholder="@selected.Name" />
+        <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_rename))" @onclick="() => RenameDeckAsync(selected)">Nomini o‘zgartirish</button>
+        <button class="button small" disabled="@_busy" @onclick="() => DeleteDeckAsync(selected)">«@selected.Name»ni o‘chirish</button>
+    </div>
+}
+
+@code {
+    private const int MaxDrill = 60;
+    private const string Unsorted = "umumiy";
+    private const string DeckKey = "lugat.my-words.deck";
+
+    private static readonly (MyWordState? Value, string Label)[] States =
+        [(null, "Hammasi"), (MyWordState.New, "Yangi"), (MyWordState.Learning, "O‘rganilmoqda"), (MyWordState.Learned, "O‘rganilgan")];
+
+    private MyWordsDto? _data;
+    private List<MyWordCandidateDto>? _candidates;
+    private readonly Dictionary<string, string> _meanings = [];
+    private string _text = "";
+    private string _deckChoice = "";
+    private string? _deck;
+    private MyWordState? _state;
+    private string _query = "";
+    private string _newDeck = "";
+    private string _rename = "";
+    private Guid? _removing;
+    private bool _busy;
+    private string? _error;
+
+    private static DateOnly Today => DateOnly.FromDateTime(Format.ToKorea(DateTimeOffset.UtcNow).DateTime);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _deckChoice = await Browser.StorageGetAsync(DeckKey) ?? "";
+        }
+        catch (Exception)
+        {
+            // storage blocked: start with "Umumiy"
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAsync<MyWordsDto>("api/my-words");
+        if (result.Value is { } data)
+        {
+            _data = data;
+            if (_deckChoice.Length > 0 && data.Decks.All(d => d.Id.ToString() != _deckChoice))
+            {
+                _deckChoice = "";
+            }
+        }
+
+        _error = result.Ok ? _error : result.Error;
+    }
+
+    private List<MyWordDto> Shown()
+    {
+        var q = _query.Trim();
+        return _data!.Words
+            .Where(w => _deck is null || (_deck == Unsorted ? w.DeckId is null : w.DeckId?.ToString() == _deck))
+            .Where(w => _state is null || w.State == _state)
+            .Where(w => q.Length == 0 || w.Korean.Contains(q, StringComparison.Ordinal) || w.Uzbek.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private static string StateLabel(MyWordState state) => state switch
+    {
+        MyWordState.New => "Yangi",
+        MyWordState.Learning => "O‘rganilmoqda",
+        _ => "O‘rganilgan",
+    };
+
+    private async Task KeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_busy && !string.IsNullOrWhiteSpace(_text))
+        {
+            await LookupAsync();
+        }
+    }
+
+    private async Task LookupAsync()
+    {
+        _busy = true;
+        _error = null;
+        _candidates = null;
+        var result = await Api.SendJsonAsync<MyWordLookupDto>(HttpMethod.Post, "api/my-words/lookup", new MyWordLookupRequest(_text.Trim()), TimeSpan.FromSeconds(90));
+        _busy = false;
+        if (result.Value is not { } found)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        _candidates = found.Candidates.ToList();
+        _meanings.Clear();
+        foreach (var c in _candidates)
+        {
+            _meanings[c.Korean] = c.Uzbek;
+        }
+
+        if (_data is not null && found.AiLeftToday is not null)
+        {
+            _data = _data with { AiLeftToday = found.AiLeftToday };
+        }
+    }
+
+    private async Task AddAsync(MyWordCandidateDto c)
+    {
+        _busy = true;
+        _error = null;
+        Guid? deck = Guid.TryParse(_deckChoice, out var d) ? d : null;
+        var uzbek = c.Source == PersonalWordSource.Ai ? _meanings.GetValueOrDefault(c.Korean, c.Uzbek) : c.Uzbek;
+        var request = new AddMyWordRequest(Guid.NewGuid(), c.Korean, uzbek, c.Romanization, c.ExampleKo, c.ExampleUz, c.TrapUz, c.Source, c.CatalogWordId, deck);
+        var result = await Api.SendJsonAsync<MyWordDto>(HttpMethod.Post, "api/my-words", request);
+        _busy = false;
+        if (!result.Ok)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        try
+        {
+            await Browser.StorageSetAsync(DeckKey, _deckChoice);
+        }
+        catch (Exception)
+        {
+            // only a convenience
+        }
+
+        _candidates = _candidates?.Select(x => x == c ? x with { AlreadyAdded = true } : x).ToList();
+        _text = "";
+        await LoadAsync();
+    }
+
+    private async Task MoveAsync(MyWordDto word, string? value)
+    {
+        Guid? deck = Guid.TryParse(value, out var d) ? d : null;
+        var result = await Api.SendJsonAsync<MyWordDto>(HttpMethod.Put, $"api/my-words/{word.Id}/deck", new MoveMyWordRequest(deck));
+        _error = result.Ok ? null : result.Error;
+        await LoadAsync();
+    }
+
+    private async Task RemoveAsync(MyWordDto word, bool? yes)
+    {
+        _removing = null;
+        if (yes != true)
+        {
+            return;
+        }
+
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/my-words/{word.Id}");
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        await LoadAsync();
+    }
+
+    private async Task CreateDeckAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<WordDeckDto>(HttpMethod.Post, "api/word-decks", new DeckNameRequest(_newDeck.Trim()));
+        _busy = false;
+        if (result.Value is { } deck)
+        {
+            _newDeck = "";
+            _deckChoice = deck.Id.ToString();
+            _error = null;
+        }
+        else
+        {
+            _error = result.Error;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task RenameDeckAsync(WordDeckDto deck)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<WordDeckDto>(HttpMethod.Put, $"api/word-decks/{deck.Id}", new DeckNameRequest(_rename.Trim()));
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        if (result.Ok)
+        {
+            _rename = "";
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task DeleteDeckAsync(WordDeckDto deck)
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/word-decks/{deck.Id}");
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        _deck = null;
+        await LoadAsync();
+    }
+
+    private async Task DrillAsync(List<MyWordDto> words)
+    {
+        _busy = true;
+        var ids = words.Take(MaxDrill).Select(w => w.LearningItemId).ToList();
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(null, true, LearningItemIds: ids));
+        _busy = false;
+        if (result.Value?.Session is not null)
+        {
+            Nav.NavigateTo("mashq/kartochka");
+            return;
+        }
+
+        _error = result.Value?.Message ?? result.Error;
+    }
+}

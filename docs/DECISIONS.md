@@ -502,3 +502,31 @@ Reklamadan kelgan odam havolani Instagram, Facebook yoki Telegram ichida ochadi.
 - Samsung Internet — ☰ → "Sahifani qo‘shish" → "Bosh ekran".
 
 **Cheklov:** iPhone’da Telegram havolani Safari ko‘rinishidagi oynada ochadi va uni oddiy Safari’dan ajratib bo‘lmaydi. Shuning uchun Safari qadamlari ostida "kompas belgisini bosib Safari’da oching" degan izoh qoldi.
+
+## L-51 · 2026-10-28 · Mening so‘zlarim
+
+O‘quvchi ishda, do‘konda yoki ko‘chada kursda hali yo‘q so‘zga duch keladi. Endi uni o‘zi qo‘shib, odatdagi kartochka tartibida o‘rganadi (`/sozlarim`, Bo‘limlar sahifasining tepasida).
+
+**Qidiruv: avval lug‘at, keyin AI.**
+- Koreyscha yozilsa: lug‘atda aynan shu so‘z (tekshirilgan, `Reviewed`).
+- O‘zbekcha yozilsa: ma’nolaridan biri to‘liq mos kelgan so‘zlar, 3 tagacha ("shifoxona" → 병원; "shifo" emas). Apostrof turi farq qilmaydi.
+- Lug‘atda bo‘lmasa AI yozadi: ma’no, romanizatsiya, misol gap, tuzoq (bo‘lsa). O‘zbekcha so‘zga 2–3 koreyscha variant. AI javobi lug‘at qoidalari (`CatalogContent`) bilan tekshiriladi, o‘tmagani tashlanadi.
+- O‘quvchi kartani ko‘radi, AI ma’nosini tuzatishi mumkin, so‘ng qo‘shadi. Kartada "AI izohi" belgisi bor.
+
+**Cheklov:**
+- Lug‘atdagi so‘z cheksiz.
+- AI: Premium cheksiz; bepul — kuniga 3 ta muvaffaqiyatli so‘rov (o‘quvchining mahalliy kuni, `AiUsages` dagi `personal-word`). Muvaffaqiyatsiz chaqiruv hisoblanmaydi. Hisob va chaqiruv bitta qulf ostida, ikki marta bosish oxirgi imkoniyatni ikki marta ishlatmaydi.
+- `AiGateway.CompleteJsonAsync(freeQuota: true)` faqat shu yerda: bepul o‘quvchiga AI ochiladigan yagona yo‘l.
+
+**Takror:**
+- Har so‘zga ikki kartochka (ko→uz, uz→ko). Lug‘atdagi so‘zning umumiy `LearningItem` i bo‘lsa o‘sha ishlatiladi; bo‘lmasa shaxsiy nusxa.
+- Kunlik takrorga kuniga ko‘pi bilan 10 ta yangi o‘z so‘zi qo‘shiladi (`PersonalWord.IntroduceOn`); ortig‘i keyingi kunlarga taqsimlanadi. Ro‘yxatdagi "Kartochkada takrorlash" esa tanlangan so‘zlarning hammasini darhol beradi.
+- Tuzoq kartaning javob tomonida ko‘rinadi.
+
+**To‘plamlar:** "Umumiy" (to‘plamsiz) va o‘quvchi nomlagan to‘plamlar, soni cheklanmagan. Qo‘shishda to‘plam tanlanadi (oxirgisi eslab qolinadi), so‘z ko‘chiriladi, to‘plam nomi o‘zgartiriladi; o‘chirilgan to‘plamning so‘zlari "Umumiy"ga o‘tadi. Ro‘yxatda qidiruv, holat (yangi / o‘rganilmoqda / o‘rganilgan) bo‘yicha filtr, sana bo‘yicha tartib.
+
+**O‘chirish:** AI so‘zi faol emas bo‘ladi (tarix saqlanadi), lug‘atdagi so‘z kurs so‘zi bo‘lib qoladi.
+
+**Keyingi PR:** Yozma mashq, Talaffuz va Aralash sinovda "Mening so‘zlarim"/to‘plam tanlovi; "Qaysi so‘z to‘g‘ri?" uchun tayyorlash. Bo‘lim testiga o‘z so‘zlari kirmaydi.
+
+**Ma’lum chegara:** hali nashr qilinmagan bo‘limdagi tekshirilgan so‘z shaxsiy nusxa sifatida qo‘shiladi; bo‘lim keyin nashr qilinib ochilsa, u so‘z kursda ham chiqadi.

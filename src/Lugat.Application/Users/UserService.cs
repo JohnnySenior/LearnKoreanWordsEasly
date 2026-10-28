@@ -247,6 +247,8 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         await db.Groups.Where(x => x.TeacherUserId == userId && x.ClosedAt == null)
             .ExecuteUpdateAsync(x => x.SetProperty(g => g.ClosedAt, time.GetUtcNow()), ct);
         await db.UnitProgress.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.PersonalWords.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
+        await db.WordDecks.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.LearningItems.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct); // personal words only; catalog items are shared
         await db.UserLogins.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
 

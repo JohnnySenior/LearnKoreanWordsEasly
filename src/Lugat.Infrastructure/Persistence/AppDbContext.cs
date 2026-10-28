@@ -49,6 +49,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<LearningItem> LearningItems => Set<LearningItem>();
 
+    public DbSet<WordDeck> WordDecks => Set<WordDeck>();
+
+    public DbSet<PersonalWord> PersonalWords => Set<PersonalWord>();
+
     public DbSet<Domain.Catalog.UserUnitProgress> UnitProgress => Set<Domain.Catalog.UserUnitProgress>();
 
     public DbSet<WordUsage> WordUsages => Set<WordUsage>();
@@ -100,6 +104,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         configurationBuilder.Properties<Domain.Premium.PaymentStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Premium.Currency>().HaveConversion<string>().HaveMaxLength(8);
         configurationBuilder.Properties<LearningItemKind>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<PersonalWordSource>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<ReviewDirection>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<LearningPhase>().HaveConversion<string>().HaveMaxLength(32);
         configurationBuilder.Properties<ReviewAnswer>().HaveConversion<string>().HaveMaxLength(32);
@@ -313,6 +318,29 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Right).HasMaxLength(200);
             e.Property(x => x.ExplanationUz).HasMaxLength(1000);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<WordDeck>(e =>
+        {
+            e.ToTable("word_decks");
+            e.Property(x => x.Name).HasMaxLength(WordDeck.MaxName);
+            e.HasIndex(x => new { x.OwnerId, x.Name }).IsUnique();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PersonalWord>(e =>
+        {
+            e.ToTable("personal_words");
+            e.Property(x => x.Id).ValueGeneratedNever(); // chosen by the page once, so a double tap adds one word (API01)
+            e.HasIndex(x => new { x.OwnerId, x.LearningItemId }).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.IntroduceOn });
+            e.Property(x => x.Romanization).HasMaxLength(100);
+            e.Property(x => x.ExampleKo).HasMaxLength(200);
+            e.Property(x => x.ExampleUz).HasMaxLength(300);
+            e.Property(x => x.TrapUz).HasMaxLength(1000);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<WordDeck>().WithMany().HasForeignKey(x => x.DeckId).OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<LearningItem>(e =>

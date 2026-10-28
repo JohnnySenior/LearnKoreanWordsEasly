@@ -57,11 +57,15 @@ public sealed class AiGateway(
         return await StatusAsync(ownerId, ct);
     }
 
-    /// <summary>Calls the chosen service, or only <paramref name="only"/> when given (used by "check the connection").</summary>
-    public async Task<AiCallResult> CompleteJsonAsync(Guid ownerId, AiJsonRequest request, CancellationToken ct, AiProviderKind? only = null)
+    /// <summary>
+    /// Calls the chosen service, or only <paramref name="only"/> when given (used by "check the connection").
+    /// <paramref name="freeQuota"/>: the caller has already counted this call against a free allowance (L-51: three
+    /// own words a day), so a learner without Premium may make it.
+    /// </summary>
+    public async Task<AiCallResult> CompleteJsonAsync(Guid ownerId, AiJsonRequest request, CancellationToken ct, AiProviderKind? only = null, bool freeQuota = false)
     {
         // Every AI call costs money (spec §7.4): Premium learners, editors and admins only.
-        if (!await premium.CanUseAiAsync(ownerId, ct))
+        if (!freeQuota && !await premium.CanUseAiAsync(ownerId, ct))
         {
             throw new PremiumRequiredException();
         }

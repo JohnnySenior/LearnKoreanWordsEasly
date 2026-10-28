@@ -388,3 +388,13 @@ Bosqichlar spec §13 bo‘yicha.
 **Nashr qilingan bo‘limlar tugaganda (2026-10-28):**
 - [x] Barcha nashr qilingan bo‘limlarni o‘tgan o‘quvchiga Bosh sahifa "Hali ochiq bo‘lim yo‘q" o‘rniga "Hozircha barcha bo‘limlar tugadi … yangi bo‘lim shu yerda o‘zi ochiladi" deydi (`TodayDto.PassedUnits`). Test: 1-bo‘lim o‘tildi → bo‘lim yo‘q, PassedUnits 1; 2-bo‘lim nashr qilindi → u Bosh sahifada.
 
+
+**Mening so‘zlarim (L-51, 2026-10-28):**
+- [x] Qidiruv: lug‘at (koreyscha aynan, o‘zbekcha to‘liq ma’no) → AI; AI kartasi lug‘at qoidalari bilan tekshiriladi.
+- [x] Bepulga kuniga 3 ta AI so‘z, Premium cheksiz, lug‘at cheksiz; muvaffaqiyatsiz AI chaqiruvi hisoblanmaydi.
+- [x] Qo‘shish idempotent; bir so‘z ikki marta qo‘shilmaydi (409); boshqa o‘quvchining to‘plami/so‘zi 404.
+- [x] Kunlik takrorga kuniga 10 ta yangi o‘z so‘zi; 11-si ertaga. Tuzoq kartada.
+- [x] To‘plamlar: yaratish, nom takrori 409, ko‘chirish, nomini o‘zgartirish, o‘chirishda so‘zlar "Umumiy"ga. Migratsiya `PersonalWords` (faqat yangi jadvallar).
+- [x] Testlar: `MyWordTests` (12). Chromium 390/1280, yorug‘/qorong‘i: gorizontal scroll yo‘q, sahifa xatosi yo‘q.
+- [ ] Keyingi PR: mashqlarda (Yozma, Talaffuz, Aralash sinov) "Mening so‘zlarim"/to‘plam tanlovi.
+- [ ] Johnny: telefonda bitta lug‘at so‘zi va bitta AI so‘zi qo‘shib, ertasi kungi takrorda chiqishini ko‘rish.
