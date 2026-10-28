@@ -1,8 +1,9 @@
 @inject BrowserInterop Browser
+@inject NavigationManager Nav
 
 @* Putting the app on the home screen (spec §4.1 step 3, §6.2): Chrome's own install dialog where the browser offers
    it, the three Safari steps on iPhone/iPad, the browser menu elsewhere. *@
-@switch (_state)
+@switch (Kind)
 {
     case null:
         break;
@@ -13,32 +14,124 @@
         <p>Ilovani telefoningizga o‘rnating: u bosh ekrandan, brauzer panellarisiz ochiladi.</p>
         <button class="button primary" @onclick="InstallAsync">O‘rnatish</button>
         break;
+    case "inapp-ios":
+    case "inapp-android":
+        @* L-50: a link from an ad opens inside Instagram, Facebook or Telegram, where a site cannot be installed. *@
+        <div class="notice install-inapp" role="alert">
+            <strong>Sahifa @(App ?? "ilova") ichida ochilgan.</strong> Bu yerdan o‘rnatib bo‘lmaydi — avval sahifani @(Kind == "inapp-ios" ? "Safari" : "Chrome")’da oching.
+        </div>
+        <ol class="install-steps">
+            <li>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+                @if (Kind == "inapp-ios")
+                {
+                    <span>Ekranning pastidagi yoki tepasidagi <strong>⋯</strong> yoki <strong>Ulashish</strong> tugmasini bosing.</span>
+                }
+                else
+                {
+                    <span>Ekranning tepasidagi <strong>⋮</strong> (yoki <strong>⋯</strong>) tugmasini bosing.</span>
+                }
+            </li>
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m15.5 8.5-2 5-5 2 2-5z" /></svg>
+                <span><strong>«@(Kind == "inapp-ios" ? "Safari’da ochish" : "Brauzerda ochish")»</strong> (@(Kind == "inapp-ios" ? "Open in Safari / Open in browser" : "Open in Chrome / Open in browser")) ni tanlang.</span>
+            </li>
+            <li>
+                <img src="icons/icon-192.png" alt="" width="24" height="24" />
+                <span>Ochilgan sahifada shu yo‘riqnoma o‘rnatish qadamlarini ko‘rsatadi.</span>
+            </li>
+        </ol>
+        <div class="install-actions">
+            @if (Kind == "inapp-android")
+            {
+                <a class="button primary" href="@ChromeIntent">Chrome’da ochish</a>
+            }
+            <button class="button" @onclick="CopyLinkAsync">@(_copied ? "Nusxalandi" : "Havolani nusxalash")</button>
+        </div>
+        <p class="muted small-text">Tugma ishlamasa: havolani nusxalang, @(Kind == "inapp-ios" ? "Safari" : "Chrome")’ni oching va manzil qatoriga qo‘ying.</p>
+        break;
     case "ios":
         <p>iPhone’da ilova Safari orqali bosh ekranga qo‘shiladi:</p>
         <ol class="install-steps">
             <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9H6a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10a1 1 0 0 0-1-1h-2" /><path d="M12 15V3M8 7l4-4 4 4" /></svg>
-                <span>Safari’da pastdagi <strong>Ulashish</strong> tugmasini bosing.</span>
+                <span>Safari’da <strong>Ulashish</strong> tugmasini bosing (pastda yoki manzil qatori yonida).</span>
             </li>
             <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></svg>
-                <span>Ro‘yxatdan <strong>«Bosh ekranga qo‘shish»</strong> (Add to Home Screen) ni tanlang.</span>
+                <span>Ro‘yxatni pastga suring va <strong>«Bosh ekranga qo‘shish»</strong> (Add to Home Screen) ni tanlang.</span>
             </li>
             <li>
                 <img src="icons/icon-192.png" alt="" width="24" height="24" />
                 <span>Yuqorida <strong>«Qo‘shish»</strong> (Add) ni bosing. «Koreyscha» belgisi bosh ekranda paydo bo‘ladi.</span>
             </li>
         </ol>
-        <p class="muted small-text">Telegram ichida ochilgan bo‘lsa, avval havolani Safari’da oching.</p>
+        <p class="muted small-text">Telegram’dagi havoladan ochgan bo‘lsangiz, avval pastdagi <strong>Safari</strong> belgisini (kompas) bosib, sahifani Safari’ning o‘zida oching.</p>
+        break;
+    case "ios-other":
+        <p>iPhone’da ilova bosh ekranga Ulashish menyusidan qo‘shiladi:</p>
+        <ol class="install-steps">
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9H6a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10a1 1 0 0 0-1-1h-2" /><path d="M12 15V3M8 7l4-4 4 4" /></svg>
+                <span>Manzil qatori yonidagi <strong>Ulashish</strong> tugmasini bosing.</span>
+            </li>
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></svg>
+                <span><strong>«Bosh ekranga qo‘shish»</strong> (Add to Home Screen) ni tanlang. Ro‘yxatda bo‘lmasa, sahifani Safari’da oching.</span>
+            </li>
+            <li>
+                <img src="icons/icon-192.png" alt="" width="24" height="24" />
+                <span><strong>«Qo‘shish»</strong> (Add) ni bosing.</span>
+            </li>
+        </ol>
+        break;
+    case "samsung":
+        <ol class="install-steps">
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+                <span>Pastdagi <strong>☰</strong> menyuni oching.</span>
+            </li>
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></svg>
+                <span><strong>«Sahifani qo‘shish»</strong> (Add page to) → <strong>«Bosh ekran»</strong> (Home screen) ni tanlang.</span>
+            </li>
+            <li>
+                <img src="icons/icon-192.png" alt="" width="24" height="24" />
+                <span><strong>«Qo‘shish»</strong> ni bosing.</span>
+            </li>
+        </ol>
         break;
     default:
-        <p>Brauzer menyusini (<strong>⋮</strong>) oching va <strong>«Ilovani o‘rnatish»</strong> yoki <strong>«Bosh ekranga qo‘shish»</strong> ni tanlang.</p>
-        <p class="muted small-text">Telegram ichida ochilgan bo‘lsa, avval havolani Chrome’da oching.</p>
+        <ol class="install-steps">
+            <li>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
+                <span>Brauzerning tepasidagi <strong>⋮</strong> menyusini oching.</span>
+            </li>
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></svg>
+                <span><strong>«Ilovani o‘rnatish»</strong> yoki <strong>«Bosh ekranga qo‘shish»</strong> ni tanlang.</span>
+            </li>
+            <li>
+                <img src="icons/icon-192.png" alt="" width="24" height="24" />
+                <span><strong>«O‘rnatish»</strong> ni bosing.</span>
+            </li>
+        </ol>
         break;
 }
 
 @code {
     private string? _state;
+    private bool _copied;
+
+    /// <summary>The state without the app name: "inapp-ios:Instagram" → "inapp-ios".</summary>
+    private string? Kind => _state?.Split(':')[0];
+
+    private string? App => _state?.Split(':') is [_, { Length: > 0 } name] ? name : null;
+
+    /// <summary>Android opens this in Chrome straight from most in-app browsers.</summary>
+    private string ChromeIntent => $"intent://{new Uri(Nav.Uri).Authority}{new Uri(Nav.Uri).PathAndQuery}#Intent;scheme=https;package=com.android.chrome;end";
+
+    private async Task CopyLinkAsync() => _copied = await Browser.CopyTextAsync(Nav.Uri);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
