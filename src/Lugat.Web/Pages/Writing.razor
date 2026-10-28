@@ -118,14 +118,15 @@ else
 @code {
     private static readonly (ReviewDirection? Value, string Label)[] Directions =
     [
-        (null, "Aralash"),
         (ReviewDirection.UzbekToKorean, "Koreyscha yozish"),
         (ReviewDirection.KoreanToUzbek, "O‘zbekcha yozish"),
+        (null, "Aralash"),
     ];
 
     private static readonly int[] Counts = [10, 20, 30];
 
-    private ReviewDirection? _direction;
+    /// <summary>The Uzbek is shown and the Korean typed unless the learner picks otherwise: the point of the exercise.</summary>
+    private ReviewDirection? _direction = ReviewDirection.UzbekToKorean;
     private int _count = 10;
     /// <summary>Preselected unit, from the unit page (spec §4.3 step 3).</summary>
     [SupplyParameterFromQuery(Name = "unit")] public Guid? Unit { get; set; }
