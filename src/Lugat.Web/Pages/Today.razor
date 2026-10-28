@@ -86,6 +86,16 @@ else if (_today is not null)
             <span>Davom etish — @ContinueLabel(step)</span><Icon Name="arrow-right" />
         </a>
     }
+    else if (_today.PassedUnits > 0)
+    {
+        @* Every published unit is passed: the next one opens by itself once it is published (UnitProgressService.SyncAsync). *@
+        <section class="home-unit">
+            <span class="kicker accent">Barakalla!</span>
+            <h3>Hozircha barcha bo‘limlar tugadi</h3>
+            <p class="small-text">Siz @_today.PassedUnits ta bo‘limni tugatdingiz. Yangi bo‘limlar tez-tez qo‘shiladi va shu yerda o‘zi ochiladi. Ungacha takrorlash va mashqlar so‘zlarni mustahkamlaydi.</p>
+            <a class="btn btn-secondary block" href="mashq"><span>Mashq qilish</span><Icon Name="arrow-right" /></a>
+        </section>
+    }
     else
     {
         <section class="home-unit">

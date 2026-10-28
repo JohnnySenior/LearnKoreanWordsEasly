@@ -6,12 +6,14 @@ namespace Lugat.Contracts;
 
 /// <param name="NewAvailable">New cards of the current unit(s), the only place new words come from (spec §4.6).</param>
 /// <param name="CurrentUnit">The open unit to continue (the newest one), or null when there is none.</param>
+/// <param name="PassedUnits">Units the learner has passed: with no open unit left, all published ones are done.</param>
 public sealed record TodayDto(
     int DueNow,
     int NewAvailable,
     SessionDto? ActiveSession,
     int SecondsPerCard,
-    UnitSummaryDto? CurrentUnit = null);
+    UnitSummaryDto? CurrentUnit = null,
+    int PassedUnits = 0);
 
 /// <param name="Minutes">10, 20, 30 or null for no limit (spec PLAN06).</param>
 /// <param name="Restart">Abandon an unfinished session and plan a new one.</param>

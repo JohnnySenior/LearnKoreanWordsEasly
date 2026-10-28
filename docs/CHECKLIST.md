@@ -385,3 +385,6 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] JS testlari (16): har bir brauzer holati. Chromium 390px (Instagram iOS, Facebook Android, Safari UA): gorizontal scroll yo‘q, sahifa xatosi yo‘q.
 - [ ] Johnny: haqiqiy Instagram/Telegram havolasidan ochib ko‘rish (iPhone va Android).
 
+**Nashr qilingan bo‘limlar tugaganda (2026-10-28):**
+- [x] Barcha nashr qilingan bo‘limlarni o‘tgan o‘quvchiga Bosh sahifa "Hali ochiq bo‘lim yo‘q" o‘rniga "Hozircha barcha bo‘limlar tugadi … yangi bo‘lim shu yerda o‘zi ochiladi" deydi (`TodayDto.PassedUnits`). Test: 1-bo‘lim o‘tildi → bo‘lim yo‘q, PassedUnits 1; 2-bo‘lim nashr qilindi → u Bosh sahifada.
+
