@@ -40,13 +40,13 @@
             var table = t;
             var ready = t.Ready == t.Total;
             <li>
-                <button class="chip @(_chosen.Contains(t.UnitId) ? "selected" : "")" aria-pressed="@_chosen.Contains(t.UnitId)" disabled="@(t.Ready == 0)" @onclick="() => Toggle(table.UnitId)">@t.Unit</button>
+                <button class="chip @(_chosen.Contains(Key(t)) ? "selected" : "")" aria-pressed="@_chosen.Contains(Key(t))" disabled="@(t.Ready == 0)" @onclick="() => Toggle(Key(table))">@t.Unit</button>
                 <span class="grow">
                     @if (ready)
                     {
                         <span>Tayyor · @t.Questions savol</span>
                     }
-                    else if (_preparing == t.UnitId)
+                    else if (_preparing == Key(t))
                     {
                         <span role="status">Tayyorlanmoqda: @t.Ready / @t.Total so‘z…</span>
                     }
@@ -59,7 +59,7 @@
                 {
                     <button class="button small" disabled="@(_preparing is not null)" @onclick="() => PrepareAsync(table)">Tayyorlash</button>
                 }
-                <a class="small-text" href="bolimlar/@t.UnitId">Ko‘rish</a>
+                <a class="small-text" href="@(t.Deck is null ? $"bolimlar/{t.UnitId}" : "sozlarim")">Ko‘rish</a>
             </li>
         }
     </ul>
@@ -74,7 +74,7 @@
             <button class="@(_count == count ? "selected" : "")" role="radio" aria-checked="@(_count == count)" @onclick="() => _count = count">@count ta</button>
         }
     </div>
-    <p class="muted small-text">@(_chosen.Count == 0 ? "Bo‘lim tanlanmagan: barcha tayyor bo‘limlardan" : $"{string.Join(", ", _tables!.Where(t => _chosen.Contains(t.UnitId)).Select(t => t.Unit))}-bo‘limdan") · javoblar oxirida izoh bilan ko‘rsatiladi · xatolar «Xatolarim» ga tushadi</p>
+    <p class="muted small-text">@(_chosen.Count == 0 ? "Bo‘lim tanlanmagan: barcha tayyor bo‘limlardan" : string.Join(", ", _tables!.Where(t => _chosen.Contains(Key(t))).Select(t => t.Deck is null ? $"{t.Unit}-bo‘lim" : $"«{t.Unit}»"))) · javoblar oxirida izoh bilan ko‘rsatiladi · xatolar «Xatolarim» ga tushadi</p>
     <button class="button primary block" disabled="@(_busy || _tables.All(t => t.Ready == 0))" @onclick="StartAsync">Boshlash</button>
 </section>
 
@@ -82,11 +82,12 @@
     private static readonly int[] Counts = [10, 20, 30];
 
     private List<UsageTableSummaryDto>? _tables;
-    private readonly HashSet<Guid> _chosen = [];
+    /// <summary>Chosen tables by <see cref="Key"/>: units and own-word decks (L-51).</summary>
+    private readonly HashSet<string> _chosen = [];
     private int _count = 10;
     private bool _busy;
     private string? _error;
-    private Guid? _preparing;
+    private string? _preparing;
     private Guid? _pendingId;
 
     protected override async Task OnInitializedAsync()
@@ -96,7 +97,9 @@
         _error = result.Ok ? null : result.Error;
     }
 
-    private void Toggle(Guid table)
+    private static string Key(UsageTableSummaryDto t) => t.Deck ?? t.UnitId.ToString();
+
+    private void Toggle(string table)
     {
         if (!_chosen.Remove(table))
         {
@@ -107,9 +110,9 @@
     /// <summary>One batch of words per request until the table is ready, so the page shows progress as it goes.</summary>
     private async Task PrepareAsync(UsageTableSummaryDto table)
     {
-        _preparing = table.UnitId;
+        _preparing = Key(table);
         _error = null;
-        var url = $"api/vocabulary/units/{table.UnitId}/usage";
+        var url = table.Deck is { } deck ? $"api/vocabulary/decks/{Uri.EscapeDataString(deck)}/usage" : $"api/vocabulary/units/{table.UnitId}/usage";
         var ready = table.Ready;
         while (true)
         {
@@ -135,7 +138,7 @@
 
     private void Replace(UsageTableSummaryDto table, TableUsageDto usage)
     {
-        var i = _tables!.FindIndex(t => t.UnitId == table.UnitId);
+        var i = _tables!.FindIndex(t => Key(t) == Key(table));
         if (i >= 0)
         {
             _tables[i] = _tables[i] with { Ready = usage.Ready, Total = usage.Total, Questions = usage.Usages.Sum(u => u.Questions) };
@@ -147,7 +150,10 @@
         _busy = true;
         _error = null;
         var id = _pendingId ??= Guid.NewGuid();
-        var request = new CreateTestRequest(id, _chosen.Count == 0 ? null : _chosen.ToList(), _count, Usage: true);
+        var chosen = _tables!.Where(t => _chosen.Contains(Key(t))).ToList();
+        var units = chosen.Where(t => t.Deck is null).Select(t => t.UnitId).ToList();
+        var decks = chosen.Select(t => t.Deck).OfType<string>().ToList();
+        var request = new CreateTestRequest(id, units.Count == 0 ? null : units, _count, Usage: true, Decks: decks.Count == 0 ? null : decks);
         var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", request);
         _busy = false;
         if (result.Value is { } test)

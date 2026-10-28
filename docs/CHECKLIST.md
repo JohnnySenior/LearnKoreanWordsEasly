@@ -397,5 +397,6 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] To‘plamlar: yaratish, nom takrori 409, ko‘chirish, nomini o‘zgartirish, o‘chirishda so‘zlar "Umumiy"ga. Migratsiya `PersonalWords` (faqat yangi jadvallar).
 - [x] Testlar: `MyWordTests` (12). Chromium 390/1280, yorug‘/qorong‘i: gorizontal scroll yo‘q, sahifa xatosi yo‘q.
 - [x] Mashqlarda: Aralash sinov, Talaffuz va Yozma mashqda to‘plam tanlovi; bo‘lim ro‘yxati o‘zgarmaydi; tanlov bo‘sh bo‘lsa 422. Test: `Exercises_can_be_built_from_own_words_by_deck…`. Chromium 390px: uch sahifa, scroll yo‘q, Yozma mashq "Ish" to‘plamidan so‘z berdi.
-- [ ] Keyingi: "Qaysi so‘z to‘g‘ri?" o‘z so‘zlari uchun.
+- [x] "So‘z qo‘llanishi" to‘plamlar uchun: tayyorlash, mashq, boshqa o‘quvchi uchun 404. Test: `Which_word_is_right_can_be_prepared_and_practised_for_a_deck_of_own_words`. Chromium 390px: sahifada "Umumiy" va to‘plam qatorlari, scroll yo‘q.
+- [x] Yozma mashq sukut bo‘yicha "Koreyscha yozish" (PR #45).
 - [ ] Johnny: telefonda bitta lug‘at so‘zi va bitta AI so‘zi qo‘shib, ertasi kungi takrorda chiqishini ko‘rish.

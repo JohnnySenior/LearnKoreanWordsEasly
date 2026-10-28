@@ -21,6 +21,11 @@ public static class StudyEndpoints
             s.TableAsync(user.GetUserId(), unitId, ct));
         api.MapPost("/vocabulary/units/{unitId:guid}/usage", (Guid unitId, ClaimsPrincipal user, UsageService s, CancellationToken ct) =>
             s.PrepareTableAsync(user.GetUserId(), unitId, ct));
+        // The same for a deck of own words (L-51): "umumiy" or a deck id.
+        api.MapGet("/vocabulary/decks/{deck}/usage", (string deck, ClaimsPrincipal user, UsageService s, CancellationToken ct) =>
+            s.DeckAsync(user.GetUserId(), deck, ct));
+        api.MapPost("/vocabulary/decks/{deck}/usage", (string deck, ClaimsPrincipal user, UsageService s, CancellationToken ct) =>
+            s.PrepareDeckAsync(user.GetUserId(), deck, ct));
 
         api.MapGet("/sessions/current", async (ClaimsPrincipal user, StudyService s, CancellationToken ct) =>
             await s.CurrentAsync(user.GetUserId(), ct) is { } session ? Results.Ok(session) : Results.NoContent());
