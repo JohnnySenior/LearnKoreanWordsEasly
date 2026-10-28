@@ -38,7 +38,8 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             newAvailable,
             active is null ? null : await ToDtoAsync(active, ct),
             await SecondsPerCardAsync(ownerId, ct),
-            current);
+            current,
+            await db.UnitProgress.CountAsync(p => p.UserId == ownerId && p.Status == Domain.Catalog.UnitProgressStatus.Passed, ct));
     }
 
     /// <summary>Words with at least one card due now, counted as on the home page (the reminder's "N ta so‘z", spec §8).</summary>

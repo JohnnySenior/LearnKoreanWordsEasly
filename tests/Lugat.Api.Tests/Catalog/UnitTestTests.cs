@@ -189,6 +189,30 @@ public class UnitTestTests
     }
 
     [Fact]
+    public async Task After_the_last_published_unit_the_home_page_says_so_and_the_next_unit_opens_once_published()
+    {
+        // Launch with part of level A published: a learner who passes them all is told why nothing is open.
+        var factory = new ApiFactory { Speech = _speech };
+        await using var _ = factory;
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await factory.AddWordsAsync(ApiFactory.UserA, 1, ApiFactory.Words("가", 25));
+
+        var test = await StartOkAsync(client, 1);
+        await AnswerAsync(factory, client, test.Id, 25);
+        await FinishAsync(client, test.Id);
+        var allDone = await client.GetFromJsonAsync<TodayDto>("/api/today", ApiFactory.Json);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await ApiFactory.PublishUnitAsync(scope.ServiceProvider, 2, ApiFactory.Words("나", 25));
+        }
+
+        var published = await client.GetFromJsonAsync<TodayDto>("/api/today", ApiFactory.Json);
+
+        Assert.Equal((null, 1), (allDone!.CurrentUnit, allDone.PassedUnits));
+        Assert.Equal(ApiFactory.Unit(2), published!.CurrentUnit?.Id);
+    }
+
+    [Fact]
     public async Task Bilaman_is_only_for_the_next_locked_unit_three_times_a_day()
     {
         var (factory, client) = await SetUpAsync();

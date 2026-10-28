@@ -378,3 +378,6 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Chromium, faqat klaviatura: yozma mashq (yozish → Enter tekshiradi → Enter keyingisi, kursor maydonda); lug‘at sinovi (yozma savollar Enter bilan, variantli savolda Enter javobsiz savolni tashlab ketmaydi).
 - [ ] Johnny: noutbukda Talaffuz va yozma mashqni sichqonchasiz sinab ko‘rish.
 
+**Nashr qilingan bo‘limlar tugaganda (2026-10-28):**
+- [x] Barcha nashr qilingan bo‘limlarni o‘tgan o‘quvchiga Bosh sahifa "Hali ochiq bo‘lim yo‘q" o‘rniga "Hozircha barcha bo‘limlar tugadi … yangi bo‘lim shu yerda o‘zi ochiladi" deydi (`TodayDto.PassedUnits`). Test: 1-bo‘lim o‘tildi → bo‘lim yo‘q, PassedUnits 1; 2-bo‘lim nashr qilindi → u Bosh sahifada.
+
