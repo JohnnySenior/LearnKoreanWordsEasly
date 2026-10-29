@@ -117,7 +117,7 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
         row.Status = IntroductionStatus.Draft;
         row.ApprovedBy = null; row.ApprovedAt = null;
         row.Words = row.Words.Select(w => w with { Reviewed = false, KoreanAudioKey = null,
-            Beats = w.Beats.Select(b => b with { AudioKey = null }).ToList() }).ToList();
+            Beats = w.Beats.Select(b => b with { AudioKey = null, Parts = null }).ToList() }).ToList();
         Audit(adminId, "introduction-return", row);
         await db.SaveChangesAsync(ct);
         return await DtoAsync(row, true, ct);
@@ -141,11 +141,16 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
                 row.Words = row.Words.Select((w, n) => n == i ? w with { KoreanAudioKey = key } : w).ToList();
                 break;
             }
-            var missing = word.Beats.FindIndex(b => b.AudioKey is null);
+            var missing = word.Beats.FindIndex(b => Keys(b).Count < NarrationParts(b.NarrationUz).Count);
             if (missing >= 0)
             {
-                var key = await audio.MakeAsync(adminId, word.Beats[missing].NarrationUz, false, ct);
-                var beats = word.Beats.Select((b, n) => n == missing ? b with { AudioKey = key } : b).ToList();
+                // One part per call: the Uzbek narrator, or the Korean voice for a «Hangul» part.
+                var beat = word.Beats[missing];
+                var done = Keys(beat);
+                var part = NarrationParts(beat.NarrationUz)[done.Count];
+                var key = await audio.MakeAsync(adminId, part.Text, part.Korean, ct);
+                List<string> parts = [.. done, key];
+                var beats = word.Beats.Select((b, n) => n == missing ? b with { AudioKey = parts[0], Parts = parts } : b).ToList();
                 row.Words = row.Words.Select((w, n) => n == i ? w with { Beats = beats } : w).ToList();
                 break;
             }
@@ -197,7 +202,7 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
 
     public async Task<IntroductionDto> PreviewAsync(Guid id, CancellationToken ct) => await DtoAsync(await FindAsync(id, ct), true, ct);
 
-    public async Task<Stream> AudioAsync(Guid userId, Guid id, int word, int beat, bool admin, CancellationToken ct)
+    public async Task<Stream> AudioAsync(Guid userId, Guid id, int word, int beat, int part, bool admin, CancellationToken ct)
     {
         var row = await FindAsync(id, ct);
         if (!admin)
@@ -206,7 +211,7 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
             await access.AccessAsync(userId, row.UnitId, ct);
         }
         if (word < 0 || word >= row.Words.Count || beat < -1 || beat >= row.Words[word].Beats.Count) throw new NotFoundException("Ovoz topilmadi.");
-        var key = beat == -1 ? row.Words[word].KoreanAudioKey : row.Words[word].Beats[beat].AudioKey;
+        var key = beat == -1 ? (part == 0 ? row.Words[word].KoreanAudioKey : null) : Keys(row.Words[word].Beats[beat]).ElementAtOrDefault(part);
         if (key is null) throw new NotFoundException("Ovoz hali tayyor emas.");
         return await files.OpenReadAsync(key, ct) ?? throw new ServiceUnavailableException("Saqlangan ovoz topilmadi. Adminga xabar bering.");
     }
@@ -235,7 +240,10 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
         if (Hash(sources) != row.SourceHash) throw new ConflictException("Bo‘lim so‘zlari o‘zgargan. Bu qoralamani yangilash uchun yangi nusxa kerak.");
     }
     private static string Hash(List<IntroductionSource> sources) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(sources, Json))));
-    private static int MissingAudio(UnitIntroduction row) => row.Words.Sum(w => (w.KoreanAudioKey is null ? 1 : 0) + w.Beats.Count(b => b.AudioKey is null));
+    private static int MissingAudio(UnitIntroduction row) => row.Words.Sum(w => (w.KoreanAudioKey is null ? 1 : 0)
+        + w.Beats.Sum(b => Math.Max(0, NarrationParts(b.NarrationUz).Count - Keys(b).Count)));
+    private static List<string> Keys(IntroductionBeat beat) => beat.Parts ?? (beat.AudioKey is null ? [] : [beat.AudioKey]);
+    private static bool Recorded(IntroductionBeat beat) => Keys(beat).Count >= NarrationParts(beat.NarrationUz).Count;
     private async Task<IntroductionDto> DtoAsync(UnitIntroduction row, bool admin, CancellationToken ct)
     {
         var unit = await UnitAsync(row.UnitId, ct);
@@ -247,7 +255,8 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
             string Url(int beat) => $"api/{(admin ? "admin/" : "")}introductions/{row.Id}/audio/{i}/{beat}";
             return new IntroductionWordDto(w.WordId, source.Word, source.MeaningUz, source.Romanization, w.Title,
                 source.TrapUz is not null, w.Reviewed, w.KoreanAudioKey is null ? null : Url(-1),
-                w.Beats.Select((b, n) => new IntroductionBeatDto(b.Kind, b.NarrationUz, b.Korean, b.Uzbek, b.AudioKey is null ? null : Url(n))).ToList());
+                w.Beats.Select((b, n) => new IntroductionBeatDto(b.Kind, b.NarrationUz, b.Korean, b.Uzbek,
+                    Recorded(b) ? Url(n) : null, Recorded(b) ? Keys(b).Select((_, k) => $"{Url(n)}/{k}").ToList() : null)).ToList());
         }).ToList();
         return new(row.Id, row.UnitId, row.Revision, row.Status, row.Version, $"{unit.Level} · {unit.Number}-bo‘lim", changed,
             row.Sources.Count, row.Sources.Count - row.Words.Count, MissingAudio(row), words, row.ApprovedBy, row.ApprovedAt, row.PublishedAt);
@@ -265,12 +274,17 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
         {
             if (b is null) throw new ValidationException("Doska qadami bo‘sh.");
             Require(b.Kind is "meaning" or "example" or "trap", "Doska qadami turi noto‘g‘ri.");
-            Require(!string.IsNullOrWhiteSpace(b!.NarrationUz) && b.NarrationUz.Length <= 700 && SentenceCheckService.IsUzbekLatin(b.NarrationUz)
-                && !SentenceCheckService.ContainsHangul(b.NarrationUz), "Diktor matni o‘zbekcha lotinda bo‘lsin (700 belgigacha); koreyscha misol alohida yoziladi.");
+            var narration = Marked(b!.NarrationUz);
+            var parts = NarrationParts(narration);
+            var spoken = string.Join(" ", parts.Where(x => !x.Korean).Select(x => x.Text));
+            Require(narration.Length is > 0 and <= 700 && SentenceCheckService.IsUzbekLatin(spoken) && !SentenceCheckService.ContainsHangul(spoken),
+                "Diktor matni o‘zbekcha lotinda bo‘lsin (700 belgigacha); koreyscha so‘zni «하다» kabi qo‘shtirnoq ichida yozing.");
+            Require(parts.Count(x => x.Korean) <= MaxKoreanParts && parts.Where(x => x.Korean).All(x => x.Text.Length <= 60),
+                $"Diktor matnida ko‘pi bilan {MaxKoreanParts} ta qisqa koreyscha qism bo‘lsin.");
             Require(b.Korean is null || b.Korean.Length <= 160 && SentenceCheckService.ContainsHangul(b.Korean), "Koreyscha misol noto‘g‘ri.");
             Require(b.Uzbek is null || b.Uzbek.Length <= 300 && SentenceCheckService.IsUzbekLatin(b.Uzbek), "Misol izohi o‘zbekcha bo‘lsin.");
             Require(b.Kind != "trap" || source.TrapUz is not null, "Lug‘atda tuzog‘i yo‘q so‘zga tuzoq o‘ylab topilmaydi.");
-            result.Add(new(b.Kind, b.NarrationUz.Trim(), b.Korean?.Trim(), b.Uzbek?.Trim()));
+            result.Add(new(b.Kind, narration, b.Korean?.Trim(), b.Uzbek?.Trim()));
         }
         Require(result[0].Kind == "meaning" && result.Any(b => b.Kind == "example"), "Avval ma’no, keyin misol kerak.");
         Require(source.TrapUz is null || result.Any(b => b.Kind == "trap"), "Tuzoq izohi bor so‘zni chuqurroq tushuntiring.");
@@ -295,27 +309,63 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
         {
             var matches = items.Where(w => w is not null && w.Id == i + 1).ToList();
             if (matches.Count != 1) continue;
-            try { words.Add(CheckWord(sources[i], matches[0].Title, matches[0].Beats?.Select(b => b is null ? b! : b with { NarrationUz = Spoken(sources[i], b.NarrationUz) }).ToList())); }
+            try { words.Add(CheckWord(sources[i], matches[0].Title, matches[0].Beats)); }
             catch (ValidationException ex) { problem ??= $"{i + 1}-so‘z: {ex.Message}"; }
         }
         return words.Count > 0 ? words : throw new ValidationException(problem ?? "so‘z raqamlari mos kelmadi");
     }
+    public const int MaxKoreanParts = 6;
+
+    /// <summary>A narration part: Uzbek for the narrator, or Korean («하다») for the Korean voice.</summary>
+    public sealed record NarrationPart(string Text, bool Korean);
+
     /// <summary>
-    /// The Uzbek narrator cannot read Hangul, and the model often names the word itself in it ("하다 fe’li …"): that
-    /// word becomes its romanization. Any other Hangul stays, so the check still rejects the beat.
+    /// The narration with every Korean phrase quoted: Hangul written bare ("하다 fe’li") becomes «하다», so the Korean
+    /// voice says it; quotes already around Korean stay. Uzbek quotes («Ishga boraman») are untouched.
     /// </summary>
-    private static string Spoken(IntroductionSource source, string? narration)
+    public static string Marked(string? narration)
     {
-        if (narration is null || source.Romanization is not { Length: > 0 } roman) return narration!;
-        var stem = source.Word.EndsWith('다') && source.Word.Length > 1 ? source.Word[..^1] : null;
-        return HangulRun().Replace(narration, m => m.Value == source.Word || m.Value == stem ? roman : m.Value);
+        var text = (narration ?? "").Trim();
+        var result = new StringBuilder();
+        var at = 0;
+        foreach (Match quote in Quoted().Matches(text))
+        {
+            result.Append(HangulPhrase().Replace(text[at..quote.Index], m => $"«{m.Value}»")).Append(quote.Value);
+            at = quote.Index + quote.Length;
+        }
+        return result.Append(HangulPhrase().Replace(text[at..], m => $"«{m.Value}»")).ToString();
     }
 
-    [GeneratedRegex(@"[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]+")]
-    private static partial Regex HangulRun();
+    /// <summary>The narration split for recording, in order; a «quote» holding Hangul is a Korean part.</summary>
+    public static IReadOnlyList<NarrationPart> NarrationParts(string narration)
+    {
+        var parts = new List<NarrationPart>();
+        var at = 0;
+        void Uzbek(string text)
+        {
+            text = text.Trim();
+            if (text.Any(char.IsLetterOrDigit)) parts.Add(new(text, false));
+        }
+        foreach (Match quote in Quoted().Matches(narration))
+        {
+            var inner = quote.Groups[1].Value.Trim();
+            if (!SentenceCheckService.ContainsHangul(inner)) continue;
+            Uzbek(narration[at..quote.Index]);
+            parts.Add(new(inner, true));
+            at = quote.Index + quote.Length;
+        }
+        Uzbek(narration[at..]);
+        return parts;
+    }
+
+    [GeneratedRegex("«([^«»]*)»")]
+    private static partial Regex Quoted();
+
+    [GeneratedRegex(@"[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]+(?:[\s.,?!~]+[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]+)*[.?!~]?")]
+    private static partial Regex HangulPhrase();
 
     public static AiJsonRequest BuildRequest(IReadOnlyList<IntroductionSource> sources) => new(Feature, Instructions,
-        "<reviewed_words>" + JsonSerializer.Serialize(sources.Select((s, i) => new { id = i + 1, s.Word, s.Romanization, s.MeaningUz, s.ExampleKo, s.ExampleUz, s.TrapUz }), Json) + "</reviewed_words>",
+        "<reviewed_words>" + JsonSerializer.Serialize(sources.Select((s, i) => new { id = i + 1, s.Word, s.MeaningUz, s.ExampleKo, s.ExampleUz, s.TrapUz }), Json) + "</reviewed_words>",
         "unit_introduction", Schema, 5000);
     private const string Instructions = """
         Write a calm visual vocabulary introduction for adult Uzbek beginners learning Korean. Input in
@@ -324,8 +374,9 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
         Return one word item per input, with its numeric id, a short Uzbek title and 2-5 beats in presentation order:
         first meaning, then example, then trap if a trap note exists. A trap may take two beats for comparison.
         Each beat reveals a board fragment and plays ONE complete Uzbek recording (about 1-3 natural sentences).
-        narrationUz: natural Uzbek LATIN ONLY, no Hangul, no markup or stage directions. An Uzbek voice reads it
-        aloud and cannot read Hangul: name the Korean word by its romanization ("hada fe’li"), never in Hangul. Explain the meaning and
+        narrationUz: natural Uzbek Latin, no markup or stage directions. An Uzbek voice reads it aloud; whenever it
+        names Korean, write the Korean in Hangul inside « » («하다» fe’li, «공부해요» deymiz): a Korean voice says that
+        part, joined seamlessly. Never write Korean in romanization. Keep each quoted Korean short (a word or phrase). Explain the meaning and
         how an Uzbek speaker uses it; explain real traps more deeply. Korean text is displayed separately.
         korean: a short Korean example or phrase in Hangul, or null; uzbek: its natural Uzbek meaning or a short
         board annotation, or null. Keep the example grounded in the reviewed material, polite Korean where suitable.

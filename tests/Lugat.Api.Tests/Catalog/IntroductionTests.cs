@@ -162,9 +162,9 @@ public class IntroductionTests
     }
 
     [Fact]
-    public void The_word_named_in_hangul_in_the_narration_is_spoken_by_its_romanization()
+    public void Korean_in_the_narration_is_quoted_and_split_off_for_the_korean_voice()
     {
-        // The Uzbek narrator cannot read Hangul; Claude wrote "하다 fe’li …" in every word of A-1.
+        // The Uzbek narrator read "hada" the Uzbek way; Korean is now its own part, said by the Korean voice.
         var source = new Lugat.Domain.Catalog.IntroductionSource(Guid.NewGuid(), 1, "하다", "qilmoq", "hada", "공부해요.", "O‘qiyman.", null, 1);
         string Answer(string meaning) => JsonSerializer.Serialize(new { words = new[] { new { id = 1, title = "Qilmoq", beats = new object[]
         {
@@ -172,9 +172,37 @@ public class IntroductionTests
             new { kind = "example", narrationUz = "Misolga qarang.", korean = "공부해요.", uzbek = "O‘qiyman." },
         } } } });
 
-        var word = Assert.Single(Lugat.Application.Catalog.IntroductionService.Parse(Answer("하다 fe’li eng ko‘p ishlatiladi. 하 bilan boshlanadi."), [source]));
-        Assert.StartsWith("hada fe’li", word.Beats[0].NarrationUz);
-        Assert.Throws<Lugat.Application.ValidationException>(() => Lugat.Application.Catalog.IntroductionService.Parse(Answer("공부 하다 deymiz."), [source]));
+        var word = Assert.Single(Lugat.Application.Catalog.IntroductionService.Parse(Answer("하다 fe’li eng ko‘p ishlatiladi: «공부해요» deymiz. «Ishga boraman» kabi."), [source]));
+        Assert.Equal("«하다» fe’li eng ko‘p ishlatiladi: «공부해요» deymiz. «Ishga boraman» kabi.", word.Beats[0].NarrationUz);
+        Assert.Equal(
+            [new("하다", true), new("fe’li eng ko‘p ishlatiladi:", false), new("공부해요", true), new("deymiz. «Ishga boraman» kabi.", false)],
+            Lugat.Application.Catalog.IntroductionService.NarrationParts(word.Beats[0].NarrationUz));
+        Assert.Throws<Lugat.Application.ValidationException>(() => Lugat.Application.Catalog.IntroductionService.Parse(Answer("«하다» «가다» «오다» «먹다» «자다» «보다» «사다» qarang."), [source]));
+    }
+
+    [Fact]
+    public async Task A_quoted_korean_word_is_recorded_by_the_korean_voice_as_its_own_part()
+    {
+        var narrator = new FakeNarrator();
+        var speech = new FakeSpeech();
+        await using var f = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA], Narrator = narrator, Speech = speech };
+        var (admin, learner) = await Setup(f);
+        var row = await Create(admin);
+        var unit = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{row.UnitId}", Json))!;
+        foreach (var w in unit.Words)
+            row = await Read<IntroductionDto>(await admin.PutAsJsonAsync(Root(row.Id) + $"/words/{w.Id}", new UpdateIntroductionWordRequest(row.Version, "Harakatni aytamiz",
+                [new("meaning", "하다 fe’li eng ko‘p ishlatiladi.", null, "Asosiy harakat"),
+                 new("example", "Misolga qarang.", "집에 가요.", "Uyga boraman.")], true), Json));
+        Assert.Equal("«하다» fe’li eng ko‘p ishlatiladi.", row.Words[0].Beats[0].NarrationUz);
+        row = await Publish(admin, await Audio(admin, await Approve(admin, row)));
+        Assert.Contains("fe’li eng ko‘p ishlatiladi.", narrator.Texts);
+        Assert.DoesNotContain(narrator.Texts, t => t.Contains("하다"));
+        Assert.Contains("하다", speech.Texts);
+        var beat = (await learner.GetFromJsonAsync<IntroductionAvailabilityDto>($"/api/units/{row.UnitId}/introduction", Json))!.Lesson!.Words[0].Beats[0];
+        Assert.Equal(2, beat.PartUrls!.Count);
+        Assert.Equal("ID3narration"u8.ToArray(), await learner.GetByteArrayAsync("/" + beat.PartUrls[1]));
+        Assert.NotEmpty(await learner.GetByteArrayAsync("/" + beat.PartUrls[0]));
+        Assert.Equal(HttpStatusCode.NotFound, (await learner.GetAsync("/" + beat.AudioUrl + "/2")).StatusCode);
     }
 
     [Fact]

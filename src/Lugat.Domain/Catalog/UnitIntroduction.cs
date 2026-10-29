@@ -6,8 +6,12 @@ public enum IntroductionStatus { Draft, Approved, Ready, Published, Retired }
 public sealed record IntroductionSource(Guid Id, int Order, string Word, string MeaningUz, string? Romanization,
     string? ExampleKo, string? ExampleUz, string? TrapUz, int ContentVersion);
 
-/// <summary>One board reveal and its own complete recording. No time-sliced narration.</summary>
-public sealed record IntroductionBeat(string Kind, string NarrationUz, string? Korean, string? Uzbek, string? AudioKey = null);
+/// <summary>
+/// One board reveal and its own complete recording. No time-sliced narration. Korean named in the narration is
+/// written «in Hangul» and spoken by the Korean voice: <see cref="Parts"/> holds one recording per narration part, in
+/// order, joined without a gap on the device. Older beats have only <see cref="AudioKey"/> (one Uzbek part).
+/// </summary>
+public sealed record IntroductionBeat(string Kind, string NarrationUz, string? Korean, string? Uzbek, string? AudioKey = null, List<string>? Parts = null);
 public sealed record IntroductionWord(Guid WordId, string Title, List<IntroductionBeat> Beats, bool Reviewed = false, string? KoreanAudioKey = null);
 
 public sealed class UnitIntroduction

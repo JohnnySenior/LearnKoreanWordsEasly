@@ -60,7 +60,7 @@ else
                     {
                         <fieldset><legend>Doska qadami</legend>
                         <label class="field">Qadam turi<select class="input" @bind="b.Kind"><option value="meaning">Ma’no</option><option value="example">Misol</option><option value="trap">Tuzoq izohi</option></select></label>
-                        <label class="field">Diktor matni (o‘zbekcha, Hangulsiz)<textarea class="input" maxlength="700" @bind="b.NarrationUz"></textarea></label>
+                        <label class="field">Diktor matni (o‘zbekcha; koreyscha so‘z «하다» kabi qo‘shtirnoq ichida — uni koreys ovozi aytadi)<textarea class="input" maxlength="700" @bind="b.NarrationUz"></textarea></label>
                         <label class="field">Doskadagi koreyscha<input class="input" lang="ko" maxlength="160" @bind="b.Korean" /></label><label class="field">Doskadagi o‘zbekcha<input class="input" maxlength="300" @bind="b.Uzbek" /></label><button class="button" disabled="@(_busy || edit.Beats.Count <= 2)" @onclick="() => edit.Beats.Remove(b)">Qadamni olib tashlash</button></fieldset>
                     }
                     <button class="button" disabled="@(_busy || edit.Beats.Count >= 5)" @onclick="() => AddBeat(edit, word.HasTrap)">Doska qadami qo‘shish</button>
