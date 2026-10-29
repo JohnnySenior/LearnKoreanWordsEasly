@@ -24,17 +24,36 @@ public class ElevenLabsNarratorTests
         handler.Body = "{}";
         await Assert.ThrowsAsync<ServiceUnavailableException>(() => voice.SynthesizeAsync("Salom.", default));
     }
+    [Fact]
+    public async Task A_model_that_refuses_the_language_code_is_asked_again_without_it_and_a_refusal_names_its_reason()
+    {
+        var handler = new Handler { RejectLanguage = true };
+        var voice = new ElevenLabsNarrator(new HttpClient(handler), Options.Create(new ElevenLabsOptions { ApiKey = "test-only", VoiceId = "voice-id", Model = "eleven_v3" }));
+        Assert.Equal("ID3audio"u8.ToArray(), await voice.SynthesizeAsync("Salom.", default));
+        Assert.Equal(["uz", null], handler.Languages);
+
+        handler.Error = """{"detail":{"status":"voice_not_found","message":"A voice with that id does not exist."}}""";
+        var error = await Assert.ThrowsAsync<ServiceUnavailableException>(() => voice.SynthesizeAsync("Salom.", default));
+        Assert.Contains("voice_not_found", error.Message);
+        Assert.DoesNotContain("test-only", error.Message);
+    }
+
     private sealed class Handler : HttpMessageHandler
     {
         public string Body = "ID3audio";
-        public string? Key, Language, Model, Url;
+        public string? Key, Language, Model, Url, Error;
+        public bool RejectLanguage;
+        public List<string?> Languages = [];
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             Key = request.Headers.GetValues("xi-api-key").Single(); Url = request.RequestUri!.ToString();
             using var json = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
-            Language = json.RootElement.GetProperty("language_code").GetString();
+            Language = json.RootElement.TryGetProperty("language_code", out var l) ? l.GetString() : null;
             Model = json.RootElement.GetProperty("model_id").GetString();
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Encoding.UTF8.GetBytes(Body)) };
+            Languages.Add(Language);
+            return Language is not null && RejectLanguage || Error is not null
+                ? new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(Error ?? """{"detail":{"status":"unsupported_language","message":"Model does not support uz."}}""") }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Encoding.UTF8.GetBytes(Body)) };
         }
     }
 }
