@@ -563,3 +563,14 @@ Kartochkadagi o‘zbekcha tuzoq endi oddiy matn emas, kichik sahna bo‘lib chiq
 **Mening so‘zlarim:** AI so‘ziga ham sahnani AI yozadi. U so‘z kartasida "AI izohi" belgisi bilan ko‘rinadi, muharrir tekshiruvi yo‘q (L-51 dagidek). Lug‘atdan qo‘shilgan so‘z esa lug‘atning tasdiqlangan sahnasini oladi.
 
 **Ovoz:** to‘g‘ri variantni Azure (ko-KR) o‘qiydi, avtomatik emas, tugma bosilganda: telefon brauzerlari ovozni faqat bosishdan keyin chalishga ruxsat beradi. Bo‘lim kirishi (B bosqich) uchun o‘zbekcha diktor ovozi keyin Azure va ElevenLabs namunalarini solishtirib tanlanadi.
+
+
+## L-53 · 2026-10-29 · Qayta auditdagi oltita holat
+
+Johnny qayta auditdagi xatolarni tuzatish, PR ochish, CI yashil bo‘lsa merge qilish va deploy’ni kuzatishni topshirdi.
+- **Premium:** promo javobi so‘rov tartib raqami, tarif, valyuta va kod bilan mos kelgandagina qo‘llanadi. Tanlov almashtirilganda eski chegirma bekor bo‘ladi. Hisob ketayotganda summa va chek yuborish havolasi tayyor deb ko‘rsatilmaydi.
+- **Shaxsiy so‘z AI kvotasi:** gateway natijasi endi foydalanish yozuvi ID’sini ham olib yuradi. Karta validatsiyadan o‘tmasa yozuv muvaffaqiyatsiz deb belgilanadi; tokenlar, narx va umumiy xarajat/abuse limitlari saqlanadi. Bepul uchta muvaffaqiyatli karta kvotasi bunday javobdan kamaymaydi.
+- **Katalog sahnasi:** umumiy katalog LearningItem’i sahnani faqat joriy katalogdan oladi. Katalogda sahna yo‘q yoki tasdiqlanmagan bo‘lsa, oldingi shaxsiy snapshot qaytmaydi. AI/shaxsiy LearningItem sahnasi saqlanadi.
+- **Sahna javobi:** aniq ID va to‘liq null maydonlari «bu so‘zda sahna yo‘q» degani; yo‘qolgan/yaroqsiz yozuvlar bunga teng emas. Faqat yaroqli sahna yoki aniq null javobga AskedAt yoziladi, qolganlari qayta so‘raladi. Butun javob yaroqsiz bo‘lsa 503 va qayta urinish.
+- **Koreyscha IME:** Mening so‘zlarim sahifasidagi Enter composition, repeat va modifier vaqtida qidiruv yubormaydi.
+- **Kuniga 10 yangi o‘z so‘zi:** IntroduceOn eng erta sanani saqlaydi, ammo tanaffusdan keyingi barcha eski sanalarni birdan ochmaydi. Birinchi review event’lari mahalliy kun bo‘yicha sanaladi; qolgan o‘rinlarga eng eski boshlanmagan so‘zlar tanlanadi. Boshlangan so‘zning ikkinchi yo‘nalishi va muddati kelgan takrorlar cheklanmaydi. Undo ko‘rilgan so‘zni yana «ko‘rilmagan» qilmaydi; texnik xato boshlanish hisoblanmaydi. Qo‘lda drill cheklovsiz qoladi. Yangi ustun yoki migratsiya kerak emas.

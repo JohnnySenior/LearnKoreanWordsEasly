@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Lugat.Application.Ai;
 
-public sealed record AiCallResult(AiJsonResponse Response, AiProviderKind Provider);
+public sealed record AiCallResult(AiJsonResponse Response, AiProviderKind Provider, Guid UsageId);
 
 /// <summary>
 /// Picks the AI service for a learner (their choice in settings, else the server default), falls back to the other
@@ -112,7 +112,7 @@ public sealed class AiGateway(
                 var response = await provider.CompleteJsonAsync(request, timeout.Token);
                 response = response with { Json = AiText.CleanJson(response.Json) };
                 await usage.CompleteAsync(reservation, response.Model, response.InputTokens, response.OutputTokens, (int)watch.ElapsedMilliseconds, null);
-                return new AiCallResult(response, provider.Kind);
+                return new AiCallResult(response, provider.Kind, reservation.Id);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -136,6 +136,9 @@ public sealed class AiGateway(
 
         throw new ServiceUnavailableException($"AI xizmati hozir javob bermadi ({lastError}). Yozganingiz saqlandi, birozdan keyin qayta urinib ko‘ring.");
     }
+
+    /// <summary>A delivered response can still fail the feature's content validation; keep its billable usage.</summary>
+    public Task RejectContentAsync(AiCallResult result, string reason) => usage.RejectContentAsync(result.UsageId, reason);
 
     private async Task<int> DailyLimitAsync(Guid ownerId, CancellationToken ct)
     {

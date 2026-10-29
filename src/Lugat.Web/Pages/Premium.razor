@@ -80,7 +80,7 @@
     @if (Bank is { } bank)
     {
         <dt>Egasi</dt><dd>@bank.AccountHolder</dd>
-        <dt>Summa</dt><dd><strong>@Format.Money(Price, _currency)</strong></dd>
+        <dt>Summa</dt><dd><strong>@(_busy ? "Hisoblanmoqda…" : Format.Money(Price, _currency))</strong></dd>
     }
 </dl>
 
@@ -90,13 +90,13 @@
         <input id="promo" class="input" maxlength="32" autocapitalize="characters" @bind="_promo" @bind:event="oninput" />
         <button class="btn btn-secondary" disabled="@(_busy || string.IsNullOrWhiteSpace(_promo))" @onclick="CheckPromoAsync"><span>Tekshirish</span></button>
     </div>
-    @if (_check is { } c)
+    @if (_check is { } c && (!c.Valid || HasCurrentDiscount))
     {
         <p class="promo-result" role="status">@(c.Valid ? $"Chegirma {c.DiscountPercent}% · {Format.Money(c.FinalPrice, c.Currency)}" : c.Message)</p>
     }
 </section>
 
-@if (Bank is not null && _plans.ContactTelegram is { } contact)
+@if (!_busy && Bank is not null && _plans.ContactTelegram is { } contact)
 {
     <div class="sticky-space"></div>
     <div class="sticky-action">
@@ -118,10 +118,16 @@
     private string? _error;
     private bool _busy;
     private bool _copied;
+    private long _promoRequest;
+    private SubscriptionPlan? _checkedPlan;
+    private string? _checkedCode;
 
     private async Task CopyAsync() => _copied = await Browser.CopyTextAsync(_status!.PaymentCode);
 
-    private int Price => _check is { Valid: true } c ? c.FinalPrice : _plans?.Plans.FirstOrDefault(p => p.Plan == _plan)?.Price(_currency) ?? 0;
+    private bool HasCurrentDiscount => _check is { Valid: true } c && c.Currency == _currency
+        && _checkedPlan == _plan && _checkedCode == (_promo ?? "").Trim();
+
+    private int Price => HasCurrentDiscount ? _check!.FinalPrice : _plans?.Plans.FirstOrDefault(p => p.Plan == _plan)?.Price(_currency) ?? 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -151,8 +157,11 @@
 
     private async Task SelectAsync(SubscriptionPlan plan)
     {
+        var recheck = _check is { Valid: true } || _busy;
+        _promoRequest++;
+        _check = null;
         _plan = plan;
-        if (_check is { Valid: true })
+        if (recheck)
         {
             await CheckPromoAsync();
         }
@@ -160,9 +169,12 @@
 
     private async Task SelectCurrencyAsync(Currency currency)
     {
+        var recheck = _check is { Valid: true } || _busy;
+        _promoRequest++;
+        _check = null;
         _currency = currency;
         await Browser.StorageSetAsync(CurrencyKey, currency.ToString());
-        if (_check is { Valid: true })
+        if (_currency == currency && recheck)
         {
             await CheckPromoAsync();
         }
@@ -170,9 +182,23 @@
 
     private async Task CheckPromoAsync()
     {
+        var sequence = ++_promoRequest;
+        var request = new PromoCheckRequest((_promo ?? "").Trim(), _plan, _currency);
+        _check = null;
         _busy = true;
-        var result = await Api.SendJsonAsync<PromoCheckDto>(HttpMethod.Post, "api/premium/promo/check", new PromoCheckRequest(_promo ?? "", _plan, _currency));
-        _check = result.Value ?? new PromoCheckDto(false, _promo ?? "", 0, 0, 0, result.Error, _currency);
+        var result = await Api.SendJsonAsync<PromoCheckDto>(HttpMethod.Post, "api/premium/promo/check", request);
+        if (sequence != _promoRequest)
+        {
+            return;
+        }
+
+        if (request.Plan == _plan && request.Currency == _currency && request.Code == (_promo ?? "").Trim())
+        {
+            _checkedPlan = request.Plan;
+            _checkedCode = request.Code;
+            _check = result.Value is { } value && value.Currency == request.Currency ? value
+                : new PromoCheckDto(false, request.Code, 0, 0, 0, result.Error, request.Currency);
+        }
         _busy = false;
     }
 }
