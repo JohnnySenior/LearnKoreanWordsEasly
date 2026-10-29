@@ -436,3 +436,5 @@ Bosqichlar spec §13 bo‘yicha.
 **Tanishtirishning birinchi bosishda ovoz boshlashi (2026-10-29):**
 - [x] iOS uchun bitta audio element avval mavjud `audio.js` dagi haqiqiy 20ms jim PCM yozuvi bilan tayyorlanadi; bo‘sh (0 sample) WAV ishlatilmaydi. JS regressiyasi yozuvning RIFF/WAVE va sample uzunligini tekshiradi; JS jami 21/21.
 - [ ] Haqiqiy iPhone Safari/PWA’da birinchi bosishni tekshirish — adminning real ovozli dars qabul sinovi bilan birga.
+
+- [x] Tanishtirishdagi lotincha o‘qilish ham mavjud profilning «Lotincha o‘qilishini ko‘rsatish» sozlamasiga bo‘ysunadi.

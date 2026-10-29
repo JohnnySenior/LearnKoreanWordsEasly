@@ -21,7 +21,7 @@
         else if (CurrentWord is { } word)
         {
             <div class="intro-word" @key="word.WordId"><div class="intro-word-no">SO‘Z @((_word + 1).ToString("00")) @if(word.HasTrap) { <span>✧ TUZOQ BOR</span> }</div>
-                <div class="intro-word-heading"><h2 lang="ko">@word.Word</h2>@if (_beat >= 0) { <div class="intro-meaning"><strong>@word.MeaningUz</strong><small>@word.Romanization</small></div> }</div>
+                <div class="intro-word-heading"><h2 lang="ko">@word.Word</h2>@if (_beat >= 0) { <div class="intro-meaning"><strong>@word.MeaningUz</strong>@if (Api.State.Me?.ShowRomanization != false && !string.IsNullOrWhiteSpace(word.Romanization)) { <small>@word.Romanization</small> }</div> }</div>
                 @if (_beat >= 0)
                 {
                     <div class="intro-insight intro-hand">@word.Title</div><div class="intro-fragments">
