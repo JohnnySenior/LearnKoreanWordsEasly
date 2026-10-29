@@ -47,6 +47,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Domain.Catalog.Unit> Units => Set<Domain.Catalog.Unit>();
 
+    public DbSet<Domain.Catalog.UnitIntroduction> UnitIntroductions => Set<Domain.Catalog.UnitIntroduction>();
+
     public DbSet<LearningItem> LearningItems => Set<LearningItem>();
 
     public DbSet<WordDeck> WordDecks => Set<WordDeck>();
@@ -95,6 +97,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         configurationBuilder.Properties<ThemeChoice>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Catalog.CatalogLevel>().HaveConversion<string>().HaveMaxLength(8);
         configurationBuilder.Properties<Domain.Catalog.CatalogWordStatus>().HaveConversion<string>().HaveMaxLength(16);
+        configurationBuilder.Properties<Domain.Catalog.IntroductionStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Catalog.UnitStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Catalog.UnitProgressStatus>().HaveConversion<string>().HaveMaxLength(16);
         configurationBuilder.Properties<Domain.Catalog.UnitPassedBy>().HaveConversion<string>().HaveMaxLength(16);
@@ -261,6 +264,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Version).IsRowVersion();
             e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Catalog.UnitIntroduction>(e =>
+        {
+            e.ToTable("unit_introductions");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.UnitId, x.Revision }).IsUnique();
+            e.HasIndex(x => x.UnitId).IsUnique().HasFilter("\"Status\" = 'Published'");
+            e.Property(x => x.SourceHash).HasMaxLength(64);
+            e.Property(x => x.NarratorProfile).HasMaxLength(256);
+            e.Property(x => x.KoreanProfile).HasMaxLength(256);
+            e.Property(x => x.Sources).HasColumnType("jsonb").HasConversion(JsonConverter<List<Domain.Catalog.IntroductionSource>>(), ListComparer<Domain.Catalog.IntroductionSource>());
+            e.Property(x => x.Words).HasColumnType("jsonb").HasConversion(JsonConverter<List<Domain.Catalog.IntroductionWord>>(), ListComparer<Domain.Catalog.IntroductionWord>());
+            e.Property(x => x.Version).IsRowVersion();
         });
 
         b.Entity<Domain.Catalog.CatalogUsage>(e =>

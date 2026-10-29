@@ -36,6 +36,8 @@ public interface IAppDbContext
 
     DbSet<Domain.Catalog.Unit> Units { get; }
 
+    DbSet<Domain.Catalog.UnitIntroduction> UnitIntroductions { get; }
+
     DbSet<LearningItem> LearningItems { get; }
 
     DbSet<WordDeck> WordDecks { get; }

@@ -31,6 +31,7 @@
 }
 
 <div class="actions">
+    <a class="button" href="@($"kontent/{Id}/tanishuv")">Tanishtirish darsi</a>
     @if (_unit.Remaining > 0)
     {
         <button class="button primary" disabled="@_busy" @onclick="DraftAsync">AI qoralama (@_unit.Remaining so‘z)</button>

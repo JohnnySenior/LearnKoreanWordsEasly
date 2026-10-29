@@ -1,0 +1,30 @@
+@page "/bolimlar/{Id:guid}/tanishuv"
+@using Lugat.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Bo‘lim bilan tanishuv — Koreyscha</PageTitle>
+<div class="intro-page">
+    <header class="intro-page-header"><a href="bolimlar">← Bo‘limlar</a><span>KOREYSCHA · JONLI DARS</span></header>
+    @if (_error is not null) { <div class="notice" role="alert">@_error</div> }
+    @if (_lesson is { } lesson)
+    {
+        <div class="intro-page-heading"><div><span>TANISHISH → JADVAL → MASHQLAR</span><h1>@lesson.UnitLabel</h1><p>Kichik qadamlar bilan, o‘z sur’atingizda.</p></div><a href="@($"bolimlar/{Id}?qadam=1")">Jadvalga o‘tish →</a></div>
+        <IntroductionPlayer Lesson="lesson" OnDone="Done" />
+        <p class="intro-source">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1). Dars ssenariysi admin tomonidan tekshirilgan.</p>
+    }
+    else if (_error is null) { <p aria-busy="true">Dars yuklanmoqda…</p> }
+</div>
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private IntroductionDto? _lesson;
+    private string? _error;
+    protected override async Task OnParametersSetAsync()
+    {
+        _lesson = null; _error = null;
+        var result = await Api.GetAsync<IntroductionAvailabilityDto>($"api/units/{Id}/introduction");
+        if (result.Ok && result.Value?.Lesson is null) { Done(); return; }
+        _lesson = result.Value?.Lesson; _error = result.Ok ? null : result.Error;
+    }
+    private void Done() => Nav.NavigateTo($"bolimlar/{Id}?qadam=1");
+}

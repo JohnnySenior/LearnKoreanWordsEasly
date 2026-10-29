@@ -4,6 +4,7 @@
 @implements IDisposable
 @inject SessionService Api
 @inject NavigationManager Nav
+@inject BrowserInterop Browser
 
 <PageTitle>@(_unit?.Unit.Label ?? "Bo‘lim") — Koreyscha</PageTitle>
 
@@ -38,6 +39,8 @@
         }
     </Right>
 </AppHeader>
+
+@if (_hasIntroduction) { <p class="small-text"><a href="@($"bolimlar/{Id}/tanishuv")">✧ Bo‘lim bilan tanishuv</a></p> }
 
 <UnitStepper Current="_step" Compact="true" OnSelect="s => _step = s" Done="UnitStepper.DoneOf(_unit.Unit)" />
 
@@ -196,6 +199,7 @@
     private Guid? _selected;
     private Timer? _clock;
     private bool _busy;
+    private bool _hasIntroduction;
 
     private bool ShowRomanization => Api.State.Me?.ShowRomanization != false;
 
@@ -215,6 +219,17 @@
 
         _unit = result.Value;
         _error = result.Ok ? null : result.Error;
+        if (_unit is not null)
+        {
+            var intro = await Api.GetAsync<IntroductionAvailabilityDto>($"api/units/{Id}/introduction");
+            _hasIntroduction = intro.Value?.Lesson is not null;
+            if (Qadam is null && intro.Value?.Lesson is { } lesson && await Browser.StorageGetAsync($"intro:{Api.State.Me?.Id}:{lesson.Id}:seen") != "yes")
+            {
+                Nav.NavigateTo($"bolimlar/{Id}/tanishuv", replace: true);
+                return;
+            }
+        }
+
         if (_unit is not null && _startedAt is null)
         {
             Start();

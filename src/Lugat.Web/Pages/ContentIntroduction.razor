@@ -1,0 +1,140 @@
+@page "/kontent/{Id:guid}/tanishuv"
+@using Lugat.Contracts
+@using Lugat.Domain.Catalog
+@inject SessionService Api
+@implements IDisposable
+
+<PageTitle>Tanishtirish darsi — kontent</PageTitle>
+<div class="intro-page intro-admin">
+<header class="intro-page-header"><a href="@($"kontent/{Id}")">← Bo‘lim kontenti</a><span>TANISHTIRISHNI BOSHQARISH</span></header>
+<h1>Bo‘lim bilan tanishuv</h1><p class="muted">Qoralama → har bir so‘zni tekshirish → ssenariyni tasdiqlash → ovoz → tayyor darsni eshitish → nashr.</p>
+@if (_error is not null) { <div class="notice" role="alert">@_error</div> }
+@if (_list is null) { <p aria-busy="true">Yuklanmoqda…</p> }
+else
+{
+    @if (!_list.NarratorConfigured) { <div class="notice">Ovoz uchun ElevenLabs va Azure sozlamalarini ulang. Ssenariy bilan ishlash mumkin.</div> }
+    <div class="intro-admin-actions">
+        <button class="button primary" disabled="@(_busy || ActiveDraft)" @onclick="CreateAsync">Yangi qoralama yaratish</button>
+        <button class="button" disabled="@_busy" @onclick="LoadAsync">Yangilash</button>
+        @if (_busy) { <button class="button" @onclick="() => _stop = true">Joriy so‘rovdan keyin to‘xtatish</button> }
+    </div>
+    @if (_status is not null) { <p role="status">@_status</p> }
+    <div class="intro-version-tabs">
+        @foreach (var v in _list.Versions) { var item = v; <button class="button @(_lesson?.Id == v.Id ? "primary" : "")" disabled="@_busy" @onclick="() => Select(item)">@($"v{v.Revision} · {Status(v.Status)}")</button> }
+    </div>
+    @if (_lesson is { } lesson)
+    {
+        <section class="intro-admin-summary"><h2>@($"{lesson.UnitLabel} · v{lesson.Revision} — {Status(lesson.Status)}")</h2><p>@lesson.Words.Count / @lesson.TotalWords so‘z tayyor · @lesson.Words.Count(w => w.Reviewed) tekshirilgan · @lesson.RemainingAudio ovoz qolgan</p>
+        @if (lesson.SourceChanged) { <div class="notice">Lug‘atdagi so‘zlar o‘zgargan. Nashrdagi dars o‘zgarmaydi. Bu qoralamani arxivlab, yangi nusxa yarating.</div> }
+        <div class="intro-admin-actions">
+        @if (lesson.Status == IntroductionStatus.Draft)
+        {
+            @if (lesson.RemainingWords > 0) { <button class="button primary" disabled="@(_busy || lesson.SourceChanged)" @onclick="GenerateAsync">AI ssenariy (@lesson.RemainingWords so‘z)</button> }
+            <button class="button" disabled="@(_busy || lesson.SourceChanged || lesson.RemainingWords != 0 || lesson.Words.Any(w => !w.Reviewed))" @onclick="ApproveAsync">Ssenariyni tasdiqlash</button>
+        }
+        @if (lesson.Status is IntroductionStatus.Approved or IntroductionStatus.Ready)
+        {
+            @if (lesson.RemainingAudio > 0) { <button class="button primary" disabled="@(_busy || !_list.NarratorConfigured || lesson.SourceChanged)" @onclick="AudioAsync">Ovozlarni tayyorlash (@lesson.RemainingAudio)</button> }
+            <button class="button" disabled="@_busy" @onclick="ReturnAsync">Tahrir uchun qoralamaga qaytarish</button>
+        }
+        @if (lesson.Status is IntroductionStatus.Ready or IntroductionStatus.Published || lesson.Status == IntroductionStatus.Retired && lesson.PublishedAt is not null)
+        { <button class="button" @onclick="() => _preview = !_preview">@(_preview ? "Ko‘rishni yopish" : "Tayyor darsni ko‘rish va eshitish")</button> }
+        @if (lesson.PublishedAt is null && lesson.Status != IntroductionStatus.Retired) { <button class="button" disabled="@_busy" @onclick="DiscardAsync">Qoralamani arxivlash</button> }
+        </div>
+        @if (lesson.Status == IntroductionStatus.Ready)
+        {
+            <label class="intro-publish-check"><input type="checkbox" @bind="_audioReviewed" /> Tayyor darsni to‘liq eshitdim, matn va ovozlarda xato yo‘qligini tekshirdim.</label>
+            <button class="button primary" disabled="@(_busy || !_audioReviewed || lesson.SourceChanged)" @onclick="PublishAsync">O‘quvchilarga nashr qilish</button>
+        }
+        @if (lesson.Status == IntroductionStatus.Published) { <p class="intro-published">✓ O‘quvchilarga ko‘rinmoqda. Tahrir uchun yangi qoralama yarating.</p> }
+        </section>
+        @if (_preview) { <IntroductionPlayer @key="lesson.Id" Lesson="lesson" Preview="true" OnDone="() => _preview = false" /> }
+        @if (lesson.Status == IntroductionStatus.Draft)
+        {
+            @foreach (var w in lesson.Words)
+            {
+                var word = w; var edit = _edits[w.WordId];
+                <section class="intro-editor-card" @key="w.WordId"><h2><span lang="ko">@word.Word</span> — @word.MeaningUz <small>@(word.Reviewed ? "✓ Tekshirildi" : "AI qoralamasi")</small></h2>
+                    <label class="field">Doska sarlavhasi<input class="input" maxlength="120" @bind="edit.Title" /></label>
+                    @foreach (var b in edit.Beats)
+                    {
+                        <fieldset><legend>@b.Kind — doska qadami</legend><label class="field">Diktor matni (o‘zbekcha, Hangulsiz)<textarea class="input" maxlength="700" @bind="b.NarrationUz"></textarea></label>
+                        <label class="field">Doskadagi koreyscha<input class="input" lang="ko" maxlength="160" @bind="b.Korean" /></label><label class="field">Doskadagi o‘zbekcha<input class="input" maxlength="300" @bind="b.Uzbek" /></label></fieldset>
+                    }
+                    <label class="intro-publish-check"><input type="checkbox" @bind="edit.Reviewed" /> Shu so‘zning barcha izoh va misollarini tekshirdim.</label>
+                    <button class="button" disabled="@_busy" @onclick="() => SaveAsync(word.WordId)">Saqlash</button>
+                </section>
+            }
+        }
+    }
+}
+</div>
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private IntroductionListDto? _list;
+    private IntroductionDto? _lesson;
+    private readonly Dictionary<Guid, WordEdit> _edits = [];
+    private bool _busy, _stop, _preview, _audioReviewed, _disposed;
+    private string? _error, _status;
+    private bool ActiveDraft => _list?.Versions.Any(v => v.Status is IntroductionStatus.Draft or IntroductionStatus.Approved or IntroductionStatus.Ready) == true;
+    protected override Task OnParametersSetAsync() => LoadAsync();
+    private static string Status(IntroductionStatus s) => s switch { IntroductionStatus.Draft => "Qoralama", IntroductionStatus.Approved => "Ssenariy tasdiqlangan", IntroductionStatus.Ready => "Ovoz tayyor", IntroductionStatus.Published => "Nashrda", _ => "Arxiv" };
+    private async Task LoadAsync()
+    {
+        var r = await Api.GetAsync<IntroductionListDto>($"api/admin/units/{Id}/introductions");
+        _list = r.Value; if (!r.Ok) _error = r.Error;
+        if (_list?.Versions.FirstOrDefault(v => v.Id == _lesson?.Id) is { } old) Select(old);
+        else if (_list?.Versions.FirstOrDefault() is { } first) Select(first);
+    }
+    private void Select(IntroductionDto lesson)
+    {
+        _lesson = lesson; _preview = false; _audioReviewed = false; _edits.Clear();
+        foreach (var word in lesson.Words) _edits[word.WordId] = new WordEdit { Title = word.Title, Reviewed = word.Reviewed, Beats = word.Beats.Select(b => new BeatEdit { Kind = b.Kind, NarrationUz = b.NarrationUz, Korean = b.Korean, Uzbek = b.Uzbek }).ToList() };
+    }
+    private async Task<bool> CallAsync(string action, object body, bool refresh = true)
+    {
+        var r = await Api.SendJsonAsync<IntroductionDto>(HttpMethod.Post, $"api/admin/introductions/{_lesson!.Id}/{action}", body, timeout: TimeSpan.FromSeconds(95));
+        if (_disposed) return false;
+        if (r.Value is null) { _error = r.Error; return false; }
+        if (refresh) Select(r.Value); else _lesson = r.Value;
+        return true;
+    }
+    private async Task CreateAsync()
+    {
+        _busy = true; _error = null;
+        var r = await Api.SendJsonAsync<IntroductionDto>(HttpMethod.Post, $"api/admin/units/{Id}/introductions", new CreateIntroductionRequest(Guid.NewGuid()));
+        if (r.Value is not null) { Select(r.Value); await LoadAsync(); } else _error = r.Error;
+        _busy = false;
+    }
+    private async Task GenerateAsync() => await BatchAsync(false);
+    private async Task AudioAsync() => await BatchAsync(true);
+    private async Task BatchAsync(bool audio)
+    {
+        _busy = true; _stop = false; _error = null; _preview = false;
+        while (!_stop && !_disposed && _lesson is { } lesson && (audio ? lesson.RemainingAudio > 0 : lesson.RemainingWords > 0))
+        {
+            _status = audio ? $"Ovozlar tayyorlanmoqda: {lesson.RemainingAudio} ta qoldi…" : $"Ssenariy yozilmoqda: {lesson.RemainingWords} so‘z qoldi…";
+            StateHasChanged();
+            var before = audio ? lesson.RemainingAudio : lesson.RemainingWords;
+            if (!await CallAsync(audio ? "audio-next" : "draft-next", new IntroductionVersionRequest(lesson.Version), false)) break;
+            if ((audio ? _lesson!.RemainingAudio : _lesson!.RemainingWords) >= before) { _error = "Jarayon siljimadi. Sahifani yangilab tekshiring."; break; }
+        }
+        _busy = false; _status = _error is null ? "Tayyor. Natijani tekshiring." : null;
+        if (!_disposed) await LoadAsync();
+    }
+    private async Task ApproveAsync() { _busy = true; _error = null; await CallAsync("approve", new IntroductionVersionRequest(_lesson!.Version)); _busy = false; await LoadAsync(); }
+    private async Task ReturnAsync() { _busy = true; _error = null; await CallAsync("return-to-draft", new IntroductionVersionRequest(_lesson!.Version)); _busy = false; await LoadAsync(); }
+    private async Task DiscardAsync() { _busy = true; _error = null; await CallAsync("discard", new IntroductionVersionRequest(_lesson!.Version)); _busy = false; await LoadAsync(); }
+    private async Task PublishAsync() { _busy = true; _error = null; await CallAsync("publish", new PublishIntroductionRequest(_lesson!.Version, _audioReviewed)); _busy = false; await LoadAsync(); }
+    private async Task SaveAsync(Guid wordId)
+    {
+        _busy = true; _error = null; var edit = _edits[wordId];
+        var body = new UpdateIntroductionWordRequest(_lesson!.Version, edit.Title, edit.Beats.Select(b => new IntroductionBeatInput(b.Kind, b.NarrationUz, string.IsNullOrWhiteSpace(b.Korean) ? null : b.Korean, string.IsNullOrWhiteSpace(b.Uzbek) ? null : b.Uzbek)).ToList(), edit.Reviewed);
+        var r = await Api.SendJsonAsync<IntroductionDto>(HttpMethod.Put, $"api/admin/introductions/{_lesson.Id}/words/{wordId}", body);
+        if (r.Value is not null) { _lesson = r.Value; if (_list is not null) _list = _list with { Versions = _list.Versions.Select(v => v.Id == _lesson.Id ? _lesson : v).ToList() }; } else _error = r.Error;
+        _busy = false;
+    }
+    private sealed class WordEdit { public string Title { get; set; } = ""; public bool Reviewed { get; set; } public List<BeatEdit> Beats { get; set; } = []; }
+    private sealed class BeatEdit { public string Kind { get; set; } = ""; public string NarrationUz { get; set; } = ""; public string? Korean { get; set; } public string? Uzbek { get; set; } }
+    public void Dispose() { _disposed = true; _stop = true; }
+}

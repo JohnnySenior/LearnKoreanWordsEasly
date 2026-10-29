@@ -492,3 +492,9 @@ Har bosqich alohida branch/PR, CI yashil bo‘lgach `main` ga. Har bosqich oxiri
 - Azure Speech til qo‘llab-quvvatlashi: https://learn.microsoft.com/azure/ai-services/speech-service/language-support
 
 Implementatsiya kuni paket versiyalari, tariflar va tashqi API hujjatlari qayta tekshiriladi (BUD02).
+
+## 16. Bo‘lim bilan ovozli tanishuv (2026-10-29, Johnny bilan KELISHILGAN)
+
+Bo‘lim jadvalidan oldin ixtiyoriy tanishtirish: so‘zlar bittadan ochiladi, ovozga mos doska qadamlari va tuzoqlarga chuqurroq izoh. O‘tkazib yuborish, pauza, tezlik, qayta eshitish, faqat tuzoqlar va qolgan joyidan davom etish mumkin. Dars ko‘rish yodlash yoki bo‘limni tugatish hisoblanmaydi. Dizayn — Johnny ma’qullagan Jonli doska namunasi (L-54).
+
+Kontent oqimi har bo‘lim uchun majburiy: admin tekshirilgan katalogdan AI qoralama so‘raydi → ssenariyni o‘qib tahrirlaydi, har so‘zni tasdiqlaydi → ovoz yaratiladi → admin tayyor darsni eshitib tekshiradi → alohida nashr qiladi. Faqat nashrdan keyin o‘quvchiga ko‘rinadi; o‘quvchi kirganda AI generatsiyasi yo‘q. Yangi tahrir qoralama, oldingi nashr almashtirilmaguncha ishlaydi. Texnik tafsilotlar L-54.

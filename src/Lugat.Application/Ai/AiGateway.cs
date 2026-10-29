@@ -146,7 +146,7 @@ public sealed class AiGateway(
         return (roles & (Domain.Users.UserRoles.Admin | Domain.Users.UserRoles.Editor)) != 0 ? Options.MaxCallsPerEditorPerDay : Options.MaxCallsPerUserPerDay;
     }
 
-    public static string Label(AiProviderKind kind) => kind == AiProviderKind.Anthropic ? "Claude (Anthropic)" : "ChatGPT (OpenAI)";
+    public static string Label(AiProviderKind kind) => kind switch { AiProviderKind.Anthropic => "Claude (Anthropic)", AiProviderKind.OpenAi => "ChatGPT (OpenAI)", AiProviderKind.Azure => "Azure Speech", AiProviderKind.ElevenLabs => "ElevenLabs", _ => kind.ToString() };
 
     private IEnumerable<IAiProvider> Order(AiProviderKind? chosen)
     {
