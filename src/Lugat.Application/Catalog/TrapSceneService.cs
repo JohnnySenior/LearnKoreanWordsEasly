@@ -45,7 +45,9 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
             // The shape (and the start of the answer, AI text only) is kept so the next failure can be diagnosed.
             var start = result.Response.Json.Length > 300 ? result.Response.Json[..300] : result.Response.Json;
             await ai.RejectContentAsync(result, $"Tuzoq sahnalari javobi tekshiruvdan o‘tmadi ({shape}): {start}");
-            throw new ServiceUnavailableException($"AI sahnalar uchun yaroqli javob bermadi ({shape}). Qayta urinib ko‘ring.");
+            // Editors only: the start of the AI text tells what the model sent instead of the list.
+            var shown = result.Response.Json.Length > 160 ? result.Response.Json[..160] + "…" : result.Response.Json;
+            throw new ServiceUnavailableException($"AI sahnalar uchun yaroqli javob bermadi ({shape}). Qayta urinib ko‘ring. AI javobi: {shown}");
         }
 
         await using (await operations.AcquireAsync(CatalogAdminService.LockKey, ct))
