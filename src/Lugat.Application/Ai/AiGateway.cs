@@ -110,7 +110,7 @@ public sealed class AiGateway(
             try
             {
                 var response = await provider.CompleteJsonAsync(request, timeout.Token);
-                response = response with { Json = AiText.CleanJson(response.Json) };
+                response = response with { Json = AiText.Unwrap(AiText.CleanJson(response.Json), request.JsonSchema) };
                 await usage.CompleteAsync(reservation, response.Model, response.InputTokens, response.OutputTokens, (int)watch.ElapsedMilliseconds, null);
                 return new AiCallResult(response, provider.Kind, reservation.Id);
             }

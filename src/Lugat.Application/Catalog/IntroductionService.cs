@@ -60,10 +60,12 @@ public sealed class IntroductionService(IAppDbContext db, AiGateway ai, Introduc
         var result = await ai.CompleteJsonAsync(adminId, BuildRequest(pending), ct);
         List<IntroductionWord> drafted;
         try { drafted = Parse(result.Response.Json, pending); }
-        catch (ValidationException)
+        catch (ValidationException ex)
         {
-            await ai.RejectContentAsync(result, "Tanishtirish ssenariysi tekshiruvdan o‘tmadi.");
-            throw new ServiceUnavailableException("AI ssenariysi tekshiruvdan o‘tmadi. Qayta urinib ko‘ring.");
+            // Editors only: the reason and the start of the AI text tell what to fix.
+            var shown = result.Response.Json.Length > 160 ? result.Response.Json[..160] + "…" : result.Response.Json;
+            await ai.RejectContentAsync(result, $"Tanishtirish ssenariysi tekshiruvdan o‘tmadi: {ex.Message} {shown}");
+            throw new ServiceUnavailableException($"AI ssenariysi tekshiruvdan o‘tmadi ({ex.Message}). Qayta urinib ko‘ring. AI javobi: {shown}");
         }
         // Catalog may have changed while the provider was responding.
         await using var catalogLease = await operations.AcquireAsync(CatalogAdminService.LockKey, ct);
@@ -276,14 +278,26 @@ public sealed class IntroductionService(IAppDbContext db, AiGateway ai, Introduc
 
     private sealed record DraftResponse([property: JsonRequired] List<DraftWord> Words);
     private sealed record DraftWord([property: JsonRequired] int Id, [property: JsonRequired] string Title, [property: JsonRequired] List<IntroductionBeatInput> Beats);
+    /// <summary>
+    /// The words whose script passes the checks; the others stay unwritten and are asked again on the next call, so
+    /// one weak item does not throw away the batch. Throws when no word is usable.
+    /// </summary>
     public static List<IntroductionWord> Parse(string json, IReadOnlyList<IntroductionSource> sources)
     {
         DraftResponse? parsed;
         try { parsed = JsonSerializer.Deserialize<DraftResponse>(json, Json); }
         catch (JsonException) { throw new ValidationException("AI javobi yaroqsiz."); }
-        Require(parsed?.Words is not null && parsed.Words.Count == sources.Count && parsed.Words.All(w => w is not null) && parsed.Words.Select(w => w.Id).Distinct().Count() == sources.Count,
-            "Har bir so‘z uchun bittadan ssenariy kerak.");
-        return sources.Select((s, i) => { var w = parsed!.Words.SingleOrDefault(w => w.Id == i + 1) ?? throw new ValidationException("So‘z raqami noto‘g‘ri."); return CheckWord(s, w.Title, w.Beats); }).ToList();
+        if (parsed?.Words is not { Count: > 0 } items) throw new ValidationException("javobda so‘zlar yo‘q");
+        var words = new List<IntroductionWord>();
+        string? problem = null;
+        for (var i = 0; i < sources.Count; i++)
+        {
+            var matches = items.Where(w => w is not null && w.Id == i + 1).ToList();
+            if (matches.Count != 1) continue;
+            try { words.Add(CheckWord(sources[i], matches[0].Title, matches[0].Beats)); }
+            catch (ValidationException ex) { problem ??= $"{i + 1}-so‘z: {ex.Message}"; }
+        }
+        return words.Count > 0 ? words : throw new ValidationException(problem ?? "so‘z raqamlari mos kelmadi");
     }
     public static AiJsonRequest BuildRequest(IReadOnlyList<IntroductionSource> sources) => new(Feature, Instructions,
         "<reviewed_words>" + JsonSerializer.Serialize(sources.Select((s, i) => new { id = i + 1, s.Word, s.MeaningUz, s.ExampleKo, s.ExampleUz, s.TrapUz }), Json) + "</reviewed_words>",
