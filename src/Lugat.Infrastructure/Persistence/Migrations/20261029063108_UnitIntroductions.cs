@@ -40,7 +40,7 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         column: x => x.UnitId,
                         principalTable: "units",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(

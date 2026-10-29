@@ -270,7 +270,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             e.ToTable("unit_introductions");
             e.Property(x => x.Id).ValueGeneratedNever();
-            e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Domain.Catalog.Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.UnitId, x.Revision }).IsUnique();
             e.HasIndex(x => x.UnitId).IsUnique().HasFilter("\"Status\" = 'Published'");
             e.Property(x => x.SourceHash).HasMaxLength(64);

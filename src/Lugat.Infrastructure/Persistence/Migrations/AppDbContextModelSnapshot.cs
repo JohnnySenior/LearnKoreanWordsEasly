@@ -1837,7 +1837,7 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.HasOne("Lugat.Domain.Catalog.Unit", null)
                         .WithMany()
                         .HasForeignKey("UnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

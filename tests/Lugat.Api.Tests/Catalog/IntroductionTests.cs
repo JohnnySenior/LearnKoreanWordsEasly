@@ -179,6 +179,33 @@ public class IntroductionTests
     }
 
     [Fact]
+    public async Task Re_splitting_can_remove_an_empty_unpublished_unit_and_its_dependent_introduction_draft()
+    {
+        await using var f = Factory();
+        var (admin, _) = await Setup(f);
+        var unitId = Guid.NewGuid(); var wordId = Guid.NewGuid();
+        await using (var scope = f.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Units.Add(new Unit { Id = unitId, Level = CatalogLevel.A, Number = 2, WordCount = 1, CreatedAt = f.Time.GetUtcNow() });
+            db.CatalogWords.Add(new CatalogWord { Id = wordId, SourceKey = "intro-test-family", Word = "가족", Pos = "명", Level = CatalogLevel.A,
+                IsStudyable = true, UnitId = unitId, OrderInUnit = 1, TranslationUz = "oila", Status = CatalogWordStatus.Reviewed,
+                CreatedAt = f.Time.GetUtcNow(), UpdatedAt = f.Time.GetUtcNow() });
+            await db.SaveChangesAsync();
+        }
+        var draft = await Read<IntroductionDto>(await admin.PostAsJsonAsync($"/api/admin/units/{unitId}/introductions", new CreateIntroductionRequest(Guid.NewGuid()), Json));
+        await using (var scope = f.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            (await db.CatalogWords.SingleAsync(w => w.Id == wordId)).IsStudyable = false;
+            await db.SaveChangesAsync();
+        }
+        var split = await admin.PostAsync("/api/admin/catalog/levels/A/split", null);
+        Assert.Equal(HttpStatusCode.OK, split.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync(Root(draft.Id))).StatusCode);
+    }
+
+    [Fact]
     public void A_real_trap_requires_a_deeper_beat_and_a_word_without_a_trap_cannot_get_an_invented_one()
     {
         var source = new IntroductionSource(Guid.NewGuid(), 1, "가다", "bormoq", "gada", null, null, "Yo‘nalishga e’tibor bering.", 1);
