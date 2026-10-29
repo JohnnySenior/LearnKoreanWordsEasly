@@ -592,3 +592,9 @@ Johnny tasdiqlagan oqim: bo‘limning tekshirilgan so‘zlari → admin AI ssena
 - Har so‘z kartasida sahna holati ko‘rinadi.
 - "Topilmaganlarni qayta so‘rash": AI ko‘rsatmasi yumshatildi. Izohda iqtibos bo‘lmasa ham, aniq chalkashlik aytilgan bo‘lsa (ikki o‘xshash so‘z yoki shakl, noto‘g‘ri qo‘shimcha, so‘zma-so‘z tarjima), AI juftlik yozadi. Har juftlikni muharrir tekshiradi.
 - Sahna nashrni to‘xtatmaydi. Oldingi bo‘limlarga (1–20) ham shu panel orqali qaytiladi.
+
+**L-54 qo‘shimcha (2026-10-29): koreyscha so‘zni koreys ovozi aytadi.** Johnny A-1 darsini eshitdi. O‘zbek diktor diktor matnidagi koreyscha so‘zni ("hada fe’li") o‘zbekcha talaffuz qilgan.
+- Diktor matnida koreyscha so‘z Hangulda, «» ichida yoziladi: `«하다» fe’li …`. AI shunday yozadi. Qo‘shtirnoqsiz yozilgan Hangulni tekshiruv o‘zi «» ichiga oladi. «Ishga boraman» kabi o‘zbekcha iqtiboslar o‘zgarmaydi.
+- Ovoz tayyorlashda qadam bo‘laklarga bo‘linadi: o‘zbekcha qismni ElevenLabs diktori, «koreyscha» qismni koreyscha so‘zlar uchun ishlatiladigan Azure ovozi o‘qiydi. Bitta so‘rov bitta bo‘lak tayyorlaydi. Bo‘laklar `IntroductionBeat.Parts`da tartib bilan saqlanadi. Eski darslarda bitta `AudioKey` qoladi va ular avvalgidek ishlaydi.
+- Pleyer bo‘laklarni qurilmada bitta yozuvga ulaydi: bir xil tezlikda dekodlaydi, bosh-oxiridagi jimlikni kesadi, balandlikni diktor darajasiga tenglaydi, 50 ms nafas va 8 ms fade qo‘shib WAV qiladi. Serverda MP3’larni qo‘shib bo‘lmaydi, chunki ElevenLabs 44.1 kHz/128k, Azure esa 24 kHz/48k formatda keladi.
+- Bitta qadamda ko‘pi bilan 6 ta qisqa (60 belgigacha) koreyscha qism bo‘ladi.

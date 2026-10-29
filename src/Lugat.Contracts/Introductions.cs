@@ -1,7 +1,8 @@
 using Lugat.Domain.Catalog;
 namespace Lugat.Contracts;
 
-public sealed record IntroductionBeatDto(string Kind, string NarrationUz, string? Korean, string? Uzbek, string? AudioUrl);
+/// <param name="PartUrls">The recording's parts in order (Uzbek narrator, Korean voice); the player joins them without a gap.</param>
+public sealed record IntroductionBeatDto(string Kind, string NarrationUz, string? Korean, string? Uzbek, string? AudioUrl, IReadOnlyList<string>? PartUrls = null);
 public sealed record IntroductionWordDto(Guid WordId, string Word, string MeaningUz, string? Romanization, string Title,
     bool HasTrap, bool Reviewed, string? KoreanAudioUrl, IReadOnlyList<IntroductionBeatDto> Beats);
 public sealed record IntroductionDto(Guid Id, Guid UnitId, int Revision, IntroductionStatus Status, uint Version,

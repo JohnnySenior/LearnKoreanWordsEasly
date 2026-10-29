@@ -64,7 +64,10 @@
     private IntroductionWordDto? CurrentWord => _started && !_finished && _word < Lesson.Words.Count ? Lesson.Words[_word] : null;
     private string StorageKey => $"intro:{Api.State.Me?.Id}:{Lesson.Id}:position";
     private string Subtitle => !_started ? "So‘zlar bittadan ochiladi. Istalgan payt jadvalga o‘tishingiz mumkin." : _finished ? "Tanishuv yakunlandi. Endi jadvalda mustahkamlaymiz." : _beat < 0 ? $"{CurrentWord?.Word} — avval talaffuzini eshiting." : CurrentWord?.Beats.ElementAtOrDefault(_beat)?.NarrationUz ?? "";
-    private List<(int Word, int Beat, string? Url)> Clips => Lesson.Words.SelectMany((w, i) => new[] { (Word: i, Beat: -1, Url: w.KoreanAudioUrl) }.Concat(w.Beats.Select((b, n) => (Word: i, Beat: n, Url: b.AudioUrl)))).ToList();
+    // A beat's recording can come in parts (Uzbek narrator, Korean voice); they are joined into one clip.
+    private List<(int Word, int Beat, IReadOnlyList<string>? Urls)> Clips => Lesson.Words.SelectMany((w, i) =>
+        new[] { (Word: i, Beat: -1, Urls: w.KoreanAudioUrl is null ? null : (IReadOnlyList<string>)[w.KoreanAudioUrl]) }
+        .Concat(w.Beats.Select((b, n) => (Word: i, Beat: n, Urls: b.PartUrls ?? (b.AudioUrl is null ? null : (IReadOnlyList<string>)[b.AudioUrl]))))).ToList();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -88,12 +91,23 @@
     }
     private async Task<bool> FetchAsync(int clip)
     {
-        var url = Clips.ElementAtOrDefault(clip).Url;
-        if (url is null) return false;
-        var result = await Api.GetBytesAsync(url);
-        if (_disposed || _player is null) return false;
-        if (result.Value is not { Length: > 0 } bytes) return false;
-        await _player.InvokeVoidAsync("put", clip, bytes); _cached.Add(clip); return true;
+        if (Clips.ElementAtOrDefault(clip).Urls is not { Count: > 0 } urls) return false;
+        var parts = new List<byte[]>();
+        foreach (var url in urls)
+        {
+            var result = await Api.GetBytesAsync(url);
+            if (_disposed || _player is null) return false;
+            if (result.Value is not { Length: > 0 } bytes) return false;
+            parts.Add(bytes);
+        }
+        if (_disposed || _player is not { } player) return false;
+        if (parts.Count == 1) await player.InvokeVoidAsync("put", clip, parts[0]);
+        else
+        {
+            for (var n = 0; n < parts.Count; n++) await player.InvokeVoidAsync("putPart", clip, n, parts[n]);
+            if (!await player.InvokeAsync<bool>("join", clip, parts.Count)) return false;
+        }
+        _cached.Add(clip); return true;
     }
     private async Task PlayAsync()
     {

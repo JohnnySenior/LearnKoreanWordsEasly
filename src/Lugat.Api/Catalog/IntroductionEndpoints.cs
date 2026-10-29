@@ -13,7 +13,9 @@ public static class IntroductionEndpoints
         learner.MapGet("/units/{unitId:guid}/introduction", async (Guid unitId, ClaimsPrincipal user, IntroductionService lessons, CancellationToken ct) =>
             Results.Ok(new IntroductionAvailabilityDto(await lessons.PublishedAsync(user.GetUserId(), unitId, ct))));
         learner.MapGet("/introductions/{id:guid}/audio/{word:int}/{beat:int}", async (Guid id, int word, int beat, ClaimsPrincipal user, IntroductionService lessons, CancellationToken ct) =>
-            Results.File(await lessons.AudioAsync(user.GetUserId(), id, word, beat, false, ct), "audio/mpeg", enableRangeProcessing: true));
+            Results.File(await lessons.AudioAsync(user.GetUserId(), id, word, beat, 0, false, ct), "audio/mpeg", enableRangeProcessing: true));
+        learner.MapGet("/introductions/{id:guid}/audio/{word:int}/{beat:int}/{part:int}", async (Guid id, int word, int beat, int part, ClaimsPrincipal user, IntroductionService lessons, CancellationToken ct) =>
+            Results.File(await lessons.AudioAsync(user.GetUserId(), id, word, beat, part, false, ct), "audio/mpeg", enableRangeProcessing: true));
         var admin = app.MapGroup("/api/admin").RequireAuthorization(Policies.Admin);
         admin.MapGet("/units/{unitId:guid}/introductions", (Guid unitId, IntroductionService lessons, CancellationToken ct) => lessons.ListAsync(unitId, ct));
         admin.MapPost("/units/{unitId:guid}/introductions", (Guid unitId, CreateIntroductionRequest body, ClaimsPrincipal user, IntroductionService lessons, CancellationToken ct) =>
@@ -34,7 +36,9 @@ public static class IntroductionEndpoints
         admin.MapPost("/introductions/{id:guid}/discard", (Guid id, IntroductionVersionRequest body, ClaimsPrincipal user, IntroductionService lessons, CancellationToken ct) =>
             lessons.DiscardAsync(user.GetUserId(), id, body.Version, ct));
         admin.MapGet("/introductions/{id:guid}/audio/{word:int}/{beat:int}", async (Guid id, int word, int beat, ClaimsPrincipal user, IntroductionService lessons, CancellationToken ct) =>
-            Results.File(await lessons.AudioAsync(user.GetUserId(), id, word, beat, true, ct), "audio/mpeg", enableRangeProcessing: true));
+            Results.File(await lessons.AudioAsync(user.GetUserId(), id, word, beat, 0, true, ct), "audio/mpeg", enableRangeProcessing: true));
+        admin.MapGet("/introductions/{id:guid}/audio/{word:int}/{beat:int}/{part:int}", async (Guid id, int word, int beat, int part, ClaimsPrincipal user, IntroductionService lessons, CancellationToken ct) =>
+            Results.File(await lessons.AudioAsync(user.GetUserId(), id, word, beat, part, true, ct), "audio/mpeg", enableRangeProcessing: true));
         return app;
     }
 }
