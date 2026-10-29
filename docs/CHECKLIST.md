@@ -419,3 +419,16 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Tanaffusdan so‘ng kunlik takrorga o‘z so‘zlaridan ko‘pi bilan 10 ta yangi so‘z; boshlangan va muddati kelgan kartalar saqlanadi.
 - [x] Release build (0 ogohlantirish/xato), audit regressiyalari (9), JS (16), model/migratsiya mosligi tekshirildi. Yakuniy to‘liq tekshiruv — PR Checks’dagi CI. Mahalliy matn nusxasida ikonka fayllari bo‘lmagani uchun PWA statik fayl tekshiruvi asl GitHub checkout’ida bajariladi.
 - CI/deploy dalili: PR Checks va aynan merge commit’iga bog‘langan Railway deployment statusi; health va PWA asset versiyasi bilan tekshiriladi.
+
+**Bo‘lim bilan ovozli tanishuv (L-54, 2026-10-29):**
+- [x] Johnny ma’qullagan Jonli doska dizayni: qog‘oz kataklar, binafsha rang, qo‘lyozma izohlar, Bomi, so‘z va doska qismlari ketma-ket ochilishi. Shriftlar litsenziyasi bilan lokal saqlanadi.
+- [x] Alohida versiya va additive `UnitIntroductions` migratsiyasi; manba nusxasi/xeshi, xmin, eski nashrni atomar almashtirish. Bo‘sh draft bo‘lim qayta bo‘lishda o‘chirilsa, uning tanishtirish qoralamasi ham o‘chadi; regressiya tekshirildi. Nashrdagi dars tahrirlanmaydi.
+- [x] Faqat Admin: /kontent → bo‘lim → «Tanishtirish darsi». AI 3 so‘zdan qoralama; inson har so‘zni tekshiradi; ssenariy tasdiqlanmasdan ovoz yo‘q; tayyor darsni eshitish tasdig‘isiz nashr yo‘q. Amallar auditda.
+- [x] Har qadam alohida to‘liq MP3, ElevenLabs o‘zbekcha / mavjud TTS koreyscha. Profil+matn bo‘yicha persistent kesh, umumiy xarajat/limit nazorati. O‘quvchi generatsiya qilmaydi; faqat nashrdagi tasdiqlangan yozuvlarni oladi.
+- [x] Ijro audio `ended` bilan davom etadi. Tarmoq, dekodlash va autoplay xatosida to‘xtaydi. Bitta audio element, keyingi yozuvni oldindan yuklash, pauza/tezlik/qayta eshitish, tuzoq filtri, skip, foydalanuvchi+dars bo‘yicha qurilmada qolgan joy.
+- [x] Ochiq bo‘limga birinchi kirish → mavjud nashrdagi tanishtirish; `qadam=1` → jadval. Dars yo‘q bo‘lsa eski oqim. Ko‘rish/skip test natijasi va kartochka takrorlash jadvalini o‘zgartirmaydi.
+- [x] Lokal Release build va model/migratsiya mosligi. To‘liq lokal .NET: 407 passed, 1 skipped (`pg_dump` lokal SDK’da yo‘q); yakuniy 8 ta yangi regressiya/adapter tekshiruvi alohida 8/8 o‘tdi. JS: 20 passed, jumladan ovozni kesmaslik, pauza, eski ended hodisasi, xato va autoplay rad etilishi.
+- [x] Haqiqiy Blazor + lokal PostgreSQL bilan 25 so‘zli QA: birinchi kirish, pauza, audio tugagach doska ochilishi, skip esda qolishi, admin preview, qadam qo‘shish/olib tashlash va tahrirni tekshirib saqlash; 360px/1280px’da sahifa xatosi va yonlama scroll yo‘q. Audio bu tekshiruvda **jim QA fayli**, real ElevenLabs/Azure sifat sinovi emas.
+- [x] Railway app’da `ElevenLabs__ApiKey`, `ElevenLabs__VoiceId`, `ElevenLabs__Model` Studio servisiga reference sifatida yozildi; deploy o‘tkazib yuborilib, kod nashri bilan birga kuchga kiradi. Kalit qiymatlari o‘qilmadi/nusxalanmadi.
+- CI/deploy dalili: PR #49 Checks va aynan merge commit’iga bog‘langan Railway deployment; /health va yangi PWA assetlari/xeshi bilan tekshiriladi.
+- [ ] Johnny/admin: haqiqiy 1-bo‘lim ssenariysini yaratish, tahrir/tasdiqlash, ElevenLabs/Azure ovozini eshitib tekshirish va xatosiz bo‘lgach nashr qilish. Haqiqiy iPhone Safari/PWA’da eshitish sinovi.

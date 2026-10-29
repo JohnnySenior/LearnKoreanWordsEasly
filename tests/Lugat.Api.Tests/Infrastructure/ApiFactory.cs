@@ -72,6 +72,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Replaces OpenAI speech; by default tests have a synthesizer that is "not configured".</summary>
     public Application.Speech.ISpeechSynthesizer? Speech { get; init; }
 
+    public Application.Catalog.IIntroductionNarrator? Narrator { get; init; }
+
     /// <summary>Replaces Azure speech recognition; by default "not configured".</summary>
     public Application.Speech.IPronunciationAssessor? Pronunciation { get; init; }
 
@@ -126,6 +128,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<Application.Speech.ISpeechSynthesizer>();
             services.AddSingleton(Speech ?? new Lugat.Api.Tests.Speech.FakeSpeech { IsConfigured = false });
+
+            if (Narrator is not null)
+            {
+                services.RemoveAll<Application.Catalog.IIntroductionNarrator>();
+                services.AddSingleton(Narrator);
+            }
 
             services.RemoveAll<Application.Speech.IPronunciationAssessor>();
             services.AddSingleton(Pronunciation ?? new Lugat.Api.Tests.Speech.FakePronunciation { IsConfigured = false });

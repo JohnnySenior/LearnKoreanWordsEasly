@@ -175,6 +175,7 @@ app.MapAuthEndpoints(app.Environment);
 app.MapStudyEndpoints();
 app.MapMeEndpoints();
 app.MapCatalogEndpoints();
+app.MapIntroductionEndpoints();
 app.MapPremiumEndpoints();
 app.MapAiEndpoints();
 app.MapBackupEndpoints();

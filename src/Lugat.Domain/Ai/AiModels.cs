@@ -8,6 +8,8 @@ public enum AiProviderKind
 
     /// <summary>Microsoft Azure Speech: pronunciation only (D-31), never a text AI.</summary>
     Azure,
+
+    ElevenLabs,
 }
 
 /// <summary>One AI call, successful or not, for cost tracking (spec BUD03). No prompt or answer text is kept here.</summary>

@@ -61,6 +61,10 @@ public static class DependencyInjection
         services.AddScoped<Application.Catalog.CatalogAdminService>();
         services.AddScoped<Application.Catalog.CatalogDraftService>();
         services.AddScoped<Application.Catalog.TrapSceneService>();
+        services.AddScoped<Application.Catalog.IntroductionService>();
+        services.AddScoped<Application.Catalog.IntroductionAudioService>();
+        services.Configure<Speech.ElevenLabsOptions>(config.GetSection("ElevenLabs"));
+        services.AddHttpClient<Application.Catalog.IIntroductionNarrator, Speech.ElevenLabsNarrator>(c => c.Timeout = TimeSpan.FromSeconds(65)).RemoveAllLoggers();
         services.AddScoped<Application.Catalog.CatalogSeeder>();
         services.AddScoped<StudyService>();
         services.AddScoped<Application.Vocabulary.PersonalWordService>();
