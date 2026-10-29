@@ -162,6 +162,22 @@ public class IntroductionTests
     }
 
     [Fact]
+    public void The_word_named_in_hangul_in_the_narration_is_spoken_by_its_romanization()
+    {
+        // The Uzbek narrator cannot read Hangul; Claude wrote "하다 fe’li …" in every word of A-1.
+        var source = new Lugat.Domain.Catalog.IntroductionSource(Guid.NewGuid(), 1, "하다", "qilmoq", "hada", "공부해요.", "O‘qiyman.", null, 1);
+        string Answer(string meaning) => JsonSerializer.Serialize(new { words = new[] { new { id = 1, title = "Qilmoq", beats = new object[]
+        {
+            new { kind = "meaning", narrationUz = meaning, korean = (string?)null, uzbek = (string?)null },
+            new { kind = "example", narrationUz = "Misolga qarang.", korean = "공부해요.", uzbek = "O‘qiyman." },
+        } } } });
+
+        var word = Assert.Single(Lugat.Application.Catalog.IntroductionService.Parse(Answer("하다 fe’li eng ko‘p ishlatiladi. 하 bilan boshlanadi."), [source]));
+        Assert.StartsWith("hada fe’li", word.Beats[0].NarrationUz);
+        Assert.Throws<Lugat.Application.ValidationException>(() => Lugat.Application.Catalog.IntroductionService.Parse(Answer("공부 하다 deymiz."), [source]));
+    }
+
+    [Fact]
     public async Task Failed_recording_does_not_mark_ready_or_skip_its_beat_and_unpublished_or_locked_units_do_not_leak()
     {
         var narrator = new FakeNarrator { Fail = true };
