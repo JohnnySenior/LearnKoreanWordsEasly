@@ -96,7 +96,7 @@ public class AuditRegressionTests
 
     [Theory]
     [InlineData("{\"words\":[]}")]
-    [InlineData("{\"words\":[{\"id\":1}]}")]
+    [InlineData("{\"words\":\"[{\\\"id\\\":1\"}")]
     [InlineData("{broken")]
     public async Task An_omitted_scene_response_should_allow_the_editor_to_retry(string json)
     {
@@ -107,6 +107,23 @@ public class AuditRegressionTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         var unit = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{ApiFactory.Unit(1)}", Json))!;
         Assert.Equal(3, unit.ScenesRemaining);
+    }
+
+    [Theory]
+    [InlineData("{\"words\":\"[{\\\"id\\\":1,\\\"wrong\\\":\\\"회사에서 가요\\\",\\\"right\\\":\\\"회사에 가요\\\"},{\\\"id\\\":2},{\\\"id\\\":3}]\"}")]
+    [InlineData("[{\"id\":1,\"wrong\":\"회사에서 가요\",\"right\":\"회사에 가요\"},{\"id\":2},{\"id\":3}]")]
+    [InlineData("{\"words\":[{\"id\":1,\"wrong\":\"회사에서 가요\",\"right\":\"회사에 가요\"},{\"id\":2},{\"id\":3}]}")]
+    public async Task A_claude_tool_answer_in_another_shape_is_still_read(string json)
+    {
+        // Claude can send the array as a JSON string, or bare, and leaves out null keys ("no pair" = id only).
+        var ai = new FakeAiProvider(AiProviderKind.Anthropic) { Answer = _ => json };
+        await using var factory = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA], AiProviders = [ai] };
+        var (admin, _) = await SceneSetup(factory);
+        var response = await admin.PostAsync($"/api/admin/units/{ApiFactory.Unit(1)}/trap-scenes", null);
+        response.EnsureSuccessStatusCode();
+        var unit = (await response.Content.ReadFromJsonAsync<UnitAdminDto>(Json))!;
+        Assert.Equal(0, unit.ScenesRemaining);
+        Assert.Single(unit.Words, w => w.TrapScenePending);
     }
 
     [Fact]
