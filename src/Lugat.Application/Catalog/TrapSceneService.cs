@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
 using Lugat.Contracts;
@@ -40,7 +41,12 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
         }
 
         var result = await ai.CompleteJsonAsync(editorId, BuildRequest(missing), ct);
-        var scenes = Parse(result.Response.Json, missing);
+        var (scenes, answered) = ParseResponse(result.Response.Json, missing);
+        if (answered.Count == 0)
+        {
+            await ai.RejectContentAsync(result, "Tuzoq sahnalari javobi tekshiruvdan o‘tmadi.");
+            throw new ServiceUnavailableException("AI sahnalar uchun yaroqli javob bermadi. Qayta urinib ko‘ring.");
+        }
 
         await using (await operations.AcquireAsync(CatalogAdminService.LockKey, ct))
         {
@@ -50,7 +56,7 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
             foreach (var word in await db.CatalogWords.Where(w => ids.Contains(w.Id)).ToListAsync(ct))
             {
                 // An editor may have changed the note or written a scene meanwhile: then this answer is stale.
-                if (word.TrapUz != asked[word.Id] || word.TrapWrong is not null)
+                if (!answered.Contains(word.Id) || word.TrapUz != asked[word.Id] || word.TrapWrong is not null)
                 {
                     continue;
                 }
@@ -80,7 +86,10 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
     }
 
     /// <summary>Checked scenes by word id; items that break the rules, or name no real mistake, are dropped.</summary>
-    public static Dictionary<Guid, TrapScene> Parse(string json, IReadOnlyList<CatalogWord> words)
+    public static Dictionary<Guid, TrapScene> Parse(string json, IReadOnlyList<CatalogWord> words) =>
+        ParseResponse(json, words).Scenes;
+
+    private static (Dictionary<Guid, TrapScene> Scenes, HashSet<Guid> Answered) ParseResponse(string json, IReadOnlyList<CatalogWord> words)
     {
         SceneResult? r;
         try
@@ -89,18 +98,25 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
         }
         catch (JsonException)
         {
-            return [];
+            return ([], []);
         }
 
         var result = new Dictionary<Guid, TrapScene>();
+        var answered = new HashSet<Guid>();
         foreach (var item in r?.Words ?? [])
         {
-            if (item.Id is not { } id || id < 1 || id > words.Count || item.Wrong is null || item.Right is null)
+            if (item.Id is not { } id || id < 1 || id > words.Count)
             {
                 continue;
             }
 
             var word = words[id - 1];
+            if (item.Wrong is null && item.Right is null && item.Cue is null)
+            {
+                answered.Add(word.Id); // An explicit "no mistake pair", unlike a missing or invalid item.
+                continue;
+            }
+
             var (scene, _) = CatalogContent.CheckScene(item.Cue, item.Wrong, item.Right, word.TrapUz);
             if (scene is null)
             {
@@ -111,15 +127,20 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
             if (scene is not null)
             {
                 result.TryAdd(word.Id, scene);
+                answered.Add(word.Id);
             }
         }
 
-        return result;
+        return (result, answered);
     }
 
     private sealed record SceneResult(List<SceneItem>? Words);
 
-    private sealed record SceneItem(int? Id, string? Cue, string? Wrong, string? Right);
+    private sealed record SceneItem(
+        [property: JsonRequired] int? Id,
+        [property: JsonRequired] string? Cue,
+        [property: JsonRequired] string? Wrong,
+        [property: JsonRequired] string? Right);
 
     private const string Instructions = """
         You prepare flash-card animations for adult Uzbek speakers learning Korean; many work in Korea. Each line

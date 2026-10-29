@@ -98,6 +98,15 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
         await db.SaveChangesAsync(CancellationToken.None);
     }
 
+    /// <summary>Reject unusable content without refunding tokens, costs, or the provider's abuse limits.</summary>
+    public async Task RejectContentAsync(Guid usageId, string reason)
+    {
+        var row = await db.AiUsages.SingleAsync(u => u.Id == usageId, CancellationToken.None);
+        row.Succeeded = false;
+        row.Error = reason.Length > 500 ? reason[..500] : reason;
+        await db.SaveChangesAsync(CancellationToken.None);
+    }
+
     public async Task<AiBudgetDto> BudgetAsync(CancellationToken ct)
     {
         var now = time.GetUtcNow();

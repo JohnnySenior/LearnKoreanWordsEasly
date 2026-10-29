@@ -29,7 +29,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         var currentIds = await units.CurrentUnitIdsAsync(ownerId, ct);
         var cards = ActiveCards(ownerId);
         var dueNow = await cards.CountAsync(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt <= now, ct);
-        var own = Vocabulary.PersonalWordService.Introduced(db, ownerId, await Vocabulary.PersonalWordService.LocalDayAsync(db, ownerId, now, ct));
+        var own = await Vocabulary.PersonalWordService.IntroducedAsync(db, ownerId, now, ct);
         var newAvailable = await cards.CountAsync(c => c.Card.Phase == LearningPhase.New
             && (c.Sense.UnitId != null && currentIds.Contains(c.Sense.UnitId.Value) || own.Contains(c.Sense.Id)), ct);
         var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)
@@ -123,8 +123,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             // Daily review (spec §4.6): due cards of every opened unit; new words only from the current unit and the
             // learner's own words whose day has come (L-51, at most 10 a day).
             var current = await units.CurrentUnitIdsAsync(ownerId, ct);
-            var own = (await Vocabulary.PersonalWordService.Introduced(db, ownerId, await Vocabulary.PersonalWordService.LocalDayAsync(db, ownerId, now, ct))
-                .ToListAsync(ct)).ToHashSet();
+            var own = await Vocabulary.PersonalWordService.IntroducedAsync(db, ownerId, now, ct);
             focus = s => s.UnitId is { } u && current.Contains(u) || own.Contains(s.Id);
         }
 
@@ -439,7 +438,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         var scene = sense.CatalogWordId is { } sceneWordId
             ? (await db.CatalogWords.AsNoTracking().Where(w => w.Id == sceneWordId).ToListAsync(ct)).Select(Catalog.CatalogAdminService.LearnerScene).FirstOrDefault()
             : null;
-        if (scene is null && await db.PersonalWords.AsNoTracking()
+        if (sense.CatalogWordId is null && await db.PersonalWords.AsNoTracking()
                 .Where(w => w.OwnerId == card.OwnerId && w.LearningItemId == sense.Id && w.TrapWrong != null && w.TrapRight != null)
                 .Select(w => new { w.TrapCue, w.TrapWrong, w.TrapRight }).FirstOrDefaultAsync(ct) is { } own)
         {

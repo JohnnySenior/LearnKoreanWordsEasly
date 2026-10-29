@@ -262,7 +262,8 @@ else
 
     private async Task KeyAsync(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !_busy && !string.IsNullOrWhiteSpace(_text))
+        if (e.Key == "Enter" && !e.IsComposing && !e.Repeat && !e.AltKey && !e.CtrlKey && !e.MetaKey && !e.ShiftKey
+            && !_busy && !string.IsNullOrWhiteSpace(_text))
         {
             await LookupAsync();
         }

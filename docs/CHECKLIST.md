@@ -408,3 +408,14 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Mening so‘zlarim: AI so‘zining sahnasi, lug‘at so‘zining tasdiqlangan sahnasi.
 - [x] Testlar: `TrapSceneTests` (10). Chromium 390px yorug‘/qorong‘i: kartochka va /kontent, scroll yo‘q, sahifa xatosi yo‘q.
 - [ ] Johnny: production’da /kontent → A-1 bo‘lim → "Tuzoq sahnalari", natijani o‘qib tasdiqlash; keyin telefonda kartochkani ko‘rish.
+
+
+**Qayta audit tuzatishlari (L-53, 2026-10-29):**
+- [x] Premium: kechikkan boshqa valyuta/tarif promo javobi summani almashtirmaydi; hisob ketayotganda eski to‘lov summasi ko‘rsatilmaydi.
+- [x] Yaroqsiz AI shaxsiy kartasi bepul kvotadan ketmaydi, provayder tokenlari va xarajati saqlanadi.
+- [x] Katalogdan o‘chirilgan yoki pending sahna shaxsiy nusxadan qaytmaydi.
+- [x] Bo‘sh/yaroqsiz sahna javobini qayta so‘rash mumkin; aniq null javob va yetishmagan yozuv ajratildi.
+- [x] Mening so‘zlarim: koreyscha IME tasdig‘i va modifier Enter qidiruv yubormaydi.
+- [x] Tanaffusdan so‘ng kunlik takrorga o‘z so‘zlaridan ko‘pi bilan 10 ta yangi so‘z; boshlangan va muddati kelgan kartalar saqlanadi.
+- [x] Release build (0 ogohlantirish/xato), audit regressiyalari (9), JS (16), model/migratsiya mosligi tekshirildi. Yakuniy to‘liq tekshiruv — PR Checks’dagi CI. Mahalliy matn nusxasida ikonka fayllari bo‘lmagani uchun PWA statik fayl tekshiruvi asl GitHub checkout’ida bajariladi.
+- CI/deploy dalili: PR Checks va aynan merge commit’iga bog‘langan Railway deployment statusi; health va PWA asset versiyasi bilan tekshiriladi.

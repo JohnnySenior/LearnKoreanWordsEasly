@@ -73,6 +73,7 @@ public sealed class PersonalWordService(
         var written = Parse(result.Response.Json);
         if (written.Count == 0)
         {
+            await ai.RejectContentAsync(result, "Shaxsiy so‘z kartasi tekshiruvdan o‘tmadi.");
             throw new ServiceUnavailableException("AI bu so‘z uchun ishonchli karta tuza olmadi. So‘zni boshqacha yozib ko‘ring.");
         }
 
@@ -304,9 +305,34 @@ public sealed class PersonalWordService(
         return result;
     }
 
-    /// <summary>Own words whose new cards may join today's review (<see cref="PersonalWord.IntroduceOn"/>).</summary>
-    public static IQueryable<Guid> Introduced(IAppDbContext db, Guid ownerId, DateOnly today) =>
-        db.PersonalWords.Where(w => w.OwnerId == ownerId && w.IntroduceOn <= today).Select(w => w.LearningItemId);
+    /// <summary>
+    /// Already started words remain available; at most ten genuinely new words enter a local day's daily review.
+    /// Scheduled dates alone do not cap a backlog after an absence. First review events count introductions,
+    /// including undone answers (the learner has still seen the word); repeating a word does not spend another slot.
+    /// </summary>
+    public static async Task<HashSet<Guid>> IntroducedAsync(IAppDbContext db, Guid ownerId, DateTimeOffset now, CancellationToken ct)
+    {
+        var user = await db.Users.AsNoTracking().SingleAsync(u => u.Id == ownerId, ct);
+        var local = TimeZoneInfo.ConvertTime(now, user.Zone());
+        var today = DateOnly.FromDateTime(local.DateTime);
+        var since = new DateTimeOffset(local.Date, local.Offset).ToUniversalTime();
+        var own = db.PersonalWords.Where(w => w.OwnerId == ownerId);
+        var firstReviews = await db.ReviewEvents.Where(e => e.OwnerId == ownerId
+                && e.Answer != ReviewAnswer.TechnicalError
+                && (own.Any(w => w.LearningItemId == e.LearningItemId)
+                    || db.LearningItems.Any(i => i.Id == e.LearningItemId && i.OwnerId == ownerId && i.Kind == LearningItemKind.Personal)))
+            .GroupBy(e => e.LearningItemId)
+            .Select(g => new { Id = g.Key, FirstAt = g.Min(e => e.OccurredAt) }).ToListAsync(ct);
+        var started = firstReviews.Select(r => r.Id).ToHashSet();
+        // Course words may already be known through a skip test, without a review event.
+        started.UnionWith(await db.Cards.Where(c => c.OwnerId == ownerId && c.Phase != LearningPhase.New
+                && own.Any(w => w.LearningItemId == c.LearningItemId)).Select(c => c.LearningItemId).Distinct().ToListAsync(ct));
+        var remaining = Math.Max(0, PersonalWord.NewPerDay - firstReviews.Count(r => r.FirstAt >= since));
+        var eligible = await own.Where(w => w.IntroduceOn <= today)
+            .OrderBy(w => w.IntroduceOn).ThenBy(w => w.CreatedAt).ThenBy(w => w.Id)
+            .Select(w => w.LearningItemId).ToListAsync(ct);
+        return eligible.Where(started.Contains).Concat(eligible.Where(id => !started.Contains(id)).Take(remaining)).ToHashSet();
+    }
 
     /// <summary>The card note of an own word (its trap), for the review card.</summary>
     public static IQueryable<string?> Trap(IAppDbContext db, Guid ownerId, Guid itemId) =>
