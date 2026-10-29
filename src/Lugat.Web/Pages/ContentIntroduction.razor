@@ -9,7 +9,7 @@
 <header class="intro-page-header"><a href="@($"kontent/{Id}")">← Bo‘lim kontenti</a><span>TANISHTIRISHNI BOSHQARISH</span></header>
 <h1>Bo‘lim bilan tanishuv</h1><p class="muted">Qoralama → har bir so‘zni tekshirish → ssenariyni tasdiqlash → ovoz → tayyor darsni eshitish → nashr.</p>
 @if (_error is not null) { <div class="notice" role="alert">@_error</div> }
-@if (_list is null) { <p aria-busy="true">Yuklanmoqda…</p> }
+@if (_list is null) { @if (_error is null) { <p aria-busy="true">Yuklanmoqda…</p> } }
 else
 {
     @if (!_list.NarratorConfigured) { <div class="notice">Ovoz uchun ElevenLabs va Azure sozlamalarini ulang. Ssenariy bilan ishlash mumkin.</div> }
@@ -58,9 +58,12 @@ else
                     <label class="field">Doska sarlavhasi<input class="input" maxlength="120" @bind="edit.Title" /></label>
                     @foreach (var b in edit.Beats)
                     {
-                        <fieldset><legend>@b.Kind — doska qadami</legend><label class="field">Diktor matni (o‘zbekcha, Hangulsiz)<textarea class="input" maxlength="700" @bind="b.NarrationUz"></textarea></label>
-                        <label class="field">Doskadagi koreyscha<input class="input" lang="ko" maxlength="160" @bind="b.Korean" /></label><label class="field">Doskadagi o‘zbekcha<input class="input" maxlength="300" @bind="b.Uzbek" /></label></fieldset>
+                        <fieldset><legend>Doska qadami</legend>
+                        <label class="field">Qadam turi<select class="input" @bind="b.Kind"><option value="meaning">Ma’no</option><option value="example">Misol</option><option value="trap">Tuzoq izohi</option></select></label>
+                        <label class="field">Diktor matni (o‘zbekcha, Hangulsiz)<textarea class="input" maxlength="700" @bind="b.NarrationUz"></textarea></label>
+                        <label class="field">Doskadagi koreyscha<input class="input" lang="ko" maxlength="160" @bind="b.Korean" /></label><label class="field">Doskadagi o‘zbekcha<input class="input" maxlength="300" @bind="b.Uzbek" /></label><button class="button" disabled="@(_busy || edit.Beats.Count <= 2)" @onclick="() => edit.Beats.Remove(b)">Qadamni olib tashlash</button></fieldset>
                     }
+                    <button class="button" disabled="@(_busy || edit.Beats.Count >= 5)" @onclick="() => AddBeat(edit, word.HasTrap)">Doska qadami qo‘shish</button>
                     <label class="intro-publish-check"><input type="checkbox" @bind="edit.Reviewed" /> Shu so‘zning barcha izoh va misollarini tekshirdim.</label>
                     <button class="button" disabled="@_busy" @onclick="() => SaveAsync(word.WordId)">Saqlash</button>
                 </section>
@@ -81,7 +84,9 @@ else
     private static string Status(IntroductionStatus s) => s switch { IntroductionStatus.Draft => "Qoralama", IntroductionStatus.Approved => "Ssenariy tasdiqlangan", IntroductionStatus.Ready => "Ovoz tayyor", IntroductionStatus.Published => "Nashrda", _ => "Arxiv" };
     private async Task LoadAsync()
     {
-        var r = await Api.GetAsync<IntroductionListDto>($"api/admin/units/{Id}/introductions");
+        var requested = Id;
+        var r = await Api.GetAsync<IntroductionListDto>($"api/admin/units/{requested}/introductions");
+        if (_disposed || requested != Id) return;
         _list = r.Value; if (!r.Ok) _error = r.Error;
         if (_list?.Versions.FirstOrDefault(v => v.Id == _lesson?.Id) is { } old) Select(old);
         else if (_list?.Versions.FirstOrDefault() is { } first) Select(first);
@@ -134,6 +139,7 @@ else
         if (r.Value is not null) { _lesson = r.Value; if (_list is not null) _list = _list with { Versions = _list.Versions.Select(v => v.Id == _lesson.Id ? _lesson : v).ToList() }; } else _error = r.Error;
         _busy = false;
     }
+    private static void AddBeat(WordEdit edit, bool hasTrap) => edit.Beats.Add(new BeatEdit { Kind = hasTrap ? "trap" : "example" });
     private sealed class WordEdit { public string Title { get; set; } = ""; public bool Reviewed { get; set; } public List<BeatEdit> Beats { get; set; } = []; }
     private sealed class BeatEdit { public string Kind { get; set; } = ""; public string NarrationUz { get; set; } = ""; public string? Korean { get; set; } public string? Uzbek { get; set; } }
     public void Dispose() { _disposed = true; _stop = true; }

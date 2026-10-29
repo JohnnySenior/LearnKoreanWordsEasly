@@ -2,6 +2,7 @@
 @using Lugat.Contracts
 @inject SessionService Api
 @inject NavigationManager Nav
+@inject BrowserInterop Browser
 
 <PageTitle>Bo‘lim bilan tanishuv — Koreyscha</PageTitle>
 <div class="intro-page">
@@ -9,8 +10,8 @@
     @if (_error is not null) { <div class="notice" role="alert">@_error</div> }
     @if (_lesson is { } lesson)
     {
-        <div class="intro-page-heading"><div><span>TANISHISH → JADVAL → MASHQLAR</span><h1>@lesson.UnitLabel</h1><p>Kichik qadamlar bilan, o‘z sur’atingizda.</p></div><a href="@($"bolimlar/{Id}?qadam=1")">Jadvalga o‘tish →</a></div>
-        <IntroductionPlayer Lesson="lesson" OnDone="Done" />
+        <div class="intro-page-heading"><div><span>TANISHISH → JADVAL → MASHQLAR</span><h1>@lesson.UnitLabel</h1><p>Kichik qadamlar bilan, o‘z sur’atingizda.</p></div><button class="intro-page-skip" @onclick="SkipAsync">Jadvalga o‘tish →</button></div>
+        <IntroductionPlayer @key="lesson.Id" Lesson="lesson" OnDone="Done" />
         <p class="intro-source">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1). Dars ssenariysi admin tomonidan tekshirilgan.</p>
     }
     else if (_error is null) { <p aria-busy="true">Dars yuklanmoqda…</p> }
@@ -22,9 +23,16 @@
     protected override async Task OnParametersSetAsync()
     {
         _lesson = null; _error = null;
-        var result = await Api.GetAsync<IntroductionAvailabilityDto>($"api/units/{Id}/introduction");
+        var requested = Id;
+        var result = await Api.GetAsync<IntroductionAvailabilityDto>($"api/units/{requested}/introduction");
+        if (requested != Id) return;
         if (result.Ok && result.Value?.Lesson is null) { Done(); return; }
         _lesson = result.Value?.Lesson; _error = result.Ok ? null : result.Error;
+    }
+    private async Task SkipAsync()
+    {
+        if (_lesson is not null) await Browser.StorageSetAsync($"intro:{Api.State.Me?.Id}:{_lesson.Id}:seen", "yes");
+        Done();
     }
     private void Done() => Nav.NavigateTo($"bolimlar/{Id}?qadam=1");
 }

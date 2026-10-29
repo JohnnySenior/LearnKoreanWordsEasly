@@ -8,3 +8,5 @@
 @media(prefers-reduced-motion:reduce){.intro-player *{animation:none!important;transition:none!important}}
 
 .intro-admin .button{border-radius:9px;border:1px solid #d9cce5;background:#f9f5fc;color:#887298;padding:10px 15px;font-size:12px}.intro-admin .button.primary{background:#7d6aaf;color:white;border-color:#7d6aaf}.intro-admin .input{background:#fffdf8;border:1px solid #dfd3e7;color:#685a74;border-radius:8px}.intro-admin .notice{border-color:#b99aca;background:#f3edf8;color:#8d739c}
+
+.intro-page-heading .intro-page-skip{border:0;background:none;color:#877396;font:inherit;font-size:11px;min-height:44px;cursor:pointer;white-space:nowrap}
