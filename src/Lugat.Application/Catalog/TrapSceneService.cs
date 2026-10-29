@@ -19,7 +19,6 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
 
     public const int WordsPerCall = 10;
 
-
     /// <summary>A trap note, no scene yet, and the AI not asked since the note last changed.</summary>
     public static bool NeedsScene(CatalogWord w) => w.TrapUz is not null && w.TrapWrong is null && w.TrapSceneAskedAt is null;
 
