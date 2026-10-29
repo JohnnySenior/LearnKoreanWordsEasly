@@ -157,18 +157,32 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
         return (result, answered, $"{count} ta element, {answered.Count} tasi yaroqli");
     }
 
+    /// <summary>
+    /// The list, unwrapped: Claude has sent it as {"words":"{\"words\":[…]}"}, a string holding the whole object again.
+    /// </summary>
     private static JsonArray? Items(string json)
     {
         try
         {
-            var root = JsonNode.Parse(json);
-            var words = root is JsonObject o ? o["words"] : root;
-            if (words is JsonValue v && v.TryGetValue<string>(out var inner))
+            var node = JsonNode.Parse(json);
+            for (var depth = 0; depth < 4; depth++)
             {
-                words = JsonNode.Parse(inner);
+                switch (node)
+                {
+                    case JsonArray list:
+                        return list;
+                    case JsonObject o:
+                        node = o["words"];
+                        break;
+                    case JsonValue v when v.TryGetValue<string>(out var inner):
+                        node = JsonNode.Parse(inner);
+                        break;
+                    default:
+                        return null;
+                }
             }
 
-            return words as JsonArray;
+            return null;
         }
         catch (JsonException)
         {
