@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
 using Lugat.Contracts;
@@ -38,11 +39,13 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
         }
 
         var result = await ai.CompleteJsonAsync(editorId, BuildRequest(missing), ct);
-        var (scenes, answered) = ParseResponse(result.Response.Json, missing);
+        var (scenes, answered, shape) = ParseResponse(result.Response.Json, missing);
         if (answered.Count == 0)
         {
-            await ai.RejectContentAsync(result, "Tuzoq sahnalari javobi tekshiruvdan o‘tmadi.");
-            throw new ServiceUnavailableException("AI sahnalar uchun yaroqli javob bermadi. Qayta urinib ko‘ring.");
+            // The shape (and the start of the answer, AI text only) is kept so the next failure can be diagnosed.
+            var start = result.Response.Json.Length > 300 ? result.Response.Json[..300] : result.Response.Json;
+            await ai.RejectContentAsync(result, $"Tuzoq sahnalari javobi tekshiruvdan o‘tmadi ({shape}): {start}");
+            throw new ServiceUnavailableException($"AI sahnalar uchun yaroqli javob bermadi ({shape}). Qayta urinib ko‘ring.");
         }
 
         await using (await operations.AcquireAsync(CatalogAdminService.LockKey, ct))
@@ -103,76 +106,79 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
     public static Dictionary<Guid, TrapScene> Parse(string json, IReadOnlyList<CatalogWord> words) =>
         ParseResponse(json, words).Scenes;
 
-    private static (Dictionary<Guid, TrapScene> Scenes, HashSet<Guid> Answered) ParseResponse(string json, IReadOnlyList<CatalogWord> words)
+    /// <summary>
+    /// <paramref name="json"/> read as the schema's object. Claude's tool answers are not always that object: the
+    /// array can arrive as a JSON string ("words": "[{…}]") or bare, and a key whose value is null is often left out,
+    /// so an item that names its id but no Korean is the "no pair" answer (the editor can ask again).
+    /// </summary>
+    private static (Dictionary<Guid, TrapScene> Scenes, HashSet<Guid> Answered, string Shape) ParseResponse(string json, IReadOnlyList<CatalogWord> words)
     {
         var result = new Dictionary<Guid, TrapScene>();
         var answered = new HashSet<Guid>();
-        JsonDocument doc;
+        if (Items(json) is not { } items)
+        {
+            return (result, answered, "words ro‘yxati yo‘q");
+        }
+
+        var count = 0;
+        foreach (var item in items)
+        {
+            count++;
+            if (item is not JsonObject obj || Number(obj["id"]) is not { } id || id < 1 || id > words.Count)
+            {
+                continue;
+            }
+
+            var word = words[id - 1];
+            var wrong = Text(obj["wrong"]);
+            var right = Text(obj["right"]);
+            if (wrong is null && right is null)
+            {
+                answered.Add(word.Id);
+                continue;
+            }
+
+            var (scene, _) = CatalogContent.CheckScene(Text(obj["cue"]), wrong, right, word.TrapUz);
+            if (scene is null)
+            {
+                // The situation is optional: a scene whose cue alone breaks the rules keeps its Korean lines.
+                (scene, _) = CatalogContent.CheckScene(null, wrong, right, word.TrapUz);
+            }
+
+            if (scene is not null)
+            {
+                result.TryAdd(word.Id, scene);
+                answered.Add(word.Id);
+            }
+        }
+
+        return (result, answered, $"{count} ta element, {answered.Count} tasi yaroqli");
+    }
+
+    private static JsonArray? Items(string json)
+    {
         try
         {
-            doc = JsonDocument.Parse(json);
+            var root = JsonNode.Parse(json);
+            var words = root is JsonObject o ? o["words"] : root;
+            if (words is JsonValue v && v.TryGetValue<string>(out var inner))
+            {
+                words = JsonNode.Parse(inner);
+            }
+
+            return words as JsonArray;
         }
         catch (JsonException)
         {
-            return (result, answered);
+            return null;
         }
-
-        using (doc)
-        {
-            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("words", out var items) || items.ValueKind != JsonValueKind.Array)
-            {
-                return (result, answered);
-            }
-
-            foreach (var item in items.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Object || Number(item, "id") is not { } id || id < 1 || id > words.Count)
-                {
-                    continue;
-                }
-
-                // Claude's tool answers may leave out a key whose value is null (often "cue"): that loses nothing.
-                // Both Korean keys present and null is the explicit "no pair"; an item with only its id is no answer
-                // and the word is asked again.
-                var word = words[id - 1];
-                var (wrong, hasWrong) = Text(item, "wrong");
-                var (right, hasRight) = Text(item, "right");
-                if (wrong is null && right is null)
-                {
-                    if (hasWrong && hasRight)
-                    {
-                        answered.Add(word.Id);
-                    }
-
-                    continue;
-                }
-
-                var (cue, _) = Text(item, "cue");
-                var (scene, _) = CatalogContent.CheckScene(cue, wrong, right, word.TrapUz);
-                if (scene is null)
-                {
-                    // The situation is optional: a scene whose cue alone breaks the rules keeps its Korean lines.
-                    (scene, _) = CatalogContent.CheckScene(null, wrong, right, word.TrapUz);
-                }
-
-                if (scene is not null)
-                {
-                    result.TryAdd(word.Id, scene);
-                    answered.Add(word.Id);
-                }
-            }
-        }
-
-        return (result, answered);
     }
 
-    private static int? Number(JsonElement item, string name) =>
-        item.TryGetProperty(name, out var v) && (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var n) || v.ValueKind == JsonValueKind.String && int.TryParse(v.GetString(), out n))
-            ? n : null;
+    private static int? Number(JsonNode? node) => node is JsonValue v
+        ? v.TryGetValue<int>(out var n) ? n : v.TryGetValue<string>(out var t) && int.TryParse(t, out n) ? n : null
+        : null;
 
-    private static (string? Value, bool Present) Text(JsonElement item, string name) =>
-        item.TryGetProperty(name, out var v) ? (v.ValueKind == JsonValueKind.String ? v.GetString() : null, true) : (null, false);
-
+    private static string? Text(JsonNode? node) => node is JsonValue v && v.TryGetValue<string>(out var t) ? t : null;
 
     private const string Instructions = """
         You prepare flash-card animations for adult Uzbek speakers learning Korean; many work in Korea. Each line
