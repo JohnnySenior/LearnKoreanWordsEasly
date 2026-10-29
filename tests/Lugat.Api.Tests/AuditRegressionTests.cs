@@ -111,6 +111,7 @@ public class AuditRegressionTests
 
     [Theory]
     [InlineData("{\"words\":\"[{\\\"id\\\":1,\\\"wrong\\\":\\\"회사에서 가요\\\",\\\"right\\\":\\\"회사에 가요\\\"},{\\\"id\\\":2},{\\\"id\\\":3}]\"}")]
+    [InlineData("{\"words\":\"{\\\"words\\\":[\\n{\\\"id\\\":1,\\\"cue\\\":null,\\\"wrong\\\":\\\"회사에서 가요\\\",\\\"right\\\":\\\"회사에 가요\\\",\\\"wrong_note\\\":null},{\\\"id\\\":2},{\\\"id\\\":3}]}\"}")]
     [InlineData("[{\"id\":1,\"wrong\":\"회사에서 가요\",\"right\":\"회사에 가요\"},{\"id\":2},{\"id\":3}]")]
     [InlineData("{\"words\":[{\"id\":1,\"wrong\":\"회사에서 가요\",\"right\":\"회사에 가요\"},{\"id\":2},{\"id\":3}]}")]
     public async Task A_claude_tool_answer_in_another_shape_is_still_read(string json)
