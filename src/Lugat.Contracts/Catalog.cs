@@ -123,7 +123,8 @@ public sealed record CatalogWordAdminDto(
     string? TrapCue = null,
     string? TrapWrong = null,
     string? TrapRight = null,
-    bool TrapScenePending = false);
+    bool TrapScenePending = false,
+    bool TrapSceneAsked = false);
 
 /// <param name="Remaining">Words still waiting for an AI draft.</param>
 /// <param name="ScenesRemaining">Words with a trap note the AI has not yet been asked to act out (L-52).</param>

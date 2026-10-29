@@ -61,6 +61,12 @@ public static class CatalogEndpoints
         // Trap scenes (L-52): the AI drafts them from the trap notes, an editor confirms.
         editor.MapPost("/units/{id:guid}/trap-scenes", (Guid id, ClaimsPrincipal user, TrapSceneService scenes, CancellationToken ct) =>
             scenes.DraftNextAsync(user.GetUserId(), id, ct));
+        editor.MapPost("/units/{id:guid}/trap-scenes/approve", (Guid id, CatalogAdminService catalog, CancellationToken ct) =>
+            catalog.ApproveScenesAsync(id, ct));
+        editor.MapPost("/units/{id:guid}/trap-scenes/retry", (Guid id, TrapSceneService scenes, CancellationToken ct) =>
+            scenes.RetryAsync(id, ct));
+        editor.MapPost("/catalog/words/{id:guid}/trap-scene/reject", (Guid id, ReviewCatalogWordRequest body, CatalogAdminService catalog, CancellationToken ct) =>
+            catalog.RejectSceneAsync(id, body.Version, ct));
         editor.MapPost("/catalog/words/{id:guid}/trap-scene/approve", (Guid id, ReviewCatalogWordRequest body, ClaimsPrincipal user, CatalogAdminService catalog, CancellationToken ct) =>
             catalog.ApproveSceneAsync(user.GetUserId(), id, body.Version, ct));
 

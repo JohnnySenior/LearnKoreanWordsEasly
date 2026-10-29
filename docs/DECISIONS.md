@@ -585,3 +585,10 @@ Johnny tasdiqlagan oqim: bo‘limning tekshirilgan so‘zlari → admin AI ssena
 - Klient faqat ko‘rsatish/ijro qiladi. Keyingi qadamga **audio `ended` hodisasi** orqali o‘tiladi; taxminiy sekund yoki umumiy yozuvni kesish yo‘q. Tarmoq/audio/autoplay xatosi darsni to‘xtatadi; avtomatik tashlab ketmaydi. Bir audio element (iOS), oldindan keyingi yozuvni yuklash, pauza/tezlik/qayta eshitish, reduced-motion. Ko‘rish va o‘tkazib yuborish o‘quv natijasi hisoblanmaydi, test yoki takrorlash progressini o‘zgartirmaydi.
 - Ochiq bo‘limning nashr qilingan tanishtiruvi birinchi kirishda taklif qilinadi; `qadam=1` jadvalni to‘g‘ridan ochadi. Dars nashr qilinmagan bo‘lsa eski jadval oqimi ishlaydi. Qolgan joy va o‘tkazib yuborish belgisi foydalanuvchi+dars versiyasi bo‘yicha qurilmada saqlanadi.
 - Railway `app` sozlamalari Studio’dagi `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL`ga reference bilan ulanadi. Kalit qiymati brauzerga yoki repoga chiqmaydi; Studio kodi va sozlamalari o‘zgartirilmaydi. Real birinchi darsni yaratish, ovoz sifatini eshitish va nashr qilish adminning amali bo‘lib qoladi.
+
+**L-52 qo‘shimcha (2026-10-29): sahnalarni tekshirish.** Johnny 2-bo‘limdan boshlab "AI qoralamasi" belgisini ko‘rmadi. Sababi: u bo‘limlardagi izohlarni AI yozgan, ularda aniq xato iqtibos qilinmagan; AI bu so‘zlarga sahna yozmagan, sahifa esa buni ko‘rsatmagan.
+- Bo‘lim sahifasida "Tuzoq sahnalari" paneli bor. Unda to‘rtta son: tekshirish kutmoqda, tasdiqlangan, AI xato topmadi, hali so‘ralmagan.
+- "Tekshirish" ro‘yxati faqat qoralamalarni ko‘rsatadi: izoh va o‘quvchi ko‘radigan ko‘rinish. Har birida Tasdiqlash, Tahrirlash va Olib tashlash tugmalari bor, oxirida "Hammasini tasdiqlash".
+- Har so‘z kartasida sahna holati ko‘rinadi.
+- "Topilmaganlarni qayta so‘rash": AI ko‘rsatmasi yumshatildi. Izohda iqtibos bo‘lmasa ham, aniq chalkashlik aytilgan bo‘lsa (ikki o‘xshash so‘z yoki shakl, noto‘g‘ri qo‘shimcha, so‘zma-so‘z tarjima), AI juftlik yozadi. Har juftlikni muharrir tekshiradi.
+- Sahna nashrni to‘xtatmaydi. Oldingi bo‘limlarga (1–20) ham shu panel orqali qaytiladi.

@@ -74,6 +74,23 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
         return await admin.UnitAsync(unitId, ct);
     }
 
+    /// <summary>Lets the AI look again at the unit's words it found no scene for (with the rules as they are now).</summary>
+    public async Task<UnitAdminDto> RetryAsync(Guid unitId, CancellationToken ct)
+    {
+        await using (await operations.AcquireAsync(CatalogAdminService.LockKey, ct))
+        {
+            foreach (var word in await db.CatalogWords
+                         .Where(w => w.UnitId == unitId && w.TrapUz != null && w.TrapWrong == null && w.TrapSceneAskedAt != null).ToListAsync(ct))
+            {
+                word.TrapSceneAskedAt = null;
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        return await admin.UnitAsync(unitId, ct);
+    }
+
     public static AiJsonRequest BuildRequest(IReadOnlyList<CatalogWord> words)
     {
         var lines = new StringBuilder();
@@ -154,8 +171,11 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
         - right: the Korean that should be said instead, taken from the note, same length and form.
         - cue: the situation in natural Uzbek Latin, at most 8 words, ending with ":" ("«Ishga boraman» deyishda:",
           "Sajang ko‘rsatma berganda:"); null when the note gives none.
-        Use only what the note says. When the note names no real wrong-and-right pair (it only explains a meaning, a
-        likeness to Uzbek, or several uses), return wrong, right and cue as null. Never invent a mistake.
+        Base the pair on the note. When the note does not quote a wrong sentence but clearly names the confusion (two
+        similar words or forms, a wrong particle, word-for-word Uzbek, the wrong politeness), write the short Korean an
+        Uzbek speaker would say because of it and the right one (나가요 / 나와요, 사요 / 살아요). An editor checks every
+        pair. When the note names no confusion at all (it only explains a meaning, a likeness to Uzbek, or several
+        uses), return wrong, right and cue as null. Never invent a mistake the note does not point to.
         Write Uzbek with o‘ g‘ and ’; never Cyrillic.
         """;
 
