@@ -196,6 +196,21 @@ public class TrapSceneTests
         Assert.Equal(c.TrapScene, card.TrapScene);
     }
 
+    [Fact]
+    public void An_answer_that_leaves_out_empty_keys_is_still_read()
+    {
+        // Claude's tool answers often omit a key whose value is null (no situation, no pair).
+        var words = new List<Lugat.Domain.Catalog.CatalogWord>
+        {
+            new() { Id = Guid.NewGuid(), Word = "가다", TrapUz = GoTrap },
+            new() { Id = Guid.NewGuid(), Word = "하다", TrapUz = "Yaxshi xabar: ot + qilmoq." },
+        };
+
+        var scenes = TrapSceneService.Parse("""{"words":[{"id":1,"wrong":"회사에서 가요","right":"회사에 가요"},{"id":"2","wrong":null,"right":null}]}""", words);
+
+        Assert.Equal(new TrapScene(null, "회사에서 가요", "회사에 가요"), Assert.Single(scenes).Value);
+    }
+
     [Theory]
     [InlineData(null, null, null, "izoh", true, null)]
     [InlineData(null, "회사에서 가요", "회사에 가요", "izoh", true, "회사에 가요")]

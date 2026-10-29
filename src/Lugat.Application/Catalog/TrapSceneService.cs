@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
 using Lugat.Contracts;
@@ -20,7 +19,6 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
 
     public const int WordsPerCall = 10;
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     /// <summary>A trap note, no scene yet, and the AI not asked since the note last changed.</summary>
     public static bool NeedsScene(CatalogWord w) => w.TrapUz is not null && w.TrapWrong is null && w.TrapSceneAskedAt is null;
@@ -108,56 +106,74 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
 
     private static (Dictionary<Guid, TrapScene> Scenes, HashSet<Guid> Answered) ParseResponse(string json, IReadOnlyList<CatalogWord> words)
     {
-        SceneResult? r;
+        var result = new Dictionary<Guid, TrapScene>();
+        var answered = new HashSet<Guid>();
+        JsonDocument doc;
         try
         {
-            r = JsonSerializer.Deserialize<SceneResult>(json, Json);
+            doc = JsonDocument.Parse(json);
         }
         catch (JsonException)
         {
-            return ([], []);
+            return (result, answered);
         }
 
-        var result = new Dictionary<Guid, TrapScene>();
-        var answered = new HashSet<Guid>();
-        foreach (var item in r?.Words ?? [])
+        using (doc)
         {
-            if (item.Id is not { } id || id < 1 || id > words.Count)
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("words", out var items) || items.ValueKind != JsonValueKind.Array)
             {
-                continue;
+                return (result, answered);
             }
 
-            var word = words[id - 1];
-            if (item.Wrong is null && item.Right is null && item.Cue is null)
+            foreach (var item in items.EnumerateArray())
             {
-                answered.Add(word.Id); // An explicit "no mistake pair", unlike a missing or invalid item.
-                continue;
-            }
+                if (item.ValueKind != JsonValueKind.Object || Number(item, "id") is not { } id || id < 1 || id > words.Count)
+                {
+                    continue;
+                }
 
-            var (scene, _) = CatalogContent.CheckScene(item.Cue, item.Wrong, item.Right, word.TrapUz);
-            if (scene is null)
-            {
-                // The situation is optional: a scene whose cue alone breaks the rules keeps its Korean lines.
-                (scene, _) = CatalogContent.CheckScene(null, item.Wrong, item.Right, word.TrapUz);
-            }
+                // Claude's tool answers may leave out a key whose value is null (often "cue"): that loses nothing.
+                // Both Korean keys present and null is the explicit "no pair"; an item with only its id is no answer
+                // and the word is asked again.
+                var word = words[id - 1];
+                var (wrong, hasWrong) = Text(item, "wrong");
+                var (right, hasRight) = Text(item, "right");
+                if (wrong is null && right is null)
+                {
+                    if (hasWrong && hasRight)
+                    {
+                        answered.Add(word.Id);
+                    }
 
-            if (scene is not null)
-            {
-                result.TryAdd(word.Id, scene);
-                answered.Add(word.Id);
+                    continue;
+                }
+
+                var (cue, _) = Text(item, "cue");
+                var (scene, _) = CatalogContent.CheckScene(cue, wrong, right, word.TrapUz);
+                if (scene is null)
+                {
+                    // The situation is optional: a scene whose cue alone breaks the rules keeps its Korean lines.
+                    (scene, _) = CatalogContent.CheckScene(null, wrong, right, word.TrapUz);
+                }
+
+                if (scene is not null)
+                {
+                    result.TryAdd(word.Id, scene);
+                    answered.Add(word.Id);
+                }
             }
         }
 
         return (result, answered);
     }
 
-    private sealed record SceneResult(List<SceneItem>? Words);
+    private static int? Number(JsonElement item, string name) =>
+        item.TryGetProperty(name, out var v) && (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var n) || v.ValueKind == JsonValueKind.String && int.TryParse(v.GetString(), out n))
+            ? n : null;
 
-    private sealed record SceneItem(
-        [property: JsonRequired] int? Id,
-        [property: JsonRequired] string? Cue,
-        [property: JsonRequired] string? Wrong,
-        [property: JsonRequired] string? Right);
+    private static (string? Value, bool Present) Text(JsonElement item, string name) =>
+        item.TryGetProperty(name, out var v) ? (v.ValueKind == JsonValueKind.String ? v.GetString() : null, true) : (null, false);
+
 
     private const string Instructions = """
         You prepare flash-card animations for adult Uzbek speakers learning Korean; many work in Korea. Each line
@@ -176,6 +192,7 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
         Uzbek speaker would say because of it and the right one (나가요 / 나와요, 사요 / 살아요). An editor checks every
         pair. When the note names no confusion at all (it only explains a meaning, a likeness to Uzbek, or several
         uses), return wrong, right and cue as null. Never invent a mistake the note does not point to.
+        Always write all four keys for every item; use null for an empty one, never leave a key out.
         Write Uzbek with o‘ g‘ and ’; never Cyrillic.
         """;
 
