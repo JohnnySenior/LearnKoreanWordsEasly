@@ -144,6 +144,24 @@ public class IntroductionTests
     }
 
     [Fact]
+    public async Task A_wrapped_answer_is_read_and_a_weak_word_waits_for_the_next_call()
+    {
+        // Claude sent {"words":"{\"words\":[…]}"}: the list as a string holding the whole answer again.
+        var inner = JsonSerializer.Serialize(new { words = new object[]
+        {
+            new { id = 1, title = "Harakatni tushunamiz", beats = Word(0).Beats },
+            new { id = 2, title = "Bo‘sh", beats = Array.Empty<object>() },
+        } }, Json);
+        var ai = new FakeAiProvider(AiProviderKind.Anthropic) { Answer = _ => JsonSerializer.Serialize(new { words = inner }) };
+        await using var f = Factory(ai);
+        var (admin, _) = await Setup(f);
+        var row = await Create(admin);
+        row = await Read<IntroductionDto>(await admin.PostAsJsonAsync(Root(row.Id) + "/draft-next", new IntroductionVersionRequest(row.Version), Json));
+        Assert.Equal(1, row.RemainingWords);
+        Assert.Single(row.Words);
+    }
+
+    [Fact]
     public async Task Failed_recording_does_not_mark_ready_or_skip_its_beat_and_unpublished_or_locked_units_do_not_leak()
     {
         var narrator = new FakeNarrator { Fail = true };

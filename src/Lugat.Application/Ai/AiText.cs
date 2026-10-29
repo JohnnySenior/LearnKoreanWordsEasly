@@ -39,6 +39,56 @@ public static partial class AiText
         }
     }
 
+    /// <summary>
+    /// Claude's tool answers sometimes carry a top-level list or object as a JSON string, at times holding the whole
+    /// answer again: {"words":"{\"words\":[…]}"}. Where the schema expects an array or object, such a string is parsed
+    /// and the repeated wrapper dropped; anything else, or JSON that does not parse, stays as it was.
+    /// </summary>
+    public static string Unwrap(string json, string schema)
+    {
+        if (!json.Contains("\"[", StringComparison.Ordinal) && !json.Contains("\"{", StringComparison.Ordinal))
+        {
+            return json;
+        }
+
+        try
+        {
+            if (JsonNode.Parse(json) is not JsonObject root || JsonNode.Parse(schema)?["properties"] is not JsonObject properties)
+            {
+                return json;
+            }
+
+            var changed = false;
+            foreach (var key in root.Select(p => p.Key).ToList())
+            {
+                var type = properties[key]?["type"]?.GetValue<string>();
+                if (type is not ("array" or "object"))
+                {
+                    continue;
+                }
+
+                var value = root[key];
+                for (var depth = 0; depth < 3 && value is JsonValue v && v.TryGetValue<string>(out var text); depth++)
+                {
+                    var inner = JsonNode.Parse(text);
+                    // The string can hold the whole answer again: {"words":[…]} inside "words".
+                    value = inner is JsonObject wrapper && wrapper.Count == 1 && wrapper[key] is { } again && type == "array"
+                        ? again.DeepClone()
+                        : inner;
+                    changed = true;
+                }
+
+                root[key] = value?.DeepClone();
+            }
+
+            return changed ? root.ToJsonString() : json;
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException or FormatException)
+        {
+            return json;
+        }
+    }
+
     private static bool Leaks(JsonNode? node) => node switch
     {
         JsonObject o => o.Any(p => Leaks(p.Value)),

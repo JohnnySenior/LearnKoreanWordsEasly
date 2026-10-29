@@ -29,4 +29,14 @@ public class AiTextTests
         Assert.Equal(3, clean.GetProperty("n").GetInt32());
         Assert.Equal("{\"ok\":\"<b>x\"}", AiText.CleanJson("{\"ok\":\"<b>x\"}")); // an opening tag alone is not a leak
     }
+
+    private const string ListSchema = """{"type":"object","properties":{"words":{"type":"array"},"note":{"type":"string"}}}""";
+
+    [Theory]
+    [InlineData("""{"words":"[{\"id\":1}]"}""", """{"words":[{"id":1}]}""")]
+    [InlineData("""{"words":"{\"words\":[{\"id\":1}]}"}""", """{"words":[{"id":1}]}""")]
+    [InlineData("""{"words":[{"id":1}],"note":"[x]"}""", """{"words":[{"id":1}],"note":"[x]"}""")]
+    [InlineData("""{"words":"[broken"}""", """{"words":"[broken"}""")]
+    public void A_list_sent_as_a_string_is_unwrapped_only_where_the_schema_expects_one(string json, string expected) =>
+        Assert.Equal(expected, AiText.Unwrap(json, ListSchema));
 }
