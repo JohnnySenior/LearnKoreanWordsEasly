@@ -57,3 +57,16 @@ test('a browser autoplay rejection pauses for a user retry and never reports com
     assert.deepEqual(calls, []);
     player.dispose();
 });
+
+test('first-tap priming uses decodable PCM samples, rather than a zero-frame WAV', async () => {
+    const { player, audio } = fixture();
+    await player.prime();
+    const bytes = Buffer.from(audio.src.split(',')[1], 'base64');
+    assert.equal(bytes.subarray(0, 4).toString(), 'RIFF');
+    assert.equal(bytes.subarray(8, 12).toString(), 'WAVE');
+    const dataLength = bytes.readUInt32LE(40);
+    assert.ok(dataLength > 0, 'Safari must receive actual silent samples to start the element');
+    assert.equal(bytes.length, 44 + dataLength);
+    assert.equal(audio.paused, true);
+    player.dispose();
+});

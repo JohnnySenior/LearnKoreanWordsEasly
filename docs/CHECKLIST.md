@@ -432,3 +432,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Railway app’da `ElevenLabs__ApiKey`, `ElevenLabs__VoiceId`, `ElevenLabs__Model` Studio servisiga reference sifatida yozildi; deploy o‘tkazib yuborilib, kod nashri bilan birga kuchga kiradi. Kalit qiymatlari o‘qilmadi/nusxalanmadi.
 - CI/deploy dalili: PR #49 Checks va aynan merge commit’iga bog‘langan Railway deployment; /health va yangi PWA assetlari/xeshi bilan tekshiriladi.
 - [ ] Johnny/admin: haqiqiy 1-bo‘lim ssenariysini yaratish, tahrir/tasdiqlash, ElevenLabs/Azure ovozini eshitib tekshirish va xatosiz bo‘lgach nashr qilish. Haqiqiy iPhone Safari/PWA’da eshitish sinovi.
+
+**Tanishtirishning birinchi bosishda ovoz boshlashi (2026-10-29):**
+- [x] iOS uchun bitta audio element avval mavjud `audio.js` dagi haqiqiy 20ms jim PCM yozuvi bilan tayyorlanadi; bo‘sh (0 sample) WAV ishlatilmaydi. JS regressiyasi yozuvning RIFF/WAVE va sample uzunligini tekshiradi; JS jami 21/21.
+- [ ] Haqiqiy iPhone Safari/PWA’da birinchi bosishni tekshirish — adminning real ovozli dars qabul sinovi bilan birga.
