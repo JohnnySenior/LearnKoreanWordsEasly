@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
 using Lugat.Contracts;
@@ -12,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Lugat.Application.Catalog;
 
 /// <summary>Human-controlled, versioned publication. Generations run in bounded batches; learners only read saved media.</summary>
-public sealed class IntroductionService(IAppDbContext db, AiGateway ai, IntroductionAudioService audio,
+public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, IntroductionAudioService audio,
     IFileStore files, IOperationLock operations, TimeProvider time, UnitProgressService access)
 {
     public const string Feature = "unit-introduction";
@@ -294,13 +295,27 @@ public sealed class IntroductionService(IAppDbContext db, AiGateway ai, Introduc
         {
             var matches = items.Where(w => w is not null && w.Id == i + 1).ToList();
             if (matches.Count != 1) continue;
-            try { words.Add(CheckWord(sources[i], matches[0].Title, matches[0].Beats)); }
+            try { words.Add(CheckWord(sources[i], matches[0].Title, matches[0].Beats?.Select(b => b is null ? b! : b with { NarrationUz = Spoken(sources[i], b.NarrationUz) }).ToList())); }
             catch (ValidationException ex) { problem ??= $"{i + 1}-so‘z: {ex.Message}"; }
         }
         return words.Count > 0 ? words : throw new ValidationException(problem ?? "so‘z raqamlari mos kelmadi");
     }
+    /// <summary>
+    /// The Uzbek narrator cannot read Hangul, and the model often names the word itself in it ("하다 fe’li …"): that
+    /// word becomes its romanization. Any other Hangul stays, so the check still rejects the beat.
+    /// </summary>
+    private static string Spoken(IntroductionSource source, string? narration)
+    {
+        if (narration is null || source.Romanization is not { Length: > 0 } roman) return narration!;
+        var stem = source.Word.EndsWith('다') && source.Word.Length > 1 ? source.Word[..^1] : null;
+        return HangulRun().Replace(narration, m => m.Value == source.Word || m.Value == stem ? roman : m.Value);
+    }
+
+    [GeneratedRegex(@"[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]+")]
+    private static partial Regex HangulRun();
+
     public static AiJsonRequest BuildRequest(IReadOnlyList<IntroductionSource> sources) => new(Feature, Instructions,
-        "<reviewed_words>" + JsonSerializer.Serialize(sources.Select((s, i) => new { id = i + 1, s.Word, s.MeaningUz, s.ExampleKo, s.ExampleUz, s.TrapUz }), Json) + "</reviewed_words>",
+        "<reviewed_words>" + JsonSerializer.Serialize(sources.Select((s, i) => new { id = i + 1, s.Word, s.Romanization, s.MeaningUz, s.ExampleKo, s.ExampleUz, s.TrapUz }), Json) + "</reviewed_words>",
         "unit_introduction", Schema, 5000);
     private const string Instructions = """
         Write a calm visual vocabulary introduction for adult Uzbek beginners learning Korean. Input in
@@ -309,7 +324,8 @@ public sealed class IntroductionService(IAppDbContext db, AiGateway ai, Introduc
         Return one word item per input, with its numeric id, a short Uzbek title and 2-5 beats in presentation order:
         first meaning, then example, then trap if a trap note exists. A trap may take two beats for comparison.
         Each beat reveals a board fragment and plays ONE complete Uzbek recording (about 1-3 natural sentences).
-        narrationUz: natural Uzbek LATIN ONLY, no Hangul, no markup or stage directions. Explain the meaning and
+        narrationUz: natural Uzbek LATIN ONLY, no Hangul, no markup or stage directions. An Uzbek voice reads it
+        aloud and cannot read Hangul: name the Korean word by its romanization ("hada fe’li"), never in Hangul. Explain the meaning and
         how an Uzbek speaker uses it; explain real traps more deeply. Korean text is displayed separately.
         korean: a short Korean example or phrase in Hangul, or null; uzbek: its natural Uzbek meaning or a short
         board annotation, or null. Keep the example grounded in the reviewed material, polite Korean where suitable.
