@@ -103,6 +103,39 @@ public class TrapSceneTests
     }
 
     [Fact]
+    public async Task The_review_list_confirms_all_drops_one_and_words_without_a_scene_can_be_asked_again()
+    {
+        _ai.Answer = r => Scenes(r.UserContent);
+        await using var factory = NewFactory();
+        var (admin, learner) = await SetUpAsync(factory);
+        var url = $"/api/admin/units/{ApiFactory.Unit(1)}";
+        var drafted = await ReadAsync<UnitAdminDto>(await admin.PostAsync(url + "/trap-scenes", null));
+        var doWord = drafted.Words.Single(w => w.Word == "하다");
+
+        // 하다: asked, nothing found; the page can tell it from a word never asked.
+        Assert.True(doWord.TrapSceneAsked);
+        Assert.Null(doWord.TrapWrong);
+        Assert.False(drafted.Words.Single(w => w.Word == "먹다").TrapSceneAsked); // no trap note
+
+        var all = await ReadAsync<UnitAdminDto>(await admin.PostAsync(url + "/trap-scenes/approve", null));
+        var go = all.Words.Single(w => w.Word == "가다");
+        Assert.False(go.TrapScenePending);
+        Assert.NotNull((await GoCardAsync(factory, learner)).TrapScene);
+
+        var rejected = await ReadAsync<CatalogWordAdminDto>(await admin.PostAsJsonAsync($"/api/admin/catalog/words/{go.Id}/trap-scene/reject", new ReviewCatalogWordRequest(go.Version), Json));
+        Assert.Null(rejected.TrapWrong);
+        Assert.True(rejected.TrapSceneAsked);
+        Assert.Null((await GoCardAsync(factory, learner)).TrapScene);
+        Assert.Equal(go.ContentVersion + 1, rejected.ContentVersion);
+
+        var retried = await ReadAsync<UnitAdminDto>(await admin.PostAsync(url + "/trap-scenes/retry", null));
+        Assert.Equal(2, retried.ScenesRemaining); // 가다 and 하다 may be asked again
+        var again = await ReadAsync<UnitAdminDto>(await admin.PostAsync(url + "/trap-scenes", null));
+        Assert.True(again.Words.Single(w => w.Word == "가다").TrapScenePending);
+        Assert.Equal(HttpStatusCode.Forbidden, (await learner.PostAsync(url + "/trap-scenes/approve", null)).StatusCode);
+    }
+
+    [Fact]
     public async Task An_editor_writes_or_clears_a_scene_by_hand_and_a_changed_note_can_be_asked_again()
     {
         _ai.Answer = r => Scenes(r.UserContent);

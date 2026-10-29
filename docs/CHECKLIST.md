@@ -438,3 +438,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Haqiqiy iPhone Safari/PWA’da birinchi bosishni tekshirish — adminning real ovozli dars qabul sinovi bilan birga.
 
 - [x] Tanishtirishdagi lotincha o‘qilish ham mavjud profilning «Lotincha o‘qilishini ko‘rsatish» sozlamasiga bo‘ysunadi.
+
+**Sahnalarni tekshirish (L-52 qo‘shimcha, 2026-10-29):**
+- [x] Panel (4 son), "Tekshirish" ro‘yxati (Tasdiqlash / Tahrirlash / Olib tashlash, Hammasini tasdiqlash), so‘z kartasida sahna holati, "Topilmaganlarni qayta so‘rash".
+- [x] Test `The_review_list_confirms_all_drops_one_and_words_without_a_scene_can_be_asked_again`. Chromium 390px: panel va ro‘yxat, scroll yo‘q.
+- [ ] Johnny: 2-bo‘limdan boshlab har bo‘limda "Topilmaganlarni qayta so‘rash" → "Tekshirish" → tasdiqlash.

@@ -268,6 +268,44 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         return (await ToDtosAsync([word], ct))[0];
     }
 
+    /// <summary>Confirms every AI-drafted scene of the unit at once, after the editor read them in the review list.</summary>
+    public async Task<UnitAdminDto> ApproveScenesAsync(Guid unitId, CancellationToken ct)
+    {
+        await using (await operations.AcquireAsync(LockKey, ct))
+        {
+            var now = time.GetUtcNow();
+            foreach (var word in await db.CatalogWords.Where(w => w.UnitId == unitId && w.TrapScenePending).ToListAsync(ct))
+            {
+                (word.TrapScenePending, word.UpdatedAt) = (false, now);
+                word.ContentVersion++;
+            }
+
+            await SaveAsync(ct);
+        }
+
+        return await UnitAsync(unitId, ct);
+    }
+
+    /// <summary>
+    /// Drops a word's scene: the card shows the plain trap note again. The word counts as asked, so the AI does not
+    /// write the same scene again; "Qayta so‘rash" can still ask it.
+    /// </summary>
+    public async Task<CatalogWordAdminDto> RejectSceneAsync(Guid wordId, uint version, CancellationToken ct)
+    {
+        await using var lease = await operations.AcquireAsync(LockKey, ct);
+        var word = await LoadAsync(wordId, version, ct);
+        var now = time.GetUtcNow();
+        if (word.TrapWrong is not null && !word.TrapScenePending)
+        {
+            word.ContentVersion++; // learners saw it
+        }
+
+        (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapScenePending, word.UpdatedAt) = (null, null, null, false, now);
+        word.TrapSceneAskedAt ??= now;
+        await SaveAsync(ct);
+        return (await ToDtosAsync([word], ct))[0];
+    }
+
     /// <summary>The scene learners may see: set and confirmed by an editor.</summary>
     public static TrapScene? LearnerScene(CatalogWord w) =>
         !w.TrapScenePending && w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapScene(w.TrapCue, wrong, right) : null;
@@ -363,6 +401,6 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             (usages.GetValueOrDefault(w.Id)?.Questions ?? []).Select(q => new CatalogQuestionDto(q.Uzbek, q.Sentence, q.Answer, q.Wrong, q.ExplanationUz)).ToList(),
             w.Version,
             w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Of(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [],
-            w.TrapCue, w.TrapWrong, w.TrapRight, w.TrapScenePending)).ToList();
+            w.TrapCue, w.TrapWrong, w.TrapRight, w.TrapScenePending, w.TrapSceneAskedAt is not null)).ToList();
     }
 }
