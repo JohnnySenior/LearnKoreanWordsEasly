@@ -94,14 +94,20 @@ else
     private void Select(IntroductionDto lesson)
     {
         _lesson = lesson; _preview = false; _audioReviewed = false; _edits.Clear();
-        foreach (var word in lesson.Words) _edits[word.WordId] = new WordEdit { Title = word.Title, Reviewed = word.Reviewed, Beats = word.Beats.Select(b => new BeatEdit { Kind = b.Kind, NarrationUz = b.NarrationUz, Korean = b.Korean, Uzbek = b.Uzbek }).ToList() };
+        AddEdits(lesson);
+    }
+    // Words the AI just wrote need their edit forms too; forms already open keep what the editor typed.
+    private void AddEdits(IntroductionDto lesson)
+    {
+        foreach (var word in lesson.Words.Where(w => !_edits.ContainsKey(w.WordId)))
+            _edits[word.WordId] = new WordEdit { Title = word.Title, Reviewed = word.Reviewed, Beats = word.Beats.Select(b => new BeatEdit { Kind = b.Kind, NarrationUz = b.NarrationUz, Korean = b.Korean, Uzbek = b.Uzbek }).ToList() };
     }
     private async Task<bool> CallAsync(string action, object body, bool refresh = true)
     {
         var r = await Api.SendJsonAsync<IntroductionDto>(HttpMethod.Post, $"api/admin/introductions/{_lesson!.Id}/{action}", body, timeout: TimeSpan.FromSeconds(95));
         if (_disposed) return false;
         if (r.Value is null) { _error = r.Error; return false; }
-        if (refresh) Select(r.Value); else _lesson = r.Value;
+        if (refresh) Select(r.Value); else { _lesson = r.Value; AddEdits(r.Value); }
         return true;
     }
     private async Task CreateAsync()
@@ -136,7 +142,7 @@ else
         _busy = true; _error = null; var edit = _edits[wordId];
         var body = new UpdateIntroductionWordRequest(_lesson!.Version, edit.Title, edit.Beats.Select(b => new IntroductionBeatInput(b.Kind, b.NarrationUz, string.IsNullOrWhiteSpace(b.Korean) ? null : b.Korean, string.IsNullOrWhiteSpace(b.Uzbek) ? null : b.Uzbek)).ToList(), edit.Reviewed);
         var r = await Api.SendJsonAsync<IntroductionDto>(HttpMethod.Put, $"api/admin/introductions/{_lesson.Id}/words/{wordId}", body);
-        if (r.Value is not null) { _lesson = r.Value; if (_list is not null) _list = _list with { Versions = _list.Versions.Select(v => v.Id == _lesson.Id ? _lesson : v).ToList() }; } else _error = r.Error;
+        if (r.Value is not null) { _lesson = r.Value; AddEdits(r.Value); if (_list is not null) _list = _list with { Versions = _list.Versions.Select(v => v.Id == _lesson.Id ? _lesson : v).ToList() }; } else _error = r.Error;
         _busy = false;
     }
     private static void AddBeat(WordEdit edit, bool hasTrap) => edit.Beats.Add(new BeatEdit { Kind = hasTrap ? "trap" : "example" });
