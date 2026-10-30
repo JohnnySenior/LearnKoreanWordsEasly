@@ -267,7 +267,7 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
 
     public static IntroductionWord CheckWord(IntroductionSource source, string? title, IReadOnlyList<IntroductionBeatInput>? beats)
     {
-        Require(!string.IsNullOrWhiteSpace(title) && title.Length <= 120 && SentenceCheckService.IsUzbekLatin(title), "Sarlavha o‘zbekcha bo‘lsin (120 belgigacha).");
+        Require(!string.IsNullOrWhiteSpace(title) && title.Length <= 120 && UzbekBesideKorean(title), "Sarlavha o‘zbekcha bo‘lsin (120 belgigacha).");
         Require(beats is { Count: >= 2 and <= 5 }, "Har so‘z uchun 2–5 ta qisqa doska qadami kerak.");
         var result = new List<IntroductionBeat>();
         foreach (var b in beats!)
@@ -282,7 +282,7 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
             Require(parts.Count(x => x.Korean) <= MaxKoreanParts && parts.Where(x => x.Korean).All(x => x.Text.Length <= 60),
                 $"Diktor matnida ko‘pi bilan {MaxKoreanParts} ta qisqa koreyscha qism bo‘lsin.");
             Require(b.Korean is null || b.Korean.Length <= 160 && SentenceCheckService.ContainsHangul(b.Korean), "Koreyscha misol noto‘g‘ri.");
-            Require(b.Uzbek is null || b.Uzbek.Length <= 300 && SentenceCheckService.IsUzbekLatin(b.Uzbek), "Misol izohi o‘zbekcha bo‘lsin.");
+            Require(b.Uzbek is null || b.Uzbek.Length <= 300 && UzbekBesideKorean(b.Uzbek), "Misol izohi o‘zbekcha bo‘lsin.");
             Require(b.Kind != "trap" || source.TrapUz is not null, "Lug‘atda tuzog‘i yo‘q so‘zga tuzoq o‘ylab topilmaydi.");
             result.Add(new(b.Kind, narration, b.Korean?.Trim(), b.Uzbek?.Trim()));
         }
@@ -315,6 +315,12 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
         return words.Count > 0 ? words : throw new ValidationException(problem ?? "so‘z raqamlari mos kelmadi");
     }
     public const int MaxKoreanParts = 6;
+
+    /// <summary>
+    /// Board text (a title like "아니다 – emas", an annotation) is shown, never spoken, so it may name the Korean word;
+    /// what is left without the Hangul must be Uzbek Latin.
+    /// </summary>
+    private static bool UzbekBesideKorean(string text) => SentenceCheckService.IsUzbekLatin(HangulPhrase().Replace(text, " "));
 
     /// <summary>A narration part: Uzbek for the narrator, or Korean («하다») for the Korean voice.</summary>
     public sealed record NarrationPart(string Text, bool Korean);
