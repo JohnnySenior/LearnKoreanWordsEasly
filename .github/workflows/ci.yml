@@ -1,9 +1,11 @@
 name: CI
 
-# Every push is built and tested. Railway deploys only `main`, and only after this workflow
-# has passed on the commit ("Wait for CI"), see docs/HOSTING.md.
+# Pull requests and `main` are built and tested. Railway deploys only `main`, and only after this
+# workflow has passed on the commit ("Wait for CI"), see docs/HOSTING.md. Branch pushes are not
+# built twice: their pull request runs the same jobs (Actions minutes are limited on a private repo).
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
