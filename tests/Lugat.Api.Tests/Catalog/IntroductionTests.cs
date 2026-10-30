@@ -178,6 +178,14 @@ public class IntroductionTests
             [new("하다", true), new("fe’li eng ko‘p ishlatiladi:", false), new("공부해요", true), new("deymiz. «Ishga boraman» kabi.", false)],
             Lugat.Application.Catalog.IntroductionService.NarrationParts(word.Beats[0].NarrationUz));
         Assert.Throws<Lugat.Application.ValidationException>(() => Lugat.Application.Catalog.IntroductionService.Parse(Answer("«하다» «가다» «오다» «먹다» «자다» «보다» «사다» qarang."), [source]));
+
+        // A board title may name the word in Hangul: it is shown, not spoken (A-1 "아니다 – emas" stopped the batch).
+        var titled = JsonSerializer.Serialize(new { words = new[] { new { id = 1, title = "하다 – qilmoq", beats = new object[]
+        {
+            new { kind = "meaning", narrationUz = "«하다» fe’li.", korean = (string?)null, uzbek = "하다 = qilmoq" },
+            new { kind = "example", narrationUz = "Misolga qarang.", korean = "공부해요.", uzbek = "O‘qiyman." },
+        } } } });
+        Assert.Equal("하다 – qilmoq", Assert.Single(Lugat.Application.Catalog.IntroductionService.Parse(titled, [source])).Title);
     }
 
     [Fact]
