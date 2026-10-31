@@ -25,17 +25,20 @@
     @Row("02", "Qaysi so‘z to‘g‘ri?", "Gapdagi bo‘sh joyga mos so‘zni tanlang", "mashq/qollanish", false)
     @Row("03", "Talaffuz", "So‘zlarni mikrofon bilan ayting — Azure baholaydi", "sinov/ogzaki", true)
     @Row("04", "Aralash sinov", "Ma’no, koreyscha va bo‘sh joy savollari · baho bilan", "sinov/lugat", false)
+    @Row("05", "Krossvord", _crossword is { } c && c.OpenUnits < c.UnitsNeeded
+        ? $"🔒 {c.UnitsNeeded}-bo‘limni ochganingizda ochiladi"
+        : _crossword?.Active is { } a ? $"Davom etish · {a.Found + a.Revealed} / {a.Clues.Count} so‘z" : "Ma’nosiga qarab so‘zlarni panjaraga yozing", "mashq/krossvord", false)
 </nav>
 
 <SectionLabel Text="Gaplar" />
 <nav class="practice-list" aria-label="Gap mashqlari">
-    @Row("05", "Gap zinapoyasi", "AI bergan gapni to‘ldiring, tartiblang, tarjima qiling", "gap/zinapoya", true)
-    @Row("06", "O‘z gapingiz", "Gapni o‘zingiz yozing — AI tekshiradi", "gap", true)
+    @Row("06", "Gap zinapoyasi", "AI bergan gapni to‘ldiring, tartiblang, tarjima qiling", "gap/zinapoya", true)
+    @Row("07", "O‘z gapingiz", "Gapni o‘zingiz yozing — AI tekshiradi", "gap", true)
 </nav>
 
 <SectionLabel Text="Xatolarim" />
 <nav class="practice-list" aria-label="Xatolar">
-    @Row("07", "Xatolarim", "Xato qilgan so‘zlar, xato turlari va tuzoqlar", "xatolar", true)
+    @Row("08", "Xatolarim", "Xato qilgan so‘zlar, xato turlari va tuzoqlar", "xatolar", true)
 </nav>
 
 @if (_message is not null)
@@ -57,12 +60,14 @@
         </a>;
     private string? _message;
     private List<TestSummaryDto>? _tests;
+    private CrosswordHomeDto? _crossword;
 
     protected override async Task OnInitializedAsync()
     {
         _premium = (await Api.GetAsync<PremiumStatusDto>("api/me/premium")).Value;
         var tests = await Api.GetAsync<List<TestSummaryDto>>("api/tests");
         _tests = tests.Value;
+        _crossword = (await Api.GetAsync<CrosswordHomeDto>("api/crosswords")).Value;
         _message = tests.Ok ? null : tests.Error;
     }
 }

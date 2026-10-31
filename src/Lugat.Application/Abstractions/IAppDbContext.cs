@@ -54,6 +54,8 @@ public interface IAppDbContext
 
     DbSet<Domain.Listening.ListeningSet> ListeningSets { get; }
 
+    DbSet<Domain.Games.Crossword> Crosswords { get; }
+
     DbSet<Card> Cards { get; }
 
     DbSet<ReviewEvent> ReviewEvents { get; }
