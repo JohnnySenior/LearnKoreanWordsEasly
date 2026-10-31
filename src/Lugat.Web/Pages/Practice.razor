@@ -19,17 +19,59 @@
 }
 else if (_session is null)
 {
-    <a class="back" href="mashq">← Mashqlar</a>
-    <h1>Kartochka</h1>
+    @* No session yet: what is due now, else when the next review comes and what else there is to do (no streaks, §1.4). *@
+    <h1>Takrorlash</h1>
     @if (_error is not null)
     {
         <div class="notice" role="alert">@_error</div>
     }
-    <p class="muted">Hozir faol mashg‘ulot yo‘q. Takrorlash barcha ochilgan bo‘limlarning vaqti kelgan kartalarini oladi, yangi so‘zlar esa joriy bo‘limdan.</p>
-    <button class="button primary block" disabled="@_busy" @onclick="StartReviewAsync">Takrorlashni boshlash</button>
-    @if (_startMessage is not null)
+    @if (_today is { } today)
     {
-        <p role="status" style="margin-top:8px">@_startMessage</p>
+        <section class="home-due">
+            @if (today.DueNow > 0)
+            {
+                <span class="kicker accent">Bugun takrorlash</span>
+                <div class="home-due-figure">
+                    <b>@today.DueNow</b>
+                    <span>ta karta<br />~@Minutes(today.DueNow, today) daqiqa</span>
+                </div>
+                <p class="muted small-text">Ochilgan bo‘limlardan muddati kelgan so‘zlar.</p>
+                <button class="btn btn-primary block big" disabled="@_busy" @onclick="StartReviewAsync"><span>Boshlash</span><Icon Name="arrow-right" /></button>
+            }
+            else
+            {
+                <h3 class="home-due-empty">✓ @(today.NewAvailable > 0 ? "Hozircha takrorlanadigan karta yo‘q" : "Hammasi takrorlangan")</h3>
+                <p class="muted small-text">@(today.NextDueAt is { } next
+                    ? $"Keyingisi: {Format.Soon(next, DateTimeOffset.UtcNow)} · {today.NextDueCount} ta karta"
+                    : "Bo‘limdagi so‘zlarni o‘rganganingizda takrorlash shu yerda chiqadi.")</p>
+            }
+            @if (_startMessage is not null)
+            {
+                <p role="status" class="small-text">@_startMessage</p>
+            }
+        </section>
+        @if (today.DueNow == 0 && today.NewAvailable > 0 && today.CurrentUnit is { } unit)
+        {
+            <section class="home-due">
+                <span class="kicker">Yangi so‘zlar · @unit.Number-bo‘lim</span>
+                <div class="home-due-figure">
+                    <b>@today.NewAvailable</b>
+                    <span>ta yangi karta<br />hali ko‘rilmagan</span>
+                </div>
+                <a class="btn btn-primary block big" href="@($"bolimlar/{unit.Id}")"><span>Bo‘limga o‘tish</span><Icon Name="arrow-right" /></a>
+            </section>
+        }
+        else if (today.DueNow == 0)
+        {
+            <section class="home-due">
+                <span class="kicker">Bo‘sh vaqtingiz bo‘lsa</span>
+                <div class="list">
+                    <ListRow Href="mashq/yozish" Label="Yozish mashqi" />
+                    <ListRow Href="tinglash" Label="Tinglash" />
+                    <ListRow Href="sozlarim" Label="Mening so‘zlarim" />
+                </div>
+            </section>
+        }
     }
 }
 else if (_session.Current is not { } card)
@@ -201,6 +243,9 @@ else
     private Guid? _pendingSessionId;
 
     private string? _startMessage;
+    private TodayDto? _today;
+
+    private static int Minutes(int cards, TodayDto today) => Math.Max(1, (int)Math.Round(cards * today.SecondsPerCard / 60.0));
 
     /// <summary>"Takrorlash" (spec §4.6): plans a 20-minute review, or says there is nothing due yet.</summary>
     private async Task StartReviewAsync()
@@ -221,6 +266,13 @@ else
         var result = await Api.GetAsync<SessionDto>("api/sessions/current");
         _error = result.Ok ? null : result.Error;
         _session = result.Value;
+        if (_session is null && result.Ok)
+        {
+            var today = await Api.GetAsync<TodayDto>("api/today");
+            _today = today.Value;
+            _error ??= today.Ok ? null : today.Error;
+        }
+
         _loading = false;
         ShowCard();
 

@@ -232,7 +232,11 @@ public class StudyEndpointsTests
 
         Assert.Equal(StudySessionStatus.Completed, session.Status);
         Assert.Equal(new SessionSummaryDto(10, 0, 0, 10, 10), session.Summary);
-        Assert.Equal(0, (await client.GetFromJsonAsync<TodayDto>("/api/today", Json))!.DueNow);
+        var done = (await client.GetFromJsonAsync<TodayDto>("/api/today", Json))!;
+        Assert.Equal(0, done.DueNow);
+        // The review page says when the next review comes, so an empty review is not a dead end.
+        Assert.True(done.NextDueAt > factory.Time.GetUtcNow());
+        Assert.Equal(10, done.NextDueCount);
 
         factory.Time.Advance(TimeSpan.FromDays(1));
         client = await factory.SignedInClientAsync(ApiFactory.UserA); // a day later the app is reopened
