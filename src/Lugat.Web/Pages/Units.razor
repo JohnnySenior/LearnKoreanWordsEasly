@@ -25,7 +25,6 @@
             var level = l.Level;
             <button class="@(_level == level ? "selected" : "")" role="tab" aria-selected="@(_level == level)" @onclick="() => SelectAsync(level)">
                 <b>@level <span class="level-ko" lang="ko">@Format.LevelKorean(level)</span></b>
-                @if (Api.State.Me?.ShowRomanization != false) { <span class="level-roman">@Format.LevelRomanized(level)</span> }
                 <span>@(l.PublishedUnits == 0 ? "Tez orada" : $"{l.PublishedUnits} bo‘lim")</span>
             </button>
         }
