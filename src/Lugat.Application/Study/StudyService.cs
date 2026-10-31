@@ -35,13 +35,22 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
         var active = await db.StudySessions.Where(s => s.OwnerId == ownerId && s.Status == StudySessionStatus.Active)
             .OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync(ct);
 
+        // "Keyingisi: 18:40 · 6 ta karta" when nothing is due: the next due card and those due within an hour of it.
+        var nextDue = await cards.Where(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt > now)
+            .OrderBy(c => c.Card.DueAt).Select(c => (DateTimeOffset?)c.Card.DueAt).FirstOrDefaultAsync(ct);
+        var nextCount = nextDue is { } at
+            ? await cards.CountAsync(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt > now && c.Card.DueAt <= at.AddHours(1), ct)
+            : 0;
+
         return new TodayDto(
             dueNow,
             newAvailable,
             active is null ? null : await ToDtoAsync(active, ct),
             await SecondsPerCardAsync(ownerId, ct),
             current,
-            await db.UnitProgress.CountAsync(p => p.UserId == ownerId && p.Status == Domain.Catalog.UnitProgressStatus.Passed, ct));
+            await db.UnitProgress.CountAsync(p => p.UserId == ownerId && p.Status == Domain.Catalog.UnitProgressStatus.Passed, ct),
+            nextDue,
+            nextCount);
     }
 
     /// <summary>Words with at least one card due now, counted as on the home page (the reminder's "N ta so‘z", spec §8).</summary>

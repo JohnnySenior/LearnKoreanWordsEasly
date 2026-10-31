@@ -13,7 +13,9 @@ public sealed record TodayDto(
     SessionDto? ActiveSession,
     int SecondsPerCard,
     UnitSummaryDto? CurrentUnit = null,
-    int PassedUnits = 0);
+    int PassedUnits = 0,
+    DateTimeOffset? NextDueAt = null,
+    int NextDueCount = 0);
 
 /// <param name="Minutes">10, 20, 30 or null for no limit (spec PLAN06).</param>
 /// <param name="Restart">Abandon an unfinished session and plan a new one.</param>

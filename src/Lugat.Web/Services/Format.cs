@@ -41,6 +41,19 @@ public static class Format
     /// <summary>"29-sentabr".</summary>
     public static string Day(DateOnly day) => $"{day.Day}-{Months[day.Month - 1]}";
 
+    /// <summary>"bugun, 18:40", "ertaga, 09:15", or "Seshanba, 6-oktabr, 23:00" (Korea time).</summary>
+    public static string Soon(DateTimeOffset value, DateTimeOffset now)
+    {
+        var k = ToKorea(value);
+        var days = DateOnly.FromDateTime(k.DateTime).DayNumber - DateOnly.FromDateTime(ToKorea(now).DateTime).DayNumber;
+        return days switch
+        {
+            <= 0 => $"bugun, {k:HH\\:mm}",
+            1 => $"ertaga, {k:HH\\:mm}",
+            _ => DayTime(value),
+        };
+    }
+
     /// <summary>"bugun", "kecha", "3 kun oldin", or the date.</summary>
     public static string Ago(DateTimeOffset value, DateTimeOffset now)
     {
