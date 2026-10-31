@@ -917,6 +917,9 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .level-pick button:last-child { border-right: 0; }
 .level-pick b { font: 800 15px var(--font-heading); }
 .level-pick span { font-size: 10px; }
+.level-pick .level-ko { margin-left: 4px; font: 500 12px var(--font-body); opacity: .7; }
+.level-pick .level-roman { font-size: 10px; opacity: .6; margin-top: -2px; }
+.seg .level-ko { margin-left: 4px; font-size: .85em; opacity: .7; }
 .level-pick button.selected { background: var(--color-accent); color: var(--color-bg); }
 .unit-rows { margin: 12px calc(-1 * var(--gutter)) 0; border-top: 2px solid var(--color-divider); }
 .unit-item {

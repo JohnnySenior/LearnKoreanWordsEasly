@@ -25,7 +25,7 @@
     @foreach (var level in Enum.GetValues<CatalogLevel>())
     {
         var l = level;
-        <button class="@(_level == l ? "selected" : "")" role="tab" aria-selected="@(_level == l)" @onclick="() => SelectAsync(l)">@l</button>
+        <button class="@(_level == l ? "selected" : "")" role="tab" aria-selected="@(_level == l)" @onclick="() => SelectAsync(l)">@l <span class="level-ko" lang="ko">@Format.LevelKorean(l)</span></button>
     }
 </div>
 

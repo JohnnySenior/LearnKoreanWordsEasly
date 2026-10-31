@@ -1,3 +1,4 @@
+using Lugat.Domain.Catalog;
 using Lugat.Domain.Premium;
 using Lugat.Domain.Learning;
 using Lugat.Domain.Study;
@@ -16,6 +17,11 @@ public static class Format
     public static readonly TimeSpan KoreaOffset = TimeSpan.FromHours(9);
 
     public static DateTimeOffset ToKorea(DateTimeOffset value) => value.ToOffset(KoreaOffset);
+
+    /// <summary>The Korean name of a level, as learners meet it in Korea (초급 = beginner).</summary>
+    public static string LevelKorean(CatalogLevel level) => level switch { CatalogLevel.A => "초급", CatalogLevel.B => "중급", _ => "고급" };
+
+    public static string LevelRomanized(CatalogLevel level) => level switch { CatalogLevel.A => "cho-geup", CatalogLevel.B => "jung-geup", _ => "go-geup" };
 
     /// <summary>"Seshanba, 6-oktabr, 23:00".</summary>
     public static string DayTime(DateTimeOffset value)
