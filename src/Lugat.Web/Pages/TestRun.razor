@@ -365,7 +365,6 @@ else
             Javobingiz (koreyscha)
             <input class="input sentence" lang="ko" maxlength="40" autocomplete="off" @ref="_typedInput" @bind="_typed" @bind:event="oninput" @onkeydown="TypedKeyAsync" disabled="@_busy" />
         </label>
-        <button class="button primary big" data-enter disabled="@(_busy || string.IsNullOrWhiteSpace(_typed))" @onclick="() => AnswerAsync(question, _typed)">Keyingi</button>
     }
     else
     {
@@ -401,7 +400,7 @@ else
     else
     {
         @* Enter moves on only from an answered question, so it never skips one by accident. *@
-        <button class="btn btn-primary block big" data-enter="@(CurrentAnswered ? "" : null)" disabled="@(!CanGoNext)" @onclick="Next"><span>Keyingisi</span><Icon Name="arrow-right" /></button>
+        <button class="btn btn-primary block big" data-enter="@(CurrentAnswered ? "" : null)" disabled="@(_busy || !CanGoNext && !TypedPending)" @onclick="NextAsync"><span>Keyingisi</span><Icon Name="arrow-right" /></button>
         <div class="test-foot-links">
             <button class="btn btn-ghost small" disabled="@(_position == 0)" @onclick="() => Go(_position - 1)">← Oldingi</button>
             <button class="btn btn-ghost small" @onclick="() => _confirmFinish = true">Hozir yakunlash</button>
@@ -438,6 +437,22 @@ else
     // From the last question it still goes back to one left unanswered.
     private bool CanGoNext => _position < _test!.Questions.Count - 1
         || (CurrentAnswered && _test.Questions.Any(q => q.Given is null && !q.Technical));
+
+    /// <summary>A typed answer not yet sent (or changed): "Keyingisi" sends it, then moves on.</summary>
+    private bool TypedPending => _test!.Questions[_position] is var q && TestGrader.IsTyped(q.Kind)
+        && !string.IsNullOrWhiteSpace(_typed) && _typed.Trim() != (q.Given ?? "");
+
+    // The only "Keyingisi" on the page, also for typed questions (they once had a second "Keyingi" of their own).
+    private async Task NextAsync()
+    {
+        if (TypedPending)
+        {
+            await AnswerAsync(_test!.Questions[_position], _typed);
+            return;
+        }
+
+        Next();
+    }
 
     // One "Keyingisi" for every question: after an answer it skips to the next unanswered one, else to the next.
     private void Next()
