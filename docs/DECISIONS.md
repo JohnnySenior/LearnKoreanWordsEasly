@@ -598,3 +598,14 @@ Johnny tasdiqlagan oqim: bo‘limning tekshirilgan so‘zlari → admin AI ssena
 - Ovoz tayyorlashda qadam bo‘laklarga bo‘linadi: o‘zbekcha qismni ElevenLabs diktori, «koreyscha» qismni koreyscha so‘zlar uchun ishlatiladigan Azure ovozi o‘qiydi. Bitta so‘rov bitta bo‘lak tayyorlaydi. Bo‘laklar `IntroductionBeat.Parts`da tartib bilan saqlanadi. Eski darslarda bitta `AudioKey` qoladi va ular avvalgidek ishlaydi.
 - Pleyer bo‘laklarni qurilmada bitta yozuvga ulaydi: bir xil tezlikda dekodlaydi, bosh-oxiridagi jimlikni kesadi, balandlikni diktor darajasiga tenglaydi, 50 ms nafas va 8 ms fade qo‘shib WAV qiladi. Serverda MP3’larni qo‘shib bo‘lmaydi, chunki ElevenLabs 44.1 kHz/128k, Azure esa 24 kHz/48k formatda keladi.
 - Bitta qadamda ko‘pi bilan 6 ta qisqa (60 belgigacha) koreyscha qism bo‘ladi.
+
+## L-55 · 2026-10-31 · Krossvord
+
+Johnny gazetadagi krossvordni taklif qildi. Avval artifact namunasida sinab ko‘rildi, so‘ng ilovaga qo‘shildi (Mashq → 05 Krossvord).
+- **Katak = bitta Hangul bo‘g‘in.** Yozish katakma-katak emas: so‘z tanlanadi, pastdagi maydonga butun so‘z yoziladi (koreys klaviaturasi bo‘g‘in tugaguncha qaysi katak ekanini bilmaydi). Ishora — o‘zbekcha ma’no (birinchi ma’no, `;` gacha).
+- **So‘zlar** ochilgan (Open yoki Passed) bo‘limlarning istalgan so‘zidan olinadi, ko‘rilmaganlari ham (Johnny: "userni juda avaylamaymiz"). Joriy bo‘lim va kamida bir marta unutilgan (`Lapses > 0`) so‘zlar oldin sinab joylanadi. Bir bo‘g‘inli va Hangul bo‘lmagan so‘zlar kirmaydi.
+- **Generator** (`CrosswordGenerator`): har bir keyingi so‘z umumiy bo‘g‘inda kesishadi, yonma-yon tegmaydi, 120 urinish, eng ko‘p so‘zli va eng ixcham panjara olinadi, kenglik ≤ 10 katak (telefon). So‘z oxiridagi 다 ustida ko‘pi bilan 2 kesishuv: 하다/있다/같다 kesishuvi hech narsa o‘rgatmaydi, lekin to‘liq taqiqlansa panjara 4–5 so‘zga tushib qoldi.
+- **Ochilishi:** 2 bo‘lim ochilganda. Faqat 1-bo‘lim bilan 20 urinishda har safar 4 so‘z chiqdi. Kichik (~8) va O‘rta (~12) — 2 bo‘lim, Katta (~16) — 3 bo‘lim. Yopiq o‘lcham qulf bilan ko‘rinadi; yechilgandan keyin "Katta krossvord 3-bo‘limda ochiladi" va joriy bo‘limga havola (ma’lumot, bosim emas).
+- **Saqlanadi:** krossvord serverda (`crosswords`, so‘zlar jsonb), bitta faol; qayta kirganda "Davom ettirish / Yangisini boshlash". Javob va ishoralar serverda tekshiriladi; ochiq so‘zning koreyschasi klientga kelmaydi.
+- **Yordam zinapoyasi:** talaffuz (bepul, kartochkadagidek), misol gap (so‘z yoki o‘zagi `＿＿` bilan yashirilgan; yashirib bo‘lmasa taklif qilinmaydi), bo‘g‘in ochish (istalgan yopiq bo‘g‘in, oxirgisi ham — o‘quvchi tiqilib qolmaydi), so‘zni ochish (tasdiq bilan). Kesishuvlardan to‘liq ochilib qolgan so‘z o‘zi topilgan hisoblanadi.
+- **O‘yin, jadval emas:** kartochka takrorlash vaqti o‘zgarmaydi. Yozib topilgan so‘z Xatolar daftarida to‘g‘ri natija, ochib berilgani xato ("krossvord" manbasi) — so‘z kartochkada qaytadan chiqadi. Reyting/streak yo‘q (§1.4). Bepul, AI ishlatilmaydi.

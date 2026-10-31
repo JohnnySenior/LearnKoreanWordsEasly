@@ -240,6 +240,7 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         await db.SentenceLadders.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.TrapNotes.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.ListeningSets.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
+        await db.Crosswords.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.ReminderDeliveries.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
         await db.ActivityDays.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
         await db.GroupMembers.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);

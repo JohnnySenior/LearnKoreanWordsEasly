@@ -65,6 +65,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Domain.Listening.ListeningSet> ListeningSets => Set<Domain.Listening.ListeningSet>();
 
+    public DbSet<Domain.Games.Crossword> Crosswords => Set<Domain.Games.Crossword>();
+
     public DbSet<Card> Cards => Set<Card>();
 
     public DbSet<ReviewEvent> ReviewEvents => Set<ReviewEvent>();
@@ -314,6 +316,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Model).HasMaxLength(128);
             e.Property(x => x.Items).HasColumnType("jsonb").HasConversion(JsonConverter<List<Domain.Ladder.LadderItem>>(), ListComparer<Domain.Ladder.LadderItem>());
             e.Property(x => x.Answers).HasColumnType("jsonb").HasConversion(JsonConverter<List<Domain.Ladder.LadderAnswer>>(), ListComparer<Domain.Ladder.LadderAnswer>());
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Domain.Games.Crossword>(e =>
+        {
+            e.ToTable("crosswords");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.HasIndex(x => new { x.OwnerId, x.Status });
+            e.Property(x => x.Size).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.Words).HasColumnType("jsonb").HasConversion(JsonConverter<List<Domain.Games.CrosswordWord>>(), ListComparer<Domain.Games.CrosswordWord>());
             e.Property(x => x.Version).IsRowVersion();
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
         });

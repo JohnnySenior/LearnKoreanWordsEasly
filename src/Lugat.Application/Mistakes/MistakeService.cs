@@ -9,7 +9,7 @@ namespace Lugat.Application.Mistakes;
 
 /// <summary>
 /// The mistakes notebook (D-41): every recent result of a word, from cards, tests (oral included), the sentence
-/// ladder, writing and listening, folded per word. Nothing new is stored; it is read from the existing history.
+/// ladder, writing, listening and crosswords, folded per word. Nothing new is stored; it is read from the existing history.
 /// </summary>
 public sealed class MistakeService(IAppDbContext db, TimeProvider time)
 {
@@ -103,6 +103,15 @@ public sealed class MistakeService(IAppDbContext db, TimeProvider time)
             .AsNoTracking()
             .ToListAsync(ct);
         words.AddRange(writing.Select(w => new Result(w.OwnerId, w.LearningItemId, w.CreatedAt, w.Verdict != WritingVerdict.Wrong, "yozma")));
+
+        // Crosswords (L-55): a word written in was recalled; one shown with "So‘zni ochish" was not.
+        var crosswords = await db.Crosswords
+            .Where(x => ids.Contains(x.OwnerId) && x.UpdatedAt >= since)
+            .Select(x => new { x.OwnerId, x.Words })
+            .AsNoTracking()
+            .ToListAsync(ct);
+        words.AddRange(crosswords.SelectMany(x => x.Words.Where(w => w.AnsweredAt >= since)
+            .Select(w => new Result(x.OwnerId, w.LearningItemId, w.AnsweredAt!.Value, w.State == Domain.Games.CrosswordWordState.Found, "krossvord"))));
 
         // Listening (D-53): wrong answers, newest first; a question has no word of its own.
         var heard = listening

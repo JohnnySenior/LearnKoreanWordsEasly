@@ -1,0 +1,302 @@
+@page "/mashq/krossvord"
+@using Lugat.Contracts
+@using Lugat.Domain.Games
+@inject SessionService Api
+
+<PageTitle>Krossvord — Koreyscha</PageTitle>
+
+@* L-55: a crossword from the open units' words. The server keeps it and checks every answer; the Korean of an open
+   word never reaches this page. Hints get stronger: sound, example, one syllable, the whole word. *@
+<a class="back" href="mashq">← Mashqlar</a>
+<h1>Krossvord</h1>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (_home is null)
+{
+    <p class="muted">Yuklanmoqda…</p>
+}
+else if (_home.OpenUnits < _home.UnitsNeeded)
+{
+    <section class="home-due">
+        <span class="kicker">🔒 Hali yopiq</span>
+        <h3 class="home-due-empty">@_home.UnitsNeeded-bo‘limni ochganingizda ochiladi</h3>
+        <p class="muted small-text">Bitta bo‘limning so‘zlari kam kesishadi, krossvord juda kichik chiqadi. 1-bo‘limni tugatib, testdan o‘ting.</p>
+        @if (_home.CurrentUnitId is { } unit)
+        {
+            <a class="btn btn-primary block big" href="@($"bolimlar/{unit}")"><span>Bo‘limni davom ettirish</span><Icon Name="arrow-right" /></a>
+        }
+    </section>
+}
+else if (_game is null || _choosing)
+{
+    <p class="muted">So‘zni tanlang, o‘zbekcha ma’nosiga qarab koreyschasini yozing. So‘zlar ochilgan bo‘limlaringizdan.</p>
+    @if (_home.Active is { } active && _game is not null)
+    {
+        <section class="home-due">
+            <span class="kicker accent">Boshlangan krossvord</span>
+            <h3 class="home-due-empty">@(active.Found + active.Revealed) / @active.Clues.Count so‘z topilgan</h3>
+            <button class="btn btn-primary block big" @onclick="() => _choosing = false"><span>Davom ettirish</span><Icon Name="arrow-right" /></button>
+        </section>
+    }
+    <section class="kv-sizes" role="radiogroup" aria-label="Krossvord o‘lchami">
+        @foreach (var s in _home.Sizes)
+        {
+            var size = s;
+            <button class="chip wide @(_size == size.Size ? "selected" : "")" role="radio" aria-checked="@(_size == size.Size)" disabled="@(!size.Available)" @onclick="() => _size = size.Size">
+                @(size.Available ? $"{size.Title} · ~{size.Words} so‘z" : $"🔒 {size.Title} · {size.UnitsNeeded}-bo‘lim")
+            </button>
+        }
+    </section>
+    <button class="btn btn-primary block big" disabled="@_busy" @onclick="StartAsync"><span>@(_home.Active is null ? "Boshlash" : "Yangisini boshlash")</span><Icon Name="arrow-right" /></button>
+}
+else
+{
+    var game = _game;
+    <div class="kv-status"><span class="kicker accent">@SizeTitle(game.Size)</span><span class="kv-count">@(game.Found + game.Revealed) / @game.Clues.Count so‘z</span></div>
+    <div class="kv-board-wrap">
+        <div class="kv-board" style="@($"--c:{CellSize(game.Cols)}px;grid-template-columns:repeat({game.Cols},var(--c))")">
+            @for (var r = 0; r < game.Rows; r++)
+            {
+                for (var c = 0; c < game.Cols; c++)
+                {
+                    var cell = Cell(r, c);
+                    if (cell is null)
+                    {
+                        <span class="kv-cell"></span>
+                        continue;
+                    }
+
+                    var owner = Owner(cell);
+                    <button class="kv-cell on @(InCurrent(cell) ? "sel" : "") @(Solved(cell) ? "solved" : "")" lang="ko" aria-label="@($"{owner.Number}-so‘z katagi")" @onclick="() => Select(owner)">
+                        @if (cell.Number is { } n) { <span class="kv-no">@n</span> }
+                        @cell.Syllable
+                    </button>
+                }
+            }
+        </div>
+    </div>
+
+    @if (game.Status == CrosswordStatus.Finished)
+    {
+        <section class="home-due">
+            <span class="kicker accent">Krossvord yechildi</span>
+            <h3 class="home-due-empty">@game.Found ta so‘z topildi · @game.WithoutHints tasi ishorasiz</h3>
+            @if (game.Revealed > 0)
+            {
+                <p class="muted small-text">Ochib berilgan @game.Revealed ta so‘z Xatolar daftariga tushdi — kartochkada qaytadan chiqadi.</p>
+            }
+            <button class="btn btn-primary block big" @onclick="() => { _choosing = true; _game = null; }"><span>Yangi krossvord</span><Icon Name="arrow-right" /></button>
+            @if (_home.Sizes.FirstOrDefault(s => !s.Available) is { } bigger)
+            {
+                <p class="kv-nudge">@bigger.Title krossvord: ~@bigger.Words so‘z, ko‘proq kesishuv. @bigger.UnitsNeeded-bo‘limni ochganingizda ochiladi.</p>
+                @if (_home.CurrentUnitId is { } unit)
+                {
+                    <a class="btn btn-secondary block" href="@($"bolimlar/{unit}")"><span>Joriy bo‘limni davom ettirish</span><Icon Name="arrow-right" /></a>
+                }
+            }
+        </section>
+    }
+    else if (Current is { } clue)
+    {
+        <section class="kv-ask @(_shake ? "shake" : "")" aria-live="polite">
+            <small class="kv-dir">@clue.Number · @(clue.Down ? "vertikal" : "gorizontal") · @clue.Length bo‘g‘in</small>
+            <b class="kv-clue">@clue.Uzbek</b>
+            <div class="kv-pattern" lang="ko">@foreach (var p in clue.Pattern) { <span>@p</span> }</div>
+            @if (clue.ExampleKo is { } example)
+            {
+                <p class="kv-example"><span lang="ko">@example</span>@if (clue.ExampleUz is { } uz) { <br /><span class="muted">@uz</span> }</p>
+            }
+            @if (clue.State == CrosswordWordState.Open)
+            {
+                <form class="kv-row" @onsubmit="AnswerAsync" @onsubmit:preventDefault>
+                    <input id="kv-answer" class="input sentence" lang="ko" maxlength="12" autocomplete="off" placeholder="Koreyscha yozing" @bind="_typed" @bind:event="oninput" disabled="@_busy" />
+                    <button class="btn btn-primary" type="submit" disabled="@(_busy || string.IsNullOrWhiteSpace(_typed))">Yozish</button>
+                </form>
+                <div class="kv-hints">
+                    <Speak Text="@($"kv:{game.Id}:{clue.Index}")" Source="@($"api/crosswords/{game.Id}/words/{clue.Index}/audio")" />
+                    @if (clue.HasExample && clue.ExampleKo is null)
+                    {
+                        <button class="chip" disabled="@_busy" @onclick="() => HintAsync(CrosswordHint.Example)">Misol gap</button>
+                    }
+                    <button class="chip" disabled="@_busy" @onclick="() => HintAsync(CrosswordHint.Syllable)">Bo‘g‘in ochish</button>
+                    @if (_confirmReveal)
+                    {
+                        <button class="chip selected" disabled="@_busy" @onclick="() => HintAsync(CrosswordHint.Reveal)">Ha, ochilsin</button>
+                    }
+                    else
+                    {
+                        <button class="chip" @onclick="() => _confirmReveal = true">So‘zni ochish</button>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="kv-solved"><span lang="ko">@clue.Korean</span> — @(clue.State == CrosswordWordState.Revealed ? "ochib berildi" : "topildi")</p>
+                <button class="btn btn-primary" data-enter @onclick="NextWord"><span>Keyingi so‘z</span><Icon Name="arrow-right" /></button>
+            }
+            @if (_feedback is not null)
+            {
+                <p class="kv-feedback" role="status">@_feedback</p>
+            }
+        </section>
+    }
+
+    <div class="kv-lists">
+        @foreach (var down in new[] { false, true })
+        {
+            <div>
+                <h2 class="kv-list-title">@(down ? "↓ Vertikal" : "→ Gorizontal")</h2>
+                @foreach (var c in game.Clues.Where(c => c.Down == down).OrderBy(c => c.Number))
+                {
+                    var clue = c;
+                    <button class="kv-clue-row @(clue.Index == _current ? "cur" : "") @(clue.State != CrosswordWordState.Open ? "done" : "")" @onclick="() => Select(clue)">
+                        <b>@clue.Number</b><span>@clue.Uzbek <small>(@clue.Length)</small></span>
+                        @if (clue.Korean is { } ko) { <span class="ko kv-ko">@ko</span> }
+                    </button>
+                }
+            </div>
+        }
+    </div>
+    @if (game.Status == CrosswordStatus.Active)
+    {
+        <button class="btn btn-ghost small" @onclick="() => _choosing = true">Boshqa krossvord</button>
+    }
+}
+
+@code {
+    private CrosswordHomeDto? _home;
+    private CrosswordDto? _game;
+    private CrosswordSize _size = CrosswordSize.Small;
+    private int _current;
+    private string _typed = "";
+    private string? _error, _feedback;
+    private bool _busy, _choosing, _shake, _confirmReveal;
+
+    private CrosswordClueDto? Current => _game?.Clues.ElementAtOrDefault(_current);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var home = await Api.GetAsync<CrosswordHomeDto>("api/crosswords");
+        _error = home.Ok ? null : home.Error;
+        _home = home.Value;
+        _game = _home?.Active;
+        _choosing = _game is not null; // an unfinished one is offered to continue first
+        _size = _home?.Sizes.Where(s => s.Available).Select(s => s.Size).DefaultIfEmpty(CrosswordSize.Small).Last() ?? CrosswordSize.Small;
+        if (_size == CrosswordSize.Large) _size = CrosswordSize.Medium;
+        FirstOpen();
+    }
+
+    private async Task StartAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<CrosswordDto>(HttpMethod.Post, "api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), _size));
+        _busy = false;
+        _error = result.Ok ? null : result.Error;
+        if (result.Value is { } game)
+        {
+            (_game, _choosing, _feedback) = (game, false, null);
+            _home = _home! with { Active = game };
+            FirstOpen();
+        }
+    }
+
+    private async Task AnswerAsync()
+    {
+        if (_game is null || Current is not { } clue || string.IsNullOrWhiteSpace(_typed)) return;
+        _busy = true;
+        var result = await Api.SendJsonAsync<CrosswordAnswerResultDto>(HttpMethod.Post, $"api/crosswords/{_game.Id}/answers", new CrosswordAnswerRequest(clue.Index, _typed));
+        _busy = false;
+        if (result.Value is not { } answer)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        _game = answer.Crossword;
+        if (_game.Status == CrosswordStatus.Finished) _home = _home! with { Active = null };
+        if (answer.Correct)
+        {
+            _feedback = $"To‘g‘ri: {_game.Clues[clue.Index].Korean} — {clue.Uzbek}";
+            _typed = "";
+            Next();
+        }
+        else
+        {
+            _feedback = "Boshqa so‘z. Bo‘g‘inlar soniga va kesishgan kataklarga qarang.";
+            _shake = true;
+            StateHasChanged();
+            await Task.Delay(350);
+            _shake = false;
+        }
+    }
+
+    private async Task HintAsync(CrosswordHint hint)
+    {
+        if (_game is null || Current is not { } clue) return;
+        _busy = true;
+        var result = await Api.SendJsonAsync<CrosswordDto>(HttpMethod.Post, $"api/crosswords/{_game.Id}/hints", new CrosswordHintRequest(clue.Index, hint));
+        _busy = false;
+        _confirmReveal = false;
+        if (result.Value is { } game)
+        {
+            _game = game;
+            if (game.Status == CrosswordStatus.Finished) _home = _home! with { Active = null };
+            _feedback = hint == CrosswordHint.Reveal ? "So‘z ochildi va Xatolar daftariga tushdi." : null;
+        }
+        else
+        {
+            _error = result.Error;
+        }
+    }
+
+    private void Select(CrosswordClueDto clue)
+    {
+        (_current, _feedback, _typed, _confirmReveal) = (clue.Index, null, "", false);
+    }
+
+    private void NextWord()
+    {
+        Next();
+        (_feedback, _typed) = (null, "");
+    }
+
+    private void FirstOpen() => _current = _game?.Clues.OrderBy(c => c.Number).FirstOrDefault(c => c.State == CrosswordWordState.Open)?.Index ?? 0;
+
+    // After a right answer: the next open word in number order, wrapping round.
+    private void Next()
+    {
+        var open = _game!.Clues.Where(c => c.State == CrosswordWordState.Open).OrderBy(c => c.Number).ThenBy(c => c.Down).ToList();
+        var here = _game.Clues[_current];
+        var next = open.FirstOrDefault(c => c.Number > here.Number || c.Number == here.Number && c.Down && !here.Down) ?? open.FirstOrDefault();
+        if (next is not null) _current = next.Index;
+    }
+
+    private CrosswordCellDto? Cell(int r, int c) => _game!.Cells.FirstOrDefault(x => x.Row == r && x.Col == c);
+
+    private static IEnumerable<(int, int)> CellsOf(CrosswordClueDto clue, CrosswordDto game) =>
+        Enumerable.Range(0, clue.Length).Select(i => clue.Down ? (Start(clue, game).Row + i, Start(clue, game).Col) : (Start(clue, game).Row, Start(clue, game).Col + i));
+
+    // A clue's first cell is the numbered cell with its number.
+    private static (int Row, int Col) Start(CrosswordClueDto clue, CrosswordDto game) =>
+        game.Cells.Where(c => c.Number == clue.Number).Select(c => (c.Row, c.Col)).First();
+
+    private CrosswordClueDto Owner(CrosswordCellDto cell)
+    {
+        var owners = _game!.Clues.Where(c => CellsOf(c, _game).Contains((cell.Row, cell.Col))).ToList();
+        return owners.FirstOrDefault(c => c.State == CrosswordWordState.Open && c.Index != _current)
+            ?? owners.FirstOrDefault(c => c.State == CrosswordWordState.Open) ?? owners[0];
+    }
+
+    private bool InCurrent(CrosswordCellDto cell) => Current is { } clue && CellsOf(clue, _game!).Contains((cell.Row, cell.Col));
+
+    private bool Solved(CrosswordCellDto cell) =>
+        _game!.Clues.Any(c => c.State != CrosswordWordState.Open && CellsOf(c, _game).Contains((cell.Row, cell.Col)));
+
+    private static int CellSize(int cols) => Math.Clamp((358 - 2) / Math.Max(cols, 1), 28, 46);
+
+    private string SizeTitle(CrosswordSize size) => _home?.Sizes.FirstOrDefault(s => s.Size == size)?.Title + " krossvord";
+}
