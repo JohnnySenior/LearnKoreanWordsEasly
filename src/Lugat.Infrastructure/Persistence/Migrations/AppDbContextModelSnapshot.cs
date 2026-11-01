@@ -486,6 +486,27 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("user_unit_progress", (string)null);
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Catalog.WordSlug", b =>
+                {
+                    b.Property<Guid>("CatalogWordId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("CatalogWordId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("word_slugs", (string)null);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Games.Crossword", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1903,6 +1924,15 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Catalog.WordSlug", b =>
+                {
+                    b.HasOne("Lugat.Domain.Catalog.CatalogWord", null)
+                        .WithOne()
+                        .HasForeignKey("Lugat.Domain.Catalog.WordSlug", "CatalogWordId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

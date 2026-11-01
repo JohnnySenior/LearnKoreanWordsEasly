@@ -443,3 +443,18 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Panel (4 son), "Tekshirish" ro‘yxati (Tasdiqlash / Tahrirlash / Olib tashlash, Hammasini tasdiqlash), so‘z kartasida sahna holati, "Topilmaganlarni qayta so‘rash".
 - [x] Test `The_review_list_confirms_all_drops_one_and_words_without_a_scene_can_be_asked_again`. Chromium 390px: panel va ro‘yxat, scroll yo‘q.
 - [ ] Johnny: 2-bo‘limdan boshlab har bo‘limda "Topilmaganlarni qayta so‘rash" → "Tekshirish" → tasdiqlash.
+
+**Krossvord (L-55, 2026-10-31):**
+- [x] Mashq → 05 Krossvord; 2 bo‘lim ochilganda ochiladi, 1 bo‘limda qulf va tushuntirish. Kichik/O‘rta 2 bo‘lim, Katta 3 bo‘lim.
+- [x] Server generator, javob/ishora serverda; ochiq so‘zning koreyschasi klientga chiqmaydi; davom ettirish; ochib berilgan so‘z Xatolar daftarida.
+- [x] 3 API testi; dev bazada Chromium 390px’da boshidan oxirigacha o‘ynaldi (qulf, davom ettirish, yozish, ochish, yakun).
+
+**Ochiq so‘z sahifalari — SEO (L-56, 2026-11-01):**
+- [x] `/soz/{slug}`, `/soz` (sahifalangan), `/sitemap.xml`, `/robots.txt` — server HTML, auth’siz, fallback’dan oldin; `Seo:BaseUrl` canonical uchun.
+- [x] Faqat Reviewed + Published so‘zlar; Draft so‘z, Draft bo‘lim, noma’lum slug → HTML 404 (`noindex`).
+- [x] `word_slugs` + migratsiya: barqaror slug, to‘qnashuvda `-{homonym}`/`-{so‘z turi}`/raqam; romanizatsiya tahrirlansa URL o‘zgarmaydi (test).
+- [x] title, description, canonical, og:*, JSON-LD `DefinedTerm`; Hangul va `< > & "` encode (test); tashqi JS yo‘q.
+- [x] Service worker bu manzillarga tegmaydi (JS testi). `index.html` boot’da tushuntirish va `/soz` havolasi.
+- [x] 6 ta API testi; dev ilovada Chromium 390px (yorug‘/qorong‘i): so‘z sahifasi, ro‘yxat, yonlama scroll yo‘q; `curl` bilan robots/sitemap.
+- [ ] Johnny (deploydan keyin): Google Search Console va Yandex Webmaster’ga koreyscha.com, sitemap yuborish; Cloudflare managed robots.txt bizning faylni bosmasligini tekshirish; Telegram’da `/soz/...` preview’ini tekshirish.
+- [ ] Indekslanish natijasi (`site:koreyscha.com`) 1–2 haftadan keyin tekshiriladi.

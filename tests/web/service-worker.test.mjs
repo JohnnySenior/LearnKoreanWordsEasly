@@ -71,6 +71,16 @@ test('install caches the app shell with hashes, without the worker itself or the
     ]);
 });
 
+test('public word pages, the sitemap and robots.txt go to the server, not the app shell', async () => {
+    const sw = load({ stores: { 'lugat-shell-v2': [[`${origin}/index.html`, new Response('shell')]] } });
+    assert.equal(await sw.dispatch('fetch', { request: request('/soz/sarang', 'navigate') }), undefined);
+    assert.equal(await sw.dispatch('fetch', { request: request('/soz', 'navigate') }), undefined);
+    assert.equal(await sw.dispatch('fetch', { request: request('/sitemap.xml') }), undefined);
+    assert.equal(await sw.dispatch('fetch', { request: request('/robots.txt') }), undefined);
+    // An app page that only starts with the same letters is still the shell.
+    assert.equal(await (await sw.dispatch('fetch', { request: request('/sozlarim', 'navigate') })).text(), 'shell');
+});
+
 test('API calls are never answered by the worker', async () => {
     const sw = load({ stores: { 'lugat-shell-v2': [[`${origin}/api/me`, new Response('stale')]] } });
     assert.equal(await sw.dispatch('fetch', { request: request('/api/me') }), undefined);

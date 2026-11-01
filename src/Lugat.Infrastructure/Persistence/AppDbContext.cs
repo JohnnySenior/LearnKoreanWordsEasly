@@ -43,6 +43,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Domain.Catalog.CatalogWord> CatalogWords => Set<Domain.Catalog.CatalogWord>();
 
+    public DbSet<Domain.Catalog.WordSlug> WordSlugs => Set<Domain.Catalog.WordSlug>();
+
     public DbSet<Domain.Catalog.CatalogUsage> CatalogUsages => Set<Domain.Catalog.CatalogUsage>();
 
     public DbSet<Domain.Catalog.Unit> Units => Set<Domain.Catalog.Unit>();
@@ -238,6 +240,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.ToTable("units");
             e.HasIndex(x => new { x.Level, x.Number }).IsUnique(); // spec DATA01
             e.Property(x => x.Version).IsRowVersion();
+        });
+
+        b.Entity<Domain.Catalog.WordSlug>(e =>
+        {
+            e.ToTable("word_slugs");
+            e.HasKey(x => x.CatalogWordId);
+            e.HasIndex(x => x.Slug).IsUnique();
+            e.Property(x => x.Slug).HasMaxLength(100);
+            e.HasOne<Domain.Catalog.CatalogWord>().WithOne().HasForeignKey<Domain.Catalog.WordSlug>(x => x.CatalogWordId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Domain.Catalog.CatalogWord>(e =>
