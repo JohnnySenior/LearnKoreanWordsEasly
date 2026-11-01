@@ -88,13 +88,20 @@ public static class SeoEndpoints
 
     private static string Clip(string text, int max) => text.Length <= max ? text : text[..(max - 1)].TrimEnd() + "…";
 
+    /// <summary>Ends the text with one full stop: "odam" → "odam.", "선생님이에요." stays as it is.</summary>
+    private static string Sentence(string text)
+    {
+        var trimmed = text.TrimEnd();
+        return trimmed.Length > 0 && trimmed[^1] is '.' or '?' or '!' or '…' or '。' ? trimmed : trimmed + ".";
+    }
+
     private static string WordPage(SeoWord w, string baseUrl)
     {
         var url = $"{baseUrl}/soz/{w.Slug}";
         var reading = string.IsNullOrWhiteSpace(w.Romanization) ? "" : $" ({w.Romanization})";
         var title = $"{w.Word}{reading} — o‘zbekcha tarjimasi va misol | Koreyscha";
-        var description = Clip($"{w.Word}{reading} — {w.Translation}. Koreyscha so‘zning o‘zbekcha tarjimasi"
-            + (w.ExampleKo is null ? "" : $" va misol: {w.ExampleKo}") + ". Koreyscha ilovasida bepul yodlang.", 160);
+        var description = Clip($"{w.Word}{reading} — {Sentence(w.Translation)} Koreyscha so‘zning o‘zbekcha tarjimasi"
+            + (w.ExampleKo is null ? "." : $" va misol: {Sentence(w.ExampleKo)}") + " Koreyscha ilovasida bepul yodlang.", 160);
         var jsonLd = JsonSerializer.Serialize(new Dictionary<string, object?>
         {
             ["@context"] = "https://schema.org",

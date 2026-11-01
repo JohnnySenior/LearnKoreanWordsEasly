@@ -54,6 +54,24 @@ public class SeoPageTests
     }
 
     [Fact]
+    public async Task The_description_never_doubles_a_full_stop_the_example_already_has()
+    {
+        await using var factory = new ApiFactory();
+        await SetupAsync(factory, (_, words) =>
+        {
+            words[3].ExampleKo = "물을 마셔요.";
+            words[3].TranslationUz = "suv.";
+        });
+        var html = await factory.CreateClient().GetStringAsync("/soz/mul");
+
+        Assert.Contains("<meta name=\"description\" content=\"물 (mul) — suv. Koreyscha so‘zning o‘zbekcha tarjimasi va misol: 물을 마셔요. Koreyscha", html);
+        Assert.DoesNotContain("..", html[html.IndexOf("<meta name=\"description\"", StringComparison.Ordinal)..][..300]);
+        // Without an example the sentence still ends once.
+        var plain = await factory.CreateClient().GetStringAsync("/soz/hakgyo");
+        Assert.Contains("o‘zbekcha tarjimasi. Koreyscha ilovasida", plain);
+    }
+
+    [Fact]
     public async Task Hangul_and_special_characters_are_encoded()
     {
         await using var factory = new ApiFactory();
