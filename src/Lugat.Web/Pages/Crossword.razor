@@ -42,6 +42,20 @@ else if (_game is null || _choosing)
             <button class="btn btn-primary block big" @onclick="() => _choosing = false"><span>Davom ettirish</span><Icon Name="arrow-right" /></button>
         </section>
     }
+    @if (_home.Units is { Count: > 0 } units)
+    {
+        <section class="card">
+            <span class="kicker">Bo‘limlar</span>
+            <div class="chips" role="group" aria-label="Bo‘limlar">
+                @foreach (var u in units)
+                {
+                    var id = u.UnitId;
+                    <button class="chip @(_units.Contains(id) ? "selected" : "")" aria-pressed="@_units.Contains(id)" title="@($"{u.Words} ta so‘z")" @onclick="() => ToggleUnit(id)">@u.Unit</button>
+                }
+            </div>
+            <p class="muted small-text">@UnitsNote</p>
+        </section>
+    }
     <section class="kv-sizes" role="radiogroup" aria-label="Krossvord o‘lchami">
         @foreach (var s in _home.Sizes)
         {
@@ -51,7 +65,7 @@ else if (_game is null || _choosing)
             </button>
         }
     </section>
-    <button class="btn btn-primary block big" disabled="@_busy" @onclick="StartAsync"><span>@(_home.Active is null ? "Boshlash" : "Yangisini boshlash")</span><Icon Name="arrow-right" /></button>
+    <button class="btn btn-primary block big" disabled="@(_busy || UnitsMissing > 0)" @onclick="StartAsync"><span>@(_home.Active is null ? "Boshlash" : "Yangisini boshlash")</span><Icon Name="arrow-right" /></button>
 }
 else
 {
@@ -175,6 +189,24 @@ else
     private string _typed = "";
     private string? _error, _feedback;
     private bool _busy, _choosing, _shake, _confirmReveal;
+    /// <summary>Chosen units; none means all open units.</summary>
+    private readonly HashSet<Guid> _units = [];
+
+    private int UnitsLeast => Math.Max(_home?.UnitsNeeded ?? 2, _home?.Sizes.FirstOrDefault(s => s.Size == _size)?.UnitsNeeded ?? 2);
+
+    /// <summary>How many more units to choose; 0 when none is chosen (all units are used).</summary>
+    private int UnitsMissing => _units.Count == 0 ? 0 : Math.Max(0, UnitsLeast - _units.Count);
+
+    private string UnitsNote => _units.Count == 0
+        ? "Tanlanmasa, barcha ochilgan bo‘limlardan olinadi."
+        : UnitsMissing > 0
+            ? $"Kamida {UnitsLeast} ta bo‘lim tanlang."
+            : $"{_home!.Units!.Where(u => _units.Contains(u.UnitId)).Sum(u => u.Words)} ta so‘zdan teriladi.";
+
+    private void ToggleUnit(Guid id)
+    {
+        if (!_units.Remove(id)) _units.Add(id);
+    }
 
     private CrosswordClueDto? Current => _game?.Clues.ElementAtOrDefault(_current);
 
@@ -193,7 +225,7 @@ else
     private async Task StartAsync()
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<CrosswordDto>(HttpMethod.Post, "api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), _size));
+        var result = await Api.SendJsonAsync<CrosswordDto>(HttpMethod.Post, "api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), _size, _home?.Units?.Select(u => u.UnitId).Where(_units.Contains).ToList()));
         _busy = false;
         _error = result.Ok ? null : result.Error;
         if (result.Value is { } game)

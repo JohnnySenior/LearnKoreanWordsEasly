@@ -38,11 +38,22 @@ public sealed record CrosswordDto(
 /// <param name="UnitsNeeded">Open units this size needs; <see cref="Available"/> once the learner has them.</param>
 public sealed record CrosswordSizeDto(CrosswordSize Size, string Title, int Words, int UnitsNeeded, bool Available);
 
+/// <param name="Unit">"A-3".</param>
+public sealed record CrosswordUnitDto(Guid UnitId, string Unit, int Words);
+
 /// <param name="OpenUnits">Units the learner has open or passed; the crossword starts at two (L-55).</param>
-public sealed record CrosswordHomeDto(int OpenUnits, int UnitsNeeded, IReadOnlyList<CrosswordSizeDto> Sizes, CrosswordDto? Active, Guid? CurrentUnitId);
+/// <param name="Units">The open units in course order, to choose from.</param>
+public sealed record CrosswordHomeDto(
+    int OpenUnits,
+    int UnitsNeeded,
+    IReadOnlyList<CrosswordSizeDto> Sizes,
+    CrosswordDto? Active,
+    Guid? CurrentUnitId,
+    IReadOnlyList<CrosswordUnitDto>? Units = null);
 
 /// <param name="Id">Chosen by the client, so a double tap never makes two crosswords (API01).</param>
-public sealed record StartCrosswordRequest(Guid Id, CrosswordSize Size);
+/// <param name="UnitIds">Open units to take words from, at least two (three for the large one); none: all open units.</param>
+public sealed record StartCrosswordRequest(Guid Id, CrosswordSize Size, IReadOnlyList<Guid>? UnitIds = null);
 
 public sealed record CrosswordAnswerRequest(int Index, string Answer);
 

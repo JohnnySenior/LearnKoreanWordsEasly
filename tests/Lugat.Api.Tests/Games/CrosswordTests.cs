@@ -16,9 +16,9 @@ public class CrosswordTests
 
     private static readonly Dictionary<string, string> KoreanOf = Unit1.Concat(Unit2).ToDictionary(w => w.Item2, w => w.Item1);
 
-    private static async Task<CrosswordDto> StartAsync(HttpClient client, CrosswordSize size = CrosswordSize.Small)
+    private static async Task<CrosswordDto> StartAsync(HttpClient client, CrosswordSize size = CrosswordSize.Small, IReadOnlyList<Guid>? units = null)
     {
-        var response = await client.PostAsJsonAsync("/api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), size), Json);
+        var response = await client.PostAsJsonAsync("/api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), size, units), Json);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<CrosswordDto>(Json))!;
     }
@@ -102,6 +102,41 @@ public class CrosswordTests
 
         var stranger = await factory.SignedInClientAsync(ApiFactory.UserB);
         Assert.Equal(HttpStatusCode.NotFound, (await stranger.PostAsJsonAsync(root + "/hints", new CrosswordHintRequest(0, CrosswordHint.Reveal), Json)).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_learner_chooses_at_least_two_open_units_and_the_words_come_only_from_them()
+    {
+        await using var factory = new ApiFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await factory.AddWordsAsync(ApiFactory.UserA, 1, Unit1);
+        await factory.AddWordsAsync(ApiFactory.UserA, 2, Unit2);
+
+        var home = (await client.GetFromJsonAsync<CrosswordHomeDto>("/api/crosswords", Json))!;
+        Assert.Equal(["A-1", "A-2"], home.Units!.Select(u => u.Unit));
+        Assert.Equal(4, home.Units![0].Words); // 집 has one syllable
+
+        async Task<HttpStatusCode> Try(CrosswordSize size, params Guid[] units) =>
+            (await client.PostAsJsonAsync("/api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), size, units), Json)).StatusCode;
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, await Try(CrosswordSize.Small, ApiFactory.Unit(1)));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, await Try(CrosswordSize.Small, ApiFactory.Unit(1), Guid.NewGuid()));
+
+        var crossword = await StartAsync(client, CrosswordSize.Small, [ApiFactory.Unit(1), ApiFactory.Unit(2)]);
+        Assert.All(crossword.Clues, c => Assert.Contains(c.Uzbek, KoreanOf.Keys));
+    }
+
+    [Fact]
+    public void Words_of_the_last_crosswords_wait_while_fresh_ones_can_fill_the_grid()
+    {
+        // 생일, 일요일 and 내일 cross on 일; the rest were in a recent crossword.
+        var fresh = new HashSet<string> { "생일", "일요일", "내일" };
+        var pool = Unit1.Concat(Unit2).Where(w => w.Item1.Length > 1)
+            .Select(w => new Lugat.Application.Games.CrosswordCandidate(Guid.NewGuid(), w.Item1, w.Item2, null, null, !fresh.Contains(w.Item1))).ToList();
+        for (var seed = 0; seed < 10; seed++)
+        {
+            var (_, _, words) = Lugat.Application.Games.CrosswordGenerator.Build(pool, 3, new Random(seed));
+            Assert.Equal(fresh, words.Select(w => w.Korean).ToHashSet());
+        }
     }
 
     [Fact]
