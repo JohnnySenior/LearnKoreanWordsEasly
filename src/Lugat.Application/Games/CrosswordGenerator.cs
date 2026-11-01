@@ -2,14 +2,17 @@ using Lugat.Domain.Games;
 
 namespace Lugat.Application.Games;
 
-/// <summary>A word that may go into the grid; <see cref="Priority"/> words are tried first (current unit, weak words).</summary>
-public sealed record CrosswordCandidate(Guid LearningItemId, string Korean, string Uzbek, string? ExampleKo, string? ExampleUz, bool Priority);
+/// <summary>
+/// A word that may go into the grid. <see cref="Recent"/>: it was in one of the learner's last crosswords, so it is
+/// tried only after the others and a layout without it wins (L-55: each new crossword should bring new words).
+/// </summary>
+public sealed record CrosswordCandidate(Guid LearningItemId, string Korean, string Uzbek, string? ExampleKo, string? ExampleUz, bool Recent);
 
 /// <summary>
 /// Builds a crossword where one cell holds one Hangul syllable (L-55). Greedy: each next word must cross a placed one
 /// on a shared syllable and may not touch other words side by side. A crossing on a word-final 다 teaches little
-/// (하다, 있다, 같다…), so at most two are allowed. Many shuffled tries; the layout with most words, then the smallest
-/// box, wins. The grid stays narrow enough for a phone.
+/// (하다, 있다, 같다…), so at most two are allowed. Many shuffled tries; the layout with most words, then the fewest
+/// recent words, then the smallest box, wins. The grid stays narrow enough for a phone.
 /// </summary>
 public static class CrosswordGenerator
 {
@@ -31,10 +34,11 @@ public static class CrosswordGenerator
         var bestScore = int.MinValue;
         for (var attempt = 0; attempt < Attempts; attempt++)
         {
-            var order = Shuffle(pool.Where(w => w.Priority), random).Concat(Shuffle(pool.Where(w => !w.Priority), random)).ToList();
+            var order = Shuffle(pool.Where(w => !w.Recent), random).Concat(Shuffle(pool.Where(w => w.Recent), random)).ToList();
             var placed = Try(order, target, random);
             var (rows, cols) = Box(placed);
-            var score = placed.Count * 1000 - rows * cols;
+            // A recent word costs more than any box (at most 10×14), so freshness comes before compactness.
+            var score = placed.Count * 100_000 - placed.Count(p => p.Word.Recent) * 1_000 - rows * cols;
             if (score > bestScore)
             {
                 (best, bestScore) = (placed, score);

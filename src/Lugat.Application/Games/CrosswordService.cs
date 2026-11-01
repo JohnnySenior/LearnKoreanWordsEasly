@@ -33,10 +33,36 @@ public sealed partial class CrosswordService(IAppDbContext db, TimeProvider time
         var open = progress.Count;
         var active = await ActiveAsync(ownerId, ct);
         var current = await units.CurrentAsync(ownerId, ct);
+        var unitIds = progress.Select(p => p.UnitId).ToList();
+        var words = (await Rows(unitIds).ToListAsync(ct)).Where(r => Hangul().IsMatch(r.Korean))
+            .GroupBy(r => r.Unit).ToDictionary(g => g.Key, g => g.Count());
+        var list = await db.Units.Where(u => unitIds.Contains(u.Id)).OrderBy(u => u.Level).ThenBy(u => u.Number)
+            .Select(u => new { u.Id, u.Level, u.Number }).ToListAsync(ct);
         return new CrosswordHomeDto(open, UnitsForCrossword,
             Sizes.Select(s => new CrosswordSizeDto(s.Size, s.Title, s.Words, s.Units, open >= s.Units)).ToList(),
-            active is null ? null : ToDto(active), current?.Id);
+            active is null ? null : ToDto(active), current?.Id,
+            list.Select(u => new CrosswordUnitDto(u.Id, Study.LearnerItems.Label(u.Level, u.Number), words.GetValueOrDefault(u.Id))).ToList());
     }
+
+    /// <summary>How many of the learner's last crosswords count as recent: their words wait until the others are used.</summary>
+    public const int RecentCrosswords = 2;
+
+    private sealed class WordRow
+    {
+        public Guid Id { get; init; }
+        public string Korean { get; init; } = "";
+        public string Uzbek { get; init; } = "";
+        public Guid Unit { get; init; }
+        public string? ExampleKo { get; init; }
+        public string? ExampleUz { get; init; }
+    }
+
+    /// <summary>Catalog items are shared: the words of these units are the same for every learner.</summary>
+    private IQueryable<WordRow> Rows(List<Guid> unitIds) =>
+        from i in db.LearningItems
+        join w in db.CatalogWords on i.CatalogWordId equals w.Id
+        where i.IsActive && i.Kind == LearningItemKind.Catalog && i.UnitId != null && unitIds.Contains(i.UnitId.Value)
+        select new WordRow { Id = i.Id, Korean = i.Korean, Uzbek = i.Uzbek, Unit = i.UnitId!.Value, ExampleKo = w.ExampleKo, ExampleUz = w.ExampleUz };
 
     public async Task<CrosswordDto> StartAsync(Guid ownerId, StartCrosswordRequest request, CancellationToken ct)
     {
@@ -57,17 +83,26 @@ public sealed partial class CrosswordService(IAppDbContext db, TimeProvider time
             throw new ValidationException($"{size.Title} krossvord {size.Units}-bo‘lim ochilganda ochiladi.");
         }
 
-        var unitIds = progress.Select(p => p.UnitId).ToList();
-        var current = progress.Where(p => p.Status == UnitProgressStatus.Open).Select(p => p.UnitId).ToHashSet();
-        var rows = await (from i in db.LearningItems
-                          join w in db.CatalogWords on i.CatalogWordId equals w.Id
-                          where i.IsActive && i.Kind == LearningItemKind.Catalog && i.UnitId != null && unitIds.Contains(i.UnitId.Value)
-                          select new { i.Id, i.Korean, i.Uzbek, Unit = i.UnitId!.Value, w.ExampleKo, w.ExampleUz })
-            .AsNoTracking().ToListAsync(ct);
-        // Weak words come early too: a card forgotten at least once.
-        var weak = (await db.Cards.Where(c => c.OwnerId == ownerId && c.Lapses > 0).Select(c => c.LearningItemId).Distinct().ToListAsync(ct)).ToHashSet();
+        var open = progress.Select(p => p.UnitId).ToList();
+        var unitIds = request.UnitIds is { Count: > 0 } chosen ? chosen.Distinct().ToList() : open;
+        if (unitIds.Any(u => !open.Contains(u)))
+        {
+            throw new ValidationException("Faqat ochilgan bo‘limlarni tanlash mumkin.");
+        }
+
+        var least = Math.Max(UnitsForCrossword, size.Units);
+        if (unitIds.Count < least)
+        {
+            throw new ValidationException($"{size.Title} krossvord uchun kamida {least} ta bo‘lim tanlang.");
+        }
+
+        // Every word of the chosen units counts the same (L-55); only words of the last crosswords wait their turn.
+        var rows = await Rows(unitIds).AsNoTracking().ToListAsync(ct);
+        var recent = (await db.Crosswords.Where(x => x.OwnerId == ownerId).OrderByDescending(x => x.CreatedAt).Take(RecentCrosswords)
+                .AsNoTracking().ToListAsync(ct))
+            .SelectMany(x => x.Words).Select(w => w.LearningItemId).ToHashSet();
         var pool = rows.Where(r => Hangul().IsMatch(r.Korean))
-            .Select(r => new CrosswordCandidate(r.Id, r.Korean, Clue(r.Uzbek), r.ExampleKo, r.ExampleUz, current.Contains(r.Unit) || weak.Contains(r.Id)))
+            .Select(r => new CrosswordCandidate(r.Id, r.Korean, Clue(r.Uzbek), r.ExampleKo, r.ExampleUz, recent.Contains(r.Id)))
             .ToList();
         if (pool.Count < 2)
         {
