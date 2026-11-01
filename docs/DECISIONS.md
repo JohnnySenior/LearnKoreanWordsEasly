@@ -621,3 +621,14 @@ Sayt Blazor WebAssembly: bot `index.html` dan faqat "Koreyscha · Yuklanmoqda…
 - **Service worker:** `/soz…`, `/sitemap.xml`, `/robots.txt` ga tegmaydi — aks holda o‘rnatilgan PWA ularni keshdagi `index.html` bilan almashtirardi (JS testi). `index.html` boot blokida qisqa tushuntirish va `/soz` havolasi.
 - **Asos domen:** `Seo:BaseUrl` (standart `https://koreyscha.com`) — canonical va sitemap Railway domeniga emas, shu domenga ishora qiladi.
 - Cloudflare: zonada "managed robots.txt"/content signals yoqilgan bo‘lsa, u bizning `/robots.txt` ni almashtirishi yoki o‘ziga qo‘shishi mumkin — Johnny tekshiradi.
+
+## L-57 · 2026-11-02 · Yangi ko‘rinish: kunduzi "Sokin", kechasi "Tungi"
+
+Johnny: dizayn quruq va "bachkana"ga yaqin, boshqa saytlarda har detal chiroyli ishlangan. Uch uslub namunasi (artifact: Sokin, Studio, Tungi) ko‘rsatildi; Johnny Sokin va Tungi’ni tanladi.
+- **Yorug‘ rejim = Sokin:** iliq qog‘oz fon (`#f6f2ed`), oq kartochkalar (`--color-card`), yumshoq soya, marjon-qizil (`#e5533d`).
+- **Qorong‘i rejim = Tungi:** chuqur siyoh fon (`#0f1117`) yuqorida iliq nur (`--page-glow`), shishasimon kartochkalar (ingichka ichki chiziq), asosiy tugma gradient va nurli soya.
+- Almashish mavjud mexanizm bilan: Profil → Sozlamalar → Mavzu (Yorug‘ / Qorong‘i / Qurilma). "Qurilma" — telefon kechqurun qorong‘i rejimga o‘tsa, ilova ham Tungi’ga o‘tadi.
+- **Shrift ikkala rejimda bitta** — Plus Jakarta Sans (+ Noto Sans KR): rejim almashganda boshqa ilovaga o‘tgandek tuyulmasin, ikkinchi shrift yuklanmasin. Archivo olib tashlandi.
+- D-25’dagi "0 radius, 2px chiziqlar" bekor: kartochkalar `--radius-lg` 22px, tugma/maydon 12px, chip va tablar "pill". Qizil hamon faqat harakat uchun, "xato" ma’nosida emas.
+- Bosqichlar: (1) tokenlar va umumiy elementlar — tugmalar (bosish/ustiga kelish holatlari), kartochkalar, ro‘yxat guruhlari, chip, segment, maydon, pastki menyu, bo‘lim qadamlari, kartochka baholash tugmalari; (2–3) ekranma-ekran sayqal.
+
