@@ -1,33 +1,48 @@
-/* Koreyscha — "Modernist" design (Claude Design, direction 1a "Grid", D-25).
-   Archivo + Noto Sans KR, 0 radius, 2px rules, one red accent used only for actions — never to mean "wrong".
+/* Koreyscha — "Sokin" by day, "Tungi" by night (L-57; before that the square "Modernist" grid, D-25).
+   Plus Jakarta Sans + Noto Sans KR, soft rounded cards, one red accent used only for actions — never to mean "wrong".
    Light is the default; dark follows the device setting (prefers-color-scheme). data-theme on <html> forces one
-   of them; the Settings choice (spec §4.7) sets it in a later stage. */
+   of them (Profil → Sozlamalar → Mavzu). */
 :root {
-    --color-bg: #f3f2f2;
-    --color-surface: #eae9e9;
-    --color-text: #201e1d;
-    --color-accent: #ec3013;
-    --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
-    --color-rule-soft: color-mix(in srgb, #201e1d 22%, transparent);
-    --color-muted: #605d5d;
-    --color-accent-100: #fff2ef;
-    --color-accent-600: #dd2b0f;
-    --color-accent-700: #ae1800;
-    --color-accent-800: #7c1405;
-    --color-neutral-100: #f8f4f4;
-    --color-neutral-300: #d7d3d3;
-    --color-neutral-400: #bab6b6;
-    --color-neutral-500: #9b9797;
-    --color-neutral-600: #7d7979;
-    --color-neutral-800: #444141;
-    --color-accent-400: #ff9783;
-    --color-accent-900: #4d170e;
-    --color-warn: #ae1800;
+    --color-bg: #f6f2ed;
+    --color-surface: #efe8df;
+    --color-card: #fffdfa;
+    --color-text: #2b2420;
+    --color-accent: #e5533d;
+    --color-divider: color-mix(in srgb, #2b2420 15%, transparent);
+    --color-rule-soft: color-mix(in srgb, #2b2420 8%, transparent);
+    --color-muted: #776a5f;
+    --color-accent-100: #fbeee8;
+    --color-accent-600: #d8462f;
+    --color-accent-700: #b8402c;
+    --color-accent-800: #8f2f1f;
+    --color-neutral-100: #f3ede6;
+    --color-neutral-300: #e6ddd3;
+    --color-neutral-400: #cbbfb3;
+    --color-neutral-500: #a39587;
+    --color-neutral-600: #85776b;
+    --color-neutral-800: #4a3f38;
+    --color-accent-400: #f29a87;
+    --color-accent-900: #5a2015;
+    --color-warn: #b8402c;
     --color-on-accent: #ffffff;
-    --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+    --color-done-bg: #e6efe2;
+    --color-done-fg: #4b7541;
+    --color-chip-selected: #2b2420;
+    --accent-fill: #e5533d;
+    --shadow-card: 0 1px 2px rgba(80, 50, 30, .05), 0 10px 26px -14px rgba(80, 50, 30, .2);
+    --shadow-raised: 0 2px 4px rgba(80, 50, 30, .06), 0 16px 32px -14px rgba(80, 50, 30, .26);
+    --shadow-accent: 0 8px 18px -8px rgba(229, 83, 61, .55);
+    --shadow-lg: 0 16px 40px rgba(80, 50, 30, .22);
+    --page-glow: none;
 
-    --font-heading: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --radius-lg: 22px;
+    --radius: 16px;
+    --radius-sm: 12px;
+    --radius-xs: 8px;
+    --radius-pill: 999px;
+
+    --font-heading: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-ko: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 
     --tabbar-height: 64px;
@@ -36,51 +51,73 @@
 }
 
 [data-theme="dark"] {
-    --color-bg: #191817;
-    --color-surface: #242221;
-    --color-text: #eeebea;
-    --color-divider: color-mix(in srgb, #eeebea 32%, transparent);
-    --color-rule-soft: color-mix(in srgb, #eeebea 18%, transparent);
-    --color-muted: #b3afae;
-    --color-accent: #f0442a;
-    --color-accent-100: #3a1d17;
-    --color-accent-600: #ff563c;
-    --color-accent-700: #ff9783;
-    --color-accent-800: #ffc4b8;
-    --color-neutral-100: #2d2b2b;
-    --color-neutral-300: #3a3837;
-    --color-neutral-400: #555251;
-    --color-neutral-500: #7d7979;
-    --color-neutral-600: #9b9797;
-    --color-neutral-800: #d7d3d3;
+    --color-bg: #0f1117;
+    --color-surface: #1b1e27;
+    --color-card: #161922;
+    --color-text: #eef0f6;
+    --color-divider: rgba(255, 255, 255, .11);
+    --color-rule-soft: rgba(255, 255, 255, .065);
+    --color-muted: #8f94a7;
+    --color-accent: #ff5a3c;
+    --color-accent-100: #2a1b1d;
+    --color-accent-600: #ff6d50;
+    --color-accent-700: #ff8a70;
+    --color-accent-800: #ffb4a3;
+    --color-neutral-100: #1f2230;
+    --color-neutral-300: #2a2e3b;
+    --color-neutral-400: #3b4050;
+    --color-neutral-500: #646a7d;
+    --color-neutral-600: #8f94a7;
+    --color-neutral-800: #d3d6e0;
     --color-accent-400: #ff9783;
-    --color-accent-900: #ffc4b8;
-    --color-warn: #ff9783;
+    --color-accent-900: #ffd2c7;
+    --color-warn: #ff8a70;
+    --color-done-bg: rgba(120, 220, 170, .14);
+    --color-done-fg: #8fe3b8;
+    --color-chip-selected: #ff5a3c;
+    --accent-fill: linear-gradient(135deg, #ff6a45 0%, #ec3013 100%);
+    --shadow-card: inset 0 0 0 1px rgba(255, 255, 255, .06);
+    --shadow-raised: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 10px 30px -12px rgba(0, 0, 0, .6);
+    --shadow-accent: 0 10px 28px -10px rgba(255, 90, 60, .7), inset 0 1px 0 rgba(255, 255, 255, .2);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, .55);
+    --page-glow: radial-gradient(120% 50% at 100% 0%, rgba(255, 90, 60, .13) 0%, transparent 60%),
+        radial-gradient(90% 45% at 0% 25%, rgba(90, 110, 255, .08) 0%, transparent 60%);
     color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --color-bg: #191817;
-        --color-surface: #242221;
-        --color-text: #eeebea;
-        --color-divider: color-mix(in srgb, #eeebea 32%, transparent);
-        --color-rule-soft: color-mix(in srgb, #eeebea 18%, transparent);
-        --color-muted: #b3afae;
-        --color-accent: #f0442a;
-        --color-accent-100: #3a1d17;
-        --color-accent-600: #ff563c;
-        --color-accent-700: #ff9783;
-        --color-accent-800: #ffc4b8;
-        --color-neutral-100: #2d2b2b;
-        --color-neutral-300: #3a3837;
-        --color-neutral-400: #555251;
-        --color-neutral-500: #7d7979;
-        --color-neutral-600: #9b9797;
-        --color-neutral-800: #d7d3d3;
+        --color-bg: #0f1117;
+        --color-surface: #1b1e27;
+        --color-card: #161922;
+        --color-text: #eef0f6;
+        --color-divider: rgba(255, 255, 255, .11);
+        --color-rule-soft: rgba(255, 255, 255, .065);
+        --color-muted: #8f94a7;
+        --color-accent: #ff5a3c;
+        --color-accent-100: #2a1b1d;
+        --color-accent-600: #ff6d50;
+        --color-accent-700: #ff8a70;
+        --color-accent-800: #ffb4a3;
+        --color-neutral-100: #1f2230;
+        --color-neutral-300: #2a2e3b;
+        --color-neutral-400: #3b4050;
+        --color-neutral-500: #646a7d;
+        --color-neutral-600: #8f94a7;
+        --color-neutral-800: #d3d6e0;
         --color-accent-400: #ff9783;
-        --color-accent-900: #ffc4b8;
-        --color-warn: #ff9783;
+        --color-accent-900: #ffd2c7;
+        --color-warn: #ff8a70;
+        --color-done-bg: rgba(120, 220, 170, .14);
+        --color-done-fg: #8fe3b8;
+        --color-chip-selected: #ff5a3c;
+        --accent-fill: linear-gradient(135deg, #ff6a45 0%, #ec3013 100%);
+        --shadow-card: inset 0 0 0 1px rgba(255, 255, 255, .06);
+        --shadow-raised: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 10px 30px -12px rgba(0, 0, 0, .6);
+        --shadow-accent: 0 10px 28px -10px rgba(255, 90, 60, .7), inset 0 1px 0 rgba(255, 255, 255, .2);
+        --shadow-lg: 0 16px 40px rgba(0, 0, 0, .55);
+        --page-glow: radial-gradient(120% 50% at 100% 0%, rgba(255, 90, 60, .13) 0%, transparent 60%),
+            radial-gradient(90% 45% at 0% 25%, rgba(90, 110, 255, .08) 0%, transparent 60%);
         color-scheme: dark;
     }
 }
@@ -89,7 +126,8 @@
 
 html, body {
     margin: 0;
-    background: var(--color-bg);
+    background: var(--page-glow), var(--color-bg);
+    background-attachment: fixed;
     color: var(--color-text);
     font-family: var(--font-body);
     font-size: 16px;
@@ -1245,3 +1283,177 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .shake { animation: kv-shake .3s; }
 @keyframes kv-shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 @media (prefers-reduced-motion: reduce) { .shake { animation: none; } }
+
+/* ===== Sokin / Tungi (L-57): the shared pieces as soft cards. Everything above still sets layout; this layer gives
+   the surfaces, radii, shadows and states. Light = Sokin (warm paper), dark = Tungi (deep ink, glow). ===== */
+
+/* Motion: short, only on state changes; none when the device asks for less. */
+.btn, .button, .chip, .seg > button, .seg > a, .level-pick button, .input, .rate-cell, .choice, .tab-icon,
+.switch-track, .switch-knob, .unit-item, .practice-row, .menu a, .list-row, .plan, .manage-cell, .admin-tile {
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .2s ease, transform .12s ease, filter .18s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
+}
+
+/* Headings: a little lighter than the old 800/900 black. */
+h1 { font-size: 30px; letter-spacing: -0.025em; }
+.home-due-figure b, .result-figures b, .unit-no, .plan b, .spend-figure b, .attention-row b, .landing-steps li::before,
+.practice-no, .profile-avatar, .scene-mark { font-weight: 800; }
+.flashcard .prompt.ko, .reveal .answer.ko, .test-question .prompt.ko, .signin-words span, .landing-word-ko { font-weight: 700; }
+
+/* Buttons. Primary: the one red action, filled, with a soft glow; secondary: a quiet filled surface. */
+.btn, .button { border-radius: var(--radius-sm); font-weight: 700; }
+.btn:active:not(:disabled), .button:active:not(:disabled) { transform: scale(.98); }
+.btn-primary, .button.primary {
+    background: var(--accent-fill);
+    color: var(--color-on-accent);
+    border-color: transparent;
+    box-shadow: var(--shadow-accent);
+}
+.btn-primary:hover, .button.primary:hover { background: var(--accent-fill); color: var(--color-on-accent); filter: brightness(1.06); border-color: transparent; }
+.btn-primary:active { background: var(--accent-fill); filter: brightness(.95); }
+.btn-primary:disabled, .button.primary:disabled { box-shadow: none; }
+.btn svg { transition: transform .2s ease; }
+.btn-primary:hover:not(:disabled) svg, .btn-secondary:hover:not(:disabled) svg { transform: translateX(3px); }
+.btn-secondary, .button {
+    background: var(--color-surface);
+    border-color: transparent;
+}
+.btn-secondary:hover, .button:hover { background: color-mix(in srgb, var(--color-text) 9%, var(--color-surface)); }
+.btn-secondary:active { background: color-mix(in srgb, var(--color-text) 14%, var(--color-surface)); }
+.button.selected { background: var(--accent-fill); border-color: transparent; }
+.btn-ghost { border-radius: var(--radius-xs); }
+.btn-ink { border-radius: var(--radius-sm); }
+.button.option.chosen { background: var(--color-text); color: var(--color-bg); }
+
+/* Cards: the screen's blocks lift off the page instead of being cut by rules. */
+.card, .home-due, .home-unit, .flashcard, .trap-scene {
+    background: var(--color-card);
+    border: 0;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+}
+.card { padding: 18px; margin: 12px 0; }
+.card + .card, h1 + .card, p + .card, .notice + .card, .page-head + .card { border-top: 0; margin-top: 12px; }
+.home-due { margin: 14px 0 0; padding: 20px; }
+.home-due .btn.block { margin-top: 18px; }
+.home-unit { margin: 12px 0 0; padding: 18px 18px 16px; }
+.flashcard { margin: 12px 0 0; padding: 20px; border-bottom: 0; }
+
+/* Headers and labels: thin soft lines instead of 2px rules. */
+.app-header { border-bottom: 0; }
+.page-head, .section-label, .practice-head, .section-title { border-bottom-width: 1px; border-bottom-color: var(--color-rule-soft); }
+.section-label.accent { border-bottom-color: var(--color-rule-soft); }
+.kv-status { border-top: 1px solid var(--color-rule-soft); }
+
+/* Lists: rows grouped in one rounded card. */
+.menu, .practice-list, .unit-rows, .choice-list, .wrong-list {
+    margin: 12px 0 0;
+    background: var(--color-card);
+    border: 0;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+}
+.menu a, .practice-row, .unit-item, .choice, .wrong-row, .menu button.unit-row { padding-left: 18px; padding-right: 18px; border-bottom-color: var(--color-rule-soft); }
+.menu > :last-child, .practice-list > :last-child, .unit-rows > :last-child, .choice-list > :last-child, .wrong-list > :last-child,
+.menu a:last-child, .practice-row:last-child, .unit-item:last-child, .choice:last-child, .wrong-row:last-child { border-bottom: 0; }
+.menu a:hover, .practice-row:hover, a.unit-item:hover, .choice:hover:not(:disabled):not(.chosen) { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+.menu.compact { border-top: 0; }
+.unit-item.open { background: transparent; }
+@media (hover: hover) { .tab:hover .tab-icon { background: var(--color-surface); } .tab.active:hover .tab-icon { background: var(--color-accent-100); } }
+.practice-no { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--color-surface); font-size: 13px; color: var(--color-muted); }
+.choice.chosen { background: var(--color-text); color: var(--color-bg); }
+
+/* Chips and segmented controls. */
+.chips { gap: 8px; }
+.chip {
+    margin: 0;
+    min-height: 40px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-divider);
+    background: var(--color-card);
+    padding: 0 14px;
+}
+.chip:hover:not(:disabled):not(.selected) { background: var(--color-surface); }
+.chip.selected { background: var(--color-chip-selected); color: var(--color-on-accent); border-color: transparent; font-weight: 700; }
+.chip.selected.done { color: var(--color-on-accent); }
+.chip .dot { border-radius: 50%; }
+.chips.days .chip { border-radius: var(--radius-sm); }
+.seg, .level-pick {
+    gap: 4px;
+    padding: 4px;
+    border: 0;
+    border-radius: calc(var(--radius-sm) + 4px);
+    background: var(--color-surface);
+}
+.seg > button, .seg > a, .level-pick button { border: 0; border-radius: var(--radius-sm); }
+.seg > button:hover:not(.selected):not(:disabled), .seg > a:hover:not(.selected), .level-pick button:hover:not(.selected) { color: var(--color-text); }
+.seg > button.selected, .seg > a.selected, .level-pick button.selected {
+    background: var(--color-card);
+    color: var(--color-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .14);
+    font-weight: 700;
+}
+.seg > button { padding: 0 10px; text-align: center; }
+.seg > a { padding: 0 10px; text-align: center; }
+
+/* Inputs: calm surface, red ring on focus. */
+.input {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-divider);
+    background: var(--color-card);
+}
+.input:focus-visible { outline: 0; border-color: var(--color-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+
+/* Tab bar: frosted, the active item in a soft pill. */
+.tabbar {
+    background: color-mix(in srgb, var(--color-card) 86%, transparent);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--color-rule-soft);
+}
+.tab { color: var(--color-muted); font-weight: 500; font-size: 10.5px; }
+.tab-icon { width: 52px; height: 30px; padding: 5px 16px; border-radius: var(--radius-pill); }
+.tab.active { color: var(--color-accent-700); font-weight: 700; box-shadow: none; }
+.tab.active .tab-icon { background: var(--color-accent-100); }
+
+/* Steps of a unit: four small cards; the current one carries the red ring. */
+.stepper:not(.compact) { margin: 12px 0 0; gap: 8px; border: 0; }
+.stepper:not(.compact) li { border: 0; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); overflow: hidden; }
+.stepper:not(.compact) li.current { background: var(--color-card); box-shadow: inset 0 0 0 2px var(--color-accent), var(--shadow-card); }
+.stepper:not(.compact) button, .stepper:not(.compact) li > span { min-height: 80px; }
+.stepper li.done .stepper-no { color: var(--color-done-fg); }
+.stepper.compact { border-color: var(--color-rule-soft); }
+.stepper.compact li { border-color: var(--color-rule-soft); }
+
+/* Progress, switches, tags, small pieces. */
+.progress { height: 6px; border-radius: var(--radius-pill); background: var(--color-neutral-300); overflow: hidden; }
+.progress > span, .progress > div { border-radius: inherit; }
+.test-segments span { border-radius: var(--radius-pill); }
+.switch-track { border-radius: var(--radius-pill); width: 44px; height: 26px; }
+.switch-knob { width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.switch.on .switch-track { background: var(--color-accent); }
+.tag { border-radius: var(--radius-pill); font-weight: 500; }
+.pill { border-radius: var(--radius-pill); }
+.skeleton { border-radius: var(--radius-xs); }
+.notice, .hint, .trap, .usage-trap, .report, .raw, .scene-fields { border-radius: var(--radius-sm); }
+.notice { border-left: 0; box-shadow: inset 3px 0 0 var(--color-accent); }
+.avatar, .profile-avatar { border-radius: 50%; background: var(--accent-fill); color: var(--color-on-accent); box-shadow: var(--shadow-accent); }
+.profile-avatar { align-items: center; justify-content: center; padding: 0; }
+.avatar:hover { color: var(--color-on-accent); }
+.speak-btn, .timer-box, .timer { border-radius: var(--radius-sm); }
+.speak-btn { background: var(--color-surface); border-color: transparent; }
+.toast, .update-banner { border-radius: var(--radius); }
+.update-banner { left: 8px; right: 8px; bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + 8px); box-shadow: var(--shadow-lg); }
+.sticky-action { background: color-mix(in srgb, var(--color-bg) 88%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid var(--color-rule-soft); }
+.actions { background: transparent; }
+
+/* Card answers: three rounded buttons; the middle one filled. */
+.rate-grid { gap: 8px; margin: 10px 0 0; border-top: 0; }
+.rate-cell { border: 0; border-radius: var(--radius-sm); background: var(--color-surface); min-height: 68px; }
+.rate-cell:hover:not(:disabled) { background: color-mix(in srgb, var(--color-text) 9%, var(--color-surface)); }
+.rate-cell:active:not(:disabled) { transform: scale(.97); }
+.rate-cell.middle { background: var(--accent-fill); color: var(--color-on-accent); box-shadow: var(--shadow-accent); }
+.rate-cell.middle span { color: color-mix(in srgb, var(--color-on-accent) 82%, transparent); }
