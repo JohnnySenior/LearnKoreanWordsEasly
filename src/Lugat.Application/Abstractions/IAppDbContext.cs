@@ -32,6 +32,8 @@ public interface IAppDbContext
 
     DbSet<Domain.Catalog.CatalogWord> CatalogWords { get; }
 
+    DbSet<Domain.Catalog.WordSlug> WordSlugs { get; }
+
     DbSet<Domain.Catalog.CatalogUsage> CatalogUsages { get; }
 
     DbSet<Domain.Catalog.Unit> Units { get; }

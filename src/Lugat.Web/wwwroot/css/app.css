@@ -371,6 +371,7 @@ h1 + .card, p + .card, .notice + .card { border-top: 2px solid var(--color-divid
 .boot { padding: 30vh var(--gutter) 0; }
 .boot-title { font: 800 34px/1 var(--font-heading); letter-spacing: -0.02em; }
 .boot-text { color: var(--color-muted); margin-top: 8px; }
+.boot-about { max-width: 34em; margin-top: 24px; color: var(--color-muted); font-size: 14px; }
 
 #blazor-error-ui {
     background: var(--color-accent-100);
