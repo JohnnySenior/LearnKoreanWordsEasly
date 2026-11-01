@@ -630,5 +630,6 @@ Johnny: dizayn quruq va "bachkana"ga yaqin, boshqa saytlarda har detal chiroyli 
 - Almashish mavjud mexanizm bilan: Profil → Sozlamalar → Mavzu (Yorug‘ / Qorong‘i / Qurilma). "Qurilma" — telefon kechqurun qorong‘i rejimga o‘tsa, ilova ham Tungi’ga o‘tadi.
 - **Shrift ikkala rejimda bitta** — Plus Jakarta Sans (+ Noto Sans KR): rejim almashganda boshqa ilovaga o‘tgandek tuyulmasin, ikkinchi shrift yuklanmasin. Archivo olib tashlandi.
 - D-25’dagi "0 radius, 2px chiziqlar" bekor: kartochkalar `--radius-lg` 22px, tugma/maydon 12px, chip va tablar "pill". Qizil hamon faqat harakat uchun, "xato" ma’nosida emas.
+- 2-bosqich: sozlamalar qatorlari kartochka guruhida (`.list-row` ketma-ketligi `:has()` bilan bitta yumaloq guruh), Profil/Admin plitkalari, Premium tariflari va to‘lov kodi, Xatolar va boshqa so‘z ro‘yxatlari, kirish sahifasi, bo‘lim jadvali, test natijasi, krossvord kataklari va ishora paneli.
 - Bosqichlar: (1) tokenlar va umumiy elementlar — tugmalar (bosish/ustiga kelish holatlari), kartochkalar, ro‘yxat guruhlari, chip, segment, maydon, pastki menyu, bo‘lim qadamlari, kartochka baholash tugmalari; (2–3) ekranma-ekran sayqal.
 
