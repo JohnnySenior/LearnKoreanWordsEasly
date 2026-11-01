@@ -127,7 +127,7 @@ else
             @if (clue.State == CrosswordWordState.Open)
             {
                 <form class="kv-row" @onsubmit="AnswerAsync" @onsubmit:preventDefault>
-                    <input id="kv-answer" class="input sentence" lang="ko" maxlength="12" autocomplete="off" placeholder="Koreyscha yozing" @bind="_typed" @bind:event="oninput" disabled="@_busy" />
+                    <input id="kv-answer" @ref="_answer" class="input sentence" lang="ko" maxlength="12" autocomplete="off" placeholder="Koreyscha yozing" @bind="_typed" @bind:event="oninput" disabled="@_busy" />
                     <button class="btn btn-primary" type="submit" disabled="@(_busy || string.IsNullOrWhiteSpace(_typed))">Yozish</button>
                 </form>
                 <div class="kv-hints">
@@ -189,6 +189,9 @@ else
     private string _typed = "";
     private string? _error, _feedback;
     private bool _busy, _choosing, _shake, _confirmReveal;
+    /// <summary>The answer field; after each answer the cursor goes back into it, so the next word is typed at once.</summary>
+    private ElementReference _answer;
+    private bool _focusAnswer;
     /// <summary>Chosen units; none means all open units.</summary>
     private readonly HashSet<Guid> _units = [];
 
@@ -230,7 +233,7 @@ else
         _error = result.Ok ? null : result.Error;
         if (result.Value is { } game)
         {
-            (_game, _choosing, _feedback) = (game, false, null);
+            (_game, _choosing, _feedback, _focusAnswer) = (game, false, null, true);
             _home = _home! with { Active = game };
             FirstOpen();
         }
@@ -242,6 +245,7 @@ else
         _busy = true;
         var result = await Api.SendJsonAsync<CrosswordAnswerResultDto>(HttpMethod.Post, $"api/crosswords/{_game.Id}/answers", new CrosswordAnswerRequest(clue.Index, _typed));
         _busy = false;
+        _focusAnswer = true;
         if (result.Value is not { } answer)
         {
             _error = result.Error;
@@ -272,7 +276,7 @@ else
         _busy = true;
         var result = await Api.SendJsonAsync<CrosswordDto>(HttpMethod.Post, $"api/crosswords/{_game.Id}/hints", new CrosswordHintRequest(clue.Index, hint));
         _busy = false;
-        _confirmReveal = false;
+        (_confirmReveal, _focusAnswer) = (false, true);
         if (result.Value is { } game)
         {
             _game = game;
@@ -287,13 +291,27 @@ else
 
     private void Select(CrosswordClueDto clue)
     {
-        (_current, _feedback, _typed, _confirmReveal) = (clue.Index, null, "", false);
+        (_current, _feedback, _typed, _confirmReveal, _focusAnswer) = (clue.Index, null, "", false, true);
     }
 
     private void NextWord()
     {
         Next();
-        (_feedback, _typed) = (null, "");
+        (_feedback, _typed, _focusAnswer) = (null, "", true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusAnswer || _busy) return;
+        _focusAnswer = false;
+        try
+        {
+            await _answer.FocusAsync(); // the field is there only while the chosen word is still open
+        }
+        catch (Exception e) when (e is InvalidOperationException or Microsoft.JSInterop.JSException)
+        {
+            // The crossword was just finished: no field to go back to.
+        }
     }
 
     private void FirstOpen() => _current = _game?.Clues.OrderBy(c => c.Number).FirstOrDefault(c => c.State == CrosswordWordState.Open)?.Index ?? 0;
