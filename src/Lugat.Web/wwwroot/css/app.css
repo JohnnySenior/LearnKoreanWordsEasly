@@ -1457,3 +1457,140 @@ h1 { font-size: 30px; letter-spacing: -0.025em; }
 .rate-cell:active:not(:disabled) { transform: scale(.97); }
 .rate-cell.middle { background: var(--accent-fill); color: var(--color-on-accent); box-shadow: var(--shadow-accent); }
 .rate-cell.middle span { color: color-mix(in srgb, var(--color-on-accent) 82%, transparent); }
+
+/* ----- L-57 stage 2: screen by screen. ----- */
+
+/* Settings rows: consecutive .list-row form one rounded group under their label. */
+.section-label { margin: 18px 0 8px; padding: 0 4px; border-bottom: 0; }
+.section-label.accent { border-bottom: 0; }
+.list-row {
+    width: 100%;
+    margin: 0;
+    padding: 12px 16px;
+    background: var(--color-card);
+    border-bottom: 1px solid var(--color-rule-soft);
+}
+:not(.list-row) + .list-row { border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
+.list-row:not(:has(+ .list-row)) { border-bottom: 0; border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); box-shadow: var(--shadow-card); }
+a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--color-text) 4%, var(--color-card)); }
+
+/* Profile. */
+.profile-head { margin: 0; padding: 18px 0 8px; border-bottom: 0; align-items: center; }
+.manage-grid { margin: 12px 0 0; gap: 10px; border-bottom: 0; }
+.manage-cell, .admin-tile {
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--color-card);
+    box-shadow: var(--shadow-card);
+    padding: 16px;
+}
+.manage-cell + .manage-cell { border-left: 0; }
+.manage-cell.primary { background: var(--color-card); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-accent) 35%, transparent), var(--shadow-card); }
+.manage-cell:hover, .admin-tile:hover { background: color-mix(in srgb, var(--color-text) 4%, var(--color-card)); transform: translateY(-1px); }
+.profile-plan { margin: 12px 0 0; padding: 16px; border: 0; border-radius: var(--radius-lg); background: var(--color-card); box-shadow: var(--shadow-card); }
+.profile-bottom { margin: 18px 0 0; padding: 0; border-top: 0; }
+
+/* Admin home. */
+.admin-tiles { margin: 12px 0 0; gap: 10px; border-top: 0; }
+.admin-tile:nth-child(odd) { border-right: 0; }
+.attention-row { margin: 0; padding: 10px 4px; border-bottom-color: var(--color-rule-soft); }
+
+/* Numbers inside a card: no rule on top. */
+.card .facts.stats, .card > .figures { border-top: 0; }
+.figures { gap: 10px; border-top: 0; }
+.figures div { background: var(--color-card); border: 0; border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 14px; }
+.card .figures div { background: var(--color-surface); box-shadow: none; }
+
+/* Mistakes notebook and other plain word lists: one card, quiet rows. */
+.mistake-list, .word-list, .plain-list, .mistakes, .usage-tables, .ladder-scores {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+    background: var(--color-card);
+    border: 0;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+}
+.mistake-list > li, .word-list > li, .plain-list > li, .mistakes > li, .usage-tables > li, .ladder-scores > li {
+    padding: 12px 16px;
+    border-top: 0;
+    border-bottom: 1px solid var(--color-rule-soft);
+}
+.mistake-list > li:last-child, .word-list > li:last-child, .plain-list > li:last-child, .mistakes > li:last-child,
+.usage-tables > li:last-child, .ladder-scores > li:last-child { border-bottom: 0; }
+
+/* Premium. */
+.plan-grid { margin: 12px 0; gap: 10px; border: 0; }
+.plan { border: 0; border-radius: var(--radius-lg); background: var(--color-card); box-shadow: var(--shadow-card); padding: 16px; }
+.plan:hover:not(.selected) { background: color-mix(in srgb, var(--color-text) 4%, var(--color-card)); }
+.plan.selected { background: var(--color-text); color: var(--color-bg); box-shadow: var(--shadow-raised); }
+.plan-save { color: var(--color-accent); font-weight: 700; }
+.pay-code, .bank-facts {
+    margin: 12px 0 0;
+    padding: 16px;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--color-card);
+    box-shadow: var(--shadow-card);
+}
+.promo { padding: 16px 0 0; }
+
+/* Sign-in: the two first words as one card. */
+.signin-words { margin: 12px 0 0; border: 0; border-radius: var(--radius-lg); background: var(--color-card); box-shadow: var(--shadow-card); overflow: hidden; }
+.signin-words > div + div { border-left: 1px solid var(--color-rule-soft); }
+.signin-words > div { padding: 22px 20px; }
+.signin-foot { margin: auto 0 0; border-top: 1px solid var(--color-rule-soft); }
+.landing-steps li, .landing-word { border-bottom-color: var(--color-rule-soft); }
+.landing-trap { border-left: 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--color-accent-100); }
+.landing-plans { gap: 10px; }
+.landing-plans > div, .landing-plans > div + div { padding: 14px; border: 0; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
+
+/* Results of a unit test. */
+.result-figures { margin: 12px 0 0; gap: 10px; border-bottom: 0; }
+.result-figures > div { padding: 18px; border-radius: var(--radius-lg); background: var(--color-card); box-shadow: var(--shadow-card); }
+.result-figures.passed .result-score { background: var(--accent-fill); color: var(--color-on-accent); box-shadow: var(--shadow-accent); }
+.result-figures.failed .result-score { box-shadow: inset 0 0 0 2px var(--color-text); }
+
+/* Session and test headers: no hard rule under the bar. */
+.session-bar { margin: 0; padding: 4px 0; border-bottom: 0; }
+.session-bar .close { border-radius: var(--radius-sm); background: var(--color-surface); }
+.test-segments { gap: 4px; }
+.study-bar { border-bottom: 1px solid var(--color-rule-soft); background: color-mix(in srgb, var(--color-bg) 90%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+
+/* A unit's word table: a rounded card that keeps its rows. */
+.word-table {
+    margin: 12px 0 0;
+    width: 100%;
+    border-top: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--color-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+}
+.word-table th { border-bottom: 1px solid var(--color-rule-soft); }
+.word-table td { border-bottom: 1px solid var(--color-rule-soft); }
+.word-table tr:last-child td { border-bottom: 0; }
+.word-table th:first-child, .word-table td:first-child { padding-left: 16px; }
+.word-table th:last-child, .word-table td:last-child { padding-right: 16px; }
+.covered { border-radius: var(--radius-xs); }
+.unit-locked-note { border-bottom-color: var(--color-rule-soft); }
+
+/* Crossword: rounded cells, the clue panel as a card. */
+.kv-board { gap: 2px; }
+.kv-cell.on { border-radius: 6px; border-color: color-mix(in srgb, var(--color-text) 45%, transparent); background: var(--color-card); margin: 0; }
+.kv-cell.on.solved { background: var(--color-surface); }
+.kv-cell.on.sel { background: var(--color-accent-100); outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.kv-ask { border: 0; border-radius: var(--radius-lg); background: var(--color-card); box-shadow: var(--shadow-card); padding: 16px; }
+.kv-pattern span { border-radius: var(--radius-xs); background: var(--color-surface); border-color: transparent; }
+
+/* Small leftovers from the square grid. */
+.pron-word, .listen-options li, .order-built, .scene-panel .scene-counts li, .scene-review .scene-preview { border-radius: var(--radius-sm); }
+.timer { border-width: 1px; }
+.install-steps { border-top: 0; }
+.install-steps li { border-bottom-color: var(--color-rule-soft); }
+.danger-zone { border-top: 1px solid var(--color-rule-soft); }
+.table-wrap { margin: 8px 0 0; padding: 0; }
+.data-table th { border-bottom-width: 1px; }
