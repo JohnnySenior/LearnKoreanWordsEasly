@@ -46,7 +46,10 @@ public class SeoPageTests
         Assert.Contains("<meta property=\"og:url\" content=\"https://koreyscha.com/soz/sarang\">", html);
         Assert.Contains("\"@type\":\"DefinedTerm\"", html);
         Assert.Contains("\"name\":\"Koreyscha lug‘ati\"", html);
-        Assert.Contains($"href=\"/bolimlar/{ApiFactory.Unit(1)}?from=soz\"", html);
+        Assert.Contains($"href=\"/bolimlar/{ApiFactory.Unit(1)}?src=soz\"", html);
+        // The app reads ?src= (MainLayout), so visits from the word pages reach Admin → Manbalar.
+        Assert.DoesNotContain("from=soz", html);
+        Assert.Contains("href=\"/?src=soz\"", html);
         // Neighbours in the unit are linked.
         Assert.Contains("href=\"/soz/mul\"", html);
         Assert.Contains("국립국어원", html);
