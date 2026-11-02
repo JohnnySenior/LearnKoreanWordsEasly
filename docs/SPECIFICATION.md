@@ -542,6 +542,8 @@ Bo‘lim **barcha darslari** o‘tilganda tugaydi; alohida bo‘lim testi yo‘q
   - **Ro‘yxatdan faqat qoida nomi va darajasi olinadi**; izoh, misol va mashqlarni o‘zimiz yozamiz (AI qoralama + muharrir). Manba ilovada va ochiq sahifalarda ko‘rsatiladi (so‘zlar manbasi kabi). Faylni (PDF/HWP) Johnny 국립국어원 saytidan yuklaydi; import oldidan litsenziya belgisi (공공누리 turi) tekshirilib, DECISIONS’ga yoziladi.
   - **Yordamchi manba:** 「한국어기초사전」 (krdict, CC BY-SA, Open API) — qoidaning (어미/조사) ma’nosi va qo‘llanishini muharrir solishtirib tekshirishi uchun. Undagi matn **ko‘chirilmaydi**: CC BY-SA "bir xil shartlar" talabi bizning matnimizga ham tarqalmasin.
   - Ro‘yxat admin’ga import qilinadi (fayl → qatorlar, takror importda idempotent, `SourceKey` kabi); muharrir qo‘lda qoida qo‘sha yoki birlashtira oladi (masalan `-아서/어서` bitta dars).
+- **AI manbaga tayanib yozadi (KELISHILGAN, 2026-11-02):** har qoidaga muharrir **manba** biriktiradi (`GrammarReference`: 한국어기초사전 yozuvi, rasmiy hujjat yoki ishonchli darslikdan qisqa parcha va/yoki havola, manba nomi). Manbasiz qoidaga AI qoralama so‘ralmaydi. Promptda manba beriladi: AI qoidaning ma’nosi, yasalishi va cheklovlarini **faqat shu manbadan** oladi, o‘zbekcha sodda tilda qayta yozadi (matnni ko‘chirmaydi) va unga zid narsa yozmaydi; manbada yo‘q da’vo kerak bo‘lsa — yozmaydi va muharrirga "manbada yo‘q" deb belgilaydi. Tuzoq (o‘zbekcha o‘xshatish) manbada bo‘lmaydi — u AI taklifi, muharrir alohida tasdiqlaydi.
+- Muharrir ekranida **manba va qoralama yonma-yon**; tasdiqlashda "manba bilan solishtirildi" belgisi majburiy.
 - Har qoida uchun AI qoralama yozadi (bir chaqiruvda 2–3 qoida, tanishuvdagi `WordsPerCall` usuli):
   `meaning_uz`, `formation` (qoida va shakllar jadvali), `register`, `notes_uz`, 4–6 `examples` (`ko`, `uz`, ajratiladigan qism), `trap_uz` (yoki `null`), `contrasts` (§17.5), 8–12 mashq savoli (§17.6).
 - **Misollar o‘tilgan so‘zlardan:** har qoidaga `WordUnitHint` (qaysi so‘z bo‘limigacha bo‘lgan so‘zlar ishlatiladi) beriladi; AI shu so‘zlar ro‘yxatini oladi va misollarni ular bilan tuzadi. Server tekshiradi: misoldagi so‘zlarning ko‘pi (standart ≥70%) shu so‘zlardan bo‘lsin; bo‘lmasa ogohlantirish (bloklamaydi).
@@ -550,7 +552,7 @@ Bo‘lim **barcha darslari** o‘tilganda tugaydi; alohida bo‘lim testi yo‘q
 
 ### 17.5 Tuzoq va o‘xshash qoidalar (KELISHILGAN)
 - **Tuzoq** — so‘zlardagidek: o‘zbek tilida fikrlab gapirganda chiqadigan xato. Masalan: `-(으)면` ≈ "-sa", lekin `-(으)니까` ham ba’zan "-gani uchun" deb tarjima qilinadi; `저는` / `나는` — kimga gapirayotganingizga qarab. Kartochkada va tanishuvda alohida blok ("✧ Farqiga qarang"), interaktiv sahna (L-52) qoidalar uchun ham ishlaydi: noto‘g‘ri gap chiziladi, to‘g‘risi chiqadi.
-- **O‘xshash qoidalar** — `GrammarContrast(A, B, ExplanationUz, Examples)`: ikki qoida ma’no yoki ko‘rinishda yaqin bo‘lsa, farqi qisqa jadval va 2–3 juft misol bilan. Ikkinchi qoida darsida birinchisi bilan farqi ko‘rsatiladi va mashqda "Qaysi biri to‘g‘ri?" ikkalasi orasida so‘raladi. Contrast faqat ikkala qoida nashr qilinganda ko‘rinadi.
+- **O‘xshash qoidalar** — `GrammarContrast(A, B, ExplanationUz, Examples, Reference)`: ikki qoida ma’no yoki ko‘rinishda yaqin bo‘lsa, farqi qisqa jadval va 2–3 juft misol bilan. **Qat’iy qoida (KELISHILGAN):** farq tushuntirishi faqat **manbasi ko‘rsatilgan** (`Reference` majburiy: farqni bayon qilgan lug‘at, rasmiy hujjat yoki ilmiy ish) va **inson tasdiqlagan** bo‘lsa nashr qilinadi; manbasiz farq ko‘rinmaydi. AI farqni o‘zidan o‘ylab topmaydi — manbadagi farqni o‘zbekcha tushuntiradi. Ikkinchi qoida darsida birinchisi bilan farqi ko‘rsatiladi va mashqda "Qaysi biri to‘g‘ri?" ikkalasi orasida so‘raladi. Contrast faqat ikkala qoida nashr qilinganda ko‘rinadi.
 
 ### 17.6 Mashq va savol turlari (TEXNIK ASOS)
 | Tur | Tavsif | Bor tizim |
@@ -595,7 +597,8 @@ Tamoyil §7.1 bilan bir xil: bir marta tayyorlanib saqlangan kontent bepul, har 
 | `GrammarPoint` | `Id`, `UnitId`, `Order`, `Pattern` (`-고 싶다`), `TitleUz`, `MeaningUz`, `Formation` (jsonb: qo‘shiladigan so‘z turi, shakllar), `Register`, `NotesUz`, `TrapUz?`, `WordUnitHint?`, `Status` (`Draft`/`Reviewed`), `ContentVersion`, `ReviewedBy`, `ReviewedAt`, `AiProvider/Model` |
 | `GrammarExample` | `PointId`, `Order`, `Ko`, `Uz`, `HighlightStart/Length` |
 | `GrammarExercise` | `PointId`, `Kind` (§17.6), `Prompt`, `Answer`, `Options` (jsonb), `ExplanationUz`, `ContentVersion` |
-| `GrammarContrast` | `PointAId`, `PointBId` (unique juft), `ExplanationUz`, `Examples` (jsonb) |
+| `GrammarReference` | `Id`, `PointId?` yoki `ContrastId?`, `SourceName` (masalan 「한국어기초사전」), `Url?`, `Excerpt?` (qisqa parcha, faqat AI va muharrir uchun — o‘quvchiga chiqmaydi), `License?`, `AddedBy`, `AddedAt` |
+| `GrammarContrast` | `PointAId`, `PointBId` (unique juft), `ExplanationUz`, `Examples` (jsonb), `Status` (`Draft`/`Reviewed`) — nashr uchun kamida bitta `GrammarReference` |
 | `UserGrammarProgress` | `UserId`, `PointId` (unique juft), `Status` (`Open`/`Passed`), `PassedBy` (`Test`/`SkipTest`/`Placement`), `BestScorePercent`, `Attempts`, `Version` |
 | `PlacementAttempt` | `UserId`, savollar va javoblar, natija (so‘z bo‘limi, grammatika darsi), `AcceptedAt?`, `StartedAt`, `FinishedAt` |
 | `StudyPlan` | `UserId` (unique), `Goal`, `TargetDate?`, `DailyMinutes`, `UpdatedAt` |
@@ -614,7 +617,7 @@ Tamoyil §7.1 bilan bir xil: bir marta tayyorlanib saqlangan kontent bepul, har 
 ### 17.13 Bosqichlar va qabul mezonlari
 | Bosqich | Nima | Qabul |
 |---|---|---|
-| **G1** Model va kontent oqimi | §17.11 jadvallari, admin: ro‘yxat importi, AI qoralama (2–3 qoida/chaqiruv), server tekshiruvi, tahrir, `Reviewed`, nashr | Johnny A-1 bo‘limi qoidalarini tayyorlab nashr qila oladi; testlar: tekshiruv, nashr sharti, ContentVersion |
+| **G1** Model va kontent oqimi | §17.11 jadvallari, admin: ro‘yxat importi, manba biriktirish, manbaga tayangan AI qoralama (2–3 qoida/chaqiruv), server tekshiruvi, manba bilan yonma-yon tahrir, `Reviewed`, nashr | Johnny A-1 bo‘limi qoidalarini tayyorlab nashr qila oladi; testlar: manbasiz qoidaga qoralama yo‘q, manbasiz contrast nashr qilinmaydi, nashr sharti, ContentVersion |
 | **G2** O‘quvchi darsi | Bo‘limlar segmenti, dars sahifasi (qoida, misollar, tuzoq, o‘xshash), mashqlar, dars testi, ochilish, "Bilaman" | A-1 darslari boshidan oxirigacha o‘ynaladi (390/360 px, yorug‘/qorong‘i); ochilish faqat serverda (test) |
 | **G3** Grammatika tanishuvi | §16 tizimi grammatika uchun | Qoralama → tasdiq → ovoz → nashr; o‘quvchi faqat nashrni ko‘radi |
 | **G4** Takrorlash | `Kind = Grammar` kartalar, kunlik limit | So‘z va grammatika bitta navbatda; limit ishlaydi (test) |
