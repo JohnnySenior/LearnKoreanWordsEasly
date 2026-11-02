@@ -27,6 +27,9 @@ public sealed record SeoListPage(int Page, int Pages, int Total, IReadOnlyList<S
 
 public sealed record SeoSitemapEntry(string Slug, DateTimeOffset LastModified);
 
+/// <summary>A trap question for /sinab (L-58): the Uzbek cue, the Korean an Uzbek speaker would say, the right one.</summary>
+public sealed record SeoTrapQuestion(string Word, string Translation, string? Cue, string Wrong, string Right, string Why);
+
 /// <summary>
 /// Public word pages for search engines (L-56): only words a learner could meet, i.e. reviewed words of a published
 /// unit. Gives each such word a lasting slug the first time it is public. No learner data is read here.
@@ -102,6 +105,22 @@ public sealed class SeoService(IAppDbContext db, IOperationLock operations, Time
             .ToList();
         return new SeoListPage(page, pages, ordered.Count, groups);
     }
+
+    public const int TrapQuestionCount = 3;
+
+    /// <summary>
+    /// Up to three trap questions from level A unit 1 for /sinab (L-58): reviewed words of the published unit whose
+    /// trap scene is complete and checked (both Korean lines, the explanation, not waiting for review).
+    /// </summary>
+    public async Task<IReadOnlyList<SeoTrapQuestion>> TrapQuestionsAsync(CancellationToken ct) =>
+        await (from w in db.CatalogWords
+               join u in db.Units on w.UnitId equals u.Id
+               where u.Level == CatalogLevel.A && u.Number == 1 && u.Status == UnitStatus.Published
+                   && w.Status == CatalogWordStatus.Reviewed && w.TranslationUz != null
+                   && w.TrapUz != null && w.TrapWrong != null && w.TrapRight != null && !w.TrapScenePending
+               orderby w.OrderInUnit
+               select new SeoTrapQuestion(w.Word, w.TranslationUz!, w.TrapCue, w.TrapWrong!, w.TrapRight!, w.TrapUz!))
+            .Take(TrapQuestionCount).AsNoTracking().ToListAsync(ct);
 
     public async Task<IReadOnlyList<SeoSitemapEntry>> SitemapAsync(CancellationToken ct)
     {

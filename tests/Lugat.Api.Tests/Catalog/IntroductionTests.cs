@@ -32,7 +32,7 @@ public class IntroductionTests
 {
     private static readonly JsonSerializerOptions Json = ApiFactory.Json;
     private static string Root(Guid id) => $"/api/admin/introductions/{id}";
-    private static ApiFactory Factory(FakeAiProvider? ai = null, FakeNarrator? narrator = null) => new()
+    internal static ApiFactory Factory(FakeAiProvider? ai = null, FakeNarrator? narrator = null) => new()
     {
         AdminTelegramIds = [ApiFactory.UserA], AiProviders = ai is null ? [] : [ai], Narrator = narrator ?? new FakeNarrator(), Speech = new FakeSpeech(),
     };
@@ -48,24 +48,24 @@ public class IntroductionTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<T>(Json))!;
     }
-    private static async Task<IntroductionDto> Create(HttpClient admin) => await Read<IntroductionDto>(await admin.PostAsJsonAsync(
+    internal static async Task<IntroductionDto> Create(HttpClient admin) => await Read<IntroductionDto>(await admin.PostAsJsonAsync(
         $"/api/admin/units/{ApiFactory.Unit(1)}/introductions", new CreateIntroductionRequest(Guid.NewGuid()), Json));
     private static UpdateIntroductionWordRequest Word(uint version, bool reviewed = true) => new(version, "Harakatni aytamiz",
         [new("meaning", "Bu kundalik hayotda kerak bo‘ladigan harakat.", null, "Asosiy harakat"),
          new("example", "Misolga qarang. Harakat oxirida muloyim shakl ishlatiladi.", "집에 가요.", "Uyga boraman.")], reviewed);
-    private static async Task<IntroductionDto> Fill(HttpClient admin, IntroductionDto row)
+    internal static async Task<IntroductionDto> Fill(HttpClient admin, IntroductionDto row)
     {
         var unit = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{row.UnitId}", Json))!;
         foreach (var word in unit.Words) row = await Read<IntroductionDto>(await admin.PutAsJsonAsync(Root(row.Id) + $"/words/{word.Id}", Word(row.Version), Json));
         return row;
     }
-    private static async Task<IntroductionDto> Approve(HttpClient admin, IntroductionDto row) => await Read<IntroductionDto>(await admin.PostAsJsonAsync(Root(row.Id) + "/approve", new IntroductionVersionRequest(row.Version), Json));
-    private static async Task<IntroductionDto> Audio(HttpClient admin, IntroductionDto row)
+    internal static async Task<IntroductionDto> Approve(HttpClient admin, IntroductionDto row) => await Read<IntroductionDto>(await admin.PostAsJsonAsync(Root(row.Id) + "/approve", new IntroductionVersionRequest(row.Version), Json));
+    internal static async Task<IntroductionDto> Audio(HttpClient admin, IntroductionDto row)
     {
         while (row.RemainingAudio > 0) row = await Read<IntroductionDto>(await admin.PostAsJsonAsync(Root(row.Id) + "/audio-next", new IntroductionVersionRequest(row.Version), Json));
         return row;
     }
-    private static async Task<IntroductionDto> Publish(HttpClient admin, IntroductionDto row) => await Read<IntroductionDto>(await admin.PostAsJsonAsync(Root(row.Id) + "/publish", new PublishIntroductionRequest(row.Version, true), Json));
+    internal static async Task<IntroductionDto> Publish(HttpClient admin, IntroductionDto row) => await Read<IntroductionDto>(await admin.PostAsJsonAsync(Root(row.Id) + "/publish", new PublishIntroductionRequest(row.Version, true), Json));
 
     [Fact]
     public async Task Only_published_human_checked_versions_and_their_audio_are_visible_and_replacement_keeps_old_live_until_publish()

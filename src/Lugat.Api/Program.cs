@@ -98,6 +98,10 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy(MeEndpoints.VisitRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
         "visit-ip:" + (http.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }));
+    // The taster /sinab and its audio (L-58): anonymous, so per IP; one visit fetches about ten recordings.
+    o.AddPolicy(Lugat.Api.Seo.SeoEndpoints.TasterRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        "sinab-ip:" + (http.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
     // Invite links and referral codes: per user, so a class joining from one Wi-Fi is not blocked, while guessing
     // codes stays slow.
     o.AddPolicy(TeachingEndpoints.CodeRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(

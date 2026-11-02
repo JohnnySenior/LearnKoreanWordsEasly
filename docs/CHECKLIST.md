@@ -458,3 +458,16 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] 6 ta API testi; dev ilovada Chromium 390px (yorug‘/qorong‘i): so‘z sahifasi, ro‘yxat, yonlama scroll yo‘q; `curl` bilan robots/sitemap.
 - [ ] Johnny (deploydan keyin): Google Search Console va Yandex Webmaster’ga koreyscha.com, sitemap yuborish; Cloudflare managed robots.txt bizning faylni bosmasligini tekshirish; Telegram’da `/soz/...` preview’ini tekshirish.
 - [ ] Indekslanish natijasi (`site:koreyscha.com`) 1–2 haftadan keyin tekshiriladi.
+
+**Kirishsiz sinov sahifasi (L-58, 2026-11-02):**
+- [x] `/sinab` — server HTML (Blazor emas), auth’siz, fallback’dan oldin; `/soz` bilan bir layout va Sokin/Tungi ranglari; sitemap’da; robots’da ochiq; service worker tegmaydi (JS testi).
+- [x] A-1 nashr qilingan tanishuvidan faqat 2 so‘z (`IntroductionService.TasterWords`); ovoz `/api/sinab/audio/...` dan, faqat saqlangan fayl — kalit yo‘q bo‘lsa 404, generatsiya yo‘q (test: diktor chaqirilmaydi); 3-so‘z, boshqa qadam/qism, nashr qilinmagan tanishuv → 404.
+- [x] 3 ta tuzoq savoli: A-1, Reviewed + Published, `TrapWrong`/`TrapRight`/`TrapUz` bor, `TrapScenePending == false`; variantlar aralash; javobdan keyin matn bilan «to‘g‘ri»/«tuzoq», izoh va to‘g‘ri gap; oxirida «N tadan M tasini topdingiz». Hech narsa saqlanmaydi.
+- [x] Manba: `/sinab?src=ig` → `sinab-ig` (`SourceService.Normalize`), `koreyscha.src` bo‘sh bo‘lsa yoziladi va bitta `/api/visits`; CTA `/?src=sinab-ig`. `/soz` sahifasida «Kirmasdan 1 daqiqada sinab ko‘rish» → `/sinab?src=soz`.
+- [x] Rate limit `sinab` (IP, 120/daq), `Cache-Control: public, max-age=3600`.
+- [x] 3 API testi + `/soz` testi kengaytirildi; 5 JS testi (pleer `ended` bilan, yuklanmasa to‘xtaydi, kliplar tartibi, tuzoq bahosi, manba bir marta).
+- [x] Dev ilovada (mahalliy sinov tanishuvi va tuzoqlar bilan, keyin o‘chirildi) Chromium 390px yorug‘ va 360px qorong‘i: birinchi bosishda ovoz boshlandi, ikki qismli qadam birlashtirilib o‘ynaldi, oxirigacha bordi; tuzoqlar va hisob; `koreyscha.src = sinab-ig`, `/api/visits` bir marta (qayta yuklashda yo‘q); yonlama scroll yo‘q, konsol xatosi yo‘q.
+- [ ] Johnny: haqiqiy iPhone Safari’da ovozni tekshirish (ayniqsa birinchi bosish va ikki qismli qadam).
+- [ ] Johnny: Instagram bio havolasini `koreyscha.com/sinab?src=ig` ga almashtirish.
+- [ ] Johnny: Kontent → A-1’da kamida 3 ta so‘zning tuzoq sahnasi tekshirilganini ko‘rish (kam bo‘lsa borlari chiqadi).
+- [ ] 2 haftadan keyin: Admin → Ko‘rsatkichlar → Manbalar’da `sinab-ig`, `sinab-soz`, `soz` qatorlarining konversiyasini solishtirish.
