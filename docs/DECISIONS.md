@@ -632,4 +632,6 @@ Johnny: dizayn quruq va "bachkana"ga yaqin, boshqa saytlarda har detal chiroyli 
 - D-25’dagi "0 radius, 2px chiziqlar" bekor: kartochkalar `--radius-lg` 22px, tugma/maydon 12px, chip va tablar "pill". Qizil hamon faqat harakat uchun, "xato" ma’nosida emas.
 - 2-bosqich: sozlamalar qatorlari kartochka guruhida (`.list-row` ketma-ketligi `:has()` bilan bitta yumaloq guruh), Profil/Admin plitkalari, Premium tariflari va to‘lov kodi, Xatolar va boshqa so‘z ro‘yxatlari, kirish sahifasi, bo‘lim jadvali, test natijasi, krossvord kataklari va ishora paneli.
 - Bosqichlar: (1) tokenlar va umumiy elementlar — tugmalar (bosish/ustiga kelish holatlari), kartochkalar, ro‘yxat guruhlari, chip, segment, maydon, pastki menyu, bo‘lim qadamlari, kartochka baholash tugmalari; (2–3) ekranma-ekran sayqal.
+- **/soz sahifalari ham yangi ko‘rinishda (2026-11-02):** so‘z kartochkasi, misol bloki, CTA va ro‘yxatlar Sokin/Tungi ranglari bilan (o‘sha tokenlar, `prefers-color-scheme`). Shrift — tizim shrifti: sahifa qidiruvdan darhol ochilsin, tashqi so‘rov yo‘q.
+- **Manba tuzatildi:** /soz havolalari `?from=soz` edi, ilova esa faqat `src`/`utm_source` ni o‘qiydi (`MainLayout.CaptureSourceAsync`) — Google’dan kelganlar Admin → Manbalar’ga tushmasdi. Endi `?src=soz` (CTA va logotip havolasi); test `from=soz` yo‘qligini tekshiradi.
 

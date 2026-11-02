@@ -142,7 +142,7 @@ public static class SeoEndpoints
             body.Append("</section>");
         }
 
-        body.Append($"<a class=\"cta\" href=\"/bolimlar/{w.UnitId}?from=soz\">Ilovada yodlashni boshlash →</a>");
+        body.Append($"<a class=\"cta\" href=\"/bolimlar/{w.UnitId}?src=soz\">Ilovada yodlashni boshlash →</a>");
         body.Append($"<p class=\"note\">{E(w.Level.ToString())} darajaning {w.UnitNumber}-bo‘limi: 25 ta so‘z kartochka, mashq va test bilan. Telegram yoki Google orqali bepul kirasiz.</p>");
         body.Append("</article>");
         if (w.Related.Count > 0)
@@ -233,13 +233,13 @@ public static class SeoEndpoints
             <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <meta name="theme-color" content="#f3f2f2">
+            <meta name="theme-color" content="#f6f2ed" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
             <link rel="icon" href="/favicon.ico?v=2" sizes="any"><link rel="icon" href="/icons/favicon.svg?v=2" type="image/svg+xml">
             {{head}}
             <style>{{Css}}</style>
             </head>
             <body>
-            <header class="top"><a class="brand" href="/?from=soz">Koreyscha</a><a href="/soz">Barcha so‘zlar</a></header>
+            <header class="top"><a class="brand" href="/?src=soz"><span class="mark" lang="ko" aria-hidden="true">ㅋ</span>Koreyscha</a><a href="/soz">Barcha so‘zlar</a></header>
             <main>{{body}}</main>
             <footer>So‘zlar ro‘yxati: <span lang="ko">국립국어원 「한국어 학습용 어휘 목록」</span> (KOGL 1-tur). Tarjima va misollar muharrir tomonidan tekshirilgan.</footer>
             </body>
@@ -247,34 +247,45 @@ public static class SeoEndpoints
             """;
     }
 
-    // The app's own colours and type: the red accent and grey paper of koreyscha.com, system fonts so it opens at once.
+    // The app's look (L-57): "Sokin" warm paper by day, "Tungi" deep ink by night, soft cards and the red accent.
+    // System fonts, so the page opens at once from a search result.
     private const string Css = """
-        :root{--bg:#f3f2f2;--paper:#fff;--ink:#201e1d;--muted:#605d5d;--rule:#cfcbcb;--accent:#ec3013;--on-accent:#fff}
-        @media (prefers-color-scheme:dark){:root{--bg:#161514;--paper:#201e1d;--ink:#f3f2f2;--muted:#b3afaf;--rule:#3d3a39;--accent:#ff5a3c;--on-accent:#161514}}
+        :root{--bg:#f6f2ed;--card:#fffdfa;--surface:#efe8df;--ink:#2b2420;--muted:#776a5f;--rule:rgba(43,36,32,.09);--accent:#e5533d;--accent-ink:#b8402c;--accent-soft:#fbeee8;--on-accent:#fff;--fill:#e5533d;--shadow:0 1px 2px rgba(80,50,30,.05),0 10px 26px -14px rgba(80,50,30,.2);--glow:0 8px 18px -8px rgba(229,83,61,.55);--page:none;color-scheme:light}
+        @media (prefers-color-scheme:dark){:root{--bg:#0f1117;--card:#161922;--surface:#1b1e27;--ink:#eef0f6;--muted:#8f94a7;--rule:rgba(255,255,255,.07);--accent:#ff5a3c;--accent-ink:#ff8a70;--accent-soft:#2a1b1d;--on-accent:#fff;--fill:linear-gradient(135deg,#ff6a45,#ec3013);--shadow:inset 0 0 0 1px rgba(255,255,255,.06);--glow:0 10px 28px -10px rgba(255,90,60,.7);--page:radial-gradient(120% 50% at 100% 0%,rgba(255,90,60,.13),transparent 60%);color-scheme:dark}}
         *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-        body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+        body{margin:0;background:var(--page),var(--bg);background-attachment:fixed;color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
         a{color:inherit}
-        .top{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:720px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right));border-bottom:2px solid var(--ink)}
-        .top a{text-decoration:none;font-weight:700}.brand{font-size:20px;font-weight:900!important;letter-spacing:-.02em}
-        main{max-width:720px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) 40px}
-        h1{font-size:clamp(40px,12vw,64px);line-height:1.05;margin:8px 0 4px;letter-spacing:-.02em}
-        h2{font-size:18px;margin:28px 0 10px}
+        .top{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:720px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right)) 6px max(16px,env(safe-area-inset-left))}
+        .top a{text-decoration:none;font-weight:600}.top a:hover{color:var(--accent-ink)}
+        .brand{display:inline-flex;align-items:center;gap:9px;font-size:18px;font-weight:800!important;letter-spacing:-.01em}
+        .mark{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--fill);color:var(--on-accent);font-size:17px;font-weight:700}
+        main{max-width:720px;margin:0 auto;padding:10px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+        h1{font-size:clamp(40px,12vw,64px);line-height:1.05;margin:6px 0 4px;letter-spacing:-.02em;text-wrap:balance}
+        h2{font-size:18px;margin:28px 4px 10px;letter-spacing:-.01em}
         [lang=ko]{word-break:keep-all}
-        .crumbs,.meta,.note,.label{color:var(--muted);font-size:14px;margin:0}
-        .label{text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700;margin-top:18px}
+        .crumbs{color:var(--muted);font-size:14px;margin:4px 4px 10px}.crumbs a{text-decoration:none}.crumbs a:hover{color:var(--accent-ink)}
+        .word{background:var(--card);border-radius:22px;box-shadow:var(--shadow);padding:22px 20px}
+        .meta,.note,.label{color:var(--muted);font-size:14px;margin:0}
+        .label{text-transform:uppercase;letter-spacing:.09em;font-size:11px;font-weight:700;margin-top:18px}
         .reading{font-size:20px;margin:0;color:var(--muted)}
-        .translation{font-size:26px;font-weight:700;margin:2px 0 0}
-        .example{border-left:3px solid var(--accent);padding:2px 0 2px 12px;margin:18px 0}
-        .example p{margin:4px 0}.example .ko{font-size:20px}
-        .cta{display:block;margin:22px 0 8px;padding:15px 18px;background:var(--accent);color:var(--on-accent);text-decoration:none;font-weight:800;font-size:17px}
-        .related ul,.words{list-style:none;padding:0;margin:0;border-top:1px solid var(--rule)}
-        .related li a,.words li a{display:block;padding:11px 0;border-bottom:1px solid var(--rule);text-decoration:none}
-        .words{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));column-gap:20px}
+        .translation{font-size:26px;font-weight:700;margin:2px 0 0;letter-spacing:-.01em}
+        .example{background:var(--surface);border-radius:14px;padding:12px 14px;margin:18px 0 0}
+        .example .label{margin-top:0}.example p{margin:4px 0}.example .ko{font-size:20px}
+        .cta{display:flex;justify-content:space-between;align-items:center;margin:22px 0 10px;padding:15px 18px;border-radius:14px;background:var(--fill);color:var(--on-accent)!important;text-decoration:none;font-weight:700;font-size:16px;box-shadow:var(--glow);transition:filter .18s,transform .12s}
+        .cta:hover{filter:brightness(1.06)}.cta:active{transform:scale(.98)}
+        .cta:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+        .related ul,.words{list-style:none;padding:0;margin:0;background:var(--card);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+        .related li a,.words li a{display:block;padding:12px 18px;border-bottom:1px solid var(--rule);text-decoration:none;transition:background-color .15s}
+        .related li:last-child a{border-bottom:0}
+        .related li a:hover,.words li a:hover{background:var(--surface)}
+        .words{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
         .words .tr{color:var(--muted)}
-        .intro{margin:6px 0 4px}
-        .pages{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.pages a,.pages span{padding:8px 12px;border:1px solid var(--rule);text-decoration:none}
+        .intro{margin:6px 4px 4px;color:var(--muted)}.intro a{color:var(--accent-ink)}
+        .pages{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+        .pages a,.pages span{min-width:44px;min-height:44px;display:inline-grid;place-items:center;padding:0 14px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);text-decoration:none;font-weight:600}
         .pages span{background:var(--ink);color:var(--bg)}
-        footer{max-width:720px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) 32px;color:var(--muted);font-size:13px;border-top:1px solid var(--rule)}
+        footer{max-width:720px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left));color:var(--muted);font-size:13px}
+        @media (prefers-reduced-motion:reduce){.cta,.related li a,.words li a{transition:none}}
         """;
 
     private static string Sitemap(IReadOnlyList<SeoSitemapEntry> words, int pages, string baseUrl)
