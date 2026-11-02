@@ -210,10 +210,53 @@ public sealed partial class IntroductionService(IAppDbContext db, AiGateway ai, 
             if (row.PublishedAt is null) throw new NotFoundException("Dars nashr qilinmagan.");
             await access.AccessAsync(userId, row.UnitId, ct);
         }
-        if (word < 0 || word >= row.Words.Count || beat < -1 || beat >= row.Words[word].Beats.Count) throw new NotFoundException("Ovoz topilmadi.");
-        var key = beat == -1 ? (part == 0 ? row.Words[word].KoreanAudioKey : null) : Keys(row.Words[word].Beats[beat]).ElementAtOrDefault(part);
-        if (key is null) throw new NotFoundException("Ovoz hali tayyor emas.");
+        var key = KeyOf(row, word, beat, part) ?? throw new NotFoundException("Ovoz hali tayyor emas.");
         return await files.OpenReadAsync(key, ct) ?? throw new ServiceUnavailableException("Saqlangan ovoz topilmadi. Adminga xabar bering.");
+    }
+
+    /// <summary>Words of the A-1 introduction shown without sign-in on /sinab (L-58).</summary>
+    public const int TasterWords = 2;
+
+    /// <summary>
+    /// The first <see cref="TasterWords"/> words of level A unit 1's published introduction, for /sinab (L-58), with
+    /// audio links to the public taster route. Null when there is none. No other unit or word is ever returned.
+    /// </summary>
+    public async Task<IntroductionDto?> TasterAsync(CancellationToken ct)
+    {
+        if (await TasterRowAsync(ct) is not { } row) return null;
+        var dto = await DtoAsync(row, false, ct);
+        static string? Public(string? url) => url is null ? null : "/api/sinab" + url[url.IndexOf("/audio/", StringComparison.Ordinal)..];
+        var words = dto.Words.Take(TasterWords).Select(w => w with
+        {
+            KoreanAudioUrl = Public(w.KoreanAudioUrl),
+            Beats = w.Beats.Select(b => b with { AudioUrl = Public(b.AudioUrl), PartUrls = b.PartUrls?.Select(u => Public(u)!).ToList() }).ToList(),
+        }).ToList();
+        return dto with { Words = words };
+    }
+
+    /// <summary>
+    /// A saved recording of the taster (L-58). Reads stored audio only: a missing key is 404, nothing is ever generated,
+    /// so the public route cannot spend ElevenLabs or Azure characters.
+    /// </summary>
+    public async Task<Stream> TasterAudioAsync(int word, int beat, int part, CancellationToken ct)
+    {
+        if (word is < 0 or >= TasterWords || await TasterRowAsync(ct) is not { } row || KeyOf(row, word, beat, part) is not { } key)
+            throw new NotFoundException("Ovoz topilmadi.");
+        return await files.OpenReadAsync(key, ct) ?? throw new NotFoundException("Ovoz topilmadi.");
+    }
+
+    private async Task<UnitIntroduction?> TasterRowAsync(CancellationToken ct)
+    {
+        var unitId = await db.Units.Where(u => u.Level == CatalogLevel.A && u.Number == 1 && u.Status == UnitStatus.Published)
+            .Select(u => (Guid?)u.Id).SingleOrDefaultAsync(ct);
+        return unitId is null ? null
+            : await db.UnitIntroductions.AsNoTracking().SingleOrDefaultAsync(x => x.UnitId == unitId && x.Status == IntroductionStatus.Published, ct);
+    }
+
+    private static string? KeyOf(UnitIntroduction row, int word, int beat, int part)
+    {
+        if (word < 0 || word >= row.Words.Count || beat < -1 || beat >= row.Words[word].Beats.Count) return null;
+        return beat == -1 ? (part == 0 ? row.Words[word].KoreanAudioKey : null) : Keys(row.Words[word].Beats[beat]).ElementAtOrDefault(part);
     }
 
     private async Task<Unit> UnitAsync(Guid unitId, CancellationToken ct) =>

@@ -75,6 +75,7 @@ test('public word pages, the sitemap and robots.txt go to the server, not the ap
     const sw = load({ stores: { 'lugat-shell-v2': [[`${origin}/index.html`, new Response('shell')]] } });
     assert.equal(await sw.dispatch('fetch', { request: request('/soz/sarang', 'navigate') }), undefined);
     assert.equal(await sw.dispatch('fetch', { request: request('/soz', 'navigate') }), undefined);
+    assert.equal(await sw.dispatch('fetch', { request: request('/sinab', 'navigate') }), undefined);
     assert.equal(await sw.dispatch('fetch', { request: request('/sitemap.xml') }), undefined);
     assert.equal(await sw.dispatch('fetch', { request: request('/robots.txt') }), undefined);
     // An app page that only starts with the same letters is still the shell.

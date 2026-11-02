@@ -4,7 +4,10 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 using System.Xml;
+using Lugat.Application.Catalog;
 using Lugat.Application.Seo;
+using Lugat.Application.Users;
+using Lugat.Contracts;
 using Lugat.Domain.Catalog;
 
 namespace Lugat.Api.Seo;
@@ -17,6 +20,16 @@ namespace Lugat.Api.Seo;
 public static class SeoEndpoints
 {
     private const string CacheControl = "public, max-age=21600";
+
+    /// <summary>The sign-in-free taster /sinab and its audio (L-58): anonymous, so limited per IP.</summary>
+    public const string TasterRateLimitPolicy = "sinab";
+
+    private const string TasterCacheControl = "public, max-age=3600";
+
+    private static readonly JsonSerializerOptions TasterJson = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+    };
 
     private static readonly JsonSerializerOptions JsonLd = new()
     {
@@ -45,6 +58,28 @@ public static class SeoEndpoints
             http.Response.Headers.CacheControl = CacheControl;
             return Results.Content(WordPage(word, baseUrl), "text/html; charset=utf-8");
         }).AllowAnonymous();
+
+        app.MapGet("/sinab", async (string? src, HttpContext http, SeoService seo, IntroductionService lessons, CancellationToken ct) =>
+        {
+            var taster = await lessons.TasterAsync(ct);
+            var traps = await seo.TrapQuestionsAsync(ct);
+            // The same code the app keeps (koreyscha.src): "sinab-ig" from /sinab?src=ig, else "sinab".
+            var source = SourceService.Normalize(string.IsNullOrWhiteSpace(src) ? "sinab" : "sinab-" + src.Trim()) ?? "sinab";
+            http.Response.Headers.CacheControl = TasterCacheControl;
+            return Results.Content(TasterPage(taster, traps, source, baseUrl), "text/html; charset=utf-8");
+        }).AllowAnonymous().RequireRateLimiting(TasterRateLimitPolicy);
+
+        async Task<IResult> TasterAudio(int word, int beat, int part, HttpContext http, IntroductionService lessons, CancellationToken ct)
+        {
+            var audio = await lessons.TasterAudioAsync(word, beat, part, ct);
+            http.Response.Headers.CacheControl = TasterCacheControl;
+            return Results.File(audio, "audio/mpeg", enableRangeProcessing: true);
+        }
+
+        app.MapGet("/api/sinab/audio/{word:int}/{beat:int}", (int word, int beat, HttpContext http, IntroductionService lessons, CancellationToken ct) =>
+            TasterAudio(word, beat, 0, http, lessons, ct)).AllowAnonymous().RequireRateLimiting(TasterRateLimitPolicy);
+        app.MapGet("/api/sinab/audio/{word:int}/{beat:int}/{part:int}", (int word, int beat, int part, HttpContext http, IntroductionService lessons, CancellationToken ct) =>
+            TasterAudio(word, beat, part, http, lessons, ct)).AllowAnonymous().RequireRateLimiting(TasterRateLimitPolicy);
 
         app.MapGet("/soz", async (int? sahifa, HttpContext http, SeoService seo, CancellationToken ct) =>
         {
@@ -143,6 +178,7 @@ public static class SeoEndpoints
         }
 
         body.Append($"<a class=\"cta\" href=\"/bolimlar/{w.UnitId}?src=soz\">Ilovada yodlashni boshlash →</a>");
+        body.Append("<a class=\"try\" href=\"/sinab?src=soz\">Kirmasdan 1 daqiqada sinab ko‘rish →</a>");
         body.Append($"<p class=\"note\">{E(w.Level.ToString())} darajaning {w.UnitNumber}-bo‘limi: 25 ta so‘z kartochka, mashq va test bilan. Telegram yoki Google orqali bepul kirasiz.</p>");
         body.Append("</article>");
         if (w.Related.Count > 0)
@@ -204,7 +240,68 @@ public static class SeoEndpoints
             "text/html; charset=utf-8", statusCode: StatusCodes.Status404NotFound);
     }
 
-    private static string Page(string title, string description, string? canonical, string body, string? jsonLd, bool noIndex = false)
+    private static string TasterPage(IntroductionDto? taster, IReadOnlyList<SeoTrapQuestion> traps, string source, string baseUrl)
+    {
+        const string title = "Koreyschani o‘zbekcha sinab ko‘ring — kirishsiz | Koreyscha";
+        const string description = "Koreys so‘zlarini o‘zbek tilida tushuntiramiz: ovozli tanishuv va o‘zbeklar adashadigan tuzoqlar. 1 daqiqada sinab ko‘ring, ro‘yxatdan o‘tish shart emas.";
+        var body = new StringBuilder();
+        body.Append("<h1 class=\"taster-title\">Koreyschani o‘zbekcha tushuntiramiz</h1>");
+        body.Append("<p class=\"intro\">1 daqiqada sinab ko‘ring — kirish shart emas. Avval so‘z bilan tanishasiz, keyin o‘zbeklar ko‘p adashadigan joylarni o‘zingiz topasiz.</p>");
+        var words = taster?.Words.Where(w => w.KoreanAudioUrl is not null || w.Beats.Any(b => b.AudioUrl is not null)).ToList() ?? [];
+        if (taster is not null && words.Count > 0)
+        {
+            var data = JsonSerializer.Serialize(new { unit = taster.UnitLabel, total = taster.TotalWords, words }, TasterJson);
+            body.Append("<section class=\"taster\" aria-label=\"Ovozli tanishuv\">");
+            body.Append($"<div class=\"board\" id=\"board\"><p class=\"label\">{E(taster.UnitLabel)} · ovozli tanishuvdan parcha</p>");
+            body.Append($"<p class=\"board-lead\">O‘zbek diktor so‘zni tushuntiradi, koreyscha ovoz talaffuz qiladi. Doskada qismlar ovoz bilan birga ochiladi.</p></div>");
+            body.Append("<p class=\"subtitle\" id=\"subtitle\" aria-live=\"polite\"></p>");
+            body.Append("<div class=\"controls\"><button type=\"button\" class=\"play\" id=\"play\">▶ Tinglash</button>");
+            body.Append("<button type=\"button\" class=\"ghost\" id=\"replay\" hidden>↺ Qayta eshitish</button></div>");
+            body.Append("<p class=\"error\" id=\"taster-error\" role=\"alert\" hidden></p>");
+            body.Append($"<script type=\"application/json\" id=\"taster-data\">{data}</script>");
+            body.Append("</section>");
+        }
+
+        if (traps.Count > 0)
+        {
+            body.Append("<section class=\"traps\" id=\"traps\"><h2>Tuzoqni toping</h2>");
+            body.Append("<p class=\"intro\">O‘zbekcha o‘ylab gapirsangiz, koreyschada qayerda adashasiz? Ikkala gapdan to‘g‘risini tanlang.</p>");
+            foreach (var q in traps)
+            {
+                body.Append("<div class=\"trap\">");
+                body.Append($"<p class=\"label\"><span lang=\"ko\">{E(q.Word)}</span> — {E(q.Translation)}</p>");
+                if (!string.IsNullOrWhiteSpace(q.Cue))
+                {
+                    body.Append($"<p class=\"cue\">{E(q.Cue)}</p>");
+                }
+
+                body.Append("<p class=\"ask\">Qaysi biri to‘g‘ri?</p><div class=\"options\">");
+                // The right answer reaches the page on purpose (L-58): nothing is scored or saved, it only shows the idea.
+                var options = new[] { (Text: q.Wrong, Right: false), (Text: q.Right, Right: true) };
+                if (Random.Shared.Next(2) == 1)
+                {
+                    Array.Reverse(options);
+                }
+
+                foreach (var o in options)
+                {
+                    body.Append($"<button type=\"button\" class=\"opt\" lang=\"ko\" data-right=\"{(o.Right ? "1" : "0")}\">{E(o.Text)}</button>");
+                }
+
+                body.Append("</div><p class=\"verdict\" aria-live=\"polite\" hidden></p>");
+                body.Append($"<div class=\"why\" hidden><p class=\"right\" lang=\"ko\">✓ {E(q.Right)}</p><p>{E(q.Why)}</p></div>");
+                body.Append("</div>");
+            }
+
+            body.Append($"<p class=\"score\" id=\"score\" data-total=\"{traps.Count}\" aria-live=\"polite\" hidden></p></section>");
+        }
+
+        body.Append($"<a class=\"cta\" id=\"start\" data-source=\"{E(source)}\" href=\"/?src={E(source)}\">Har bir so‘zda shunday tushuntirish bor — 1-bo‘limni bepul boshlang →</a>");
+        body.Append("<p class=\"note\">Telegram yoki Google orqali bepul kirasiz. Kartochka, mashq va test ilovaning ichida.</p>");
+        return Page(title, description, $"{baseUrl}/sinab", body.ToString(), null, script: "/js/sinab.js");
+    }
+
+    private static string Page(string title, string description, string? canonical, string body, string? jsonLd, bool noIndex = false, string? script = null)
     {
         var head = new StringBuilder();
         head.Append($"<title>{E(title)}</title>");
@@ -241,6 +338,7 @@ public static class SeoEndpoints
             <body>
             <header class="top"><a class="brand" href="/?src=soz"><span class="mark" lang="ko" aria-hidden="true">ㅋ</span>Koreyscha</a><a href="/soz">Barcha so‘zlar</a></header>
             <main>{{body}}</main>
+            {{(script is null ? "" : $"<script type=\"module\" src=\"{script}\"></script>")}}
             <footer>So‘zlar ro‘yxati: <span lang="ko">국립국어원 「한국어 학습용 어휘 목록」</span> (KOGL 1-tur). Tarjima va misollar muharrir tomonidan tekshirilgan.</footer>
             </body>
             </html>
@@ -285,7 +383,33 @@ public static class SeoEndpoints
         .pages a,.pages span{min-width:44px;min-height:44px;display:inline-grid;place-items:center;padding:0 14px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);text-decoration:none;font-weight:600}
         .pages span{background:var(--ink);color:var(--bg)}
         footer{max-width:720px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left));color:var(--muted);font-size:13px}
-        @media (prefers-reduced-motion:reduce){.cta,.related li a,.words li a{transition:none}}
+        .try{display:inline-block;margin:0 0 6px;padding:6px 2px;color:var(--accent-ink);font-weight:600;text-decoration:none}.try:hover{text-decoration:underline}
+        .taster-title{font-size:clamp(30px,8vw,44px)}
+        .taster,.trap{background:var(--card);border-radius:22px;box-shadow:var(--shadow);padding:20px;margin:16px 0}
+        .board{min-height:180px}.board-lead{color:var(--muted);margin:8px 0 0}
+        .board .hangul{font-size:48px;font-weight:700;line-height:1.1;margin:6px 0 0}
+        .board .meaning{font-size:20px;font-weight:700;margin:4px 0 0}.board .meaning small{font-weight:400;color:var(--muted);margin-left:8px;font-size:15px}
+        .board .title{color:var(--accent-ink);font-weight:600;margin:12px 0 6px}
+        .frag{background:var(--surface);border-radius:14px;padding:10px 12px;margin:8px 0 0;animation:in .3s ease both}
+        .frag.speaking{box-shadow:inset 0 0 0 2px var(--accent)}.frag.trap-kind{background:var(--accent-soft)}
+        .frag .kind{display:block;font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--muted)}.frag [lang=ko]{font-size:20px}.frag p{margin:2px 0 0}
+        @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+        .subtitle{color:var(--muted);min-height:1.5em;margin:12px 0 0}
+        .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+        .controls button,.opt{min-height:48px;border:0;border-radius:14px;font:inherit;font-weight:700;cursor:pointer;padding:0 18px;transition:filter .18s,transform .12s,background-color .18s}
+        .play{background:var(--fill);color:var(--on-accent);box-shadow:var(--glow)}.play:hover{filter:brightness(1.06)}
+        .ghost{background:var(--surface);color:var(--ink)}
+        .controls button:active,.opt:active{transform:scale(.98)}
+        .error{color:var(--accent-ink);margin:10px 0 0}
+        .traps h2{margin-top:28px}.trap .label{margin-top:0}.cue{font-size:17px;margin:8px 0 0}.ask{font-weight:700;margin:12px 0 8px}
+        .options{display:grid;gap:8px}
+        .opt{background:var(--surface);color:var(--ink);text-align:left;font-size:19px;font-weight:600;padding:10px 16px}
+        .opt:hover:not(:disabled){filter:brightness(.97)}.opt:disabled{cursor:default}
+        .opt.right{box-shadow:inset 0 0 0 2px var(--ink)}.opt.wrong{text-decoration:line-through;opacity:.7}
+        .verdict{font-weight:700;margin:12px 0 0}.why{background:var(--accent-soft);border-radius:14px;padding:10px 12px;margin:10px 0 0}.why p{margin:4px 0}.why .right{font-size:19px;font-weight:700}
+        .score{font-size:20px;font-weight:700;margin:4px 4px 0}
+        button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+        @media (prefers-reduced-motion:reduce){.cta,.related li a,.words li a,.controls button,.opt{transition:none}.frag{animation:none}}
         """;
 
     private static string Sitemap(IReadOnlyList<SeoSitemapEntry> words, int pages, string baseUrl)
@@ -312,6 +436,7 @@ public static class SeoEndpoints
 
             Url($"{baseUrl}/", null);
             Url($"{baseUrl}/soz", latest);
+            Url($"{baseUrl}/sinab", null);
             for (var p = 2; p <= pages; p++)
             {
                 Url($"{baseUrl}/soz?sahifa={p}", latest);

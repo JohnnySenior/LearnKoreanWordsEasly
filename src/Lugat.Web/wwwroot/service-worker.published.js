@@ -22,7 +22,7 @@ const offlineAssetsInclude = [/\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /
 // The runtime loads one of the three ICU files (by browser language); it is cached when first fetched.
 const offlineAssetsExclude = [/^service-worker\.js$/, /icudt.*\.dat$/];
 // Server-rendered word pages, the sitemap and robots.txt (L-56) come from the server, never the app shell.
-const neverCached = [/^\/api\//, /^\/health/, /^\/soz(\/|$)/, /^\/sitemap\.xml$/, /^\/robots\.txt$/];
+const neverCached = [/^\/api\//, /^\/health/, /^\/soz(\/|$)/, /^\/sinab(\/|$)/, /^\/sitemap\.xml$/, /^\/robots\.txt$/];
 
 const baseUrl = new URL('/', self.origin);
 const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.url, baseUrl).href);

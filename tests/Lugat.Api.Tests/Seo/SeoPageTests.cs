@@ -50,6 +50,7 @@ public class SeoPageTests
         // The app reads ?src= (MainLayout), so visits from the word pages reach Admin → Manbalar.
         Assert.DoesNotContain("from=soz", html);
         Assert.Contains("href=\"/?src=soz\"", html);
+        Assert.Contains("href=\"/sinab?src=soz\"", html); // the sign-in-free taster (L-58)
         // Neighbours in the unit are linked.
         Assert.Contains("href=\"/soz/mul\"", html);
         Assert.Contains("국립국어원", html);

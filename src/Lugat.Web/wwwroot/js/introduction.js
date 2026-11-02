@@ -83,7 +83,7 @@ export function create(root, target) {
 // leading and trailing silence trimmed, levelled to the narrator's loudness, and joined with a short natural breath
 // and tiny fades (no clicks) into one WAV, so the beat plays as a single seamless recording.
 const RATE = 24000;
-async function joinParts(parts) {
+export async function joinParts(parts) {
     const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     const context = new Offline(1, RATE, RATE);
     const clips = [];
