@@ -9,15 +9,16 @@ RUN dotnet publish src/Lugat.Api/Lugat.Api.csproj -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 # pg_dump/pg_restore for the nightly backup (D-22). The client must be at least the server's major version
 # (Railway Postgres 18), so it comes from the PostgreSQL apt repository, not the distribution's older one.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl \
- && install -d /usr/share/postgresql-common/pgdg \
- && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+# The repository's signing key (fingerprint B97B 0AFC AA1A 47F0 44F2 44A0 7FCC 7D46 ACCC 4CF8) is kept in the repo:
+# downloading it from www.postgresql.org failed builds when that site dropped the connection.
+COPY docker/apt.postgresql.org.asc /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+RUN apt-get -o Acquire::Retries=5 update \
+ && apt-get install -y --no-install-recommends ca-certificates \
  && . /etc/os-release \
  && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
- && apt-get update \
- && apt-get install -y --no-install-recommends postgresql-client-18 \
- && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* \
+ && apt-get -o Acquire::Retries=5 update \
+ && apt-get -o Acquire::Retries=5 install -y --no-install-recommends postgresql-client-18 \
+ && rm -rf /var/lib/apt/lists/* \
  && pg_dump --version
 WORKDIR /app
 COPY --from=build /app .
