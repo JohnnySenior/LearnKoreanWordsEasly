@@ -14,7 +14,7 @@ Ushbu hujjat C# asosida kod yozadigan AI agentlar (Claude Code, Codex) va dastur
    **https://github.com/JohnnySenior/KoreanAiTeacher**
    Ishni boshlashdan oldin shu repodagi `README.md`, `AGENTS.md`, `docs/SPECIFICATION.md`, `docs/DECISIONS.md` (D-01…D-54) va `docs/CHECKLIST.md` ni to‘liq o‘qing. Arxitektura, kod uslubi, nomlash, test usuli va UX qoidalari o‘sha repodagidek bo‘ladi. Shubha bo‘lsa — KoreanAiTeacher qanday qilgan bo‘lsa, shunday qiling.
 2. **KoreanAiTeacher repo’siga hech narsa yozmang.** U faqat o‘qish uchun manba. Barcha ish yangi repoda bo‘ladi: **https://github.com/JohnnySenior/LearnKoreanWordsEasly** (§13.1).
-3. **Maqsaddan og‘ishmang.** Bu — umumiy (ommaviy) foydalanuvchilar uchun **lug‘at yodlash** mahsuloti. Grammatika kitobi, PDF import, TOPIK insho, kitob testlari, dars kalendari v1 da **yo‘q** (§3). Ularni “foydali bo‘lar” deb qaytarmang.
+3. **Maqsaddan og‘ishmang.** Bu — umumiy (ommaviy) foydalanuvchilar uchun koreys tilini **o‘zbek tilida** o‘rgatadigan mahsulot: v1 — **lug‘at yodlash**, v2 — **grammatika** (§17, 2026-11-02 da qo‘shildi). PDF import, TOPIK insho, kitob testlari, dars kalendari, mock imtihon **yo‘q** (§3, §17.14). Ularni “foydali bo‘lar” deb qaytarmang.
 4. **Talab maqomlari** KoreanAiTeacher’dagidek: **KELISHILGAN** (Johnny tasdiqlagan — o‘zgartirmang), **TEXNIK ASOS** (taklif; asos bilan o‘zgartirsa bo‘ladi, `docs/DECISIONS.md` ga yozing), **TEKSHIRILADI** (real sinovsiz va’da qilmang), **JOHNNY TASDIQLAYDI** (standart qiymat bilan qiling, lekin ochiq savol sifatida qayd eting).
 5. **C# va .NET 10** (KELISHILGAN). Backend ASP.NET Core, frontend Blazor WebAssembly. Tilni yoki frameworkni almashtirmang.
 6. **Barcha mantiq serverda.** Takrorlash, bo‘lim qulfi, test baholash, premium tekshiruvi — backend’da. Klient faqat ko‘rsatadi. Sabab: keyinchalik Meta ko‘zoynagi (Web App) va boshqa klientlar shu API’dan foydalanadi (§14).
@@ -139,7 +139,7 @@ Kontent **umumiy** (barcha foydalanuvchilar uchun bitta) — AI har foydalanuvch
 | Telegram eslatmalari (D-16) | **Olinadi** | Faqat Telegram orqali kirganlar uchun (§8). |
 | Zaxira nusxa (D-22, D-37, D-51) | **Olinadi** | |
 | PDF import, lug‘at parseri (D-09, D-10) | **Yo‘q** | Kontent admin importi orqali. |
-| Grammatika (D-12, D-24, D-26–28) | **Yo‘q** | |
+| Grammatika (D-12, D-24, D-26–28) | **v2 — §17** | 2026-11-02: Johnny bilan KELISHILGAN. KAT kodi asos bo‘lishi mumkin, lekin tuzilma §17 dagidek (bo‘limlar, tanishuv, tuzoq, test). |
 | Kitob testlari, imtihon sanasi, TOPIK yozish (D-33–35, D-49) | **Yo‘q** | |
 | Dars topshiriqlari, kalendar (D-15, D-18, D-43, D-44) | **Yo‘q** | O‘rniga bo‘limlar. |
 | Telegram Mini App ichida ishlash, initData allow-list | **Yo‘q** | V1 — PWA (§6). Mini App ichida raqamli tovar faqat Stars bilan sotiladi, shuning uchun Mini App kanal sifatida ishlatilmaydi. |
@@ -478,6 +478,10 @@ Har bosqich alohida branch/PR, CI yashil bo‘lgach `main` ga. Har bosqich oxiri
 | Q6 | Eslatma standart vaqti | 20:00 |
 | Q7 | Maxfiylik siyosati matni | Agent qoralama yozadi, Johnny tasdiqlaydi |
 | Q8 | To‘lovlarni qaysi shaxs/tashkilot nomiga qabul qilish (biznes ro‘yxatdan o‘tish) | Kod bunga bog‘liq emas; faqat konfiguratsiya |
+| Q9 | Grammatika qoidalari ro‘yxatining manbasi va tartibi (§17.4) | **Hal qilindi (2026-11-02):** 국립국어원 「국제 통용 한국어 표준 교육과정」 grammatika ro‘yxati (§17.4) |
+| Q10 | Grammatika qaysi qismi Premium (§17.10) | **Hal qilindi:** resurs ishlatmaydigan qism bepul, AI ishlatadigan qism Premium |
+| Q11 | Kirish sinovini qayta topshirish oralig‘i (§17.8) | **Hal qilindi:** 7 kunda bir marta |
+| Q12 | Grammatika darsi so‘z bo‘limiga bog‘lanib ochiladimi yoki mustaqilmi (§17.1) | **Hal qilindi:** mustaqil ochiladi; misollar baribir o‘tilgan so‘zlardan |
 
 ---
 
@@ -498,3 +502,131 @@ Implementatsiya kuni paket versiyalari, tariflar va tashqi API hujjatlari qayta 
 Bo‘lim jadvalidan oldin ixtiyoriy tanishtirish: so‘zlar bittadan ochiladi, ovozga mos doska qadamlari va tuzoqlarga chuqurroq izoh. O‘tkazib yuborish, pauza, tezlik, qayta eshitish, faqat tuzoqlar va qolgan joyidan davom etish mumkin. Dars ko‘rish yodlash yoki bo‘limni tugatish hisoblanmaydi. Dizayn — Johnny ma’qullagan Jonli doska namunasi (L-54).
 
 Kontent oqimi har bo‘lim uchun majburiy: admin tekshirilgan katalogdan AI qoralama so‘raydi → ssenariyni o‘qib tahrirlaydi, har so‘zni tasdiqlaydi → ovoz yaratiladi → admin tayyor darsni eshitib tekshiradi → alohida nashr qiladi. Faqat nashrdan keyin o‘quvchiga ko‘rinadi; o‘quvchi kirganda AI generatsiyasi yo‘q. Yangi tahrir qoralama, oldingi nashr almashtirilmaguncha ishlaydi. Texnik tafsilotlar L-54.
+
+---
+
+## 17. Grammatika (2026-11-02, Johnny bilan KELISHILGAN; kod keyinroq)
+
+Koreyscha lug‘at ilovasidan koreys tilini o‘rgatadigan ilovaga o‘sadi. Grammatika **shu ilova ichida** (alohida sayt emas): bitta akkaunt, Premium, takrorlash, admin jarayoni, SEO va /sinab umumiy. Mock imtihon, TOPIK va EPS-TOPIK keyingi bosqich (§17.12). Status belgilari §0 dagidek; bu bo‘limda hali kod yo‘q — har bosqich DECISIONS’ga `L-xx` sifatida yoziladi.
+
+### 17.1 Asosiy g‘oya (KELISHILGAN)
+- So‘zlar kabi grammatika ham **A · B · C** darajalarida, osonidan qiyiniga, **bo‘limlarga** bo‘linadi. Har bo‘limda 5–8 ta **dars**, har darsda **bitta** grammatik qoida (masalan `-고 싶다`, `은/는`, `-아서/어서`). Bitta qoida bo‘lgani uchun dars qisqa.
+- Kontent oqimi lug‘at va tanishuv bilan bir xil: **AI qoralama → muharrir tahrir qiladi va tasdiqlaydi → nashr**. O‘quvchi kirganda AI generatsiyasi yo‘q.
+- Farqimiz so‘zlardagidek: **o‘zbek tilida** tushuntirish va **o‘zbeklar adashadigan joylar** (tuzoq) hamda **o‘xshash qoidalarning farqi** alohida ochib beriladi.
+- **Misollar o‘tilgan so‘zlardan** tuziladi: grammatika darsi foydalanuvchi allaqachon bilgan so‘zlar bilan beriladi (§17.4). Bu raqobatchilarda kam uchraydigan asosiy afzallik.
+- Grammatika bo‘limlari so‘z bo‘limlariga **bog‘lanmasdan, mustaqil** ochiladi (KELISHILGAN, Q12): A-1 grammatika darsi hamma uchun ochiq, keyingisi oldingi dars testidan keyin.
+- Foydalanuvchi **0 dan** boshlashi yoki **kirish sinovi** bilan o‘z darajasidan boshlashi mumkin (§17.8). Kirish sinovi natijasidan oddiy **o‘quv rejasi** chiqadi (§17.9).
+
+### 17.2 Darajalar (TEXNIK ASOS)
+| Daraja | Taxminan | Birinchi maqsad |
+|---|---|---|
+| A 초급 | TOPIK I (1–2) | ~40 qoida, 6–7 bo‘lim — birinchi nashr shu |
+| B 중급 | TOPIK II (3–4) | keyin |
+| C 고급 | TOPIK II (5–6) | keyin |
+Bo‘lim va dars raqamlari nashrdan keyin **barqaror** (so‘z bo‘limlari kabi, §2.2): qoida boshqa bo‘limga ko‘chirilmaydi, tuzatish faqat matnda (`ContentVersion++`).
+
+### 17.3 Dars tarkibi — 4 qadam (KELISHILGAN, so‘z bo‘limidagi stepper kabi)
+1. **Tanishuv** — Jonli doska va diktor (§16, L-54 tizimi). Bitta qoida bo‘lgani uchun 1–2 daqiqa: nima uchun kerak, qanday yasaladi, 2–3 misol, tuzoq. Ixtiyoriy, o‘tkazib yuborsa bo‘ladi.
+2. **Qoida va misollar** — o‘qiladigan kartochka:
+   - qoida nomi va o‘zbekcha ma’nosi (masalan `-고 싶다` — "…ni xohlamoq");
+   - **yasalishi**: qanday so‘zga qo‘shiladi (fe’l/sifat o‘zagi, ot), unli/undoshdan keyingi shakllar jadvali (`은/는`, `-아요/어요/해요`), xushmuomalalik darajasi (해요체 / 합니다체 / 반말);
+   - 4–6 misol gap: koreyscha (qoida qismi ajratib ko‘rsatiladi), o‘zbekcha tarjima, TTS ovoz;
+   - **tuzoq** (`TrapUz`): o‘zbek tilida so‘zlashuvchi adashadigan haqiqiy joy — so‘zma-so‘z tarjima, o‘zbekcha qo‘shimchaga o‘xshatish xatosi, xushmuomalalik. Haqiqiy tuzoq bo‘lmasa — `null`, o‘ylab topilmaydi (so‘zlardagi qoida, §2.3);
+   - **o‘xshashi bilan farqi** (§17.5): masalan `-아서` va `-니까`, `이/가` va `은/는`.
+3. **Mashq** — shu qoida bo‘yicha savollar (§17.6).
+4. **Dars testi** — 10 savol, **≥80%** bilan o‘tiladi (`Grammar:PassPercent`, standart 80). O‘tsa dars `Passed`, keyingi dars ochiladi. Test takrorlash jadvalini o‘zgartirmaydi, xatolar Xatolar daftariga "grammatika" manbasi bilan tushadi (so‘z testi kabi, §4.4).
+Bo‘lim **barcha darslari** o‘tilganda tugaydi; alohida bo‘lim testi yo‘q (TEXNIK ASOS). Navbatdagi qulflangan dars uchun **"Bilaman — testni topshirish"** bor (§4.5 qoidalari: kuniga 3 urinish).
+
+### 17.4 Kontent: qoida maydonlari va tayyorlash (TEXNIK ASOS)
+- **Qoidalar ro‘yxati — rasmiy manbadan (KELISHILGAN, Q9), so‘zlar ro‘yxati kabi (§2.1):** 국립국어원 「국제 통용 한국어 표준 교육과정」 (2010–2017, 4-bosqich) ning grammatika va ifodalar ro‘yxati (`문법·표현`, 1–6 급, taxminan 300 ta). Moslik: **1–2 급 → A, 3–4 급 → B, 5–6 급 → C**. Daraja ichidagi tartib — ro‘yxatdagi tartib va sodda qoidadan murakkabiga; bo‘limlarga muharrir 5–8 tadan ajratadi. AI o‘quv dasturini o‘zi tuzmaydi.
+  - **Ro‘yxatdan faqat qoida nomi va darajasi olinadi**; izoh, misol va mashqlarni o‘zimiz yozamiz (AI qoralama + muharrir). Manba ilovada va ochiq sahifalarda ko‘rsatiladi (so‘zlar manbasi kabi). Faylni (PDF/HWP) Johnny 국립국어원 saytidan yuklaydi; import oldidan litsenziya belgisi (공공누리 turi) tekshirilib, DECISIONS’ga yoziladi.
+  - **Yordamchi manba:** 「한국어기초사전」 (krdict, CC BY-SA, Open API) — qoidaning (어미/조사) ma’nosi va qo‘llanishini muharrir solishtirib tekshirishi uchun. Undagi matn **ko‘chirilmaydi**: CC BY-SA "bir xil shartlar" talabi bizning matnimizga ham tarqalmasin.
+  - Ro‘yxat admin’ga import qilinadi (fayl → qatorlar, takror importda idempotent, `SourceKey` kabi); muharrir qo‘lda qoida qo‘sha yoki birlashtira oladi (masalan `-아서/어서` bitta dars).
+- **AI manbaga tayanib yozadi (KELISHILGAN, 2026-11-02):** har qoidaga muharrir **manba** biriktiradi (`GrammarReference`: 한국어기초사전 yozuvi, rasmiy hujjat yoki ishonchli darslikdan qisqa parcha va/yoki havola, manba nomi). Manbasiz qoidaga AI qoralama so‘ralmaydi. Promptda manba beriladi: AI qoidaning ma’nosi, yasalishi va cheklovlarini **faqat shu manbadan** oladi, o‘zbekcha sodda tilda qayta yozadi (matnni ko‘chirmaydi) va unga zid narsa yozmaydi; manbada yo‘q da’vo kerak bo‘lsa — yozmaydi va muharrirga "manbada yo‘q" deb belgilaydi. Tuzoq (o‘zbekcha o‘xshatish) manbada bo‘lmaydi — u AI taklifi, muharrir alohida tasdiqlaydi.
+- Muharrir ekranida **manba va qoralama yonma-yon**; tasdiqlashda "manba bilan solishtirildi" belgisi majburiy.
+- Har qoida uchun AI qoralama yozadi (bir chaqiruvda 2–3 qoida, tanishuvdagi `WordsPerCall` usuli):
+  `meaning_uz`, `formation` (qoida va shakllar jadvali), `register`, `notes_uz`, 4–6 `examples` (`ko`, `uz`, ajratiladigan qism), `trap_uz` (yoki `null`), `contrasts` (§17.5), 8–12 mashq savoli (§17.6).
+- **Misollar o‘tilgan so‘zlardan:** har qoidaga `WordUnitHint` (qaysi so‘z bo‘limigacha bo‘lgan so‘zlar ishlatiladi) beriladi; AI shu so‘zlar ro‘yxatini oladi va misollarni ular bilan tuzadi. Server tekshiradi: misoldagi so‘zlarning ko‘pi (standart ≥70%) shu so‘zlardan bo‘lsin; bo‘lmasa ogohlantirish (bloklamaydi).
+- **Server tekshiruvi** (lug‘at qoralamasidagidek): Hangul/lotin to‘g‘ri, qoida qismi har misolda bor, bo‘sh joyli savolda bitta `___`, variantlar farqli, to‘g‘ri javob variantlar ichida, o‘zbekcha matnda koreyscha so‘z «qo‘shtirnoqda» (tanishuv diktori uchun, L-54). Yaroqsizi tashlanadi.
+- **Inson tekshiruvi majburiy:** muharrir har qoidani ko‘radi, tahrirlaydi, `Reviewed` qiladi; kim tekshirgani saqlanadi. Bo‘lim faqat barcha qoidalari `Reviewed` bo‘lsa nashr qilinadi. Tanishuv darsi — alohida, §16 oqimi bilan (qoralama → tasdiq → ovoz → eshitib tekshirish → nashr).
+
+### 17.5 Tuzoq va o‘xshash qoidalar (KELISHILGAN)
+- **Tuzoq** — so‘zlardagidek: o‘zbek tilida fikrlab gapirganda chiqadigan xato. Masalan: `-(으)면` ≈ "-sa", lekin `-(으)니까` ham ba’zan "-gani uchun" deb tarjima qilinadi; `저는` / `나는` — kimga gapirayotganingizga qarab. Kartochkada va tanishuvda alohida blok ("✧ Farqiga qarang"), interaktiv sahna (L-52) qoidalar uchun ham ishlaydi: noto‘g‘ri gap chiziladi, to‘g‘risi chiqadi.
+- **O‘xshash qoidalar** — `GrammarContrast(A, B, ExplanationUz, Examples, Reference)`: ikki qoida ma’no yoki ko‘rinishda yaqin bo‘lsa, farqi qisqa jadval va 2–3 juft misol bilan. **Qat’iy qoida (KELISHILGAN):** farq tushuntirishi faqat **manbasi ko‘rsatilgan** (`Reference` majburiy: farqni bayon qilgan lug‘at, rasmiy hujjat yoki ilmiy ish) va **inson tasdiqlagan** bo‘lsa nashr qilinadi; manbasiz farq ko‘rinmaydi. AI farqni o‘zidan o‘ylab topmaydi — manbadagi farqni o‘zbekcha tushuntiradi. Ikkinchi qoida darsida birinchisi bilan farqi ko‘rsatiladi va mashqda "Qaysi biri to‘g‘ri?" ikkalasi orasida so‘raladi. Contrast faqat ikkala qoida nashr qilinganda ko‘rinadi.
+
+### 17.6 Mashq va savol turlari (TEXNIK ASOS)
+| Tur | Tavsif | Bor tizim |
+|---|---|---|
+| `GrammarChoice` | Gapdagi bo‘sh joyga to‘g‘ri shaklni tanlash (4 variant: to‘g‘ri, o‘xshash qoida, noto‘g‘ri unli/undosh shakli, boshqa) | "Qaysi so‘z to‘g‘ri?" (D-46) |
+| `GrammarForm` | O‘zak + qoida → shaklni **yozish** (`먹다 + -고 싶다` → `먹고 싶어요`) | Yozma mashq (D-23), `TextNormalizer` |
+| `GrammarOrder` | Bo‘laklardan gapni tartiblash | Gap zinapoyasi (D-47) |
+| `GrammarTranslate` | O‘zbekcha gap → koreyscha variantni tanlash | Test dvigateli (D-30) |
+| `GrammarContrastChoice` | O‘xshash ikki qoidadan to‘g‘risini tanlash (§17.5) | — |
+Savollar AI qoralamasida tayyorlanadi va muharrir tasdiqlaydi — o‘quvchi uchun AI chaqirilmaydi. **Premium** qo‘shimchasi: "O‘z gapingizni yozing" — qoida bilan gap tuzish, AI tekshiradi (gap tekshiruvi D-52, qoida maqsadi bilan).
+
+### 17.7 Takrorlash (TEXNIK ASOS)
+- O‘tilgan qoida takrorlashga tushadi: `LearningItem.Kind = Grammar` (§5.2), bitta yo‘nalish. Karta — qoidaning misollaridan biri bo‘sh joy bilan ("저는 커피를 ___ (마시다 + xohlamoq)"); javob yozish yoki tanlash.
+- Bosh sahifadagi "Bugun takrorlash" so‘z va grammatika kartalarini **bitta navbatda** beradi (`ladder-v1` o‘zgarmaydi). Grammatika kartasi kuniga ko‘pi bilan `Grammar:ReviewsPerDay` (standart 10), so‘zlarni bosib ketmasin.
+
+### 17.8 Kirish sinovi — darajani aniqlash (KELISHILGAN g‘oya, TEXNIK ASOS tafsilot)
+- Onboarding’da va Profil’da: **"0 dan boshlayman"** yoki **"Darajamni aniqlash"**. Sinov ixtiyoriy va bepul; 0 dan boshlagan keyin ham topshira oladi.
+- **Tuzilishi:** 5–8 daqiqa, ~30 savol, darajama-daraja ketadi: so‘z bo‘limlaridan namunalar (har bir necha bo‘limdan 2–3 so‘z) va grammatika darslaridan 1–2 savol. Ketma-ket ikki bosqichda <60% bo‘lsa to‘xtaydi (uzoq qiynamaydi). Savol turlari mavjud test dvigatelidan.
+- **Natija:** "So‘zlar: A 8-bo‘limdan, grammatika: A 2-bo‘lim 3-darsdan boshlash tavsiya" — foydalanuvchi qabul qiladi yoki bir pog‘ona orqaga suradi. Hech narsa uning roziligisiz o‘zgarmaydi.
+- **Qabul qilinsa:** oldingi bo‘lim va darslar `Passed` (`PassedBy = Placement`). O‘tkazilgan so‘z bo‘limlarining kartalari bir kunda emas, **asta-sekin** takrorlashga kiradi (masalan 14 kunga yoyilib, kuniga ko‘pi bilan `Placement:ReviewsPerDay`), sinovda xato qilingan so‘zlar `New`. Aniq usul DECISIONS’ga yoziladi (`ladder-v1` invariantlari buzilmaydi, §4.5 dagidek).
+- Qayta topshirish: 7 kunda bir marta (KELISHILGAN, Q11). Natija takrorlash jadvalini o‘zgartirmaydi, faqat qaysi bo‘limdan boshlashni.
+
+### 17.9 O‘quv rejasi (TEXNIK ASOS: AI emas, oddiy hisob)
+- So‘raladi: **maqsad** (EPS-TOPIK / TOPIK I / TOPIK II / Koreyada ish va hayot / shunchaki), **maqsad sana** (ixtiyoriy), **kuniga necha daqiqa** (10 / 20 / 30).
+- Hisob: joriy daraja (kirish sinovi yoki progress) → qolgan so‘z bo‘limlari va grammatika darslari → kunlik vaqtga bo‘linadi. Natija: "Haftasiga 3 so‘z bo‘limi va 4 grammatika darsi. Shu sur’atda A darajani ~7 haftada tugatasiz." Sana bo‘lsa: ulgurish uchun kerakli sur’at va "ulgurmaysiz — kuniga 30 daqiqa qiling" kabi ochiq ogohlantirish.
+- Bosh sahifada **"Bugungi reja"**: takrorlash, yangi so‘zlar, keyingi grammatika darsi. **Sokin** (§1.4): o‘tkazib yuborilgan kun jazolanmaydi, streak yo‘q, reja o‘zi qayta hisoblanadi.
+- AI ishlatilmaydi: reja tez, arzon va har safar bir xil. Keyinroq AI faqat rejani so‘z bilan tushuntirishi mumkin (ixtiyoriy).
+
+### 17.10 Premium (KELISHILGAN, Q10: resurs ishlatmaydigan qism bepul, AI ishlatadigan qism pullik)
+| Bepul | Premium |
+|---|---|
+| Barcha grammatika darslari, qoida kartochkalari, tuzoq va o‘xshashlar | AI bilan "O‘z gapingizni yozing" (qoida maqsadi bilan) |
+| Grammatika tanishuvlari (ovoz saqlangan) | Grammatika xatolari Zaif joylar va Tuzoqlar daftarida |
+| Mashq va dars testlari, "Bilaman" | |
+| Kirish sinovi, o‘quv rejasi, grammatika takrorlashi | |
+Tamoyil §7.1 bilan bir xil: bir marta tayyorlanib saqlangan kontent bepul, har chaqiruvda AI xarajati bo‘lgan narsa Premium.
+
+### 17.11 Ma’lumot modeli (TEXNIK ASOS, agent aniqlashtiradi)
+| Model | Maydonlar |
+|---|---|
+| `GrammarUnit` | `Id`, `Level`, `Number` (unique juft), `Status` (`Draft`/`Published`), `PublishedAt`, `PointCount` |
+| `GrammarPoint` | `Id`, `UnitId`, `Order`, `Pattern` (`-고 싶다`), `TitleUz`, `MeaningUz`, `Formation` (jsonb: qo‘shiladigan so‘z turi, shakllar), `Register`, `NotesUz`, `TrapUz?`, `WordUnitHint?`, `Status` (`Draft`/`Reviewed`), `ContentVersion`, `ReviewedBy`, `ReviewedAt`, `AiProvider/Model` |
+| `GrammarExample` | `PointId`, `Order`, `Ko`, `Uz`, `HighlightStart/Length` |
+| `GrammarExercise` | `PointId`, `Kind` (§17.6), `Prompt`, `Answer`, `Options` (jsonb), `ExplanationUz`, `ContentVersion` |
+| `GrammarReference` | `Id`, `PointId?` yoki `ContrastId?`, `SourceName` (masalan 「한국어기초사전」), `Url?`, `Excerpt?` (qisqa parcha, faqat AI va muharrir uchun — o‘quvchiga chiqmaydi), `License?`, `AddedBy`, `AddedAt` |
+| `GrammarContrast` | `PointAId`, `PointBId` (unique juft), `ExplanationUz`, `Examples` (jsonb), `Status` (`Draft`/`Reviewed`) — nashr uchun kamida bitta `GrammarReference` |
+| `UserGrammarProgress` | `UserId`, `PointId` (unique juft), `Status` (`Open`/`Passed`), `PassedBy` (`Test`/`SkipTest`/`Placement`), `BestScorePercent`, `Attempts`, `Version` |
+| `PlacementAttempt` | `UserId`, savollar va javoblar, natija (so‘z bo‘limi, grammatika darsi), `AcceptedAt?`, `StartedAt`, `FinishedAt` |
+| `StudyPlan` | `UserId` (unique), `Goal`, `TargetDate?`, `DailyMinutes`, `UpdatedAt` |
+- `UserUnitProgress.PassedBy` ga `Placement` qo‘shiladi. `LearningItem.Kind` ga `Grammar` (+ `GrammarPointId`).
+- Tanishuv: `UnitIntroduction` grammatika bo‘limi yoki dars uchun ham ishlashi kerak (masalan, `UnitId` yoki `GrammarPointId` — ikkisidan biri, check constraint). Agent toza yechimni DECISIONS’ga yozadi.
+- Invariantlar §5.3 dagidek: ochilish faqat serverda; dars faqat bo‘limi `Published` bo‘lsa; 1-dars (A-1) har yangi foydalanuvchi uchun ochiq; idempotent progress.
+
+### 17.12 Navigatsiya va ekranlar (TEXNIK ASOS)
+- **Bo‘limlar** sahifasida yuqorida segment: **So‘zlar · Grammatika**; ichida A · B · C (§4.2 ko‘rinishi).
+- Grammatika bo‘limi sahifasi: darslar ro‘yxati (qulf / ochiq / o‘tilgan, eng yaxshi natija); dars sahifasi: 4 qadam (§17.3).
+- **Bosh sahifa**: "Bugungi reja" (§17.9) — takrorlash, joriy so‘z bo‘limi, keyingi grammatika darsi.
+- **Mashq** menyusiga "Grammatika mashqi" (o‘tilgan qoidalar aralash).
+- **Admin → Kontent → Grammatika**: ro‘yxat importi, AI qoralama, qoida tahriri va tasdiqlash, bo‘limni nashr qilish, tanishuv (§16 oqimi).
+- SEO (L-56 kabi): `/grammatika/{slug}` ochiq sahifalari — keyingi bosqich, faqat nashr qilingan qoidalar.
+
+### 17.13 Bosqichlar va qabul mezonlari
+| Bosqich | Nima | Qabul |
+|---|---|---|
+| **G1** Model va kontent oqimi | §17.11 jadvallari, admin: ro‘yxat importi, manba biriktirish, manbaga tayangan AI qoralama (2–3 qoida/chaqiruv), server tekshiruvi, manba bilan yonma-yon tahrir, `Reviewed`, nashr | Johnny A-1 bo‘limi qoidalarini tayyorlab nashr qila oladi; testlar: manbasiz qoidaga qoralama yo‘q, manbasiz contrast nashr qilinmaydi, nashr sharti, ContentVersion |
+| **G2** O‘quvchi darsi | Bo‘limlar segmenti, dars sahifasi (qoida, misollar, tuzoq, o‘xshash), mashqlar, dars testi, ochilish, "Bilaman" | A-1 darslari boshidan oxirigacha o‘ynaladi (390/360 px, yorug‘/qorong‘i); ochilish faqat serverda (test) |
+| **G3** Grammatika tanishuvi | §16 tizimi grammatika uchun | Qoralama → tasdiq → ovoz → nashr; o‘quvchi faqat nashrni ko‘radi |
+| **G4** Takrorlash | `Kind = Grammar` kartalar, kunlik limit | So‘z va grammatika bitta navbatda; limit ishlaydi (test) |
+| **G5** Kirish sinovi va reja | Onboarding tanlovi, sinov, natijani qabul qilish, reja va "Bugungi reja" | Sinovdan keyin to‘g‘ri bo‘limdan boshlanadi; kartalar yoyilib kiradi (test); streak/jazo yo‘q |
+Har bosqich alohida PR(lar), `dotnet test` va JS testlari yashil, DECISIONS va CHECKLIST yangilanadi.
+
+### 17.14 Hozircha qilinmaydi
+- Mock imtihon, TOPIK va EPS-TOPIK testlari (keyingi bosqich; "Sinov" bo‘limiga qo‘shiladi).
+- AI bilan erkin suhbat yoki "AI ustoz" chati.
+- Grammatika uchun AI tomonidan avtomatik o‘quv dasturi tuzish (ro‘yxatni muharrir beradi, §17.4).
+- Yozma insho baholash (TOPIK yozish).
+
