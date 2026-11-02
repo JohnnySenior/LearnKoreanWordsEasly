@@ -478,10 +478,10 @@ Har bosqich alohida branch/PR, CI yashil bo‘lgach `main` ga. Har bosqich oxiri
 | Q6 | Eslatma standart vaqti | 20:00 |
 | Q7 | Maxfiylik siyosati matni | Agent qoralama yozadi, Johnny tasdiqlaydi |
 | Q8 | To‘lovlarni qaysi shaxs/tashkilot nomiga qabul qilish (biznes ro‘yxatdan o‘tish) | Kod bunga bog‘liq emas; faqat konfiguratsiya |
-| Q9 | Grammatika qoidalari ro‘yxatining manbasi va tartibi (§17.4) | Muharrir tuzadi, 국제 통용 한국어 표준 교육과정 darajalariga tayanib; A — ~40 qoida |
-| Q10 | Grammatika qaysi qismi Premium (§17.10) | Darslar, testlar, kirish sinovi va reja bepul; AI gap tekshiruvi grammatika bilan — Premium |
-| Q11 | Kirish sinovini qayta topshirish oralig‘i (§17.8) | 7 kunda bir marta |
-| Q12 | Grammatika darsi so‘z bo‘limiga bog‘lanib ochiladimi yoki mustaqilmi (§17.6) | Mustaqil ochiladi; misollar o‘tilgan so‘zlardan, tavsiya — bog‘liq so‘z bo‘limi |
+| Q9 | Grammatika qoidalari ro‘yxatining manbasi va tartibi (§17.4) | **Hal qilindi (2026-11-02):** 국립국어원 「국제 통용 한국어 표준 교육과정」 grammatika ro‘yxati (§17.4) |
+| Q10 | Grammatika qaysi qismi Premium (§17.10) | **Hal qilindi:** resurs ishlatmaydigan qism bepul, AI ishlatadigan qism Premium |
+| Q11 | Kirish sinovini qayta topshirish oralig‘i (§17.8) | **Hal qilindi:** 7 kunda bir marta |
+| Q12 | Grammatika darsi so‘z bo‘limiga bog‘lanib ochiladimi yoki mustaqilmi (§17.1) | **Hal qilindi:** mustaqil ochiladi; misollar baribir o‘tilgan so‘zlardan |
 
 ---
 
@@ -514,6 +514,7 @@ Koreyscha lug‘at ilovasidan koreys tilini o‘rgatadigan ilovaga o‘sadi. Gra
 - Kontent oqimi lug‘at va tanishuv bilan bir xil: **AI qoralama → muharrir tahrir qiladi va tasdiqlaydi → nashr**. O‘quvchi kirganda AI generatsiyasi yo‘q.
 - Farqimiz so‘zlardagidek: **o‘zbek tilida** tushuntirish va **o‘zbeklar adashadigan joylar** (tuzoq) hamda **o‘xshash qoidalarning farqi** alohida ochib beriladi.
 - **Misollar o‘tilgan so‘zlardan** tuziladi: grammatika darsi foydalanuvchi allaqachon bilgan so‘zlar bilan beriladi (§17.4). Bu raqobatchilarda kam uchraydigan asosiy afzallik.
+- Grammatika bo‘limlari so‘z bo‘limlariga **bog‘lanmasdan, mustaqil** ochiladi (KELISHILGAN, Q12): A-1 grammatika darsi hamma uchun ochiq, keyingisi oldingi dars testidan keyin.
 - Foydalanuvchi **0 dan** boshlashi yoki **kirish sinovi** bilan o‘z darajasidan boshlashi mumkin (§17.8). Kirish sinovi natijasidan oddiy **o‘quv rejasi** chiqadi (§17.9).
 
 ### 17.2 Darajalar (TEXNIK ASOS)
@@ -537,7 +538,10 @@ Bo‘lim va dars raqamlari nashrdan keyin **barqaror** (so‘z bo‘limlari kabi
 Bo‘lim **barcha darslari** o‘tilganda tugaydi; alohida bo‘lim testi yo‘q (TEXNIK ASOS). Navbatdagi qulflangan dars uchun **"Bilaman — testni topshirish"** bor (§4.5 qoidalari: kuniga 3 urinish).
 
 ### 17.4 Kontent: qoida maydonlari va tayyorlash (TEXNIK ASOS)
-- **Qoidalar ro‘yxatini muharrir beradi** (nom, qisqa izoh, daraja, bo‘lim, tartib) — AI o‘quv dasturini o‘zi tuzmaydi. Tayanch: 국제 통용 한국어 표준 교육과정 darajalari (**JOHNNY TASDIQLAYDI**, Q9). Admin ro‘yxatni import qiladi yoki qo‘lda qo‘shadi.
+- **Qoidalar ro‘yxati — rasmiy manbadan (KELISHILGAN, Q9), so‘zlar ro‘yxati kabi (§2.1):** 국립국어원 「국제 통용 한국어 표준 교육과정」 (2010–2017, 4-bosqich) ning grammatika va ifodalar ro‘yxati (`문법·표현`, 1–6 급, taxminan 300 ta). Moslik: **1–2 급 → A, 3–4 급 → B, 5–6 급 → C**. Daraja ichidagi tartib — ro‘yxatdagi tartib va sodda qoidadan murakkabiga; bo‘limlarga muharrir 5–8 tadan ajratadi. AI o‘quv dasturini o‘zi tuzmaydi.
+  - **Ro‘yxatdan faqat qoida nomi va darajasi olinadi**; izoh, misol va mashqlarni o‘zimiz yozamiz (AI qoralama + muharrir). Manba ilovada va ochiq sahifalarda ko‘rsatiladi (so‘zlar manbasi kabi). Faylni (PDF/HWP) Johnny 국립국어원 saytidan yuklaydi; import oldidan litsenziya belgisi (공공누리 turi) tekshirilib, DECISIONS’ga yoziladi.
+  - **Yordamchi manba:** 「한국어기초사전」 (krdict, CC BY-SA, Open API) — qoidaning (어미/조사) ma’nosi va qo‘llanishini muharrir solishtirib tekshirishi uchun. Undagi matn **ko‘chirilmaydi**: CC BY-SA "bir xil shartlar" talabi bizning matnimizga ham tarqalmasin.
+  - Ro‘yxat admin’ga import qilinadi (fayl → qatorlar, takror importda idempotent, `SourceKey` kabi); muharrir qo‘lda qoida qo‘sha yoki birlashtira oladi (masalan `-아서/어서` bitta dars).
 - Har qoida uchun AI qoralama yozadi (bir chaqiruvda 2–3 qoida, tanishuvdagi `WordsPerCall` usuli):
   `meaning_uz`, `formation` (qoida va shakllar jadvali), `register`, `notes_uz`, 4–6 `examples` (`ko`, `uz`, ajratiladigan qism), `trap_uz` (yoki `null`), `contrasts` (§17.5), 8–12 mashq savoli (§17.6).
 - **Misollar o‘tilgan so‘zlardan:** har qoidaga `WordUnitHint` (qaysi so‘z bo‘limigacha bo‘lgan so‘zlar ishlatiladi) beriladi; AI shu so‘zlar ro‘yxatini oladi va misollarni ular bilan tuzadi. Server tekshiradi: misoldagi so‘zlarning ko‘pi (standart ≥70%) shu so‘zlardan bo‘lsin; bo‘lmasa ogohlantirish (bloklamaydi).
@@ -567,7 +571,7 @@ Savollar AI qoralamasida tayyorlanadi va muharrir tasdiqlaydi — o‘quvchi uch
 - **Tuzilishi:** 5–8 daqiqa, ~30 savol, darajama-daraja ketadi: so‘z bo‘limlaridan namunalar (har bir necha bo‘limdan 2–3 so‘z) va grammatika darslaridan 1–2 savol. Ketma-ket ikki bosqichda <60% bo‘lsa to‘xtaydi (uzoq qiynamaydi). Savol turlari mavjud test dvigatelidan.
 - **Natija:** "So‘zlar: A 8-bo‘limdan, grammatika: A 2-bo‘lim 3-darsdan boshlash tavsiya" — foydalanuvchi qabul qiladi yoki bir pog‘ona orqaga suradi. Hech narsa uning roziligisiz o‘zgarmaydi.
 - **Qabul qilinsa:** oldingi bo‘lim va darslar `Passed` (`PassedBy = Placement`). O‘tkazilgan so‘z bo‘limlarining kartalari bir kunda emas, **asta-sekin** takrorlashga kiradi (masalan 14 kunga yoyilib, kuniga ko‘pi bilan `Placement:ReviewsPerDay`), sinovda xato qilingan so‘zlar `New`. Aniq usul DECISIONS’ga yoziladi (`ladder-v1` invariantlari buzilmaydi, §4.5 dagidek).
-- Qayta topshirish: 7 kunda bir marta (**JOHNNY TASDIQLAYDI**, Q11). Natija takrorlash jadvalini o‘zgartirmaydi, faqat qaysi bo‘limdan boshlashni.
+- Qayta topshirish: 7 kunda bir marta (KELISHILGAN, Q11). Natija takrorlash jadvalini o‘zgartirmaydi, faqat qaysi bo‘limdan boshlashni.
 
 ### 17.9 O‘quv rejasi (TEXNIK ASOS: AI emas, oddiy hisob)
 - So‘raladi: **maqsad** (EPS-TOPIK / TOPIK I / TOPIK II / Koreyada ish va hayot / shunchaki), **maqsad sana** (ixtiyoriy), **kuniga necha daqiqa** (10 / 20 / 30).
@@ -575,7 +579,7 @@ Savollar AI qoralamasida tayyorlanadi va muharrir tasdiqlaydi — o‘quvchi uch
 - Bosh sahifada **"Bugungi reja"**: takrorlash, yangi so‘zlar, keyingi grammatika darsi. **Sokin** (§1.4): o‘tkazib yuborilgan kun jazolanmaydi, streak yo‘q, reja o‘zi qayta hisoblanadi.
 - AI ishlatilmaydi: reja tez, arzon va har safar bir xil. Keyinroq AI faqat rejani so‘z bilan tushuntirishi mumkin (ixtiyoriy).
 
-### 17.10 Premium (JOHNNY TASDIQLAYDI, Q10)
+### 17.10 Premium (KELISHILGAN, Q10: resurs ishlatmaydigan qism bepul, AI ishlatadigan qism pullik)
 | Bepul | Premium |
 |---|---|
 | Barcha grammatika darslari, qoida kartochkalari, tuzoq va o‘xshashlar | AI bilan "O‘z gapingizni yozing" (qoida maqsadi bilan) |
