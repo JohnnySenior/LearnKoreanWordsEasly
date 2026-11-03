@@ -477,5 +477,6 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Server: ko‘pi bilan 3 ta to‘g‘ri javob berilgan so‘z, eng ko‘p ishlatiladigani birinchi; GET ham shu kartani qaytaradi (2 API testi).
 - [x] 1080×1350 PNG: Sokin va Tungi, ㅋ logotip, haqiqiy ball; havola `koreyscha.com/sinab?src=ulash` → `sinab-ulash` (test).
 - [x] Fayl ulashish → matn ulashish → Telegram havolasi; bekor qilish jim, xato xabari (6 JS testi). Chromium 360px yorug‘/qorong‘i: tugma 48px, yonlama scroll yo‘q.
-- [ ] Johnny: haqiqiy iPhone va Android’da ulashish (Telegram/Instagram’ga rasm bilan borishi).
+- [x] Johnny iPhone’da sinadi: Instagram story/xabarga rasm bordi; Telegram’ga faqat havola bordi → havola matn ichiga ko‘chirildi.
+- [ ] Johnny: iPhone Telegram’da qayta sinash (rasm + tagida bosiladigan havola); Android’da sinash.
 - [ ] 2 haftadan keyin: Admin → Manbalar’da `sinab-ulash` qatori.
