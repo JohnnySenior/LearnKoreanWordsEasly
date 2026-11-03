@@ -16,9 +16,17 @@
         // Chrome/Android offers installing before Blazor starts; keep the offer for the "O‘rnatish" button (spec §6.2).
         window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installPrompt = e; });
         window.addEventListener('appinstalled', () => { window.__installPrompt = null; });
+        // L-60: someone with a saved session (SessionService.RefreshKey) sees only the brand and "Yuklanmoqda…", not the landing.
+        try { if (localStorage.getItem('lugat.refresh')) document.documentElement.classList.add('returning'); } catch { }
     </script>
     <meta name="theme-color" content="#0047A0" />
-    <meta name="description" content="Koreys tili so‘zlarini o‘zbek tilida, eng ko‘p ishlatiladiganlaridan boshlab o‘rganing." />
+    <meta name="description" content="Koreys tili so‘zlari — o‘zbek tilida. Eng ko‘p ishlatiladigan so‘zlardan boshlab, 25 talik bo‘limlarda. Bo‘lim faqat testdan 80% bilan tugaydi." />
+    <link rel="canonical" href="https://koreyscha.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Koreyscha" />
+    <meta property="og:title" content="Koreys tili so‘zlari — o‘zbek tilida | Koreyscha" />
+    <meta property="og:description" content="Eng ko‘p ishlatiladigan so‘zlardan boshlab, 25 talik bo‘limlarda. Bo‘lim faqat testdan 80% bilan tugaydi." />
+    <meta property="og:url" content="https://koreyscha.com/" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="favicon.ico?v=2" sizes="any" />
     <link rel="icon" href="icons/favicon.svg?v=2" type="image/svg+xml" />
@@ -31,11 +39,67 @@
 
 <body>
     <div id="app">
-        <div class="boot">
-            <div class="boot-title">Koreyscha</div>
-            <div class="boot-text">Yuklanmoqda…</div>
-            <p class="boot-about">Koreys tili so‘zlarini o‘zbek tilida, eng ko‘p ishlatiladiganlaridan boshlab 25 talik bo‘limlarda yodlash ilovasi. <a href="/soz">Koreyscha so‘zlar ro‘yxati</a></p>
-        </div>
+        <!-- L-60: shown until Blazor starts. Keep in step with Shared/BootScreen.razor, Shared/SigninIntro.razor and Shared/Landing.razor. -->
+        <main class="content signin-page boot">
+            <header class="app-header"><span class="app-header-title">Koreyscha</span><span class="app-header-right boot-landing"><span class="tag tag-neutral">A · B · C</span></span></header>
+            <p class="boot-loading" role="status" aria-live="polite"><span class="boot-dot" aria-hidden="true"></span>Yuklanmoqda…</p>
+            <div class="boot-landing">
+                <div class="signin-words">
+                    <div><span lang="ko">하다</span><small>qilmoq</small></div>
+                    <div class="accent"><span lang="ko">있다</span><small>bor bo‘lmoq</small></div>
+                </div>
+                <section class="signin-pitch">
+                    <h1>Koreys tili so‘zlari — o‘zbek tilida.</h1>
+                    <p>Eng ko‘p ishlatiladigan so‘zlardan boshlab, 25 talik bo‘limlarda. Bo‘lim faqat testdan 80% bilan tugaydi.</p>
+                </section>
+                <div class="boot-actions">
+                    <a class="btn btn-primary block" href="/sinab?src=bosh" target="_top"><span>Kirmasdan 1 daqiqada sinab ko‘rish</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
+                    <a class="btn btn-ghost" href="/soz" target="_top">Koreyscha so‘zlar ro‘yxati</a>
+                </div>
+                <div class="landing">
+                    <div class="section-label"><span>Bir bo‘lim — to‘rt qadam</span></div>
+                    <ol class="landing-steps">
+                        <li><b>Jadval</b><span>25 ta so‘z: o‘zbekcha tarjima, misol gap, tabiiy koreyscha ovoz.</span></li>
+                        <li><b>Kartochka</b><span>Eslay olmagan so‘z tez orada yana chiqadi, osoni bir necha kundan keyin.</span></li>
+                        <li><b>Mashq</b><span>Koreyschasini yozish, eshitib yozish, so‘zni gapda to‘g‘ri ishlatish.</span></li>
+                        <li><b>Test</b><span>25 savoldan 20 tasiga to‘g‘ri javob — keyingi bo‘lim ochiladi.</span></li>
+                    </ol>
+                    <div class="section-label"><span>Har so‘zda — o‘zbeklar adashadigan joy</span></div>
+                    <div class="landing-word">
+                        <div class="landing-word-head">
+                            <span class="landing-word-ko" lang="ko">우리</span>
+                            <span class="muted small-text">uri · olmosh</span>
+                        </div>
+                        <p><b>biz; mening</b> (oila, uy, kompaniya)</p>
+                        <p class="landing-example"><span lang="ko">우리 엄마는 우즈베키스탄에 계세요.</span><br /><span class="muted">Onam O‘zbekistonda.</span></p>
+                        <p class="landing-trap"><b>Tuzoq:</b> 우리 엄마 — «mening onam», «bizning onam» emas. Koreyslar oila, uy, kompaniyani doim 우리 bilan aytadi.</p>
+                    </div>
+                    <div class="section-label"><span>Nima bepul</span></div>
+                    <div class="landing-plans">
+                        <div>
+                            <b>Bepul</b>
+                            <ul>
+                                <li>Barcha bo‘limlar va so‘zlar</li>
+                                <li>Jadval, kartochka, takrorlash</li>
+                                <li>Bo‘lim testlari va yozma mashq</li>
+                                <li>So‘zni eshitish</li>
+                                <li>Telegram’ga takrorlash eslatmasi</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <b>Premium</b>
+                            <ul>
+                                <li>Talaffuzni baholash</li>
+                                <li>AI bilan gap tekshiruvi</li>
+                                <li>Xatolarim: xato so‘zlar, xato turlari, tuzoqlar</li>
+                            </ul>
+                            <p class="muted small-text">Koreyada: ₩5,000 / oy · ₩12,000 / 3 oy<br />O‘zbekistonda: 29 000 so‘m / oy · 69 000 so‘m / 3 oy</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <footer class="signin-foot boot-landing">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1) · <a href="maxfiylik">Maxfiylik siyosati</a></footer>
+        </main>
     </div>
 
     <div id="blazor-error-ui">

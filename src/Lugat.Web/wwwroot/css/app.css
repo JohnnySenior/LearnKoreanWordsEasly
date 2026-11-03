@@ -397,10 +397,13 @@ h1 + .card, p + .card, .notice + .card { border-top: 2px solid var(--color-divid
 .tab-icon { flex: none; }
 @media (hover: hover) { .tab:hover { color: var(--color-accent); } }
 
-.boot { padding: 30vh var(--gutter) 0; }
-.boot-title { font: 800 34px/1 var(--font-heading); letter-spacing: -0.02em; }
-.boot-text { color: var(--color-muted); margin-top: 8px; }
-.boot-about { max-width: 34em; margin-top: 24px; color: var(--color-muted); font-size: 14px; }
+/* L-60: the static landing in index.html (and BootScreen.razor) until Blazor has started. */
+.boot-loading { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 13px; color: var(--color-muted); }
+.boot-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--color-accent); animation: boot-pulse 1.2s ease-in-out infinite; }
+@keyframes boot-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .boot-dot { animation: none; } }
+.boot-actions { display: grid; justify-items: center; gap: 4px; padding: 16px 0 0; }
+.returning .boot-landing { display: none; }
 
 #blazor-error-ui {
     background: var(--color-accent-100);
@@ -1062,7 +1065,7 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .signin-words small { display: block; font-size: 13px; color: var(--color-muted); margin-top: 6px; }
 .signin-words .accent span { color: var(--color-accent); }
 .signin-pitch { padding: 20px 0 8px; }
-.signin-pitch h2 { font: 800 30px/1.12 var(--font-heading); margin: 0 0 10px; }
+.signin-pitch h1 { font: 800 30px/1.12 var(--font-heading); margin: 0 0 10px; }
 .signin-pitch p { font-size: 15px; margin: 0; }
 .signin-page.content { padding-top: 12px; }
 .signin-buttons { display: grid; gap: 10px; padding: 16px 0; margin: 0; }

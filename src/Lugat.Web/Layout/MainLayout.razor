@@ -7,10 +7,7 @@
 @* The app shows only after sign-in (spec §4.1, §6.3); without a session the sign-in screen takes its place. *@
 @if (_state is null || _state.Status == SessionStatus.Unknown)
 {
-    <div class="boot">
-        <div class="boot-title">Koreyscha</div>
-        <div class="boot-text">Yuklanmoqda…</div>
-    </div>
+    <BootScreen />
     return;
 }
 
@@ -25,14 +22,7 @@
     @* UI handoff 1a: brand, two first words of level A, the promise, sign-in, the word list's source. *@
     <main class="content signin-page">
         <AppHeader><Right><Tag>A · B · C</Tag></Right></AppHeader>
-        <div class="signin-words">
-            <div><span lang="ko">하다</span><small>qilmoq</small></div>
-            <div class="accent"><span lang="ko">있다</span><small>bor bo‘lmoq</small></div>
-        </div>
-        <section class="signin-pitch">
-            <h2>Koreys tili so‘zlari — o‘zbek tilida.</h2>
-            <p>Eng ko‘p ishlatiladigan so‘zlardan boshlab, 25 talik bo‘limlarda. Bo‘lim faqat testdan 80% bilan tugaydi.</p>
-        </section>
+        <SigninIntro />
         @if (_state.Status == SessionStatus.Unavailable)
         {
             <div class="notice" role="alert">@_state.Message</div>
@@ -45,6 +35,7 @@
                 <div class="notice" role="status">@note</div>
             }
             <div id="kirish"><SignIn /></div>
+            <a class="btn btn-secondary block" href="@BootScreen.TasterLink" target="_top"><span>Kirmasdan 1 daqiqada sinab ko‘rish</span><Icon Name="arrow-right" /></a>
             <Landing />
         }
         <footer class="signin-foot">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1) · <a href="maxfiylik">Maxfiylik siyosati</a></footer>

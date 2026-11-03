@@ -1,0 +1,20 @@
+@* L-60: what Blazor shows while the session is checked — the same as the static landing in wwwroot/index.html, so the page
+   does not blink between them. With a saved session (html.returning) only the brand and "Yuklanmoqda…" show. *@
+<main class="content signin-page boot">
+    <AppHeader><Right><span class="boot-landing"><Tag>A · B · C</Tag></span></Right></AppHeader>
+    <p class="boot-loading" role="status" aria-live="polite"><span class="boot-dot" aria-hidden="true"></span>Yuklanmoqda…</p>
+    <div class="boot-landing">
+        <SigninIntro />
+        <div class="boot-actions">
+            <a class="btn btn-primary block" href="@TasterLink" target="_top"><span>Kirmasdan 1 daqiqada sinab ko‘rish</span><Icon Name="arrow-right" /></a>
+            <a class="btn btn-ghost" href="/soz" target="_top">Koreyscha so‘zlar ro‘yxati</a>
+        </div>
+        <Landing Boot />
+    </div>
+    <footer class="signin-foot boot-landing">Manba: 국립국어원 한국어 학습용 어휘 목록 (KOGL 1) · <a href="maxfiylik">Maxfiylik siyosati</a></footer>
+</main>
+
+@code {
+    /// <summary>The sign-in-free taster (L-58); counted as "sinab-bosh" in Admin → Manbalar.</summary>
+    public const string TasterLink = "/sinab?src=bosh";
+}

@@ -18,6 +18,7 @@ Asos: [KoreanAiTeacher](https://github.com/JohnnySenior/KoreanAiTeacher) (faqat 
 - Har bosqichda nima o‘zgardi, nima tekshirildi va nima ishlamayotganini `docs/CHECKLIST.md` ga yozing.
 - Maxfiy qiymatlar (bot tokeni, AI/Azure kalitlari, Google client secret) repo, log va brauzerga tushmaydi. Nomlari `.env.example` da.
 - Foydalanuvchi interfeysi o‘zbekcha (lotin). Koreyscha matn Hangul bilan.
+- Bosh sahifa matni ikki joyda (L-60): `Shared/SigninIntro.razor` yoki `Shared/Landing.razor` o‘zgarsa, `wwwroot/index.html` dagi boot landing ham yangilanadi (`tests/web/boot-landing.test.mjs` tekshiradi).
 - Har bosqich (spec §13) alohida branch/PR; `dotnet build`, `dotnet test` va CI yashil bo‘lgach `main` ga.
 
 ## Tuzilma

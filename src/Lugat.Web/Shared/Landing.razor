@@ -1,5 +1,6 @@
 @* L-41: what someone coming from an ad sees under the sign-in buttons before signing in: the four steps of a unit, one
-   real word with its trap, what is free, how to put the app on the phone. Facts only, the same ones the ad posts use. *@
+   real word with its trap, what is free, how to put the app on the phone. Facts only, the same ones the ad posts use.
+   The first three parts are also in wwwroot/index.html (L-60): change both. *@
 <div class="landing">
     <SectionLabel Text="Bir bo‘lim — to‘rt qadam" />
     <ol class="landing-steps">
@@ -43,9 +44,17 @@
         </div>
     </div>
 
-    <SectionLabel Text="Telefonga o‘rnatish" />
-    <p class="small-text">App Store yoki Play Market kerak emas: ilova brauzerdan bosh ekranga qo‘shiladi va oddiy ilovadek ochiladi.</p>
-    <InstallGuide />
+    @if (!Boot)
+    {
+        <SectionLabel Text="Telefonga o‘rnatish" />
+        <p class="small-text">App Store yoki Play Market kerak emas: ilova brauzerdan bosh ekranga qo‘shiladi va oddiy ilovadek ochiladi.</p>
+        <InstallGuide />
 
-    <a class="btn btn-primary block landing-cta" href="#kirish"><span>Bepul boshlash</span><Icon Name="arrow-right" /></a>
+        <a class="btn btn-primary block landing-cta" href="#kirish"><span>Bepul boshlash</span><Icon Name="arrow-right" /></a>
+    }
 </div>
+
+@code {
+    /// <summary>While the app loads (L-60): no install guide and no sign-in button yet, as in wwwroot/index.html.</summary>
+    [Parameter] public bool Boot { get; set; }
+}
