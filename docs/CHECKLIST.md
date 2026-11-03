@@ -480,3 +480,14 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Johnny iPhone’da sinadi: Instagram story/xabarga rasm bordi; Telegram’ga faqat havola bordi → havola matn ichiga ko‘chirildi.
 - [ ] Johnny: iPhone Telegram’da qayta sinash (rasm + tagida bosiladigan havola); Android’da sinash.
 - [ ] 2 haftadan keyin: Admin → Manbalar’da `sinab-ulash` qatori.
+
+**Bosh sahifaning statik boot landingi (L-60, 2026-11-03):**
+- [x] `index.html` da JS’siz landing: h1, pitch, «Kirmasdan 1 daqiqada sinab ko‘rish» → `/sinab?src=bosh`, `/soz`, 4 qadam, 우리 tuzog‘i, «Nima bepul», footer; `curl localhost:5248/ | grep "to‘rt qadam"` → bor.
+- [x] Blazor sessiyani tekshirayotganda `BootScreen` xuddi shuni chizadi; kirish sahifasida ikkinchi darajali «sinab ko‘rish» tugmasi; kirish sahifasi sarlavhasi `h1`.
+- [x] `lugat.refresh` bor foydalanuvchida faqat brend va «Yuklanmoqda…» (`html.returning`).
+- [x] canonical, og:title/description/url; meta description pitch bilan.
+- [x] Testlar: 4 JS (`boot-landing.test.mjs`: matnlar mos, CTA, returning kaliti = `RefreshKey`, canonical/OG) + `/sinab?src=bosh` → `sinab-bosh` (API).
+- [x] Chromium 360/390px, yorug‘/qorong‘i: framework bloklanganda landing ko‘rinadi, returning’da yashirin, Blazor’dan keyin kirish sahifasi; yonlama scroll yo‘q, konsol xatosi yo‘q; «sinab ko‘rish» → `/sinab`, `koreyscha.src = sinab-bosh`. LCP 134,7 s → 1,8 s (dev build, sekin tarmoq).
+- [ ] Johnny: haqiqiy iPhone Safari va PWA’da kirgan va kirmagan holatda `/` ni ochib ko‘rish.
+- [ ] Johnny: Search Console’da bosh sahifani qayta indekslashni so‘rash (URL Inspection → Request indexing).
+- [ ] 2 haftadan keyin: Admin → Manbalar’da `sinab-bosh` qatori.
