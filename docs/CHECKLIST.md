@@ -471,3 +471,11 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Johnny: Instagram bio havolasini `koreyscha.com/sinab?src=ig` ga almashtirish.
 - [ ] Johnny: Kontent → A-1’da kamida 3 ta so‘zning tuzoq sahnasi tekshirilganini ko‘rish (kam bo‘lsa borlari chiqadi).
 - [ ] 2 haftadan keyin: Admin → Ko‘rsatkichlar → Manbalar’da `sinab-ig`, `sinab-soz`, `soz` qatorlarining konversiyasini solishtirish.
+
+**«Bo‘lim tugadi» ulashish kartasi (L-59, 2026-11-03):**
+- [x] O‘tilgan bo‘lim testi natijasida «Do‘stga ulashish» (ikkinchi darajali tugma, kichik karta ko‘rinishi bilan); «Bilaman», o‘tilmagan test va to‘g‘ri javobsiz testda yo‘q.
+- [x] Server: ko‘pi bilan 3 ta to‘g‘ri javob berilgan so‘z, eng ko‘p ishlatiladigani birinchi; GET ham shu kartani qaytaradi (2 API testi).
+- [x] 1080×1350 PNG: Sokin va Tungi, ㅋ logotip, haqiqiy ball; havola `koreyscha.com/sinab?src=ulash` → `sinab-ulash` (test).
+- [x] Fayl ulashish → matn ulashish → Telegram havolasi; bekor qilish jim, xato xabari (6 JS testi). Chromium 360px yorug‘/qorong‘i: tugma 48px, yonlama scroll yo‘q.
+- [ ] Johnny: haqiqiy iPhone va Android’da ulashish (Telegram/Instagram’ga rasm bilan borishi).
+- [ ] 2 haftadan keyin: Admin → Manbalar’da `sinab-ulash` qatori.
