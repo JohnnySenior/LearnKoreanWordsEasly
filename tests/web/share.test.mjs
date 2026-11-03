@@ -26,10 +26,10 @@ test('the text says only that the unit was finished, and the link counts as "ula
     assert.equal(SHARE_URL, 'https://koreyscha.com/sinab?src=ulash');
 });
 
-test('the card is shared as a file where the browser can', async () => {
+test('the card is shared as a file with the link inside the text, not as a separate url', async () => {
     const e = env();
     assert.equal(await shareResult(data, e), 'shared');
-    assert.deepEqual(e.calls.share, [{ files: [file], text: shareText(data), url: SHARE_URL }]);
+    assert.deepEqual(e.calls.share, [{ files: [file], text: `${shareText(data)} ${SHARE_URL}` }]); // iOS Telegram drops the image when url is given
     assert.deepEqual(e.calls.open, []);
 });
 

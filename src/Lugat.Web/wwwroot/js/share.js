@@ -34,7 +34,8 @@ export async function shareResult(data, env = browserEnv()) {
     try { file = await env.file(data); } catch { file = null; }
     const nav = env.nav;
     if (file && nav?.canShare?.({ files: [file] })) {
-        try { await nav.share({ files: [file], text, url: SHARE_URL }); return 'shared'; }
+        // The link goes inside the text, not as url: given a url, iOS Telegram sends only the link and drops the image.
+        try { await nav.share({ files: [file], text: `${text} ${SHARE_URL}` }); return 'shared'; }
         catch (e) { if (e?.name === 'AbortError') return 'cancelled'; }
     }
     if (nav?.share) {
