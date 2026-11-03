@@ -105,6 +105,8 @@ public class SinabPageTests
         // The source the app keeps: sinab-<src>, and the start link carries it.
         Assert.Contains("data-source=\"sinab-ig\" href=\"/?src=sinab-ig\"", html);
         Assert.Contains("data-source=\"sinab\" href=\"/?src=sinab\"", await f.CreateClient().GetStringAsync("/sinab?src=%3Cx%3E"));
+        // The share card's link (L-59) is counted as its own channel.
+        Assert.Contains("data-source=\"sinab-ulash\" href=\"/?src=sinab-ulash\"", await f.CreateClient().GetStringAsync("/sinab?src=ulash"));
     }
 
     [Fact]

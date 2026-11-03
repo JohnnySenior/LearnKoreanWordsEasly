@@ -101,7 +101,7 @@ public sealed class TestService(
         return kinds.Overlaps([TestQuestionKind.OralKorean, TestQuestionKind.OralMeaning]) ? TestCategory.Oral : TestCategory.Vocabulary;
     }
 
-    public async Task<TestDto> GetAsync(Guid ownerId, Guid id, CancellationToken ct) => ToDto(await FindAsync(ownerId, id, ct));
+    public async Task<TestDto> GetAsync(Guid ownerId, Guid id, CancellationToken ct) => await DtoAsync(await FindAsync(ownerId, id, ct), ct);
 
     public async Task<TestDto> CreateAsync(Guid ownerId, CreateTestRequest request, CancellationToken ct)
     {
@@ -312,7 +312,7 @@ public sealed class TestService(
         var run = await FindAsync(ownerId, id, ct);
         if (run.Status == TestRunStatus.Finished)
         {
-            return ToDto(run);
+            return await DtoAsync(run, ct);
         }
 
         await using var tx = await db.BeginTransactionAsync(ct);
@@ -331,7 +331,40 @@ public sealed class TestService(
         }
 
         await tx.CommitAsync(ct);
-        return ToDto(run);
+        return await DtoAsync(run, ct);
+    }
+
+    public const int ShareWords = 3;
+
+    /// <summary>
+    /// The result with its share card (L-59): a passed final unit test gets the unit and up to <see cref="ShareWords"/>
+    /// of its words answered right in this test, most frequent first. Not for "Bilaman", a failed test, or none right.
+    /// </summary>
+    private async Task<TestDto> DtoAsync(TestRun run, CancellationToken ct)
+    {
+        var dto = ToDto(run);
+        if (dto.Unit is not { Purpose: TestPurpose.UnitFinal, Passed: true } unit)
+        {
+            return dto;
+        }
+
+        var right = run.Answers.Where(a => a.IsCorrect).Select(a => a.Index).ToHashSet();
+        var items = run.Questions.Where(q => right.Contains(q.Index)).Select(q => q.LearningItemId).OfType<Guid>().Distinct().ToList();
+        var words = await (from i in db.LearningItems
+                           join w in db.CatalogWords on i.CatalogWordId equals w.Id
+                           where items.Contains(i.Id)
+                           orderby w.FreqRank ?? int.MaxValue, w.OrderInUnit
+                           select new { i.Korean, w.Romanization, i.Uzbek })
+            .Take(ShareWords).AsNoTracking().ToListAsync(ct);
+        var shown = await db.Units.Where(u => u.Id == unit.UnitId).Select(u => new { u.Level, u.Number, u.WordCount }).SingleOrDefaultAsync(ct);
+        if (words.Count == 0 || shown is null)
+        {
+            return dto;
+        }
+
+        var share = new UnitShareDto(shown.Level.ToString(), shown.Number, shown.WordCount,
+            words.Select(w => new UnitShareWordDto(w.Korean, w.Romanization, w.Uzbek.Split(';')[0].Trim())).ToList());
+        return dto with { Unit = unit with { Share = share } };
     }
 
     /// <summary>The recording of a listening question (spec §4.4): the word is heard, never sent as text before the end.</summary>

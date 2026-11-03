@@ -3,6 +3,8 @@
 @using Lugat.Domain.Testing
 @inject SessionService Api
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <PageTitle>Sinov — Koreyscha</PageTitle>
 
@@ -86,6 +88,19 @@
             @if (result.WrongItemIds.Count > 0)
             {
                 <button class="btn btn-secondary block" disabled="@_busy" @onclick="() => DrillWrongAsync(result.WrongItemIds)"><span>Xato @result.WrongItemIds.Count ta so‘zni takrorlash</span></button>
+            }
+            @if (result.Share is { } share)
+            {
+                @* L-59: optional and second to "Keyingi bo‘lim"; the card says only what is true (the unit was finished). *@
+                <div class="share-box">
+                    <div class="share-mini" aria-hidden="true"><span class="share-mini-mark" lang="ko">ㅋ</span><span class="share-mini-ko" lang="ko">@share.Words[0].Korean</span><i></i><i></i></div>
+                    <div class="share-box-text"><b>Natijangizni do‘stlarga ko‘rsating</b><span class="muted small-text">Rasm va havola: do‘stingiz kirmasdan 1 daqiqada sinab ko‘radi.</span></div>
+                </div>
+                <button class="btn btn-secondary block" disabled="@_sharing" @onclick="() => ShareAsync(share, counted)"><span>Do‘stga ulashish</span><Icon Name="share" /></button>
+                @if (_shareFailed)
+                {
+                    <div class="notice" role="alert">Ulashib bo‘lmadi. Qayta urinib ko‘ring.</div>
+                }
             }
         }
         else
@@ -513,6 +528,8 @@ else
             {
             }
         }
+
+        await PrepareShareAsync();
     }
 
     private async Task TypedKeyAsync(KeyboardEventArgs e)
@@ -551,6 +568,52 @@ else
     }
 
     /// <summary>The words answered wrong, on the cards (spec §4.4 "Xato qilgan N ta so‘zni takrorlash").</summary>
+    private IJSObjectReference? _share;
+    private bool _sharing, _shareFailed, _sharePrepared;
+
+    private object ShareData(UnitShareDto share, int total) => new
+    {
+        share.Level, share.UnitNumber, share.WordCount, share.Words, Score = _test?.Score ?? 0, Total = total,
+    };
+
+    private async Task PrepareShareAsync()
+    {
+        // The card is drawn as soon as the result shows: share() has to start right from the tap (iOS).
+        if (!_sharePrepared && _test is { Status: TestRunStatus.Finished, Unit.Share: { } share })
+        {
+            _sharePrepared = true;
+            try
+            {
+                _share ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/share.js");
+                await _share.InvokeVoidAsync("prepare", ShareData(share, _test.Questions.Count(q => !q.Technical)));
+            }
+            catch (JSException) { }
+        }
+    }
+
+    private async Task ShareAsync(UnitShareDto share, int total)
+    {
+        _sharing = true;
+        _shareFailed = false;
+        try
+        {
+            _share ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/share.js");
+            _shareFailed = await _share.InvokeAsync<string>("shareResult", ShareData(share, total)) == "failed";
+        }
+        catch (JSException)
+        {
+            _shareFailed = true;
+        }
+
+        _sharing = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { if (_share is not null) await _share.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+
     private async Task DrillWrongAsync(IReadOnlyList<Guid> items)
     {
         _busy = true;

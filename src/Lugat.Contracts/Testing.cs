@@ -67,13 +67,23 @@ public sealed record TestDto(
 /// <param name="Passed">Only once the test is finished.</param>
 /// <param name="NextUnitId">The unit the pass opened.</param>
 /// <param name="WrongItemIds">Words answered wrong, for "Xato qilgan N ta so‘zni takrorlash" (after the end only).</param>
+/// <param name="Share">The "Do‘stga ulashish" card (L-59): only for a passed final test.</param>
 public sealed record UnitTestInfoDto(
     TestPurpose Purpose,
     Guid UnitId,
     int PassMark,
     bool? Passed,
     Guid? NextUnitId,
-    IReadOnlyList<Guid> WrongItemIds);
+    IReadOnlyList<Guid> WrongItemIds,
+    UnitShareDto? Share = null);
+
+/// <summary>What the share card shows (L-59): the unit and up to three words answered right in this test.</summary>
+/// <param name="Level">"A".</param>
+/// <param name="WordCount">Words in the unit.</param>
+public sealed record UnitShareDto(string Level, int UnitNumber, int WordCount, IReadOnlyList<UnitShareWordDto> Words);
+
+/// <param name="Uzbek">The first meaning only.</param>
+public sealed record UnitShareWordDto(string Korean, string? Romanization, string Uzbek);
 
 public enum UnitTestKind
 {

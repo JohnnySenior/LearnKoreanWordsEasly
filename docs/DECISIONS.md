@@ -645,3 +645,13 @@ Instagram Reels va `/soz` dan kelgan odam hech narsani ko‘rmasdan Telegram/Goo
 - Rate limit `sinab` (IP bo‘yicha 120/daq; bitta tashrif ~10 ta yozuv yuklaydi), sahifa va ovoz `public, max-age=3600`. Service worker `/sinab` ga tegmaydi, sitemap’da bor.
 - O‘lchov: Admin → Manbalar (30 kun), `sinab-ig`, `sinab-soz`, `soz` — «Tashrif → Ro‘yxatdan o‘tish» va D7. Maqsad: Instagram’dan kelganlarning ro‘yxatdan o‘tishi to‘g‘ridan-to‘g‘ri `/?src=ig` dan kamida 1,5 barobar yuqori.
 
+
+## L-59 · 2026-11-03 · «Bo‘lim tugadi» ulashish kartasi
+
+O‘tgan o‘quvchi do‘stiga natijasini ko‘rsatsin va do‘sti kirishsiz `/sinab` ga kelsin. Bo‘lim testi o‘tilgan natija ekranida ikkinchi darajali «Do‘stga ulashish» tugmasi: 1080×1350 PNG karta + `https://koreyscha.com/sinab?src=ulash` (Manbalar’da `sinab-ulash`).
+- **Faqat haqiqat:** karta faqat o‘tilgan `UnitFinal` testida chiqadi; matn «A-3 bo‘limini tugatdim (25 ta so‘z)», ball esa haqiqiy (S / T · P%). «Bilaman» testi (`Skip`), o‘tilmagan test yoki to‘g‘ri javob bo‘lmasa `UnitTestInfoDto.Share = null` — tugma yo‘q.
+- **So‘zlar serverdan:** `TestService.DtoAsync` — shu testda to‘g‘ri javob berilgan so‘zlardan ko‘pi bilan `ShareWords = 3` ta, eng ko‘p ishlatiladigani birinchi (`FreqRank`, keyin `OrderInUnit`); tarjimaning birinchi ma’nosi (`;` gacha). Xato javob berilgan so‘z kartaga chiqmaydi.
+- **Ko‘rinish mavzuga qarab:** Sokin — yorug‘ fon, oq kartada 3 qator; Tungi — qorong‘i fon, bitta katta so‘z #ff5a3c, qolganlari chip va «+N so‘z». Logotip ilovaning ㅋ belgisi. Shriftlar `document.fonts.load` bilan kutiladi (3 s dan keyin baribir chiziladi).
+- **iOS:** `navigator.share` foydalanuvchi bosishidan darhol boshlanishi kerak, shuning uchun karta natija ekrani ochilganda oldindan chiziladi (`share.js` `prepare`), bosishda faqat ulashiladi.
+- **Zaxira yo‘llar:** fayl bilan `navigator.share` → faqat matn va havola bilan `navigator.share` → `t.me/share` havolasi. `AbortError` — bekor qilindi (xabar yo‘q); boshqa xato — «Ulashib bo‘lmadi».
+- **Yangi hodisa kuzatuvi yo‘q** (ilovada bunday tizim yo‘q): natija Manbalar’dagi `sinab-ulash` qatori bilan o‘lchanadi. Spec §1.4 ga mos: majburlash, reyting yoki konfetti yo‘q, tugma ixtiyoriy.

@@ -81,6 +81,55 @@ public class UnitTestTests
     }
 
     [Fact]
+    public async Task A_passed_final_test_carries_a_share_card_of_three_words_answered_right_most_frequent_first()
+    {
+        var (factory, client) = await SetUpAsync();
+        await using var _ = factory;
+
+        var test = await StartOkAsync(client, 1);
+        await AnswerAsync(factory, client, test.Id, 22);
+        var result = await FinishAsync(client, test.Id);
+
+        var share = result.Unit!.Share;
+        Assert.NotNull(share);
+        Assert.Equal(("A", 1, 25), (share!.Level, share.UnitNumber, share.WordCount));
+        Assert.Equal(3, share.Words.Count);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var wrong = await db.LearningItems.Where(i => result.Unit.WrongItemIds.Contains(i.Id)).Select(i => i.Korean).ToListAsync();
+            Assert.DoesNotContain(share.Words, w => wrong.Contains(w.Korean)); // a word answered wrong is never shown
+            var right = await (from i in db.LearningItems
+                               join w in db.CatalogWords on i.CatalogWordId equals w.Id
+                               where i.UnitId == ApiFactory.Unit(1) && !result.Unit.WrongItemIds.Contains(i.Id)
+                               orderby w.FreqRank
+                               select i.Korean).Take(3).ToListAsync();
+            Assert.Equal(right, share.Words.Select(w => w.Korean));
+        }
+
+        Assert.All(share.Words, w => Assert.DoesNotContain(";", w.Uzbek));
+        // Reading the finished test again gives the same card.
+        Assert.Equal(share.Words.Select(w => w.Korean), (await client.GetFromJsonAsync<TestDto>($"/api/tests/{test.Id}", ApiFactory.Json))!.Unit!.Share!.Words.Select(w => w.Korean));
+    }
+
+    [Fact]
+    public async Task A_failed_test_or_a_bilaman_test_has_no_share_card()
+    {
+        var (factory, client) = await SetUpAsync();
+        await using var _ = factory;
+
+        var failed = await StartOkAsync(client, 1);
+        await AnswerAsync(factory, client, failed.Id, 19);
+        Assert.Null((await FinishAsync(client, failed.Id)).Unit!.Share);
+
+        var skip = await StartOkAsync(client, 2, UnitTestKind.Skip);
+        await AnswerAsync(factory, client, skip.Id, 25);
+        var skipped = await FinishAsync(client, skip.Id);
+        Assert.True(skipped.Unit!.Passed);
+        Assert.Null(skipped.Unit.Share);
+    }
+
+    [Fact]
     public async Task Nineteen_of_twenty_five_does_not_pass_and_a_retake_draws_anew()
     {
         var (factory, client) = await SetUpAsync();
