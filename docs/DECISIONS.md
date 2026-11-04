@@ -674,3 +674,9 @@ Johnny: «7 kunda faol» faqat ilova ochilganini bildiradi; o‘qituvchi o‘quv
 - **Mashqlar (o‘quvchi sahifasi, 7 kun):** Yozma mashq (necha so‘z), Sinov (mashq: aralash, «Qaysi so‘z to‘g‘ri?», talaffuz), Krossvord, Gap zinapoyasi, O‘z gapingiz, Tinglash — necha marta. Qilinmaganlari ko‘rsatilmaydi.
 - **Xato manbasi:** xato so‘zlar jadvallarida «Qayerda» ustuni — xatolar daftaridagi mavjud manbalar (kartochka, bo‘lim testi, sinov, og‘zaki, qo‘llanish, zinapoya, yozma, krossvord). Yangi ma’lumot saqlanmaydi.
 - **Ko‘rsatilmaydi:** javoblarning o‘zi, daqiqalar (ishonchsiz), o‘quvchilar reytingi (§1.4). Premium mashqlar (zinapoya, o‘z gapingiz, tinglash, talaffuz) soni bilvosita Premium borligini bildiradi — xatolar ro‘yxatidagi «zinapoya»/«og‘zaki» manbasi ham oldindan shunday edi; o‘quvchi guruhga qo‘shilishdan oldin buni rozilik matnida o‘qiydi (Join va Maxfiylik sahifalari yangilandi).
+
+## L-62 · 2026-11-04 · Tanishtirishda koreyscha harf (jamo) nomi bilan aytiladi
+
+A-2 ovozi yarmida to‘xtadi: Azure 2 belgili bitta koreyscha qismga har safar bo‘sh ovoz qaytardi (Railway: «Speech for 2 characters failed: Azure ovoz: bo‘sh javob»). Ssenariydagi «-ㄹ» kabi yolg‘iz harf (살다 o‘zagidagi ㄹ) ovoz o‘qiy oladigan matn emas.
+- `IntroductionAudioService.Speakable`: koreys ovoziga berishdan oldin har bir jamo o‘qituvchi aytgandek nomi bilan (ㄹ → 리을, ㅂ → 비읍, ㅏ → 아), boshidagi/oxiridagi «-», «~» olib tashlanadi. Oddiy matn o‘zgarmaydi. Doskadagi va ssenariydagi matn o‘zgarmaydi, faqat aytilishi.
+- Koreyscha qism baribir tayyorlanmasa, xato qaysi qism ekanini aytadi: ««…» uchun koreyscha ovoz tayyorlanmadi…».
