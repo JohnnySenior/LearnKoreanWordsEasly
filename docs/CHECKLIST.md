@@ -491,3 +491,9 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Johnny: haqiqiy iPhone Safari va PWA’da kirgan va kirmagan holatda `/` ni ochib ko‘rish.
 - [ ] Johnny: Search Console’da bosh sahifani qayta indekslashni so‘rash (URL Inspection → Request indexing).
 - [ ] 2 haftadan keyin: Admin → Manbalar’da `sinab-bosh` qatori.
+
+**O‘qituvchi: takrorlash, mashqlar, xato manbasi (L-61, 2026-11-04):**
+- [x] Guruh jadvali: «Takrorladi (7 kun)», «Takror kutyapti». O‘quvchi sahifasi: «Oxirgi 7 kun» (takrorlash, kutayotgan, mashq turlari soni). Xato so‘zlarda «Qayerda» ustuni.
+- [x] Guruhga qo‘shilish va Maxfiylik matni yangilandi; spec §9.2.
+- [x] API testi: 1 kartochka → 1 takror, 0 kutyapti; yozma 3 so‘z + 1 mashq sinovi; manba «kartochka»; 8 kundan keyin 0 takror, 1 kutyapti, mashq bo‘sh; javoblar JSON’da yo‘q. So‘rovlar soni testi (2 va 6 o‘quvchi) o‘tadi.
+- [ ] Johnny: SP Energy guruhida o‘quvchi sahifasini ochib ko‘rish.

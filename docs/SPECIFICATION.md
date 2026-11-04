@@ -349,10 +349,10 @@ Qatlamlar: `Lugat.Domain`, `Lugat.Contracts`, `Lugat.Application`, `Lugat.Infras
 - Taklif havolasi orqali kelgan o‘quvchiga o‘qituvchining promo-kodi avtomatik biriktiriladi (Premium sahifasida oldindan to‘ldiriladi).
 
 ### 9.2 O‘qituvchi paneli (`/oqituvchi`)
-- Guruhlar ro‘yxati, har guruhda o‘quvchilar jadvali: ism, joriy bo‘lim, tugallangan bo‘limlar soni, oxirgi test natijasi, so‘nggi 7 kunda faol kunlar, oxirgi kirish.
-- O‘quvchini bosganda: bo‘limlar bo‘yicha ballar, eng ko‘p xato qilgan 10 so‘z.
-- Guruh bo‘yicha: eng qiyin 10 so‘z (eng ko‘p xato qilingan).
-- O‘qituvchi boshqa ma’lumotni ko‘rmaydi (javoblar tarixi, to‘lov, login).
+- Guruhlar ro‘yxati, har guruhda o‘quvchilar jadvali: ism, joriy bo‘lim, tugallangan bo‘limlar soni, oxirgi test natijasi, so‘nggi 7 kunda faol kunlar, so‘nggi 7 kunda takrorlagan kartochkalar soni, hozir takror kutayotgan kartochkalar soni, oxirgi kirish (L-61).
+- O‘quvchini bosganda: oxirgi 7 kun (takrorlagan va kutayotgan kartochkalar, har mashq turi necha marta, yozma mashqda necha so‘z), bo‘limlar bo‘yicha ballar, eng ko‘p xato qilgan 10 so‘z va xato qayerda qilingani (kartochka, bo‘lim testi, yozma…).
+- Guruh bo‘yicha: eng qiyin 10 so‘z (eng ko‘p xato qilingan) va xato qayerda qilingani.
+- O‘qituvchi boshqa ma’lumotni ko‘rmaydi (javoblar tarixi, to‘lov, login). Faollik faqat son bilan: nima deb javob bergani yoki ilovada necha daqiqa o‘tirgani ko‘rsatilmaydi.
 - **Pilot ko‘rsatkichi** (Johnny kuzatadi): guruh o‘quvchilarining necha foizi 2-haftada ham faol.
 
 ### 9.3 Komissiya hisoboti

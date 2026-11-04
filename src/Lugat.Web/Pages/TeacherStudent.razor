@@ -17,6 +17,30 @@
 <h1>@(_student.Name ?? "O‘quvchi")</h1>
 <p class="muted">Joriy bo‘lim: @(_student.CurrentUnit ?? "—")</p>
 
+@if (_student.Week is { } week)
+{
+    <section class="card">
+        <h2>Oxirgi 7 kun</h2>
+        <div class="figures">
+            <div><strong>@week.Reviewed</strong><span>kartochka takrorladi</span></div>
+            <div><strong>@week.DueNow</strong><span>takror kutyapti</span></div>
+        </div>
+        @if (week.Practice.Count == 0)
+        {
+            <p class="muted">Mashq qilinmagan.</p>
+        }
+        else
+        {
+            <ul class="teacher-practice">
+                @foreach (var p in week.Practice)
+                {
+                    <li><span>@p.Name</span><b>@p.Count @(p.Words ? "ta so‘z" : "marta")</b></li>
+                }
+            </ul>
+        }
+    </section>
+}
+
 <section class="card">
     <h2>Bo‘limlar</h2>
     @if (_student.Units.Count == 0)

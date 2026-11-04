@@ -167,6 +167,62 @@ public class TeachingTests
     }
 
     [Fact]
+    public async Task The_teacher_sees_reviews_waiting_cards_exercises_and_where_a_word_was_missed()
+    {
+        // L-61: whether the learner keeps up with reviews and practises, as counts only.
+        await using var factory = NewFactory();
+        var teacher = await TeacherAsync(factory, Teacher, "Ustoz");
+        var learner = await factory.SignedInClientAsync(Learner, "Dilnoza");
+        var group = await CreateGroupAsync(teacher);
+        await OkAsync<MyGroupDto>(await learner.PostAsync($"/api/groups/join/{group.InviteCode}", null));
+        await factory.AddWordsAsync(Learner, 1, ApiFactory.Words("가", 3));
+        var session = (await OkAsync<StartSessionResponse>(await learner.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, true), ApiFactory.Json))).Session!;
+        await OkAsync<AnswerResultDto>(await learner.PostAsJsonAsync($"/api/sessions/{session.Id}/answers",
+            new AnswerRequest(Guid.NewGuid(), session.Position, ReviewAnswer.Forgot, false, 2000), ApiFactory.Json));
+
+        var learnerId = await UserIdAsync(factory, Learner);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var now = factory.Time.GetUtcNow();
+            var item = await db.Cards.Where(c => c.OwnerId == learnerId).Select(c => c.LearningItemId).FirstAsync();
+            db.WritingAttempts.AddRange(Enumerable.Range(0, 3).Select(i => new Lugat.Domain.Writing.WritingAttempt
+            {
+                Id = Guid.NewGuid(), OwnerId = learnerId, LearningItemId = item, Direction = ReviewDirection.UzbekToKorean,
+                Answer = "가", Expected = "가", Verdict = Lugat.Domain.Writing.WritingVerdict.Correct, CreatedAt = now,
+            }));
+            db.TestRuns.Add(new TestRun
+            {
+                Id = Guid.NewGuid(), OwnerId = learnerId, Title = "Aralash sinov", Status = TestRunStatus.Finished, Purpose = TestPurpose.Practice,
+                Questions = [new TestQuestion(0, TestQuestionKind.WordMeaning, "?", null, null, ["a", "b"], "a", null, null, null, false)],
+                Answers = [new TestAnswer(0, "a", true, null, now)], CreatedAt = now, FinishedAt = now,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        teacher = await factory.SignedInClientAsync(Teacher, "Ustoz");
+        var row = Assert.Single((await OkAsync<GroupDetailDto>(await teacher.GetAsync($"/api/teacher/groups/{group.Id}"))).Students);
+        Assert.Equal((1, 0), (row.Reviewed7, row.DueNow)); // the forgotten card comes back later, not yet
+        var hardest = Assert.Single((await OkAsync<GroupDetailDto>(await teacher.GetAsync($"/api/teacher/groups/{group.Id}"))).HardestWords);
+        Assert.Equal(["kartochka"], hardest.Sources);
+
+        var student = await OkAsync<StudentDetailDto>(await teacher.GetAsync($"/api/teacher/students/{learnerId}"));
+        Assert.Equal((1, 0), (student.Week!.Reviewed, student.Week.DueNow));
+        Assert.Equal([new PracticeCountDto("Yozma mashq", 3, true), new PracticeCountDto("Sinov (mashq)", 1)], student.Week.Practice);
+        Assert.Equal(["kartochka"], Assert.Single(student.TopMistakes).Sources);
+
+        // A week and a day later nothing was done: the reviewed card is waiting and the week is empty.
+        factory.Time.Advance(TimeSpan.FromDays(8));
+        teacher = await factory.SignedInClientAsync(Teacher, "Ustoz");
+        row = Assert.Single((await OkAsync<GroupDetailDto>(await teacher.GetAsync($"/api/teacher/groups/{group.Id}"))).Students);
+        Assert.Equal((0, 1), (row.Reviewed7, row.DueNow));
+        student = await OkAsync<StudentDetailDto>(await teacher.GetAsync($"/api/teacher/students/{learnerId}"));
+        Assert.Empty(student.Week!.Practice);
+        var json = await (await teacher.GetAsync($"/api/teacher/students/{learnerId}")).Content.ReadAsStringAsync();
+        Assert.DoesNotContain("\"answer\"", json, StringComparison.OrdinalIgnoreCase); // counts, never the answers
+    }
+
+    [Fact]
     public async Task The_group_table_costs_the_same_queries_for_two_learners_as_for_six()
     {
         // Audit 2026-10-26: the mistakes of each learner were read one by one, and every unit test of every learner

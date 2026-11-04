@@ -52,7 +52,7 @@
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
-                    <tr><th>Ism</th><th>Joriy</th><th class="num">Tugallangan</th><th class="num">Oxirgi test</th><th class="num">7 kunda faol</th><th>Oxirgi kirish</th></tr>
+                    <tr><th>Ism</th><th>Joriy</th><th class="num">Tugallangan</th><th class="num">Oxirgi test</th><th class="num">7 kunda faol</th><th class="num">Takrorladi (7 kun)</th><th class="num">Takror kutyapti</th><th>Oxirgi kirish</th></tr>
                 </thead>
                 <tbody>
                     @foreach (var s in _group.Students)
@@ -63,12 +63,15 @@
                             <td class="num">@s.PassedUnits</td>
                             <td class="num">@(s.LastTestPercent is { } p ? $"{p}%" : "—")</td>
                             <td class="num">@s.ActiveDays7</td>
+                            <td class="num">@s.Reviewed7</td>
+                            <td class="num">@s.DueNow</td>
                             <td>@Format.Ago(s.LastSeenAt, DateTimeOffset.UtcNow)</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
+        <p class="muted small-text">«Takrorladi» — oxirgi 7 kunda javob bergan kartochkalari (har biri bir marta). «Takror kutyapti» — vaqti kelgan, hali takrorlanmagan kartochkalar.</p>
     }
 </section>
 

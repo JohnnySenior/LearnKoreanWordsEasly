@@ -666,3 +666,11 @@ Yangi tashrif buyuruvchi va Googlebot `/` da .NET WASM yuklanguncha faqat «Kore
 - **Ikki nusxa qoidasi:** matn `index.html` va `SigninIntro.razor` + `Landing.razor` da. Biri o‘zgarsa ikkinchisi ham (AGENTS.md); `tests/web/boot-landing.test.mjs` razor’dagi har bir jumla `index.html` da borligini tekshiradi.
 - **Qilinmadi:** Noto Sans KR 900 olib tashlanmadi — kartochka, test va kirish sahifasidagi katta koreyscha so‘zlarda ishlatiladi. Server tomonda render (prerender) yo‘q: Blazor WASM standalone, statik nusxa yetarli.
 - O‘lchov (dev build, Chromium 360px, ~Slow 4G + CPU ×4): FCP 1,6 s → 1,8 s (o‘zgarmadi), LCP 134,7 s → 1,8 s — asosiy matn endi birinchi bo‘yashda chiqadi. Lighthouse bu muhitda yo‘q; production’da Lighthouse mobile bilan qayta o‘lchanadi.
+
+## L-61 · 2026-11-04 · O‘qituvchi o‘quvchining takrorlash va mashqlarini ko‘radi
+
+Johnny: «7 kunda faol» faqat ilova ochilganini bildiradi; o‘qituvchi o‘quvchi har kuni ishlayaptimi yoki faqat test topshiryaptimi, bilmasdi. Uchta qo‘shimcha, hammasi faqat son (spec §9.2 yangilandi):
+- **Takrorlash:** guruh jadvalida va o‘quvchi sahifasida «Takrorladi (7 kun)» — oxirgi 7 kunda javob berilgan kartochkalar, har biri bir marta («Eslay olmadim» ham sanaladi, texnik xato va bekor qilingan javob yo‘q) va «Takror kutyapti» — vaqti kelgan, hali takrorlanmagan kartochkalar (o‘quvchining Bugun sahifasi bilan bir xil hisob). Guruh uchun ikki so‘rov, o‘quvchilar soniga bog‘liq emas (so‘rovlar soni testi o‘tadi).
+- **Mashqlar (o‘quvchi sahifasi, 7 kun):** Yozma mashq (necha so‘z), Sinov (mashq: aralash, «Qaysi so‘z to‘g‘ri?», talaffuz), Krossvord, Gap zinapoyasi, O‘z gapingiz, Tinglash — necha marta. Qilinmaganlari ko‘rsatilmaydi.
+- **Xato manbasi:** xato so‘zlar jadvallarida «Qayerda» ustuni — xatolar daftaridagi mavjud manbalar (kartochka, bo‘lim testi, sinov, og‘zaki, qo‘llanish, zinapoya, yozma, krossvord). Yangi ma’lumot saqlanmaydi.
+- **Ko‘rsatilmaydi:** javoblarning o‘zi, daqiqalar (ishonchsiz), o‘quvchilar reytingi (§1.4). Premium mashqlar (zinapoya, o‘z gapingiz, tinglash, talaffuz) soni bilvosita Premium borligini bildiradi — xatolar ro‘yxatidagi «zinapoya»/«og‘zaki» manbasi ham oldindan shunday edi; o‘quvchi guruhga qo‘shilishdan oldin buni rozilik matnida o‘qiydi (Join va Maxfiylik sahifalari yangilandi).
