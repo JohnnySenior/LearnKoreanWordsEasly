@@ -8,14 +8,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Lugat.Application.Reminders;
 
+/// <summary>How a reminder reached the learner (L-63).</summary>
+public enum ReminderChannel { None, Push, Telegram }
+
+public sealed record ReminderSendResult(SendResult Result, ReminderChannel Channel);
+
 /// <summary>
-/// Telegram practice reminders (spec NOT01–NOT04). Runs every minute from a background worker.
+/// Practice reminders (spec NOT01–NOT04) by Web Push or the Telegram bot. Runs every minute from a background worker.
 /// Every occurrence is claimed in the outbox before sending, so a restart or a second worker cannot send it twice
 /// (spec AC10), and a reminder that is more than 30 minutes late is simply not sent (spec NOT03).
+/// One occurrence goes out once (L-63): to the learner's push devices when they have any, and through the bot only
+/// when no device took it (none subscribed, or every one failed).
 /// </summary>
 public sealed class ReminderService(
     IAppDbContext db,
     ITelegramMessenger telegram,
+    IWebPushSender push,
     StudyService study,
     TimeProvider time,
     ILogger<ReminderService> logger)
@@ -25,25 +33,30 @@ public sealed class ReminderService(
     /// <summary>The app page a reminder opens (spec §8: "Havola ilovani takrorlash sahifasida ochadi").</summary>
     public const string ReviewPath = "takrorlash";
 
+    /// <summary>Same tag on every reminder: on one device a newer one replaces the older (L-63).</summary>
+    public const string PushTag = "lugat-reminder";
+
     public async Task<int> RunDueAsync(CancellationToken ct)
     {
-        if (!telegram.IsConfigured)
+        if (!telegram.IsConfigured && !push.IsConfigured)
         {
             return 0;
         }
 
         var now = time.GetUtcNow();
-        // Reminders go through the bot, so only learners who sign in with Telegram can get them (spec §8).
+        var withTelegram = telegram.IsConfigured;
+        var withPush = push.IsConfigured;
+        // A learner can be reached through the bot (a Telegram login) or on a subscribed device (L-63).
         var users = await (from u in db.Users
-                           join l in db.UserLogins on u.Id equals l.UserId
-                           where u.RemindersEnabled && u.DeletedAt == null && l.Provider == LoginProvider.Telegram
-                           select new { User = u, l.ProviderUserId }).ToListAsync(ct);
+                           where u.RemindersEnabled && u.DeletedAt == null
+                           let chat = db.UserLogins.Where(l => l.UserId == u.Id && l.Provider == LoginProvider.Telegram).Select(l => l.ProviderUserId).FirstOrDefault()
+                           where withTelegram && chat != null || withPush && db.PushSubscriptions.Any(p => p.UserId == u.Id)
+                           select new { User = u, Chat = withTelegram ? chat : null }).ToListAsync(ct);
         var sent = 0;
-        foreach (var (user, chat) in users.Select(x => (x.User, ChatId(x.ProviderUserId))))
+        foreach (var x in users)
         {
-            var zone = user.Zone();
-            var occurrence = ReminderPlanner.Due(user.Id, now, zone, user.ReminderPreferences());
-            if (occurrence is not null && await DeliverAsync(user, chat, occurrence, now, ct))
+            var occurrence = ReminderPlanner.Due(x.User.Id, now, x.User.Zone(), x.User.ReminderPreferences());
+            if (occurrence is not null && await DeliverAsync(x.User, x.Chat is null ? null : ChatId(x.Chat), occurrence, now, ct))
             {
                 sent++;
             }
@@ -52,31 +65,65 @@ public sealed class ReminderService(
         return sent;
     }
 
-    /// <summary>Sends a one-off message so the learner can check that the bot may write to them (spec NOT02).</summary>
-    public async Task<SendResult> SendTestAsync(Guid userId, CancellationToken ct)
+    /// <summary>A one-off message, so the learner can check that reminders reach them (spec NOT02), by the same rule.</summary>
+    public async Task<ReminderSendResult> SendTestAsync(Guid userId, CancellationToken ct)
     {
         var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
-        if (!telegram.IsConfigured)
+        var chat = telegram.IsConfigured
+            ? await db.UserLogins.Where(l => l.UserId == userId && l.Provider == LoginProvider.Telegram).Select(l => l.ProviderUserId).FirstOrDefaultAsync(ct)
+            : null;
+        return await SendAsync(user, chat is null ? null : ChatId(chat), "Sinov xabari: eslatmalar shu yerga keladi.", ct);
+    }
+
+    /// <summary>
+    /// Push to every subscribed device first; a device that is gone (404/410) is deleted. The bot writes only when no
+    /// device took the message, so a learner with both never gets the same reminder twice.
+    /// </summary>
+    private async Task<ReminderSendResult> SendAsync(User user, long? chatId, string text, CancellationToken ct)
+    {
+        if (push.IsConfigured)
         {
-            return new SendResult(SendOutcome.Failed, Error: "Bot sozlanmagan.");
+            var devices = await db.PushSubscriptions.Where(p => p.UserId == user.Id).ToListAsync(ct);
+            var delivered = false;
+            foreach (var device in devices)
+            {
+                var outcome = await push.SendAsync(new PushTarget(device.Endpoint, device.P256dh, device.Auth),
+                    new PushNotification("Koreyscha", text, "/" + ReviewPath, PushTag), ct);
+                switch (outcome)
+                {
+                    case PushOutcome.Sent:
+                        (device.LastSuccessAt, device.FailedAt, delivered) = (time.GetUtcNow(), null, true);
+                        break;
+                    case PushOutcome.Gone:
+                        db.PushSubscriptions.Remove(device);
+                        break;
+                    default:
+                        device.FailedAt = time.GetUtcNow();
+                        break;
+                }
+            }
+
+            await db.SaveChangesAsync(ct);
+            if (delivered)
+            {
+                return new(new SendResult(SendOutcome.Sent), ReminderChannel.Push);
+            }
         }
 
-        var login = await db.UserLogins.Where(l => l.UserId == userId && l.Provider == LoginProvider.Telegram)
-            .Select(l => l.ProviderUserId).FirstOrDefaultAsync(ct);
-        if (login is null)
+        if (chatId is { } chat && telegram.IsConfigured)
         {
-            return new SendResult(SendOutcome.Failed, Error: "Telegram hisobi bog‘lanmagan.");
+            var result = await telegram.SendAsync(chat, text, OpenAppButton, ct, ReviewPath);
+            await RecordBotAccessAsync(user, result, ct);
+            return new(result, ReminderChannel.Telegram);
         }
 
-        var result = await telegram.SendAsync(ChatId(login), "Sinov xabari: eslatmalar shu yerga keladi.", OpenAppButton, ct, ReviewPath);
-        await RecordBotAccessAsync(user, result, ct);
-        return result;
+        return new(new SendResult(SendOutcome.Failed, Error: "Eslatma kanali yo‘q yoki qurilma javob bermadi."), ReminderChannel.None);
     }
 
     /// <summary>A bot's private chat with a user has the user's Telegram id.</summary>
     private static long ChatId(string telegramUserId) => long.Parse(telegramUserId, System.Globalization.CultureInfo.InvariantCulture);
 
-    private async Task<bool> DeliverAsync(User user, long chatId, ReminderOccurrence occurrence, DateTimeOffset now, CancellationToken ct)
+    private async Task<bool> DeliverAsync(User user, long? chatId, ReminderOccurrence occurrence, DateTimeOffset now, CancellationToken ct)
     {
         var delivery = await ClaimAsync(user, occurrence, now, ct);
         if (delivery is null)
@@ -94,7 +141,7 @@ public sealed class ReminderService(
             return false;
         }
 
-        var result = await telegram.SendAsync(chatId, text, OpenAppButton, ct, ReviewPath);
+        var result = (await SendAsync(user, chatId, text, ct)).Result;
         delivery.Attempts++;
         switch (result.Outcome)
         {
@@ -120,7 +167,7 @@ public sealed class ReminderService(
         }
 
         delivery.Error = result.Error;
-        await RecordBotAccessAsync(user, result, ct);
+        await db.SaveChangesAsync(ct);
         return result.Outcome == SendOutcome.Sent;
     }
 

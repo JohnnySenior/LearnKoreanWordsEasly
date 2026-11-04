@@ -66,6 +66,8 @@ public interface IAppDbContext
 
     DbSet<Domain.Reminders.ReminderDelivery> ReminderDeliveries { get; }
 
+    DbSet<Domain.Reminders.PushSubscription> PushSubscriptions { get; }
+
     DbSet<Domain.Ai.AiUsage> AiUsages { get; }
 
     DbSet<Domain.Ai.SentenceCheck> SentenceChecks { get; }

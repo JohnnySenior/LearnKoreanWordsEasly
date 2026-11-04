@@ -66,6 +66,18 @@ Real nusxadan yangi Railway muhitiga tiklash mashqi hali bajarilmagan.
 - Azure Speech: `Ai__Tts__Azure__Key`, `Ai__Tts__Azure__Region` (KAT D-31, D-32).
 - Oylik byudjet va tariflar: `Ai__Budget__*` (KAT D-50). `MonthlyLimitUsd` (standart $25) — qattiq chegara: oshsa AI va ovoz chaqiruvlari to‘xtaydi, tayyor kontent ishlayveradi. Tarif kiritilmagan model sarfi "noma’lum" deb ko‘rsatiladi va dollar chegarasiga qo‘shilmaydi; bunday chaqiruvlar oyiga `Ai__Budget__MonthlyUnpricedCalls` (standart 2000) ta bilan to‘xtatiladi (L-33). Aniq hisob uchun tariflarni kiriting. Ovoz (Azure, OpenAI TTS) ham shu hisobga kiradi: butun katalog ovozini oldindan yaratishdan oldin Azure uchun tarif yozing (Free F0 bo‘lsa narx `0`), aks holda 2000 ta chaqiruvdan keyin to‘xtaydi.
 
+## Web Push eslatmalari (L-63)
+
+Kalitlar bo‘lmasa push o‘chiq: Profil → Eslatma’da «Shu qurilma» bo‘limi chiqmaydi, Telegram eslatmalari odatdagidek ishlaydi.
+
+1. Bir marta VAPID kalit juftligini yarating (o‘z kompyuteringizda, Node.js bilan): `npx web-push generate-vapid-keys`. U «Public Key» va «Private Key» chiqaradi.
+2. Railway → servis → Variables:
+   - `Push__PublicKey` — Public Key (maxfiy emas, brauzerga beriladi).
+   - `Push__PrivateKey` — Private Key (**maxfiy**: chatga, repoga yoki logga yozilmaydi).
+   - `Push__Subject` — ixtiyoriy, standart `https://koreyscha.com`; xohlasangiz `mailto:<email>`.
+3. Kalitlarni **almashtirmang**: yangi juftlik qo‘yilsa, eski obunalar ishlamay qoladi va o‘quvchilar Profil → Eslatma’da qayta yoqishi kerak bo‘ladi.
+4. Tekshirish: Android Chrome’da (yoki iPhone’da bosh ekranga o‘rnatilgan ilovada) Profil → Eslatma → «Shu telefonga eslatma yuborish» → ruxsat → «Sinov xabari».
+
 ## Kirish (Telegram va Google)
 
 Ikkalasi ham ixtiyoriy: sozlanmagani kirish sahifasida ko‘rinmaydi (`GET /api/auth/config`). Kalit qiymatlarini faqat Johnny kiritadi.

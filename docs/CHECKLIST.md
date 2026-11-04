@@ -505,3 +505,14 @@ Bosqichlar spec §13 bo‘yicha.
 **Tanishtirish ovozi: yolg‘iz jamo (L-62, 2026-11-04):**
 - [x] A-2 ovozi «Ovoz hozir tayyorlanmadi» bilan to‘xtadi: Azure 2 belgili koreyscha qismga bo‘sh javob. Jamo nomi bilan aytiladi (ㄹ → 리을), «-»/«~» tashlanadi; 11 ta Application testi. Xato matnida qism ko‘rsatiladi.
 - [ ] Johnny: deploydan keyin «Ovozlarni tayyorlash» ni davom ettirish; to‘xtasa, xato matnidagi qismni yuborish.
+
+**Web Push eslatmalari (L-63, PR 1, 2026-11-04):**
+- [x] `push_subscriptions` + migratsiya; `Lib.Net.Http.WebPush` bilan yuborish; 404/410 da obuna o‘chadi.
+- [x] Eslatma: qurilma bo‘lsa push, aks holda yoki push yetmasa Telegram — bir marta. Google bilan kirganlar ham oladi. «Sinov xabari» push uchun ham.
+- [x] `GET /api/me/push/key`, `POST/DELETE /api/me/push` (faqat o‘zinikini, rate limit); kalitsiz 503 va UI’da bo‘lim yo‘q.
+- [x] Service worker’larda `push` va `notificationclick` (/takrorlash); `js/push.js`; Profil → Eslatma: «Shu telefonga eslatma yuborish», iPhone brauzerida «avval o‘rnating», rad etilgan ruxsat matni. Maxfiylik sahifasi yangilandi.
+- [x] Testlar: 6 API (Google + push, ikki kanalda bitta, 410 → Telegram, muddati kelmagan, endpoint egasi, kalitsiz), mavjud 14 eslatma testi o‘tadi; 6 ta `WebPushSender` testi (haqiqiy VAPID + aes128gcm shifrlash, TTL 1800, 404/410 → Gone); 6 JS (push.js va ikkala service worker).
+- [x] Chromium (Xvfb) 360px: «Shu telefonga eslatma yuborish» toggle; iPhone UA brauzerida «avval o‘rnating»; rad etilgan ruxsat matni; yonlama scroll yo‘q. Playwright Chromium’da push xizmati yo‘q, shuning uchun haqiqiy obuna faqat telefonda tekshiriladi.
+- [ ] Johnny: VAPID kalitlarini yaratib Railway’ga qo‘yish (docs/HOSTING.md «Web Push eslatmalari»).
+- [ ] Johnny: Android Chrome’da va iPhone’dagi o‘rnatilgan PWA’da haqiqiy bildirishnoma, bosganda /takrorlash ochilishi.
+- [ ] PR 2: birinchi bo‘lim testidan keyingi taklif va Admin ko‘rsatkichlari; 2 haftadan keyin ko‘rsatkichlarni solishtirish.

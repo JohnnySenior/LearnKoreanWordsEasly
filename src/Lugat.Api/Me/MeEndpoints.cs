@@ -7,12 +7,15 @@ using Lugat.Application.Study;
 using Lugat.Application.Users;
 using Lugat.Contracts;
 using Lugat.Domain.Users;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Lugat.Api.Me;
 
 public static class MeEndpoints
 {
     public const string VisitRateLimitPolicy = "visits";
+
+    public const string PushRateLimitPolicy = "push";
 
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)
     {
@@ -53,22 +56,39 @@ public static class MeEndpoints
             return login is null ? (IResult)problem! : TypedResults.Ok(await users.LinkAsync(user.GetUserId(), login, ct));
         }).RequireRateLimiting(AuthEndpoints.RateLimitPolicy);
 
-        me.MapGet("/preferences", (ClaimsPrincipal user, UserService users, ITelegramMessenger telegram, CancellationToken ct) =>
-            users.GetPreferencesAsync(user.GetUserId(), telegram.IsConfigured, ct));
+        me.MapGet("/preferences", (ClaimsPrincipal user, UserService users, ITelegramMessenger telegram, IWebPushSender push, CancellationToken ct) =>
+            users.GetPreferencesAsync(user.GetUserId(), telegram.IsConfigured, ct, push.IsConfigured));
 
-        me.MapPatch("/preferences", (UpdatePreferencesRequest body, ClaimsPrincipal user, UserService users, ITelegramMessenger telegram, CancellationToken ct) =>
-            users.UpdatePreferencesAsync(user.GetUserId(), body, telegram.IsConfigured, ct));
+        me.MapPatch("/preferences", (UpdatePreferencesRequest body, ClaimsPrincipal user, UserService users, ITelegramMessenger telegram, IWebPushSender push, CancellationToken ct) =>
+            users.UpdatePreferencesAsync(user.GetUserId(), body, telegram.IsConfigured, ct, push.IsConfigured));
 
         me.MapPost("/reminders/test", async (ClaimsPrincipal user, ReminderService reminders, CancellationToken ct) =>
         {
-            var result = await reminders.SendTestAsync(user.GetUserId(), ct);
-            return result.Outcome switch
+            var (result, channel) = await reminders.SendTestAsync(user.GetUserId(), ct);
+            return (result.Outcome, channel) switch
             {
-                SendOutcome.Sent => new TestReminderResult(true, "Xabar yuborildi. Telegram'dagi botni tekshiring."),
-                SendOutcome.Blocked => new TestReminderResult(false, "Bot sizga yoza olmadi. Botni oching va «Start» (/start) tugmasini bosing, keyin qayta urinib ko‘ring."),
+                (SendOutcome.Sent, ReminderChannel.Push) => new TestReminderResult(true, "Bildirishnoma yuborildi. Qurilmangizni tekshiring."),
+                (SendOutcome.Sent, _) => new TestReminderResult(true, "Xabar yuborildi. Telegram'dagi botni tekshiring."),
+                (SendOutcome.Blocked, _) => new TestReminderResult(false, "Bot sizga yoza olmadi. Botni oching va «Start» (/start) tugmasini bosing, keyin qayta urinib ko‘ring."),
+                (_, ReminderChannel.None) => new TestReminderResult(false, "Xabar yuborilmadi: Telegram bog‘lanmagan yoki qurilma bildirishnomani qabul qilmadi."),
                 _ => new TestReminderResult(false, "Xabar yuborilmadi. Birozdan keyin qayta urinib ko‘ring."),
             };
         });
+
+        // Web Push (L-63): the key the browser subscribes with, and this device's subscription.
+        me.MapGet("/push/key", Results<Ok<PushKeyDto>, ProblemHttpResult> (IWebPushSender push) => push.PublicKey is { } key
+            ? TypedResults.Ok(new PushKeyDto(key))
+            : TypedResults.Problem(detail: "Bildirishnomalar hozircha serverda yoqilmagan.", statusCode: StatusCodes.Status503ServiceUnavailable));
+        me.MapPost("/push", async (PushSubscribeRequest body, ClaimsPrincipal user, HttpRequest request, PushSubscriptionService devices, CancellationToken ct) =>
+        {
+            await devices.SubscribeAsync(user.GetUserId(), body, request.Headers.UserAgent.ToString(), ct);
+            return TypedResults.NoContent();
+        }).RequireRateLimiting(PushRateLimitPolicy);
+        me.MapDelete("/push", async ([Microsoft.AspNetCore.Mvc.FromBody] PushUnsubscribeRequest body, ClaimsPrincipal user, PushSubscriptionService devices, CancellationToken ct) =>
+        {
+            await devices.UnsubscribeAsync(user.GetUserId(), body.Endpoint, ct);
+            return TypedResults.NoContent();
+        }).RequireRateLimiting(PushRateLimitPolicy);
 
         // The mistakes notebook (D-41).
         app.MapGet("/api/mistakes", (ClaimsPrincipal user, Application.Mistakes.MistakeService s, CancellationToken ct) => s.GetAsync(user.GetUserId(), ct))

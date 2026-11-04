@@ -11,6 +11,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <!-- The official vocabulary list is an Excel file (spec §2.1); MIT, reads .xls and .xlsx. -->
     <PackageReference Include="ExcelDataReader" />
+    <!-- Web Push with VAPID (L-63); MIT, maintained, uses the platform crypto on .NET 6+. -->
+    <PackageReference Include="Lib.Net.Http.WebPush" />
   </ItemGroup>
 
   <ItemGroup>

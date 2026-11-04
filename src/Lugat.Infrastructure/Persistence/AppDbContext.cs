@@ -77,6 +77,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<ReminderDelivery> ReminderDeliveries => Set<ReminderDelivery>();
 
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+
     public DbSet<AiUsage> AiUsages => Set<AiUsage>();
 
     public DbSet<SentenceCheck> SentenceChecks => Set<SentenceCheck>();
@@ -463,6 +465,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Error).HasMaxLength(500);
             e.Property(x => x.Version).IsRowVersion();
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<PushSubscription>(e =>
+        {
+            e.ToTable("push_subscriptions"); // L-63: one row per device
+            e.HasIndex(x => x.Endpoint).IsUnique();
+            e.HasIndex(x => x.UserId);
+            e.Property(x => x.Endpoint).HasMaxLength(1000);
+            e.Property(x => x.P256dh).HasMaxLength(200);
+            e.Property(x => x.Auth).HasMaxLength(100);
+            e.Property(x => x.UserAgent).HasMaxLength(300);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<AiUsage>(e =>
