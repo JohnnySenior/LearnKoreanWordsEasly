@@ -66,6 +66,8 @@ else
                     <button class="button" disabled="@(_busy || edit.Beats.Count >= 5)" @onclick="() => AddBeat(edit, word.HasTrap)">Doska qadami qo‘shish</button>
                     <label class="intro-publish-check"><input type="checkbox" @bind="edit.Reviewed" /> Shu so‘zning barcha izoh va misollarini tekshirdim.</label>
                     <button class="button" disabled="@_busy" @onclick="() => SaveAsync(word.WordId)">Saqlash</button>
+                    @if (_wordErrors.TryGetValue(word.WordId, out var wordError)) { <div class="notice" role="alert">Saqlanmadi: @wordError</div> }
+                    @if (_saved == word.WordId) { <p class="muted small-text" role="status">✓ Saqlandi.</p> }
                 </section>
             }
         }
@@ -137,12 +139,16 @@ else
     private async Task ReturnAsync() { _busy = true; _error = null; await CallAsync("return-to-draft", new IntroductionVersionRequest(_lesson!.Version)); _busy = false; await LoadAsync(); }
     private async Task DiscardAsync() { _busy = true; _error = null; await CallAsync("discard", new IntroductionVersionRequest(_lesson!.Version)); _busy = false; await LoadAsync(); }
     private async Task PublishAsync() { _busy = true; _error = null; await CallAsync("publish", new PublishIntroductionRequest(_lesson!.Version, _audioReviewed)); _busy = false; await LoadAsync(); }
+    // A word's save error is shown on that word's card, next to its button: the page top is out of sight while editing.
+    private readonly Dictionary<Guid, string> _wordErrors = [];
+    private Guid? _saved;
     private async Task SaveAsync(Guid wordId)
     {
-        _busy = true; _error = null; var edit = _edits[wordId];
+        _busy = true; _error = null; _saved = null; _wordErrors.Remove(wordId); var edit = _edits[wordId];
         var body = new UpdateIntroductionWordRequest(_lesson!.Version, edit.Title, edit.Beats.Select(b => new IntroductionBeatInput(b.Kind, b.NarrationUz, string.IsNullOrWhiteSpace(b.Korean) ? null : b.Korean, string.IsNullOrWhiteSpace(b.Uzbek) ? null : b.Uzbek)).ToList(), edit.Reviewed);
         var r = await Api.SendJsonAsync<IntroductionDto>(HttpMethod.Put, $"api/admin/introductions/{_lesson.Id}/words/{wordId}", body);
-        if (r.Value is not null) { _lesson = r.Value; AddEdits(r.Value); if (_list is not null) _list = _list with { Versions = _list.Versions.Select(v => v.Id == _lesson.Id ? _lesson : v).ToList() }; } else _error = r.Error;
+        if (r.Value is not null) { _lesson = r.Value; AddEdits(r.Value); _saved = wordId; if (_list is not null) _list = _list with { Versions = _list.Versions.Select(v => v.Id == _lesson.Id ? _lesson : v).ToList() }; }
+        else _wordErrors[wordId] = r.Error ?? "Noma’lum xato. Sahifani yangilab qayta urinib ko‘ring.";
         _busy = false;
     }
     private static void AddBeat(WordEdit edit, bool hasTrap) => edit.Beats.Add(new BeatEdit { Kind = hasTrap ? "trap" : "example" });
