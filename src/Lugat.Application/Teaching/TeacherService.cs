@@ -5,6 +5,7 @@ using Lugat.Application.Study;
 using Lugat.Contracts;
 using Lugat.Domain;
 using Lugat.Domain.Catalog;
+using Lugat.Domain.Learning;
 using Lugat.Domain.Premium;
 using Lugat.Domain.Teaching;
 using Lugat.Domain.Testing;
@@ -93,16 +94,19 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
                 .Select(r => new { r.OwnerId, r.Questions, r.Answers }).ToListAsync(ct))
             .ToDictionary(r => r.OwnerId, r => Catalog.UnitTestService.ScorePercent(r.Questions.Count, r.Answers.Count(a => a.IsCorrect)));
 
+        var (reviewed, due) = await ReviewsOfAsync(ids, ct);
         var students = members
             .Select(m => new GroupStudentDto(m.Id, m.DisplayName, CurrentUnit(units[m.Id]), units[m.Id].Count(u => u.Status == UnitProgressStatus.Passed),
-                lastTests.TryGetValue(m.Id, out var score) ? score : null, active.GetValueOrDefault(m.Id), m.LastSeenAt, m.JoinedAt))
+                lastTests.TryGetValue(m.Id, out var score) ? score : null, active.GetValueOrDefault(m.Id), m.LastSeenAt, m.JoinedAt,
+                reviewed.GetValueOrDefault(m.Id), due.GetValueOrDefault(m.Id)))
             .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
         var missed = (await mistakes.WordsOfAsync(ids, ct)).SelectMany(p => p.Value.Select(w => (Word: w, Learner: p.Key))).ToList();
 
         var hardest = missed.GroupBy(x => x.Word.LearningItemId)
-            .Select(g => new MissedWordDto(g.First().Word.Korean, g.First().Word.Uzbek, g.First().Word.Unit, g.Sum(x => x.Word.Mistakes), g.Select(x => x.Learner).Distinct().Count()))
+            .Select(g => new MissedWordDto(g.First().Word.Korean, g.First().Word.Uzbek, g.First().Word.Unit, g.Sum(x => x.Word.Mistakes), g.Select(x => x.Learner).Distinct().Count(),
+                g.SelectMany(x => x.Word.Sources).Distinct().ToList()))
             .OrderByDescending(w => w.Mistakes).ThenByDescending(w => w.Learners).ThenBy(w => w.Korean, StringComparer.Ordinal)
             .Take(TopWords)
             .ToList();
@@ -124,9 +128,53 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
 
         var units = (await UnitsOfAsync([userId], ct))[userId];
         var words = (await mistakes.GetAsync(userId, ct)).Words.Take(TopWords)
-            .Select(w => new MissedWordDto(w.Korean, w.Uzbek, w.Unit, w.Mistakes, 1)).ToList();
+            .Select(w => new MissedWordDto(w.Korean, w.Uzbek, w.Unit, w.Mistakes, 1, w.Sources)).ToList();
+        var (reviewed, due) = await ReviewsOfAsync([userId], ct);
+        var week = new StudentWeekDto(reviewed.GetValueOrDefault(userId), due.GetValueOrDefault(userId), await PracticeOfAsync(userId, ct));
         return new StudentDetailDto(userId, visible[0], CurrentUnit(units),
-            units.Select(u => new StudentUnitDto(u.Label, u.Status, u.Best, u.Attempts, u.PassedBy)).ToList(), words);
+            units.Select(u => new StudentUnitDto(u.Label, u.Status, u.Best, u.Attempts, u.PassedBy)).ToList(), words, week);
+    }
+
+    public const int WeekDays = 7;
+
+    /// <summary>
+    /// For each learner (L-61): cards answered in the last 7 days, each card once ("Eslay olmadim" counts, a technical
+    /// error or an undone answer does not), and cards waiting for review now, as the learner's own Today page counts
+    /// them. Two queries whatever the size of the group.
+    /// </summary>
+    private async Task<(Dictionary<Guid, int> Reviewed, Dictionary<Guid, int> Due)> ReviewsOfAsync(List<Guid> ids, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        var since = now.AddDays(-WeekDays);
+        var reviewed = await db.ReviewEvents
+            .Where(e => ids.Contains(e.OwnerId) && e.UndoneAt == null && e.OccurredAt >= since && e.Answer != ReviewAnswer.TechnicalError)
+            .GroupBy(e => e.OwnerId)
+            .Select(g => new { g.Key, Count = g.Select(e => e.CardId).Distinct().Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+        var due = await (from c in db.Cards
+                         join i in db.LearningItems on c.LearningItemId equals i.Id
+                         where ids.Contains(c.OwnerId) && i.IsActive && c.Phase != LearningPhase.New && c.DueAt <= now
+                         group c by c.OwnerId into g
+                         select new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+        return (reviewed, due);
+    }
+
+    /// <summary>What the learner practised in the last 7 days (L-61), in the Mashq page's order; nothing about the answers.</summary>
+    private async Task<IReadOnlyList<PracticeCountDto>> PracticeOfAsync(Guid userId, CancellationToken ct)
+    {
+        var since = time.GetUtcNow().AddDays(-WeekDays);
+        var practice = new List<PracticeCountDto>
+        {
+            new("Yozma mashq", await db.WritingAttempts.CountAsync(w => w.OwnerId == userId && w.CreatedAt >= since, ct), Words: true),
+            new("Sinov (mashq)", await db.TestRuns.CountAsync(r => r.OwnerId == userId && r.Purpose == TestPurpose.Practice
+                && r.Status == TestRunStatus.Finished && r.FinishedAt >= since, ct)),
+            new("Krossvord", await db.Crosswords.CountAsync(x => x.OwnerId == userId && x.CreatedAt >= since, ct)),
+            new("Gap zinapoyasi", await db.SentenceLadders.CountAsync(l => l.OwnerId == userId && l.CreatedAt >= since, ct)),
+            new("O‘z gapingiz", await db.SentenceChecks.CountAsync(c => c.OwnerId == userId && c.CreatedAt >= since, ct)),
+            new("Tinglash", await db.ListeningSets.CountAsync(l => l.OwnerId == userId && l.CreatedAt >= since, ct)),
+        };
+        return practice.Where(p => p.Count > 0).ToList();
     }
 
     /// <summary>

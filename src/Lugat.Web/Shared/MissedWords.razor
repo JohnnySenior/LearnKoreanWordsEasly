@@ -1,9 +1,9 @@
 @using Lugat.Contracts
 
-@* Most-missed words for the teacher (spec §9.2): the word, its meaning, unit and mistake count. *@
+@* Most-missed words for the teacher (spec §9.2): the word, its meaning, unit, mistake count and where it was missed (L-61). *@
 <div class="table-wrap">
     <table class="data-table">
-        <thead><tr><th>So‘z</th><th>Ma’nosi</th><th>Bo‘lim</th><th class="num">Xato</th>@if (ShowLearners) { <th class="num">O‘quvchi</th> }</tr></thead>
+        <thead><tr><th>So‘z</th><th>Ma’nosi</th><th>Bo‘lim</th><th class="num">Xato</th>@if (ShowLearners) { <th class="num">O‘quvchi</th> }<th>Qayerda</th></tr></thead>
         <tbody>
             @foreach (var w in Words)
             {
@@ -16,6 +16,7 @@
                     {
                         <td class="num">@w.Learners</td>
                     }
+                    <td class="wrap muted small-text missed-sources">@(w.Sources is { Count: > 0 } s ? string.Join(", ", s) : "—")</td>
                 </tr>
             }
         </tbody>

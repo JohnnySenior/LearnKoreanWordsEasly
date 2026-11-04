@@ -762,6 +762,10 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
 .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 8px 0; }
 .figures strong { display: block; font: 800 26px/1.1 var(--font-heading); }
 .figures span { font-size: 13px; color: var(--color-muted); }
+/* L-61: a learner's exercises of the last 7 days on the teacher's page. */
+.teacher-practice { list-style: none; margin: 8px 0 0; padding: 0; }
+.data-table td.missed-sources { min-width: 9em; }
+.teacher-practice li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--color-divider); font-size: 14px; }
 .invite-link { display: block; word-break: break-all; font: 600 15px var(--font-body); padding: 10px 0; }
 .card > .figures:first-child { border-top: 0; margin-top: 0; }
 .chips.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }

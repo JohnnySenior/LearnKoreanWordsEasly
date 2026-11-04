@@ -22,6 +22,8 @@ public sealed record CreateGroupRequest(Guid Id, string Name);
 
 /// <param name="ActiveDays7">Days in the last 7 (Korea time) the learner opened the app.</param>
 /// <param name="LastTestPercent">Score of the learner's latest unit test.</param>
+/// <param name="Reviewed7">Cards the learner answered in the last 7 days (each card once, L-61).</param>
+/// <param name="DueNow">Cards waiting for their review right now.</param>
 public sealed record GroupStudentDto(
     Guid UserId,
     string? Name,
@@ -30,16 +32,27 @@ public sealed record GroupStudentDto(
     int? LastTestPercent,
     int ActiveDays7,
     DateTimeOffset LastSeenAt,
-    DateTimeOffset JoinedAt);
+    DateTimeOffset JoinedAt,
+    int Reviewed7 = 0,
+    int DueNow = 0);
 
 /// <param name="Learners">How many learners of the group missed it.</param>
-public sealed record MissedWordDto(string Korean, string Uzbek, string? Unit, int Mistakes, int Learners);
+/// <param name="Sources">Where the mistakes were made: "kartochka", "bo‘lim testi", "yozma"… (L-61).</param>
+public sealed record MissedWordDto(string Korean, string Uzbek, string? Unit, int Mistakes, int Learners, IReadOnlyList<string>? Sources = null);
 
 public sealed record GroupDetailDto(Guid Id, string Name, string InviteCode, IReadOnlyList<GroupStudentDto> Students, IReadOnlyList<MissedWordDto> HardestWords);
 
 public sealed record StudentUnitDto(string Unit, UnitProgressStatus Status, int? BestScorePercent, int Attempts, UnitPassedBy? PassedBy);
 
-public sealed record StudentDetailDto(Guid UserId, string? Name, string? CurrentUnit, IReadOnlyList<StudentUnitDto> Units, IReadOnlyList<MissedWordDto> TopMistakes);
+public sealed record StudentDetailDto(Guid UserId, string? Name, string? CurrentUnit, IReadOnlyList<StudentUnitDto> Units, IReadOnlyList<MissedWordDto> TopMistakes, StudentWeekDto? Week = null);
+
+/// <summary>The learner's last 7 days (L-61): counts only, never the answers themselves.</summary>
+/// <param name="Practice">Each exercise the learner did, in the Mashq page's order; ones not done are left out.</param>
+public sealed record StudentWeekDto(int Reviewed, int DueNow, IReadOnlyList<PracticeCountDto> Practice);
+
+/// <param name="Name">The exercise as the Mashq page names it.</param>
+/// <param name="Count">Words written for "Yozma mashq", otherwise how many times it was done.</param>
+public sealed record PracticeCountDto(string Name, int Count, bool Words = false);
 
 public sealed record TeacherPromoDto(string Code, int DiscountPercent, int CommissionPercent, bool IsActive);
 
