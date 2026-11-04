@@ -497,3 +497,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Guruhga qo‘shilish va Maxfiylik matni yangilandi; spec §9.2.
 - [x] API testi: 1 kartochka → 1 takror, 0 kutyapti; yozma 3 so‘z + 1 mashq sinovi; manba «kartochka»; 8 kundan keyin 0 takror, 1 kutyapti, mashq bo‘sh; javoblar JSON’da yo‘q. So‘rovlar soni testi (2 va 6 o‘quvchi) o‘tadi.
 - [ ] Johnny: SP Energy guruhida o‘quvchi sahifasini ochib ko‘rish.
+
+**Tanishtirish tahriri: saqlash xatosi so‘z kartasida (2026-11-04):**
+- [x] Johnny A-2’da 살다 so‘zini saqlay olmadi, xato ko‘rinmadi: server 422 bilan sababini qaytargan (Railway loglari), lekin matn sahifa tepasida chiqardi. Endi xato o‘sha so‘z kartasida, «Saqlash» ostida («Saqlanmadi: …»), muvaffaqiyatda «✓ Saqlandi».
+- [ ] Johnny: 살다 kartasidagi xato matniga qarab tuzatish va saqlash.
