@@ -501,3 +501,7 @@ Bosqichlar spec §13 bo‘yicha.
 **Tanishtirish tahriri: saqlash xatosi so‘z kartasida (2026-11-04):**
 - [x] Johnny A-2’da 살다 so‘zini saqlay olmadi, xato ko‘rinmadi: server 422 bilan sababini qaytargan (Railway loglari), lekin matn sahifa tepasida chiqardi. Endi xato o‘sha so‘z kartasida, «Saqlash» ostida («Saqlanmadi: …»), muvaffaqiyatda «✓ Saqlandi».
 - [ ] Johnny: 살다 kartasidagi xato matniga qarab tuzatish va saqlash.
+
+**Tanishtirish ovozi: yolg‘iz jamo (L-62, 2026-11-04):**
+- [x] A-2 ovozi «Ovoz hozir tayyorlanmadi» bilan to‘xtadi: Azure 2 belgili koreyscha qismga bo‘sh javob. Jamo nomi bilan aytiladi (ㄹ → 리을), «-»/«~» tashlanadi; 11 ta Application testi. Xato matnida qism ko‘rsatiladi.
+- [ ] Johnny: deploydan keyin «Ovozlarni tayyorlash» ni davom ettirish; to‘xtasa, xato matnidagi qismni yuborish.
