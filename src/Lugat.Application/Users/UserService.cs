@@ -229,6 +229,7 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
     {
         await using var tx = await db.BeginTransactionAsync(ct);
         // Children before parents: review events and usages hang off cards and words.
+        await db.PushSubscriptions.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
         await db.ReviewEvents.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.StudySessions.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
         await db.Cards.Where(x => x.OwnerId == userId).ExecuteDeleteAsync(ct);
@@ -268,11 +269,11 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         await tx.CommitAsync(ct);
     }
 
-    public async Task<PreferencesDto> GetPreferencesAsync(Guid userId, bool remindersAvailable, CancellationToken ct) =>
-        await ToDtoAsync(await db.Users.SingleAsync(u => u.Id == userId, ct), remindersAvailable, ct);
+    public async Task<PreferencesDto> GetPreferencesAsync(Guid userId, bool telegramAvailable, CancellationToken ct, bool pushAvailable = false) =>
+        await ToDtoAsync(await db.Users.SingleAsync(u => u.Id == userId, ct), telegramAvailable, pushAvailable, ct);
 
     /// <summary>Reminder schedule stays under the learner's control (spec NOT04).</summary>
-    public async Task<PreferencesDto> UpdatePreferencesAsync(Guid userId, UpdatePreferencesRequest request, bool remindersAvailable, CancellationToken ct)
+    public async Task<PreferencesDto> UpdatePreferencesAsync(Guid userId, UpdatePreferencesRequest request, bool telegramAvailable, CancellationToken ct, bool pushAvailable = false)
     {
         var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
         if (request.TimeZone is { } zone)
@@ -300,17 +301,20 @@ public sealed class UserService(IAppDbContext db, TimeProvider time, IOperationL
         }
 
         await db.SaveChangesAsync(ct);
-        return await ToDtoAsync(user, remindersAvailable, ct);
+        return await ToDtoAsync(user, telegramAvailable, pushAvailable, ct);
     }
 
-    private async Task<PreferencesDto> ToDtoAsync(User u, bool remindersAvailable, CancellationToken ct) => new(
+    /// <summary>HasTelegram means the bot can write to the learner: a Telegram login and a configured bot (L-63).</summary>
+    private async Task<PreferencesDto> ToDtoAsync(User u, bool telegramAvailable, bool pushAvailable, CancellationToken ct) => new(
         u.TimeZone,
         u.RemindersEnabled,
         u.ReminderTime,
         Domain.Reminders.ReminderDaysExtensions.ToList(u.ReminderDays),
-        remindersAvailable,
+        telegramAvailable || pushAvailable,
         u.BotBlockedAt is not null,
-        await db.UserLogins.AnyAsync(l => l.UserId == u.Id && l.Provider == LoginProvider.Telegram, ct));
+        telegramAvailable && await db.UserLogins.AnyAsync(l => l.UserId == u.Id && l.Provider == LoginProvider.Telegram, ct),
+        pushAvailable,
+        pushAvailable ? await db.PushSubscriptions.CountAsync(s => s.UserId == u.Id, ct) : 0);
 
     private static UserLogin NewLogin(Guid userId, VerifiedLogin login, DateTimeOffset now) => new()
     {

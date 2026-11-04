@@ -66,6 +66,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public ITelegramMessenger? Messenger { get; init; }
 
+    /// <summary>Replaces Web Push (L-63); by default the real sender without VAPID keys, i.e. "not configured".</summary>
+    public IWebPushSender? Push { get; init; }
+
     /// <summary>Replaces the real Claude/ChatGPT adapters; by default tests have no AI at all.</summary>
     public IReadOnlyList<Application.Ai.IAiProvider> AiProviders { get; init; } = [];
 
@@ -143,6 +146,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             {
                 services.RemoveAll<ITelegramMessenger>();
                 services.AddSingleton(Messenger);
+            }
+
+            if (Push is not null)
+            {
+                services.RemoveAll<IWebPushSender>();
+                services.AddSingleton(Push);
             }
         });
     }

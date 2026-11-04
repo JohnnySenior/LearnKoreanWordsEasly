@@ -680,3 +680,16 @@ Johnny: «7 kunda faol» faqat ilova ochilganini bildiradi; o‘qituvchi o‘quv
 A-2 ovozi yarmida to‘xtadi: Azure 2 belgili bitta koreyscha qismga har safar bo‘sh ovoz qaytardi (Railway: «Speech for 2 characters failed: Azure ovoz: bo‘sh javob»). Ssenariydagi «-ㄹ» kabi yolg‘iz harf (살다 o‘zagidagi ㄹ) ovoz o‘qiy oladigan matn emas.
 - `IntroductionAudioService.Speakable`: koreys ovoziga berishdan oldin har bir jamo o‘qituvchi aytgandek nomi bilan (ㄹ → 리을, ㅂ → 비읍, ㅏ → 아), boshidagi/oxiridagi «-», «~» olib tashlanadi. Oddiy matn o‘zgarmaydi. Doskadagi va ssenariydagi matn o‘zgarmaydi, faqat aytilishi.
 - Koreyscha qism baribir tayyorlanmasa, xato qaysi qism ekanini aytadi: ««…» uchun koreyscha ovoz tayyorlanmadi…».
+
+## L-63 · 2026-11-04 · Web Push orqali takrorlash eslatmasi
+
+Eslatma faqat Telegram bot orqali kelardi: Google bilan kirganlar umuman olmasdi. Spec §8 dagi «v1.1» Web Push endi v1 da (Johnny).
+- **Paket:** `Lib.Net.Http.WebPush` 3.3.1 (MIT, qo‘llab-quvvatlanadi, .NET 6+ da platforma kriptografiyasi, BouncyCastle’siz). `WebPush` (web-push-csharp) yillardan beri yangilanmagan — olinmadi.
+- **Sozlama:** `Push__PublicKey`, `Push__PrivateKey`, `Push__Subject` (standart `https://koreyscha.com`). Kalitsiz push o‘chiq: `GET /api/me/push/key` va `POST /api/me/push` 503, `PreferencesDto.PushAvailable = false`, Profil’da bo‘lim chiqmaydi.
+- **Ma’lumot:** `push_subscriptions` (Id, UserId, Endpoint unique, P256dh, Auth, UserAgent, CreatedAt, LastSuccessAt, FailedAt). O‘quvchida bir nechta qurilma (ko‘pi bilan 10; 11-chisi eng eskisining o‘rnini oladi). Endpoint — qurilma: boshqa o‘quvchi shu telefonda yoqsa, obuna unga o‘tadi. Obuna yoqilganda `RemindersEnabled = true`. Hisob o‘chirilsa obunalar o‘chadi (FK cascade va `DeleteAsync`).
+- **Bitta eslatma bir marta (Johnny bilan kelishildi):** occurrence outbox’da bir marta claim qilinadi (AC10), keyin: obuna qurilma bo‘lsa — hammasiga push; hech biriga yetmasa (yoki qurilma yo‘q) — Telegram. Ikkala kanal bir vaqtda ishlatilmaydi. Bir nechta qurilma — har biriga bitta bildirishnoma, bir xil `tag` (`lugat-reminder`) bilan, eskisi yangisiga almashadi.
+- Push xizmati 404/410 qaytarsa obuna o‘chiriladi (`BotBlockedAt` mantig‘iga o‘xshash); boshqa xato — `FailedAt`, obuna qoladi. Logga endpoint emas, faqat push xizmatining hosti yoziladi. TTL 30 daqiqa (NOT03).
+- Matn va qoidalar o‘zgarmadi: faqat muddati kelgan karta bo‘lsa, «Bugun N ta so‘zni takrorlash vaqti. ~M daqiqa.» Bildirishnoma bosilsa ochiq oyna fokuslanib `/takrorlash` ga o‘tadi yoki yangi oyna ochiladi (ikkala service worker’da bir xil kod). «Sinov xabari» ham shu qoida bilan.
+- **Klient:** `js/push.js` — `state()` (install/unsupported/denied/ready/subscribed), `subscribe(key)` faqat tugma bosilganda ruxsat so‘raydi, `unsubscribe()`. iPhone’da brauzer ichida «avval ilovani bosh ekranga o‘rnating» va /ornatish havolasi; rad etilgan ruxsat uchun sokin tushuntirish. Vaqt va kunlar — Telegram bilan bitta jadval («Eslatib turish»).
+- Rate limit `push` (foydalanuvchi bo‘yicha 30/soat). DELETE faqat o‘z obunasini o‘chiradi.
+- **Keyingi PR:** birinchi bo‘lim testidan keyingi taklif (`TestRun.razor`) va Admin ko‘rsatkichlari.

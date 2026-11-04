@@ -78,6 +78,10 @@ public static class DependencyInjection
             })
             .RemoveAllLoggers(); // request URLs contain the bot token (spec SEC05)
         services.AddScoped<ReminderService>();
+        services.Configure<Push.PushOptions>(config.GetSection(Push.PushOptions.SectionName));
+        services.AddHttpClient<IWebPushSender, Push.WebPushSender>(c => c.Timeout = TimeSpan.FromSeconds(15))
+            .RemoveAllLoggers(); // request URLs are device addresses
+        services.AddScoped<PushSubscriptionService>();
 
         // AI (D-21): both services are registered; which one is used is chosen per learner in settings.
         services.Configure<AiOptions>(config.GetSection(AiOptions.SectionName));

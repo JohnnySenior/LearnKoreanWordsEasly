@@ -107,6 +107,10 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy(TeachingEndpoints.CodeRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
         "user:" + (http.User.FindFirstValue(AuthEndpoints.UserIdClaim) ?? "anonymous"),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromHours(1) }));
+    // Web Push subscriptions (L-63): a device subscribes or unsubscribes a few times, never in a loop.
+    o.AddPolicy(MeEndpoints.PushRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
+        "user:" + (http.User.FindFirstValue(AuthEndpoints.UserIdClaim) ?? "anonymous"),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromHours(1) }));
 });
 
 // Session tokens are encrypted with Data Protection keys. In production they must live on the persistent

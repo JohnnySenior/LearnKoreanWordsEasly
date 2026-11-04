@@ -1,8 +1,10 @@
 namespace Lugat.Contracts;
 
-/// <param name="RemindersAvailable">False when the server has no bot configured.</param>
+/// <param name="RemindersAvailable">False when the server has neither the bot nor Web Push configured.</param>
 /// <param name="BotBlocked">Telegram refused the last message: the learner should press Start in the bot (spec NOT02).</param>
-/// <param name="HasTelegram">Reminders go through the bot, so only a learner with a Telegram login gets them (spec §8).</param>
+/// <param name="HasTelegram">The learner signs in with Telegram, so the bot can write to them (spec §8).</param>
+/// <param name="PushAvailable">The server has VAPID keys: a device can get reminders by Web Push (L-63).</param>
+/// <param name="PushDevices">How many of the learner's devices are subscribed.</param>
 /// <param name="ReminderDays">Days the reminder may come, Monday first.</param>
 public sealed record PreferencesDto(
     string TimeZone,
@@ -11,7 +13,17 @@ public sealed record PreferencesDto(
     IReadOnlyList<DayOfWeek> ReminderDays,
     bool RemindersAvailable,
     bool BotBlocked,
-    bool HasTelegram);
+    bool HasTelegram,
+    bool PushAvailable = false,
+    int PushDevices = 0);
+
+/// <summary>The VAPID public key a browser subscribes with (L-63).</summary>
+public sealed record PushKeyDto(string PublicKey);
+
+/// <summary>A device's push subscription, as PushSubscription.toJSON() gives it: the endpoint and its two keys.</summary>
+public sealed record PushSubscribeRequest(string Endpoint, string P256dh, string Auth);
+
+public sealed record PushUnsubscribeRequest(string Endpoint);
 
 /// <summary>Null fields are left unchanged. <paramref name="TimeZone"/>: "Asia/Seoul" or "Asia/Tashkent".</summary>
 public sealed record UpdatePreferencesRequest(bool? RemindersEnabled, TimeOnly? ReminderTime, IReadOnlyList<DayOfWeek>? ReminderDays = null, string? TimeZone = null);

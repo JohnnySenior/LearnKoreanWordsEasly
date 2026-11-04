@@ -1,10 +1,12 @@
 @page "/profil/eslatma"
 @using Lugat.Contracts
+@implements IAsyncDisposable
 @inject SessionService Api
+@inject IJSRuntime JS
 
 <PageTitle>Eslatma — Koreyscha</PageTitle>
 
-@* Telegram reminders (spec §8): moved from the long settings page to its own screen (UI handoff 2a "Eslatma"). *@
+@* Reminders (spec §8): Web Push on this device (L-63) and the Telegram bot; one schedule for both. *@
 <AppHeader Title="Eslatma" Back="profil" />
 
 @if (_prefs is null)
@@ -38,36 +40,75 @@
     {
         <p class="muted">Eslatmalar hozircha serverda yoqilmagan.</p>
     }
-    else if (!_prefs.HasTelegram)
-    {
-        <p class="muted">Eslatmalar Telegram bot orqali keladi. Ularni olish uchun <a href="profil/hisob">Telegram hisobini bog‘lang</a>.</p>
-    }
     else
     {
-        @if (_prefs.BotBlocked)
+        @* L-63: a subscribed device gets the reminder; the bot writes only when no device took it. *@
+        @if (_prefs.PushAvailable)
         {
-            <div class="notice" role="alert">Bot sizga xabar yubora olmadi. Telegram'da botni oching va «Start» (/start) tugmasini bosing.</div>
+            <SectionLabel Text="Shu qurilma" />
+            @switch (_device)
+            {
+                case "install":
+                    <p class="muted">Eslatma olish uchun avval ilovani bosh ekranga o‘rnating: iPhone’da bildirishnoma faqat o‘rnatilgan ilovada ishlaydi. <a href="ornatish">Qanday o‘rnatiladi</a></p>
+                    break;
+                case "unsupported":
+                    <p class="muted">Bu brauzer bildirishnomani qo‘llamaydi. Chrome yoki o‘rnatilgan ilovadan foydalaning.</p>
+                    break;
+                case "denied":
+                    <p class="muted">Bildirishnomalar bu brauzerda o‘chirilgan. Brauzer (yoki telefon) sozlamalarida koreyscha.com uchun «Bildirishnomalar»ni yoqing, keyin sahifani yangilang.</p>
+                    break;
+                case "ready" or "subscribed":
+                    <ListRow Label="Shu telefonga eslatma yuborish">
+                        <Toggle Value="@(_device == "subscribed")" ValueChanged="SetPushAsync" Disabled="@_busy" Label="Shu telefonga eslatma yuborish" />
+                    </ListRow>
+                    break;
+                default:
+                    <span class="skeleton" style="width:60%;margin:8px 0"></span>
+                    break;
+            }
         }
 
-        <ListRow Label="Telegram orqali eslatib turish">
-            <Toggle @bind-Value="_enabled" Label="Telegram orqali eslatib turish" />
-        </ListRow>
-
-        <div class="field" style="margin-top:12px">
-            Vaqt (@ZoneLabel(_prefs.TimeZone))
-            <TimeSelect @bind-Value="_time" Disabled="@(!_enabled)" Label="Eslatma vaqti" />
-        </div>
-        <div class="chips days" role="group" aria-label="Kunlar">
-            @foreach (var (day, label) in WeekDays)
+        @if (_prefs.HasTelegram)
+        {
+            <SectionLabel Text="Telegram" />
+            @if (_prefs.BotBlocked)
             {
-                var d = day;
-                <button class="chip @(_days.Contains(d) ? "selected" : "")" aria-pressed="@(_days.Contains(d) ? "true" : "false")" disabled="@(!_enabled)" @onclick="() => ToggleDay(d)">@label</button>
+                <div class="notice" role="alert">Bot sizga xabar yubora olmadi. Telegram'da botni oching va «Start» (/start) tugmasini bosing.</div>
             }
-        </div>
-        <p class="muted small-text">Takrorlash vaqti kelgan so‘z bo‘lmasa, xabar kelmaydi. Kech qolgan eslatmalar to‘planib yuborilmaydi.</p>
+            <p class="muted small-text">@(_prefs.PushDevices > 0 ? "Bildirishnoma yoqilgan qurilma bor: eslatma o‘sha yerga keladi, Telegram’ga faqat qurilma qabul qilmasa." : "Eslatma Telegram bot orqali keladi.")</p>
+        }
+        else if (!_prefs.PushAvailable)
+        {
+            <p class="muted">Eslatmalar Telegram bot orqali keladi. Ularni olish uchun <a href="profil/hisob">Telegram hisobini bog‘lang</a>.</p>
+        }
 
-        <button class="btn btn-primary block big" disabled="@_busy" @onclick="SaveAsync"><span>Saqlash</span></button>
-        <button class="btn btn-secondary block" style="margin-top:8px" disabled="@_busy" @onclick="TestAsync"><span>Sinov xabari</span></button>
+        @if (HasChannel)
+        {
+            <SectionLabel Text="Qachon" />
+            <ListRow Label="Eslatib turish">
+                <Toggle @bind-Value="_enabled" Label="Eslatib turish" />
+            </ListRow>
+
+            <div class="field" style="margin-top:12px">
+                Vaqt (@ZoneLabel(_prefs.TimeZone))
+                <TimeSelect @bind-Value="_time" Disabled="@(!_enabled)" Label="Eslatma vaqti" />
+            </div>
+            <div class="chips days" role="group" aria-label="Kunlar">
+                @foreach (var (day, label) in WeekDays)
+                {
+                    var d = day;
+                    <button class="chip @(_days.Contains(d) ? "selected" : "")" aria-pressed="@(_days.Contains(d) ? "true" : "false")" disabled="@(!_enabled)" @onclick="() => ToggleDay(d)">@label</button>
+                }
+            </div>
+            <p class="muted small-text">Takrorlash vaqti kelgan so‘z bo‘lmasa, xabar kelmaydi. Kech qolgan eslatmalar to‘planib yuborilmaydi.</p>
+
+            <button class="btn btn-primary block big" disabled="@_busy" @onclick="SaveAsync"><span>Saqlash</span></button>
+            <button class="btn btn-secondary block" style="margin-top:8px" disabled="@_busy" @onclick="TestAsync"><span>Sinov xabari</span></button>
+        }
+        else if (_prefs.PushAvailable && !_prefs.HasTelegram)
+        {
+            <p class="muted small-text">Yoki <a href="profil/hisob">Telegram hisobini bog‘lang</a>: eslatma bot orqali keladi.</p>
+        }
     }
     @if (_status is not null)
     {
@@ -97,11 +138,82 @@
     private string? _error;
     private string? _status;
 
+    private IJSObjectReference? _push;
+    private string? _device; // push.js state(): install, unsupported, denied, ready, subscribed
+
+    private bool HasChannel => _prefs is { } p && (p.HasTelegram || p.PushDevices > 0 || _device == "subscribed");
+
     protected override async Task OnInitializedAsync()
     {
         var result = await Api.GetAsync<PreferencesDto>("api/me/preferences");
         _error = result.Ok ? null : result.Error;
         Apply(result.Value);
+        if (_prefs?.PushAvailable == true)
+        {
+            try
+            {
+                _push = await JS.InvokeAsync<IJSObjectReference>("import", "./js/push.js");
+                _device = await _push.InvokeAsync<string>("state");
+            }
+            catch (JSException)
+            {
+                _device = "unsupported";
+            }
+        }
+    }
+
+    // Permission is asked only here, from the learner's tap (never when the page opens).
+    private async Task SetPushAsync(bool on)
+    {
+        if (_push is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _status = null;
+        if (on)
+        {
+            var key = await Api.GetAsync<PushKeyDto>("api/me/push/key");
+            var sub = key.Value is { } k ? await _push.InvokeAsync<DeviceSubscription>("subscribe", k.PublicKey) : null;
+            if (sub is { Endpoint: { } endpoint, P256dh: { } p256dh, Auth: { } auth })
+            {
+                var saved = await Api.SendJsonAsync<object>(HttpMethod.Post, "api/me/push", new PushSubscribeRequest(endpoint, p256dh, auth));
+                _status = saved.Ok ? "Shu qurilmaga eslatma keladi." : saved.Error;
+            }
+            else
+            {
+                _status = sub?.Error switch
+                {
+                    "denied" => null, // the calm "how to turn it on" text below says it
+                    "dismissed" => "Ruxsat berilmadi. Xohlasangiz, qayta yoqib ko‘ring.",
+                    _ => key.Error ?? "Bildirishnomani yoqib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.",
+                };
+            }
+        }
+        else if (await _push.InvokeAsync<string?>("unsubscribe") is { } endpoint)
+        {
+            await Api.SendJsonAsync<object>(HttpMethod.Delete, "api/me/push", new PushUnsubscribeRequest(endpoint));
+            _status = "Shu qurilmaga eslatma kelmaydi.";
+        }
+
+        _device = await _push.InvokeAsync<string>("state");
+        if ((await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value is { } p)
+        {
+            Apply(p);
+        }
+
+        _busy = false;
+    }
+
+    private sealed record DeviceSubscription(string? Endpoint, string? P256dh, string? Auth, string? Error);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_push is not null)
+        {
+            try { await _push.DisposeAsync(); } catch (JSDisconnectedException) { }
+        }
     }
 
     private void Apply(PreferencesDto? prefs)

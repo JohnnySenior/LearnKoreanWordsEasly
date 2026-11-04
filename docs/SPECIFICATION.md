@@ -334,10 +334,11 @@ Qatlamlar: `Lugat.Domain`, `Lugat.Contracts`, `Lugat.Application`, `Lugat.Infras
 ---
 
 ## 8. Eslatmalar
-- KoreanAiTeacher D-16 mexanizmi: faqat Telegram orqali kirgan va botni ishga tushirgan foydalanuvchilarga.
-- Standart: har kuni 20:00 (foydalanuvchi vaqti), faqat muddati kelgan karta bo‘lsa: "Bugun N ta so‘zni takrorlash vaqti. ~M daqiqa." Havola ilovani takrorlash sahifasida ochadi.
-- Sozlamalarda vaqt, kunlar va o‘chirish. Ayblovchi matn yo‘q (NOT04). Kechikkan eslatmalar uyum qilib yuborilmaydi (NOT03).
-- Web Push — v1.1 (iOS’da faqat o‘rnatilgan PWA’da ishlaydi; TEKSHIRILADI).
+- Ikki kanal (L-63): **Web Push** (o‘quvchi «Shu telefonga eslatma yuborish» ni yoqqan qurilmalarga; Google bilan kirganlar ham) va **Telegram bot** (KoreanAiTeacher D-16: Telegram orqali kirgan va botni ishga tushirganlarga).
+- Bitta eslatma bir marta: obuna qurilma bo‘lsa push, aks holda Telegram; push hech bir qurilmaga yetmasa (masalan obuna eskirgan), o‘sha eslatma Telegram’ga.
+- Standart: har kuni 20:00 (foydalanuvchi vaqti), faqat muddati kelgan karta bo‘lsa: "Bugun N ta so‘zni takrorlash vaqti. ~M daqiqa." Havola (push’da bildirishnomani bosish) ilovani takrorlash sahifasida ochadi.
+- Sozlamalarda vaqt, kunlar va o‘chirish — ikki kanal uchun bitta jadval. Ayblovchi matn yo‘q (NOT04). Kechikkan eslatmalar uyum qilib yuborilmaydi (NOT03; push’da TTL 30 daqiqa).
+- iPhone’da push faqat bosh ekranga o‘rnatilgan ilovada ishlaydi (iOS 16.4+): brauzer ichida «avval o‘rnating» deyiladi. Ruxsat faqat o‘quvchi tugmani bosganda so‘raladi.
 
 ---
 
