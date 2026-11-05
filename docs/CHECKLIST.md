@@ -522,3 +522,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Profil va taklif bitta obuna kodi (`PushDevice`).
 - [x] Admin → Ko‘rsatkichlar: eslatma kanali (push / faqat Telegram / yo‘q) va birinchi bo‘limdan keyin 1-kun, 7-kun qaytish (push bor / yo‘q). API testi.
 - [ ] 2 haftadan keyin: Admin → Ko‘rsatkichlar’da push bor va yo‘q o‘quvchilarning 1-kun/7-kun qaytishini solishtirish.
+
+**Gap zinapoyasi: tarjima qadamida koreyscha ko‘rinardi (2026-11-05):**
+- [x] Johnny: 3-qadamda (tarjima) o‘zbekcha gap bilan birga koreyscha javob ham chiqdi («길이 많이 막혀서… – tarjima: Yo‘l …»). AI `twinUzbek` ga koreyscha qo‘shib yozgan; tekshiruv faqat lotin ulushiga qarar edi.
+- [x] `LadderService.UzbekOnly`: «tarjima:» dan keyingi o‘zbekcha qism qoladi; koreyscha qolsa gap tashlanadi. Prompt’ga «uzbek/twinUzbek — faqat o‘zbekcha». Avval yaratilgan zinapoyalarda ham ko‘rsatishda tozalanadi. 6 Application testi; Ladder API testlari o‘tadi.

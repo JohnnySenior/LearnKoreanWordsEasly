@@ -154,7 +154,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
                         Id = Guid.CreateVersion7(now),
                         OwnerId = ownerId,
                         LadderId = ladder.Id,
-                        Uzbek = Cut(item.TwinUzbek, 500),
+                        Uzbek = Cut(UzbekOnly(item.TwinUzbek) ?? item.TwinUzbek, 500),
                         Wrong = t.Wrong,
                         Right = t.Right,
                         ExplanationUz = t.ExplanationUz,
@@ -257,7 +257,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
                 LadderStep.Fill => new LadderTaskDto(item.Index, n.Step, number, l.Items.Count, item.Uzbek, item.Focus.SentenceWithGap,
                     Shuffle([item.Focus.Answer, .. item.Focus.Wrong]), item.Focus.Kind, []),
                 LadderStep.Order => new LadderTaskDto(item.Index, n.Step, number, l.Items.Count, item.Uzbek, null, [], null, ShuffleChunks(item.Korean)),
-                _ => new LadderTaskDto(item.Index, n.Step, number, l.Items.Count, item.TwinUzbek, null, [], null, []),
+                _ => new LadderTaskDto(item.Index, n.Step, number, l.Items.Count, UzbekOnly(item.TwinUzbek) ?? item.TwinUzbek, null, [], null, []),
             };
         }
 
@@ -267,7 +267,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
         var results = l.Answers.Select(a =>
         {
             var item = l.Items.Single(i => i.Index == a.Index);
-            return new LadderResultDto(a.Index, a.Step, a.Step == LadderStep.Translate ? item.TwinUzbek : item.Uzbek, a.Given, a.IsCorrect,
+            return new LadderResultDto(a.Index, a.Step, a.Step == LadderStep.Translate ? UzbekOnly(item.TwinUzbek) ?? item.TwinUzbek : item.Uzbek, a.Given, a.IsCorrect,
                 Correct(item, a.Step),
                 a.Corrected, AiText.CleanOrNull(a.ExplanationUz), a.ErrorTypes);
         }).ToList();
@@ -322,6 +322,23 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
         return new AiJsonRequest(BuildFeature, BuildInstructions, sb.ToString(), "sentence_ladder", BuildSchema, 4000, Timeout: TimeSpan.FromSeconds(90));
     }
 
+    /// <summary>
+    /// The Uzbek sentence without Korean in it. The AI sometimes writes "길이 막혀서… – tarjima: Yo‘l …" where only the
+    /// Uzbek was asked for, which shows the answer of the translation step: the part after "tarjima:" is kept. Null
+    /// when Korean is still left (the sentence is then dropped).
+    /// </summary>
+    public static string? UzbekOnly(string text)
+    {
+        if (SentenceCheckService.ContainsHangul(text))
+        {
+            var at = text.LastIndexOf("tarjima:", StringComparison.OrdinalIgnoreCase);
+            text = at >= 0 ? text[(at + "tarjima:".Length)..] : text;
+        }
+
+        text = text.Trim().Trim('–', '—', '-', ':').Trim();
+        return text.Length > 0 && !SentenceCheckService.ContainsHangul(text) && SentenceCheckService.IsUzbekLatin(text) ? text : null;
+    }
+
     /// <summary>Keeps sentences whose gap, options and translations are well formed; the rest are dropped.</summary>
     public static List<LadderItem> Parse(string json, IReadOnlyList<LearningItem> words)
     {
@@ -346,6 +363,13 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
 
             ko = Normalize(ko);
             answer = answer.Trim();
+            // The learner translates these Uzbek sentences: Korean in them gives the answer away.
+            if (UzbekOnly(uz) is not { } uzOnly || UzbekOnly(twinUz) is not { } twinOnly)
+            {
+                continue;
+            }
+
+            (uz, twinUz) = (uzOnly, twinOnly);
             var wrong = (f.Wrong ?? []).Select(w => w?.Trim()).OfType<string>().Where(w => w.Length > 0 && w != answer).Distinct().Take(3).ToList();
             var chunks = ko.Split(' ').Length;
             var ok = SentenceCheckService.ContainsHangul(ko) && SentenceCheckService.IsUzbekLatin(uz)
@@ -383,7 +407,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
     public static AiJsonRequest BuildCheckRequest(LadderItem item, string answer)
     {
         var user = $"""
-            <uzbek_sentence>{item.TwinUzbek}</uzbek_sentence>
+            <uzbek_sentence>{UzbekOnly(item.TwinUzbek) ?? item.TwinUzbek}</uzbek_sentence>
             <reference_translation>{item.TwinKorean}</reference_translation>
             <learner_translation>{answer}</learner_translation>
             """;
@@ -446,6 +470,7 @@ public sealed class LadderService(IAppDbContext db, AiGateway ai, TimeProvider t
           explanationUz: one short Uzbek sentence on why the answer is right.
         - twinUzbek, twinKorean: a NEW sentence built the same way (same grammar, same pattern) but with different
           nouns and situation, so the learner must build it, not remember it; twinKorean is one natural translation.
+          uzbek and twinUzbek are Uzbek only: no Hangul, no Korean sentence and no "tarjima:" label in them.
           Prefer twins where a word-for-word Uzbek translation would be wrong (biznes ochmoq → 사업을 시작하다,
           odamni olib kelmoq → 데려오다).
         When <weak_points> is given, this ladder reviews the learner's weak points: make at least 4 of the 6 gaps test the
