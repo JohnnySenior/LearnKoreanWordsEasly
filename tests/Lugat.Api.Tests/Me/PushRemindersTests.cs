@@ -60,7 +60,9 @@ public class PushRemindersTests
         var user = await scope.ServiceProvider.GetRequiredService<UserService>().SignInAsync(login, CancellationToken.None);
         await ApiFactory.OpenUnitAsync(scope.ServiceProvider, user.Id, 1, ApiFactory.Words("가", 3));
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var cards = await db.Cards.Where(c => c.OwnerId == user.Id).OrderBy(c => c.Id).Take(due).ToListAsync();
+        // Both directions of <due> words, so "N ta so‘z" is exact.
+        var items = (await db.Cards.Where(c => c.OwnerId == user.Id).Select(c => c.LearningItemId).Distinct().ToListAsync()).Order().Take(due).ToList();
+        var cards = await db.Cards.Where(c => c.OwnerId == user.Id && items.Contains(c.LearningItemId)).ToListAsync();
         foreach (var card in cards)
         {
             (card.Phase, card.Stage, card.DueAt, card.Interval) = (LearningPhase.Review, 1, MondayEvening.AddHours(-2), TimeSpan.FromDays(1));
@@ -177,5 +179,67 @@ public class PushRemindersTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, (await a.PostAsJsonAsync("/api/me/push", Device("x"), ApiFactory.Json)).StatusCode);
         var prefs = await a.GetFromJsonAsync<PreferencesDto>("/api/me/preferences", ApiFactory.Json);
         Assert.Equal((true, false, true), (prefs!.RemindersAvailable, prefs.PushAvailable, prefs.HasTelegram)); // the bot still works
+    }
+
+    [Fact]
+    public async Task The_metrics_show_reminder_channels_and_the_return_after_the_first_unit_with_and_without_push()
+    {
+        // L-63: P has a phone subscribed and practises 1 and 7 days after the first unit; T (Telegram only) only after 1.
+        const long P = 3001, T = 3002, Admin = 3009;
+        await using var factory = new ApiFactory { Messenger = _telegram, Push = _push, TableWords = ApiFactory.Words("가", 3), AdminTelegramIds = [Admin] };
+        factory.Settings["Reminders:PollInterval"] = "01:00:00";
+        var start = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.FromHours(9)).ToUniversalTime();
+        factory.Time.SetUtcNow(start);
+        var p = await factory.SignedInClientAsync(P, "P");
+        var t = await factory.SignedInClientAsync(T, "T");
+        foreach (var c in new[] { p, t })
+        {
+            await RemindersTests.ApproveOneTableAsync(c);
+        }
+
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, (await p.PostAsJsonAsync("/api/me/push", Device("p-phone"), ApiFactory.Json)).StatusCode);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreach (var progress in await db.UnitProgress.ToListAsync())
+            {
+                progress.PassedAt = start; // the first unit is done on day 0 (the date is what the figure reads)
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var none = await LearnerAsync(factory, Google("g-none"), due: 0); // active, no device, no bot, no unit passed
+
+        async Task PractiseAsync(HttpClient client)
+        {
+            var session = (await (await client.PostAsJsonAsync("/api/sessions", new StartSessionRequest(null, false), ApiFactory.Json))
+                .Content.ReadFromJsonAsync<StartSessionResponse>(ApiFactory.Json))!.Session!;
+            (await client.PostAsJsonAsync($"/api/sessions/{session.Id}/answers", new AnswerRequest(Guid.NewGuid(), session.Position, ReviewAnswer.Forgot, false, 2000), ApiFactory.Json)).EnsureSuccessStatusCode();
+        }
+
+        factory.Time.SetUtcNow(start.AddDays(1));
+        await PractiseAsync(await factory.SignedInClientAsync(P, "P"));
+        await PractiseAsync(await factory.SignedInClientAsync(T, "T"));
+        factory.Time.SetUtcNow(start.AddDays(7));
+        await PractiseAsync(await factory.SignedInClientAsync(P, "P"));
+        factory.Time.SetUtcNow(start.AddDays(8));
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.ActivityDays.Add(new UserActivityDay { UserId = none, Day = Lugat.Domain.KoreaTime.Day(start.AddDays(8)) });
+            await db.SaveChangesAsync();
+        }
+
+        var admin = await factory.SignedInClientAsync(Admin, "Admin");
+        var m = await admin.GetFromJsonAsync<MetricsDto>("/api/admin/metrics", ApiFactory.Json);
+
+        var ch = m!.Channels!;
+        Assert.Equal((1, 1), (ch.Push, ch.None)); // P by push; the Google learner has none
+        Assert.Equal(ch.Active - 2, ch.Telegram); // T and the admin, both Telegram logins
+        var withPush = Assert.Single(m.FirstUnitReturn!, r => r.WithPush);
+        var without = Assert.Single(m.FirstUnitReturn!, r => !r.WithPush);
+        Assert.Equal((1, 1, 1, 1), (withPush.Day1.Cohort, withPush.Day1.Returned, withPush.Day7.Cohort, withPush.Day7.Returned));
+        Assert.Equal((1, 1, 1, 0), (without.Day1.Cohort, without.Day1.Returned, without.Day7.Cohort, without.Day7.Returned));
     }
 }

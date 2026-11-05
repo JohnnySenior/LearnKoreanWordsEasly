@@ -4,6 +4,8 @@
 @inject SessionService Api
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject PushDevice Push
+@inject BrowserInterop Browser
 @implements IAsyncDisposable
 
 <PageTitle>Sinov — Koreyscha</PageTitle>
@@ -88,6 +90,22 @@
             @if (result.WrongItemIds.Count > 0)
             {
                 <button class="btn btn-secondary block" disabled="@_busy" @onclick="() => DrillWrongAsync(result.WrongItemIds)"><span>Xato @result.WrongItemIds.Count ta so‘zni takrorlash</span></button>
+            }
+            @if (_offer == Offer.Shown)
+            {
+                @* L-63: asked once, calmly, after a passed unit test; "Keyinroq" keeps it away on this device. *@
+                <div class="push-offer">
+                    <b>Ertaga takrorlash vaqti kelganda eslataymi?</b>
+                    <span class="muted small-text">Shu telefonga bildirishnoma keladi, faqat takrorlanadigan so‘z bo‘lsa.</span>
+                    <div class="push-offer-actions">
+                        <button class="btn btn-secondary" disabled="@_offerBusy" @onclick="AcceptOfferAsync"><span>Ha</span></button>
+                        <button class="btn btn-ghost" disabled="@_offerBusy" @onclick="DismissOfferAsync"><span>Keyinroq</span></button>
+                    </div>
+                </div>
+            }
+            else if (_offer == Offer.Answered && _offerMessage is not null)
+            {
+                <p class="muted small-text" role="status">@_offerMessage</p>
             }
             @if (result.Share is { } share)
             {
@@ -530,6 +548,52 @@ else
         }
 
         await PrepareShareAsync();
+        await PrepareOfferAsync();
+    }
+
+    private enum Offer { Unchecked, Hidden, Shown, Answered }
+
+    private Offer _offer;
+    private bool _offerBusy;
+    private string? _offerMessage;
+
+    /// <summary>
+    /// L-63: after a passed unit test, offer reminders on this device — only when the server has push, the device can
+    /// subscribe and is not subscribed yet, and the learner did not answer the offer here before.
+    /// </summary>
+    private async Task PrepareOfferAsync()
+    {
+        if (_offer != Offer.Unchecked || _test?.Unit is not { Purpose: TestPurpose.UnitFinal, Passed: true })
+        {
+            return;
+        }
+
+        _offer = Offer.Hidden;
+        if (await Browser.StorageGetAsync(PushDevice.OfferDismissedKey) is not null
+            || (await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value is not { PushAvailable: true }
+            || await Push.StateAsync() != "ready")
+        {
+            return;
+        }
+
+        _offer = Offer.Shown;
+        StateHasChanged();
+    }
+
+    private async Task AcceptOfferAsync()
+    {
+        _offerBusy = true;
+        var (ok, message) = await Push.EnableAsync();
+        await Browser.StorageSetAsync(PushDevice.OfferDismissedKey, "1");
+        (_offer, _offerBusy) = (Offer.Answered, false);
+        _offerMessage = ok ? "✓ Ertaga eslataman. Vaqt va kunlarni Profil → Eslatma’da o‘zgartirasiz."
+            : message ?? "Bildirishnomalar brauzerda o‘chirilgan. Qanday yoqishni Profil → Eslatma’da ko‘rasiz.";
+    }
+
+    private async Task DismissOfferAsync()
+    {
+        await Browser.StorageSetAsync(PushDevice.OfferDismissedKey, "1");
+        (_offer, _offerMessage) = (Offer.Answered, null);
     }
 
     private async Task TypedKeyAsync(KeyboardEventArgs e)

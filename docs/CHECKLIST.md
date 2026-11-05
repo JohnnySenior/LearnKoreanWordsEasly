@@ -514,5 +514,11 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: 6 API (Google + push, ikki kanalda bitta, 410 → Telegram, muddati kelmagan, endpoint egasi, kalitsiz), mavjud 14 eslatma testi o‘tadi; 6 ta `WebPushSender` testi (haqiqiy VAPID + aes128gcm shifrlash, TTL 1800, 404/410 → Gone); 6 JS (push.js va ikkala service worker).
 - [x] Chromium (Xvfb) 360px: «Shu telefonga eslatma yuborish» toggle; iPhone UA brauzerida «avval o‘rnating»; rad etilgan ruxsat matni; yonlama scroll yo‘q. Playwright Chromium’da push xizmati yo‘q, shuning uchun haqiqiy obuna faqat telefonda tekshiriladi.
 - [ ] Johnny: VAPID kalitlarini yaratib Railway’ga qo‘yish (docs/HOSTING.md «Web Push eslatmalari»).
-- [ ] Johnny: Android Chrome’da va iPhone’dagi o‘rnatilgan PWA’da haqiqiy bildirishnoma, bosganda /takrorlash ochilishi.
-- [ ] PR 2: birinchi bo‘lim testidan keyingi taklif va Admin ko‘rsatkichlari; 2 haftadan keyin ko‘rsatkichlarni solishtirish.
+- [x] Johnny: Android Chrome’da va iPhone’dagi o‘rnatilgan PWA’da haqiqiy bildirishnoma keldi, bosganda /takrorlash ochildi (2026-11-05).
+- [x] VAPID kalitlari Railway’da (Johnny, 2026-11-05).
+
+**Web Push eslatmalari (L-63, PR 2, 2026-11-05):**
+- [x] O‘tilgan bo‘lim testi natijasida «Ertaga takrorlash vaqti kelganda eslataymi?» — «Ha» / «Keyinroq»; faqat qurilma obuna bo‘la olsa va bu qurilmada hali javob berilmagan bo‘lsa; «Keyinroq» qayta chiqmaydi (Chromium: qayta yuklashda yo‘q). Tugmalar 48px, 360px’da scroll yo‘q, yorug‘/qorong‘i.
+- [x] Profil va taklif bitta obuna kodi (`PushDevice`).
+- [x] Admin → Ko‘rsatkichlar: eslatma kanali (push / faqat Telegram / yo‘q) va birinchi bo‘limdan keyin 1-kun, 7-kun qaytish (push bor / yo‘q). API testi.
+- [ ] 2 haftadan keyin: Admin → Ko‘rsatkichlar’da push bor va yo‘q o‘quvchilarning 1-kun/7-kun qaytishini solishtirish.

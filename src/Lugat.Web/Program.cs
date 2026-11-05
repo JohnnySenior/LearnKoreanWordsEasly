@@ -11,5 +11,6 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress), Timeout = Timeout.InfiniteTimeSpan });
 builder.Services.AddScoped<BrowserInterop>();
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<PushDevice>();
 
 await builder.Build().RunAsync();
