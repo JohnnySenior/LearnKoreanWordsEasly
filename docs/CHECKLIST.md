@@ -530,3 +530,7 @@ Bosqichlar spec §13 bo‘yicha.
 **Gap tuzish: takror izoh (2026-11-05):**
 - [x] Johnny: ishoradan keyin ilova ko‘rsatgan variantni yozganda bir xil izoh uch marta chiqdi (ishora, «mustaqil qo‘llash hisobiga kirmaydi» qatori, tushuntirish) va «Tekshirdi: .» bo‘sh. Sabab: AI chaqirilmaydigan holatda (D-52, `SentenceCheckService.Known`) bitta izoh ishora va tushuntirishga qo‘yiladi, provider yo‘q.
 - [x] `SentenceResult.razor`: tushuntirish ishora bilan bir xil bo‘lsa ko‘rsatilmaydi; ishora shuni aytgan bo‘lsa qo‘shimcha qator yo‘q; provider bo‘lmasa «Oldingi tekshiruv asosida baholandi.»
+
+**Kartochka: baholashda bo‘sh qizil chiziq (2026-11-05):**
+- [x] Johnny: «Eslay olmadim / Qiynalib esladim / Oson esladim» bosilganda bir lahzaga bo‘sh qizil quti va «Qayta yuborish» chiqib yo‘qolardi. Sabab: javob yuborilayotgan paytda ham «yuborilmadi» bloki ko‘rsatilardi (`_pending` bor, xato matni yo‘q).
+- [x] `Practice.razor`: blok faqat yuborish muvaffaqiyatsiz bo‘lganda (`_sending` tugagach); matnsiz bo‘lsa standart «Javob yuborilmadi…». Chromium: 2 s sekinlatilgan javobda quti yo‘q (0), uzilgan javobda «Qayta yuborish» va xato matni chiqadi.
