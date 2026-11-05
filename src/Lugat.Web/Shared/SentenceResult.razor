@@ -24,7 +24,7 @@
                 }
             </ul>
         }
-        @if (r.Assisted)
+        @if (r.Assisted && !r.HintUz.Contains("mustaqil qo‘llash hisobiga kirmaydi"))
         {
             <p class="muted small-text">Bu gap mustaqil qo‘llash hisobiga kirmaydi.</p>
         }
@@ -40,7 +40,10 @@
                 <p class="muted small-text">To‘g‘ri variant</p>
                 <p class="sentence" lang="ko">@r.CorrectedText</p>
             }
-            <p>@r.ExplanationUz</p>
+            @if (!string.IsNullOrWhiteSpace(r.ExplanationUz) && r.ExplanationUz != r.HintUz)
+            {
+                <p>@r.ExplanationUz</p>
+            }
             @if (r.Alternatives.Count > 0)
             {
                 <p class="muted small-text">Tabiiyroq variantlar</p>
@@ -54,7 +57,15 @@
             <button class="button" @onclick="OnRetry">Yana gap yozish</button>
         }
         <button class="button" disabled="@Busy" @onclick="OnRecheck">Bahoga qo‘shilmayman — qayta tekshirish</button>
-        <p class="muted small-text">Tekshirdi: @Check.Provider. AI ham adashishi mumkin.</p>
+        @if (string.IsNullOrWhiteSpace(Check.Provider))
+        {
+            @* The app answered from an earlier check (a variant it showed), without asking the AI again (D-52). *@
+            <p class="muted small-text">Oldingi tekshiruv asosida baholandi.</p>
+        }
+        else
+        {
+            <p class="muted small-text">Tekshirdi: @Check.Provider. AI ham adashishi mumkin.</p>
+        }
     }
     else if (Check.Status == AiCheckStatus.NeedsReview)
     {

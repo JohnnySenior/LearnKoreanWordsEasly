@@ -526,3 +526,7 @@ Bosqichlar spec §13 bo‘yicha.
 **Gap zinapoyasi: tarjima qadamida koreyscha ko‘rinardi (2026-11-05):**
 - [x] Johnny: 3-qadamda (tarjima) o‘zbekcha gap bilan birga koreyscha javob ham chiqdi («길이 많이 막혀서… – tarjima: Yo‘l …»). AI `twinUzbek` ga koreyscha qo‘shib yozgan; tekshiruv faqat lotin ulushiga qarar edi.
 - [x] `LadderService.UzbekOnly`: «tarjima:» dan keyingi o‘zbekcha qism qoladi; koreyscha qolsa gap tashlanadi. Prompt’ga «uzbek/twinUzbek — faqat o‘zbekcha». Avval yaratilgan zinapoyalarda ham ko‘rsatishda tozalanadi. 6 Application testi; Ladder API testlari o‘tadi.
+
+**Gap tuzish: takror izoh (2026-11-05):**
+- [x] Johnny: ishoradan keyin ilova ko‘rsatgan variantni yozganda bir xil izoh uch marta chiqdi (ishora, «mustaqil qo‘llash hisobiga kirmaydi» qatori, tushuntirish) va «Tekshirdi: .» bo‘sh. Sabab: AI chaqirilmaydigan holatda (D-52, `SentenceCheckService.Known`) bitta izoh ishora va tushuntirishga qo‘yiladi, provider yo‘q.
+- [x] `SentenceResult.razor`: tushuntirish ishora bilan bir xil bo‘lsa ko‘rsatilmaydi; ishora shuni aytgan bo‘lsa qo‘shimcha qator yo‘q; provider bo‘lmasa «Oldingi tekshiruv asosida baholandi.»
