@@ -190,9 +190,10 @@ else
         <p class="muted small-text">Bu so‘zning takrorlash vaqti hali kelmagan: baho keyingi muddatni uzaytirmaydi.</p>
     }
 
-    @if (_pending is not null)
+    @if (_pending is not null && !_sending)
     {
-        <div class="notice" role="alert">@_error</div>
+        @* Only an answer that did not get through: while it is being sent nothing is shown (no flash under the card). *@
+        <div class="notice" role="alert">@(_error ?? "Javob yuborilmadi. Internetni tekshirib, qayta yuboring.")</div>
         <button class="btn btn-secondary block" disabled="@_busy" @onclick="RetryAsync"><span>Qayta yuborish</span></button>
     }
     else if (_error is not null)
@@ -233,6 +234,7 @@ else
     private DateTime _shownAt;
     private int? _responseMs;
     private AnswerRequest? _pending;
+    private bool _sending; // an answer is on its way; the retry box waits until it has failed
     private Timer? _undoTimer;
 
     /// <summary>An answer that was not confirmed by the server survives closing the app (spec REL03).</summary>
@@ -323,6 +325,7 @@ else
         // The event id is fixed here, so a retry after a network error cannot count twice (spec REL03).
         _pending = new AnswerRequest(Guid.NewGuid(), card.Position, answer, false, _responseMs);
         _pendingSessionId = _session.Id;
+        _sending = true; // the page renders while the answer is stored on the device: no retry box yet
         await Browser.StorageSetAsync(PendingKey, JsonSerializer.Serialize(new StoredAnswer(_session.Id, _pending), SessionService.Json));
         await SendPendingAsync();
     }
@@ -337,14 +340,14 @@ else
         }
 
         ApiResult<AnswerResultDto> result;
-        _busy = true;
+        (_busy, _sending) = (true, true);
         try
         {
             result = await Api.SendJsonAsync<AnswerResultDto>(HttpMethod.Post, $"api/sessions/{sessionId}/answers", _pending);
         }
         finally
         {
-            _busy = false;
+            (_busy, _sending) = (false, false);
         }
 
         if (result.Ok)
