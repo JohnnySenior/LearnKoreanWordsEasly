@@ -113,6 +113,43 @@
     }
 </section>
 
+@if (_m.Channels is { } ch)
+{
+    @* L-63: can a reminder reach the learners who use the app, and does push bring them back after the first unit. *@
+    <section class="card">
+        <h2>Eslatma kanali (30 kunda faollar)</h2>
+        <div class="figures">
+            <div><strong>@Share(ch.Push, ch.Active)</strong><span>push (@ch.Push)</span></div>
+            <div><strong>@Share(ch.Telegram, ch.Active)</strong><span>faqat Telegram (@ch.Telegram)</span></div>
+            <div><strong>@Share(ch.None, ch.Active)</strong><span>kanal yo‘q (@ch.None)</span></div>
+        </div>
+        <p class="muted small-text">@ch.Active ta faol o‘quvchi. Push va Telegram ikkalasi bor bo‘lsa — push (eslatma o‘sha yerga ketadi). Eslatmani o‘chirganlar «kanal yo‘q».</p>
+    </section>
+}
+
+@if (_m.FirstUnitReturn is { Count: > 0 } back)
+{
+    <section class="card">
+        <h2>Birinchi bo‘limdan keyin takrorlashga qaytish</h2>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>O‘quvchilar</th><th class="num">1-kun</th><th class="num">7-kun</th></tr></thead>
+                <tbody>
+                    @foreach (var r in back)
+                    {
+                        <tr>
+                            <td>@(r.WithPush ? "Push obunasi bor" : "Push obunasi yo‘q")</td>
+                            <td class="num">@Percent(r.Day1) <span class="muted small-text">(@r.Day1.Returned/@r.Day1.Cohort)</span></td>
+                            <td class="num">@Percent(r.Day7) <span class="muted small-text">(@r.Day7.Returned/@r.Day7.Cohort)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="muted small-text">Oxirgi 60 kunda birinchi bo‘limni tugatganlar: shundan 1 (7) kun keyin kartochka takrorlaganlar ulushi. Obuna — hozirgi holat.</p>
+    </section>
+}
+
 <section class="card">
     <h2>Guruhlar: 2-haftada faol</h2>
     @if (_m.Groups.Count == 0)
@@ -154,4 +191,6 @@
     }
 
     private static string Percent(RetentionDto r) => r.Percent is { } p ? $"{p}%" : "—";
+
+    private static string Share(int part, int all) => all == 0 ? "—" : $"{(int)Math.Round(part * 100.0 / all)}%";
 }

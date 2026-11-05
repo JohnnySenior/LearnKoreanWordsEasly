@@ -1547,6 +1547,9 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .data-table th { border-bottom-width: 1px; }
 
 /* Share card after a passed unit test (L-59): a small preview drawn in CSS, not the image itself. */
+.push-offer { display: grid; gap: 6px; padding: 14px; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
+.push-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.push-offer-actions .btn { min-width: 96px; }
 .share-box { display: flex; align-items: center; gap: 14px; margin-top: 10px; padding: 14px; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
 .share-box-text { display: grid; gap: 2px; min-width: 0; }
 .share-box-text b { font-size: 15px; }

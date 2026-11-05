@@ -276,7 +276,56 @@ public sealed class AdminService(IAppDbContext db, TimeProvider time, IOperation
             .ToList();
 
         return new MetricsDto(users.Count, signUps.Count(s => s.Value > today.AddDays(-7)), signUps.Count(s => s.Value > today.AddDays(-30)),
-            daily, Retention(1), Retention(7), premiumNow, revenue, units, await PilotAsync(today, ct));
+            daily, Retention(1), Retention(7), premiumNow, revenue, units, await PilotAsync(today, ct),
+            await ChannelsAsync(today, ct), await FirstUnitReturnAsync(today, ct));
+    }
+
+    /// <summary>L-63: learners active in the last 30 days by the reminder channel that reaches them now.</summary>
+    private async Task<ReminderChannelsDto> ChannelsAsync(DateOnly today, CancellationToken ct)
+    {
+        var since = today.AddDays(-29);
+        var rows = await (from u in db.Users
+                          where u.DeletedAt == null && db.ActivityDays.Any(a => a.UserId == u.Id && a.Day >= since)
+                          select new
+                          {
+                              u.RemindersEnabled,
+                              Push = db.PushSubscriptions.Any(p => p.UserId == u.Id),
+                              Telegram = db.UserLogins.Any(l => l.UserId == u.Id && l.Provider == LoginProvider.Telegram) && u.BotBlockedAt == null,
+                          }).ToListAsync(ct);
+        var push = rows.Count(r => r.RemindersEnabled && r.Push);
+        var telegram = rows.Count(r => r.RemindersEnabled && !r.Push && r.Telegram);
+        return new ReminderChannelsDto(rows.Count, push, telegram, rows.Count - push - telegram);
+    }
+
+    /// <summary>L-63: return to card practice 1 and 7 days after the first passed unit, with and without push.</summary>
+    private async Task<IReadOnlyList<FirstUnitReturnDto>> FirstUnitReturnAsync(DateOnly today, CancellationToken ct)
+    {
+        var firsts = (await db.UnitProgress.Where(p => p.PassedAt != null)
+                .GroupBy(p => p.UserId)
+                .Select(g => new { UserId = g.Key, At = g.Min(p => p.PassedAt)!.Value })
+                .ToListAsync(ct))
+            .Select(f => (f.UserId, Day: KoreaTime.Day(f.At)))
+            .Where(f => f.Day >= today.AddDays(-60) && f.Day <= today.AddDays(-1))
+            .ToList();
+        var ids = firsts.Select(f => f.UserId).ToList();
+        var withPush = (await db.PushSubscriptions.Where(p => ids.Contains(p.UserId)).Select(p => p.UserId).Distinct().ToListAsync(ct)).ToHashSet();
+        var reviewSince = time.GetUtcNow().AddDays(-62);
+        var reviewed = (await db.ReviewEvents.Where(e => ids.Contains(e.OwnerId) && e.OccurredAt >= reviewSince && e.UndoneAt == null && e.Answer != Domain.Learning.ReviewAnswer.TechnicalError)
+                .Select(e => new { e.OwnerId, e.OccurredAt }).ToListAsync(ct))
+            .Select(e => (e.OwnerId, KoreaTime.Day(e.OccurredAt))).ToHashSet();
+
+        RetentionDto Return(IReadOnlyCollection<(Guid UserId, DateOnly Day)> group, int after)
+        {
+            var cohort = group.Where(f => f.Day <= today.AddDays(-after)).ToList();
+            var back = cohort.Count(f => reviewed.Contains((f.UserId, f.Day.AddDays(after))));
+            return new RetentionDto(cohort.Count, back, cohort.Count == 0 ? null : (int)Math.Round(back * 100.0 / cohort.Count));
+        }
+
+        return new[] { true, false }.Select(push =>
+        {
+            var group = firsts.Where(f => withPush.Contains(f.UserId) == push).ToList();
+            return new FirstUnitReturnDto(push, Return(group, 1), Return(group, 7));
+        }).ToList();
     }
 
     /// <summary>Spec §9.2 pilot figure, per open group: members who joined 14+ days ago and were active in days 8–14 after joining.</summary>

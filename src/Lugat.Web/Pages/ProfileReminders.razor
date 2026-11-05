@@ -1,8 +1,7 @@
 @page "/profil/eslatma"
 @using Lugat.Contracts
-@implements IAsyncDisposable
 @inject SessionService Api
-@inject IJSRuntime JS
+@inject PushDevice Push
 
 <PageTitle>Eslatma — Koreyscha</PageTitle>
 
@@ -138,7 +137,6 @@
     private string? _error;
     private string? _status;
 
-    private IJSObjectReference? _push;
     private string? _device; // push.js state(): install, unsupported, denied, ready, subscribed
 
     private bool HasChannel => _prefs is { } p && (p.HasTelegram || p.PushDevices > 0 || _device == "subscribed");
@@ -150,70 +148,22 @@
         Apply(result.Value);
         if (_prefs?.PushAvailable == true)
         {
-            try
-            {
-                _push = await JS.InvokeAsync<IJSObjectReference>("import", "./js/push.js");
-                _device = await _push.InvokeAsync<string>("state");
-            }
-            catch (JSException)
-            {
-                _device = "unsupported";
-            }
+            _device = await Push.StateAsync();
         }
     }
 
     // Permission is asked only here, from the learner's tap (never when the page opens).
     private async Task SetPushAsync(bool on)
     {
-        if (_push is null)
-        {
-            return;
-        }
-
         _busy = true;
-        _status = null;
-        if (on)
-        {
-            var key = await Api.GetAsync<PushKeyDto>("api/me/push/key");
-            var sub = key.Value is { } k ? await _push.InvokeAsync<DeviceSubscription>("subscribe", k.PublicKey) : null;
-            if (sub is { Endpoint: { } endpoint, P256dh: { } p256dh, Auth: { } auth })
-            {
-                var saved = await Api.SendJsonAsync<object>(HttpMethod.Post, "api/me/push", new PushSubscribeRequest(endpoint, p256dh, auth));
-                _status = saved.Ok ? "Shu qurilmaga eslatma keladi." : saved.Error;
-            }
-            else
-            {
-                _status = sub?.Error switch
-                {
-                    "denied" => null, // the calm "how to turn it on" text below says it
-                    "dismissed" => "Ruxsat berilmadi. Xohlasangiz, qayta yoqib ko‘ring.",
-                    _ => key.Error ?? "Bildirishnomani yoqib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.",
-                };
-            }
-        }
-        else if (await _push.InvokeAsync<string?>("unsubscribe") is { } endpoint)
-        {
-            await Api.SendJsonAsync<object>(HttpMethod.Delete, "api/me/push", new PushUnsubscribeRequest(endpoint));
-            _status = "Shu qurilmaga eslatma kelmaydi.";
-        }
-
-        _device = await _push.InvokeAsync<string>("state");
+        _status = on ? (await Push.EnableAsync()).Message : await Push.DisableAsync();
+        _device = await Push.StateAsync();
         if ((await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value is { } p)
         {
             Apply(p);
         }
 
         _busy = false;
-    }
-
-    private sealed record DeviceSubscription(string? Endpoint, string? P256dh, string? Auth, string? Error);
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_push is not null)
-        {
-            try { await _push.DisposeAsync(); } catch (JSDisconnectedException) { }
-        }
     }
 
     private void Apply(PreferencesDto? prefs)

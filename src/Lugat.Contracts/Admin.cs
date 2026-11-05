@@ -72,7 +72,21 @@ public sealed record MetricsDto(
     int PremiumNow,
     IReadOnlyList<RevenueMonthDto> Revenue,
     IReadOnlyList<UnitPassRateDto> Units,
-    IReadOnlyList<GroupPilotDto> Groups);
+    IReadOnlyList<GroupPilotDto> Groups,
+    ReminderChannelsDto? Channels = null,
+    IReadOnlyList<FirstUnitReturnDto>? FirstUnitReturn = null);
+
+/// <summary>
+/// L-63: of the learners active in the last 30 days, how a reminder can reach them now. Reminders off counts as none;
+/// a learner with a device and Telegram counts as push, the channel that is used.
+/// </summary>
+public sealed record ReminderChannelsDto(int Active, int Push, int Telegram, int None);
+
+/// <summary>
+/// L-63: learners who passed their first unit 1+ (7+) days ago, within the last 60 days, and practised cards exactly
+/// 1 (7) days after that day — split by whether they have a push subscription now.
+/// </summary>
+public sealed record FirstUnitReturnDto(bool WithPush, RetentionDto Day1, RetentionDto Day7);
 
 /// <summary>One ad channel (L-40): visits with its link, sign-ups that came with it, their D7 return and how many paid.</summary>
 public sealed record SourceRowDto(string Source, int Visits, int SignUps, RetentionDto D7, int Paying);
