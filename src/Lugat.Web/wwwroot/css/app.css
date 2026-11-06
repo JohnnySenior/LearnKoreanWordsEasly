@@ -1547,6 +1547,10 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .data-table th { border-bottom-width: 1px; }
 
 /* Share card after a passed unit test (L-59): a small preview drawn in CSS, not the image itself. */
+.premium-wanted { display: grid; gap: 6px; margin: 12px 0; padding: 14px; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
+.premium-wanted h2 { margin: 0; font-size: 18px; line-height: 1.25; }
+.premium-wanted p { margin: 0; }
+.premium-wanted-number { font-size: 14px; }
 .push-offer { display: grid; gap: 6px; padding: 14px; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
 .push-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .push-offer-actions .btn { min-width: 96px; }

@@ -23,6 +23,20 @@
     return;
 }
 
+@if (!_status.IsPremium && Wanted is { } wanted)
+{
+    @* L-64: what the learner tried to open, in one sentence, with their own number where there is one. *@
+    <section class="premium-wanted">
+        <span class="kicker accent">Premium</span>
+        <h2>Siz «@wanted.Name»ni ochmoqchi edingiz</h2>
+        <p>@wanted.Gives</p>
+        @if (_mistakes is { Count: > 0 } m && F is PremiumFeatures.Mistakes or PremiumFeatures.WeakPoints)
+        {
+            <p class="premium-wanted-number">So‘nggi @m.Days kunda <strong>@m.Count ta so‘zda</strong> adashgansiz — Premium ularni bir joyga yig‘ib, qayta mashq qildiradi.</p>
+        }
+    </section>
+}
+
 <section class="premium-intro">
     @if (_status.IsPremium)
     {
@@ -106,6 +120,23 @@
 }
 
 @code {
+    /// <summary>The feature the learner wanted (L-64), e.g. "xatolar"; an unknown key shows nothing.</summary>
+    [SupplyParameterFromQuery(Name = "f")] public string? F { get; set; }
+
+    private static readonly Dictionary<string, (string Name, string Gives)> Features = new()
+    {
+        [PremiumFeatures.Mistakes] = ("Xatolarim", "Adashgan so‘zlaringiz bir joyda turadi va ular bilan alohida mashq qilasiz."),
+        [PremiumFeatures.WeakPoints] = ("Zaif joylar", "Qaysi turdagi xatolar ko‘p uchrashini ko‘rsatadi va shu so‘zlarni qayta mashq qildiradi."),
+        [PremiumFeatures.Ladder] = ("Gap zinapoyasi", "So‘zni gapda to‘ldirasiz, tartiblaysiz va tarjima qilasiz — AI tekshiradi."),
+        [PremiumFeatures.Traps] = ("Tuzoqlar daftari", "So‘zma-so‘z tarjimada adashgan joylaringiz to‘g‘ri varianti bilan saqlanadi."),
+        [PremiumFeatures.Listening] = ("Tinglash", "Qisqa dialoglarni eshitib, savollarga javob berasiz."),
+        [PremiumFeatures.Sentence] = ("O‘z gapingiz", "Gapni o‘zingiz yozasiz, AI xatoni ko‘rsatib tushuntiradi."),
+        [PremiumFeatures.Speaking] = ("Talaffuz", "So‘zni ovoz chiqarib aytasiz, Azure talaffuzingizni baholaydi."),
+    };
+
+    private (string Name, string Gives)? Wanted => F is { } f && Features.TryGetValue(f, out var w) ? w : null;
+
+    private MistakeCountDto? _mistakes;
     private PremiumStatusDto? _status;
     private PremiumPlansDto? _plans;
     private SubscriptionPlan _plan = SubscriptionPlan.Monthly;
@@ -134,6 +165,10 @@
         var status = await Api.GetAsync<PremiumStatusDto>("api/me/premium");
         var plans = await Api.GetAsync<PremiumPlansDto>("api/premium/plans");
         (_status, _plans) = (status.Value, plans.Value);
+        if (_status is { IsPremium: false } && F is PremiumFeatures.Mistakes or PremiumFeatures.WeakPoints)
+        {
+            _mistakes = (await Api.GetAsync<MistakeCountDto>("api/mistakes/count")).Value;
+        }
         _error = status.Error ?? plans.Error;
         _plan = _plans?.Plans.FirstOrDefault()?.Plan ?? _plan;
         if (_plans?.BankUz is not null)

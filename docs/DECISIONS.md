@@ -694,3 +694,14 @@ Eslatma faqat Telegram bot orqali kelardi: Google bilan kirganlar umuman olmasdi
 - Rate limit `push` (foydalanuvchi bo‘yicha 30/soat). DELETE faqat o‘z obunasini o‘chiradi.
 - **Taklif (PR 2):** o‘tilgan bo‘lim testi natijasida (`TestRun.razor`, «Ertaga takrorlash vaqti kelganda eslataymi?» · «Ha» / «Keyinroq»). Faqat serverda push bor, qurilma obuna bo‘la oladi (`state() == "ready"`) va shu qurilmada taklifga javob berilmagan bo‘lsa (`localStorage` `lugat.push.offer`). Birinchi bo‘limdan keyin chiqadi; oldin bo‘lim o‘tganlar ham keyingi o‘tishda ko‘radi. «Ha» yoki «Keyinroq» — bir marta, qayta chiqmaydi. Obuna kodi Profil bilan bitta (`Services/PushDevice.cs`).
 - **Ko‘rsatkichlar (PR 2, Admin → Ko‘rsatkichlar):** (a) oxirgi 30 kunda faol o‘quvchilar kanal bo‘yicha: push / faqat Telegram (bot bloklanmagan) / yo‘q (eslatma o‘chiq ham «yo‘q»); ikkalasi bo‘lsa push. (b) birinchi o‘tilgan bo‘lim (`UnitProgress.PassedAt` eng kichigi, oxirgi 60 kun) kunidan aynan 1 va 7 kun keyin kartochka javobi bor-yo‘q, push obunasi bor va yo‘q guruhlarda. Obuna — hozirgi holat (obuna sanasi alohida saqlanmaydi), shuning uchun bu sabab emas, faqat yo‘nalish ko‘rsatkichi.
+
+## L-64 · 2026-11-06 · «Nega Premium?»: kontekstli Premium oynasi (1-qism) va ishlab topilgan sinov (2-qism)
+
+Bepul o‘quvchi Premium funksiyani ochganda izohsiz umumiy Premium sahifasiga, to‘g‘ridan-to‘g‘ri bank rekvizitlariga tushardi.
+
+**1-qism — kontekst:**
+- `PremiumFeatures.KeyOf(path)` (Contracts): rad etilgan yo‘ldan funksiya kaliti — `/api/mistakes` → `xatolar`, `/api/weak-points` → `zaif`, `/api/ladders` → `zinapoya`, `/api/traps` → `tuzoqlar`, `/api/listening` → `tinglash`, `/api/practice` → `gap`, boshqasi → null. Bu ko‘rinish kaliti, qoida emas: Premium tekshiruvi serverda qoladi (§0.6).
+- `SessionService.PremiumRequired` kalitni beradi, `MainLayout` → `premium?f=<kalit>`. Mashqlar ro‘yxatidagi qulfli qatorlar ham `premium?f=…`; «Talaffuz» uchun `talaffuz` (u alohida yo‘lda emas, test ichida qulflanadi — kalit qatorning o‘zida).
+- `GET /api/mistakes/count` (kirish kerak, Premium shart emas): faqat `{ count, days }` — xatolar daftaridagi so‘zlar soni, oxirgi 60 kun; so‘zlarning o‘zi qaytmaydi.
+- Premium sahifasi: bepul o‘quvchida `?f=` ma’lum bo‘lsa, tariflardan oldin «Siz «…»ni ochmoqchi edingiz», funksiya nima berishi (bir jumla), `xatolar`/`zaif` uchun «So‘nggi N kunda K ta so‘zda adashgansiz…» (K > 0). Noma’lum kalitda blok yo‘q.
+- Kelishildi (2-qism uchun): natija ekranida eslatma taklifi (L-63) ko‘rinsa, sinov qatori o‘sha ekranda chiqmaydi (bir ekranda ko‘pi bilan ikki taklif: ulashish + bittasi); ro‘yxatdan o‘tishda sinov olgan o‘quvchiga ishlab topilgan sinov berilmaydi («hech qachon Trial bo‘lmagan»).

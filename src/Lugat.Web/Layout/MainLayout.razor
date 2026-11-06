@@ -158,7 +158,8 @@
 
     private Task ApplyThemeAsync() => Browser.SetThemeAsync(_state?.Me?.Theme ?? Lugat.Domain.Users.ThemeChoice.Device);
 
-    private void OnPremiumRequired() => InvokeAsync(() => Nav.NavigateTo("premium"));
+    // L-64: the Premium page says what the refused feature gives.
+    private void OnPremiumRequired(string? feature) => InvokeAsync(() => Nav.NavigateTo(feature is null ? "premium" : $"premium?f={feature}"));
 
     public void Dispose()
     {
