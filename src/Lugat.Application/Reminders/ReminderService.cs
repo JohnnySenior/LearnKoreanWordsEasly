@@ -33,8 +33,16 @@ public sealed class ReminderService(
     /// <summary>The app page a reminder opens (spec §8: "Havola ilovani takrorlash sahifasida ochadi").</summary>
     public const string ReviewPath = "takrorlash";
 
+    /// <summary>The Premium page, for the trial-end note (L-64).</summary>
+    public const string PremiumPath = "premium";
+
     /// <summary>Same tag on every reminder: on one device a newer one replaces the older (L-63).</summary>
     public const string PushTag = "lugat-reminder";
+
+    /// <summary>L-64: the trial-end note goes this long before the trial ends, and not in its last hour.</summary>
+    public static readonly TimeSpan TrialEndNotice = TimeSpan.FromHours(24);
+
+    public const string TrialEndText = "Premium sinov muddati ertaga tugaydi. Davom ettirmoqchi bo‘lsangiz, Premium sahifasida to‘lov yo‘li bor.";
 
     public async Task<int> RunDueAsync(CancellationToken ct)
     {
@@ -62,7 +70,70 @@ public sealed class ReminderService(
             }
         }
 
+        // L-64: a trial ending within a day, with nothing paid after it, gets one calm note.
+        var noticeFrom = now + TimeSpan.FromHours(1);
+        var noticeTo = now + TrialEndNotice;
+        var trials = await db.Subscriptions
+            .Where(s => s.Plan == Domain.Premium.SubscriptionPlan.Trial && s.StartsAt <= now && s.EndsAt > noticeFrom && s.EndsAt <= noticeTo
+                && !db.Subscriptions.Any(o => o.UserId == s.UserId && o.EndsAt > s.EndsAt))
+            .Select(s => new { s.Id, s.UserId, s.EndsAt }).ToListAsync(ct);
+        foreach (var trial in trials)
+        {
+            if (users.FirstOrDefault(u => u.User.Id == trial.UserId) is { } x
+                && await DeliverTrialEndAsync(x.User, x.Chat is null ? null : ChatId(x.Chat), trial.Id, trial.EndsAt - TrialEndNotice, now, ct))
+            {
+                sent++;
+            }
+        }
+
         return sent;
+    }
+
+    /// <summary>
+    /// L-64: sent once per trial (its own outbox key), by the same channel rule as reminders; never retried, since a
+    /// missed note about a trial is not worth a second message.
+    /// </summary>
+    private async Task<bool> DeliverTrialEndAsync(User user, long? chatId, Guid trialId, DateTimeOffset scheduledAt, DateTimeOffset now, CancellationToken ct)
+    {
+        var delivery = new ReminderDelivery
+        {
+            Id = Guid.CreateVersion7(now),
+            UserId = user.Id,
+            OccurrenceKey = $"trial-end:{trialId:N}",
+            Slot = ReminderSlot.TrialEnd,
+            ScheduledAt = scheduledAt,
+            Status = DeliveryStatus.Sending,
+            CreatedAt = now,
+        };
+        if (await db.ReminderDeliveries.AnyAsync(d => d.OccurrenceKey == delivery.OccurrenceKey, ct))
+        {
+            return false;
+        }
+
+        db.ReminderDeliveries.Add(delivery);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            db.DiscardChanges();
+            return false;
+        }
+
+        var result = (await SendAsync(user, chatId, TrialEndText, ct, PremiumPath)).Result;
+        delivery.Attempts = 1;
+        (delivery.Status, delivery.SentAt) = result.Outcome switch
+        {
+            SendOutcome.Sent => (DeliveryStatus.Sent, now),
+            SendOutcome.Blocked => (DeliveryStatus.Blocked, (DateTimeOffset?)null),
+            SendOutcome.Uncertain => (DeliveryStatus.Uncertain, null),
+            _ => (DeliveryStatus.Failed, null),
+        };
+        delivery.ProviderMessageId = result.MessageId;
+        delivery.Error = result.Error;
+        await db.SaveChangesAsync(ct);
+        return result.Outcome == SendOutcome.Sent;
     }
 
     /// <summary>A one-off message, so the learner can check that reminders reach them (spec NOT02), by the same rule.</summary>
@@ -79,7 +150,7 @@ public sealed class ReminderService(
     /// Push to every subscribed device first; a device that is gone (404/410) is deleted. The bot writes only when no
     /// device took the message, so a learner with both never gets the same reminder twice.
     /// </summary>
-    private async Task<ReminderSendResult> SendAsync(User user, long? chatId, string text, CancellationToken ct)
+    private async Task<ReminderSendResult> SendAsync(User user, long? chatId, string text, CancellationToken ct, string path = ReviewPath)
     {
         if (push.IsConfigured)
         {
@@ -88,7 +159,7 @@ public sealed class ReminderService(
             foreach (var device in devices)
             {
                 var outcome = await push.SendAsync(new PushTarget(device.Endpoint, device.P256dh, device.Auth),
-                    new PushNotification("Koreyscha", text, "/" + ReviewPath, PushTag), ct);
+                    new PushNotification("Koreyscha", text, "/" + path, PushTag), ct);
                 switch (outcome)
                 {
                     case PushOutcome.Sent:
@@ -112,7 +183,7 @@ public sealed class ReminderService(
 
         if (chatId is { } chat && telegram.IsConfigured)
         {
-            var result = await telegram.SendAsync(chat, text, OpenAppButton, ct, ReviewPath);
+            var result = await telegram.SendAsync(chat, text, path == ReviewPath ? OpenAppButton : "Premium sahifasini ochish", ct, path);
             await RecordBotAccessAsync(user, result, ct);
             return new(result, ReminderChannel.Telegram);
         }

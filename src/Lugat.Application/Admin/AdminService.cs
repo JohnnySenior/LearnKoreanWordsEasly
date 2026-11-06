@@ -277,7 +277,26 @@ public sealed class AdminService(IAppDbContext db, TimeProvider time, IOperation
 
         return new MetricsDto(users.Count, signUps.Count(s => s.Value > today.AddDays(-7)), signUps.Count(s => s.Value > today.AddDays(-30)),
             daily, Retention(1), Retention(7), premiumNow, revenue, units, await PilotAsync(today, ct),
-            await ChannelsAsync(today, ct), await FirstUnitReturnAsync(today, ct));
+            await ChannelsAsync(today, ct), await FirstUnitReturnAsync(today, ct), await TrialsAsync(now, today, ct));
+    }
+
+    /// <summary>L-64: did the trial after the first unit lead to payments, and which locked feature brings learners.</summary>
+    private async Task<TrialMetricsDto> TrialsAsync(DateTimeOffset now, DateOnly today, CancellationToken ct)
+    {
+        var since = now.AddDays(-60);
+        var trials = await db.Subscriptions.Where(s => s.Plan == SubscriptionPlan.Trial && (s.StartsAt >= since || s.EndsAt >= since))
+            .Select(s => new
+            {
+                s.StartsAt,
+                s.EndsAt,
+                Paid = db.Payments.Any(p => p.UserId == s.UserId && p.Status == PaymentStatus.Confirmed && p.PaidAt >= s.StartsAt && p.PaidAt <= s.EndsAt.AddDays(14)),
+            }).ToListAsync(ct);
+        var ended = trials.Where(t => t.EndsAt <= now && t.EndsAt >= since).ToList();
+        var from = today.AddDays(-29);
+        var views = (await db.PremiumViews.Where(v => v.Day >= from).ToListAsync(ct))
+            .GroupBy(v => v.Feature).Select(g => new FeatureViewsDto(g.Key, g.Sum(v => v.Count))).OrderByDescending(v => v.Views).ToList();
+        return new TrialMetricsDto(trials.Count(t => t.StartsAt > now.AddDays(-7)), trials.Count(t => t.StartsAt > now.AddDays(-30)),
+            ended.Count, ended.Count(t => t.Paid), views);
     }
 
     /// <summary>L-63: learners active in the last 30 days by the reminder channel that reaches them now.</summary>

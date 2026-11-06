@@ -150,6 +150,34 @@
     </section>
 }
 
+@if (_m.Trials is { } tr)
+{
+    @* L-64: does the trial after the first unit lead to payments, and which locked feature brings learners to Premium. *@
+    <section class="card">
+        <h2>Premium sinovi</h2>
+        <div class="figures">
+            <div><strong>@tr.Started7</strong><span>7 kunda boshlangan</span></div>
+            <div><strong>@tr.Started30</strong><span>30 kunda boshlangan</span></div>
+            <div><strong>@Share(tr.PaidAfter, tr.Ended60)</strong><span>to‘lagan (@tr.PaidAfter/@tr.Ended60)</span></div>
+        </div>
+        <p class="muted small-text">To‘lagan — oxirgi 60 kunda tugagan sinovlardan sinov boshidan tugaganidan keyin 14 kungacha to‘lov tasdiqlanganlar.</p>
+        @if (tr.Views30.Count > 0)
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Qaysi bo‘limdan Premium’ga kelishdi</th><th class="num">30 kunda</th></tr></thead>
+                    <tbody>
+                        @foreach (var v in tr.Views30)
+                        {
+                            <tr><td>@v.Feature</td><td class="num">@v.Views</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
 <section class="card">
     <h2>Guruhlar: 2-haftada faol</h2>
     @if (_m.Groups.Count == 0)

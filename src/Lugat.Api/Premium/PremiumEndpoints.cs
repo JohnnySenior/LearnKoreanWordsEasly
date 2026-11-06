@@ -26,6 +26,15 @@ public static class PremiumEndpoints
         api.MapGet("/premium/plans", (PremiumService s) => s.Plans());
         api.MapPost("/premium/promo/check", (PromoCheckRequest body, PremiumService s, CancellationToken ct) => s.CheckPromoAsync(body, ct))
             .RequireRateLimiting(AuthEndpoints.RateLimitPolicy); // no guessing codes
+        // L-64: the earned trial after the first unit, and which locked feature brought the learner here.
+        api.MapGet("/premium/trial", (ClaimsPrincipal user, PremiumService s, CancellationToken ct) => s.TrialOfferAsync(user.GetUserId(), ct));
+        api.MapPost("/premium/trial", (ClaimsPrincipal user, PremiumService s, CancellationToken ct) => s.StartTrialAsync(user.GetUserId(), ct))
+            .RequireRateLimiting(AuthEndpoints.RateLimitPolicy);
+        api.MapPost("/premium/views", async (PremiumViewRequest body, PremiumService s, CancellationToken ct) =>
+        {
+            await s.CountViewAsync(body.Feature, ct);
+            return Results.NoContent();
+        });
 
         // The owner's manual payment flow (spec §7.3, §10).
         var admin = app.MapGroup("/api/admin").RequireAuthorization(Policies.Admin);

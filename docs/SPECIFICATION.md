@@ -315,6 +315,7 @@ Qatlamlar: `Lugat.Domain`, `Lugat.Contracts`, `Lugat.Application`, `Lugat.Infras
 - Oylik: **₩5,000**. 3 oylik: **₩12,000**.
 - Narxlar konfiguratsiyada (`Premium:Plans`), kodga yozilmaydi.
 - **JOHNNY TASDIQLAYDI:** yangi foydalanuvchiga bepul premium sinov muddati. Standart `Premium:TrialDays = 0` (o‘chiq).
+- **Ishlab topilgan sinov (L-64):** birinchi bo‘lim testidan o‘tgan, hozir Premium’i yo‘q va hech qachon sinov olmagan o‘quvchi Premium sahifasida o‘zi yoqadi — `Premium:EarnedTrialDays = 3` (0 = o‘chiq). Bir marta; tugashidan ~1 kun oldin bitta xabar (eslatmalar o‘chiq bo‘lsa — yo‘q); tugagach o‘zi to‘xtaydi.
 
 ### 7.3 To‘lov v1 — qo‘lda tasdiqlash (KELISHILGAN: Telegram Stars emas)
 1. Premium sahifasi: tariflar, "Qanday to‘lanadi": bank o‘tkazmasi rekvizitlari (konfiguratsiyadan: `Payments:BankName`, `Payments:AccountNumber`, `Payments:AccountHolder`), promo-kod maydoni (chegirmani darhol ko‘rsatadi), "Chekni yuborish" → Telegram havolasi (`Payments:ContactTelegram`).
@@ -473,7 +474,7 @@ Har bosqich alohida branch/PR, CI yashil bo‘lgach `main` ga. Har bosqich oxiri
 |---|---|---|
 | Q1 | Ilovaning yakuniy nomi va domeni | `Lugat`, Railway domeni |
 | Q2 | Tayyor `trap_uz` bepulmi? | Ha (`Premium:TrapNotesFree = true`) |
-| Q3 | Bepul premium sinov muddati | 0 kun |
+| Q3 | Bepul premium sinov muddati | Ro‘yxatdan o‘tishda 0 kun; birinchi bo‘limdan keyin 3 kun (L-64) |
 | Q4 | Bank rekvizitlari va kontakt Telegram | Konfiguratsiyada bo‘sh; Premium sahifasida "Tez orada" |
 | Q5 | Premium AI kunlik limitlari va oylik byudjet | 60 so‘rov/kun; byudjetni Johnny belgilaydi |
 | Q6 | Eslatma standart vaqti | 20:00 |

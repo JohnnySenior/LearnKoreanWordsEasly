@@ -53,6 +53,24 @@
     }
 </section>
 
+@if (_trialStarted && Wanted is { } opened)
+{
+    <a class="btn btn-primary block" href="@opened.Path"><span>«@opened.Name»ni ochish</span><Icon Name="arrow-right" /></a>
+}
+else if (!_status.IsPremium && _trial is { Eligible: true } trial)
+{
+    @* L-64: earned after the first unit; once per learner, nothing to pay, it simply ends. *@
+    <section class="trial-offer">
+        <b>Premium’ni @trial.Days kun bepul sinab ko‘ring</b>
+        <span class="muted small-text">Birinchi bo‘limni tugatganingiz uchun. Karta yoki to‘lov kerak emas — muddat tugagach o‘zi to‘xtaydi.</span>
+        <button class="btn btn-secondary" disabled="@_trialBusy" @onclick="StartTrialAsync"><span>Sinovni boshlash</span></button>
+        @if (_trialError is not null)
+        {
+            <div class="notice" role="alert">@_trialError</div>
+        }
+    </section>
+}
+
 @if (_plans.BankUz is not null)
 {
     @* L-48: learners in Uzbekistan pay in so‘m to a card there; prices are set on their own. *@
@@ -123,18 +141,39 @@
     /// <summary>The feature the learner wanted (L-64), e.g. "xatolar"; an unknown key shows nothing.</summary>
     [SupplyParameterFromQuery(Name = "f")] public string? F { get; set; }
 
-    private static readonly Dictionary<string, (string Name, string Gives)> Features = new()
+    private static readonly Dictionary<string, (string Name, string Gives, string Path)> Features = new()
     {
-        [PremiumFeatures.Mistakes] = ("Xatolarim", "Adashgan so‘zlaringiz bir joyda turadi va ular bilan alohida mashq qilasiz."),
-        [PremiumFeatures.WeakPoints] = ("Zaif joylar", "Qaysi turdagi xatolar ko‘p uchrashini ko‘rsatadi va shu so‘zlarni qayta mashq qildiradi."),
-        [PremiumFeatures.Ladder] = ("Gap zinapoyasi", "So‘zni gapda to‘ldirasiz, tartiblaysiz va tarjima qilasiz — AI tekshiradi."),
-        [PremiumFeatures.Traps] = ("Tuzoqlar daftari", "So‘zma-so‘z tarjimada adashgan joylaringiz to‘g‘ri varianti bilan saqlanadi."),
-        [PremiumFeatures.Listening] = ("Tinglash", "Qisqa dialoglarni eshitib, savollarga javob berasiz."),
-        [PremiumFeatures.Sentence] = ("O‘z gapingiz", "Gapni o‘zingiz yozasiz, AI xatoni ko‘rsatib tushuntiradi."),
-        [PremiumFeatures.Speaking] = ("Talaffuz", "So‘zni ovoz chiqarib aytasiz, Azure talaffuzingizni baholaydi."),
+        [PremiumFeatures.Mistakes] = ("Xatolarim", "Adashgan so‘zlaringiz bir joyda turadi va ular bilan alohida mashq qilasiz.", "xatolar"),
+        [PremiumFeatures.WeakPoints] = ("Zaif joylar", "Qaysi turdagi xatolar ko‘p uchrashini ko‘rsatadi va shu so‘zlarni qayta mashq qildiradi.", "zaif-joylar"),
+        [PremiumFeatures.Ladder] = ("Gap zinapoyasi", "So‘zni gapda to‘ldirasiz, tartiblaysiz va tarjima qilasiz — AI tekshiradi.", "gap/zinapoya"),
+        [PremiumFeatures.Traps] = ("Tuzoqlar daftari", "So‘zma-so‘z tarjimada adashgan joylaringiz to‘g‘ri varianti bilan saqlanadi.", "tuzoqlar"),
+        [PremiumFeatures.Listening] = ("Tinglash", "Qisqa dialoglarni eshitib, savollarga javob berasiz.", "tinglash"),
+        [PremiumFeatures.Sentence] = ("O‘z gapingiz", "Gapni o‘zingiz yozasiz, AI xatoni ko‘rsatib tushuntiradi.", "gap"),
+        [PremiumFeatures.Speaking] = ("Talaffuz", "So‘zni ovoz chiqarib aytasiz, Azure talaffuzingizni baholaydi.", "sinov/ogzaki"),
     };
 
-    private (string Name, string Gives)? Wanted => F is { } f && Features.TryGetValue(f, out var w) ? w : null;
+    private TrialOfferDto? _trial;
+    private bool _trialBusy;
+    private bool _trialStarted;
+    private string? _trialError;
+
+    private async Task StartTrialAsync()
+    {
+        (_trialBusy, _trialError) = (true, null);
+        var result = await Api.SendJsonAsync<PremiumStatusDto>(HttpMethod.Post, "api/premium/trial");
+        if (result.Value is { } status)
+        {
+            (_status, _trialStarted) = (status, true);
+        }
+        else
+        {
+            _trialError = result.Error;
+        }
+
+        _trialBusy = false;
+    }
+
+    private (string Name, string Gives, string Path)? Wanted => F is { } f && Features.TryGetValue(f, out var w) ? w : null;
 
     private MistakeCountDto? _mistakes;
     private PremiumStatusDto? _status;
@@ -165,9 +204,18 @@
         var status = await Api.GetAsync<PremiumStatusDto>("api/me/premium");
         var plans = await Api.GetAsync<PremiumPlansDto>("api/premium/plans");
         (_status, _plans) = (status.Value, plans.Value);
-        if (_status is { IsPremium: false } && F is PremiumFeatures.Mistakes or PremiumFeatures.WeakPoints)
+        if (_status is { IsPremium: false })
         {
-            _mistakes = (await Api.GetAsync<MistakeCountDto>("api/mistakes/count")).Value;
+            _trial = (await Api.GetAsync<TrialOfferDto>("api/premium/trial")).Value;
+            if (Wanted is not null)
+            {
+                await Api.SendJsonAsync<object>(HttpMethod.Post, "api/premium/views", new PremiumViewRequest(F!));
+            }
+
+            if (F is PremiumFeatures.Mistakes or PremiumFeatures.WeakPoints)
+            {
+                _mistakes = (await Api.GetAsync<MistakeCountDto>("api/mistakes/count")).Value;
+            }
         }
         _error = status.Error ?? plans.Error;
         _plan = _plans?.Plans.FirstOrDefault()?.Plan ?? _plan;

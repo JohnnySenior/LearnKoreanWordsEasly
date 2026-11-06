@@ -705,3 +705,11 @@ Bepul o‘quvchi Premium funksiyani ochganda izohsiz umumiy Premium sahifasiga, 
 - `GET /api/mistakes/count` (kirish kerak, Premium shart emas): faqat `{ count, days }` — xatolar daftaridagi so‘zlar soni, oxirgi 60 kun; so‘zlarning o‘zi qaytmaydi.
 - Premium sahifasi: bepul o‘quvchida `?f=` ma’lum bo‘lsa, tariflardan oldin «Siz «…»ni ochmoqchi edingiz», funksiya nima berishi (bir jumla), `xatolar`/`zaif` uchun «So‘nggi N kunda K ta so‘zda adashgansiz…» (K > 0). Noma’lum kalitda blok yo‘q.
 - Kelishildi (2-qism uchun): natija ekranida eslatma taklifi (L-63) ko‘rinsa, sinov qatori o‘sha ekranda chiqmaydi (bir ekranda ko‘pi bilan ikki taklif: ulashish + bittasi); ro‘yxatdan o‘tishda sinov olgan o‘quvchiga ishlab topilgan sinov berilmaydi («hech qachon Trial bo‘lmagan»).
+
+**2-qism — ishlab topilgan sinov:**
+- `Premium:EarnedTrialDays` (standart 3, 0 = o‘chiq). Shartlar serverda: hozir Premium yo‘q, hech qachon `Plan = Trial` obuna bo‘lmagan (ro‘yxatdan o‘tish sinovi ham), kamida bitta bo‘lim `Passed`.
+- `GET /api/premium/trial` → `{ eligible, days }`; `POST /api/premium/trial` (kirish rate limiti) → `Trial`, `Source = Promo`, `premium:<user>` qulfi ostida. Sinov ishlab turganda qayta bosish o‘sha holatni qaytaradi; aks holda 409 va sabab o‘zbekcha («Sinov muddatidan avval foydalangansiz.», «Sinov birinchi bo‘lim testidan keyin ochiladi.», «Sinov muddati hozir yo‘q.»).
+- Premium sahifasi: tariflardan oldin sinov kartasi; boshlangach holat yangilanadi («Premium faol … (sinov muddati)»), `?f=` bo‘lsa ««…»ni ochish» tugmasi.
+- Bo‘lim testi natijasi: eslatma taklifi (L-63) ko‘rsatilmagan holdagina «Premium’ni 3 kun bepul sinab ko‘ring» havolasi.
+- Tugash xabari: sinov tugashiga 24 soatdan kam (lekin 1 soatdan ko‘p) qolganda, keyin to‘langan obuna bo‘lmasa, bir marta (`ReminderDelivery`, kalit `trial-end:<obuna>`, `Slot = TrialEnd`), eslatma qoidasi bilan (avval push, bo‘lmasa bot); eslatmalar o‘chiq bo‘lsa yuborilmaydi; qayta urinilmaydi. Havola — `/premium`.
+- Ko‘rsatkichlar (Admin → Ko‘rsatkichlar → «Premium sinovi»): 7/30 kunda boshlangan sinovlar; oxirgi 60 kunda tugaganlardan sinov boshidan tugaganidan 14 kun keyingacha to‘lov tasdiqlanganlar; `premium?f=` ko‘rishlari kalit bo‘yicha (30 kun) — yangi `premium_views` jadvali (kalit, Koreya kuni, son; o‘quvchi haqida hech narsa saqlanmaydi; faqat ma’lum kalitlar).

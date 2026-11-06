@@ -96,3 +96,9 @@ public static class PremiumFeatures
         };
     }
 }
+
+/// <summary>L-64: whether the learner may start the earned trial now, and for how many days.</summary>
+public sealed record TrialOfferDto(bool Eligible, int Days);
+
+/// <summary>L-64: a premium page opened for a feature (<see cref="PremiumFeatures"/> key), counted per day.</summary>
+public sealed record PremiumViewRequest(string Feature);

@@ -1551,6 +1551,9 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .premium-wanted h2 { margin: 0; font-size: 18px; line-height: 1.25; }
 .premium-wanted p { margin: 0; }
 .premium-wanted-number { font-size: 14px; }
+.trial-offer { display: grid; gap: 6px; justify-items: start; margin: 12px 0; padding: 14px; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
+.trial-offer .notice { justify-self: stretch; }
+.trial-line { margin-top: 10px; text-align: center; }
 .push-offer { display: grid; gap: 6px; padding: 14px; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
 .push-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .push-offer-actions .btn { min-width: 96px; }

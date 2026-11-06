@@ -23,6 +23,12 @@ public sealed class PremiumOptions
     /// <summary>Free Premium for a new learner (spec §7.2, Q3): 0 = off.</summary>
     public int TrialDays { get; set; }
 
+    /// <summary>
+    /// L-64: free Premium the learner starts themselves after passing their first unit, once per learner and only if
+    /// they never had a trial (the signup one included). 0 = off.
+    /// </summary>
+    public int EarnedTrialDays { get; set; } = 3;
+
     /// <summary>The catalog's checked trap note is free (spec §7.1, Q2).</summary>
     public bool TrapNotesFree { get; set; } = true;
 }
@@ -128,6 +134,102 @@ public sealed class PremiumService(
         var current = running.FirstOrDefault(s => s.StartsAt <= now);
         return new PremiumStatusDto(current is not null, current is null ? null : running.Max(s => s.EndsAt), current?.Plan, code, premium.CurrentValue.TrapNotesFree,
             await Teaching.GroupService.AttachedPromoAsync(db, userId, now, ct));
+    }
+
+    /// <summary>
+    /// L-64: the earned trial is offered when it is on, the learner has no Premium now, never had a trial (the signup
+    /// trial included) and passed at least one unit.
+    /// </summary>
+    public async Task<TrialOfferDto> TrialOfferAsync(Guid userId, CancellationToken ct)
+    {
+        var days = premium.CurrentValue.EarnedTrialDays;
+        return new TrialOfferDto(days > 0 && await TrialProblemAsync(userId, ct) is null, Math.Max(0, days));
+    }
+
+    /// <summary>
+    /// L-64: starts the earned trial. A second tap while it runs returns the same status; otherwise a learner who may
+    /// not start it gets the reason (409).
+    /// </summary>
+    public async Task<PremiumStatusDto> StartTrialAsync(Guid userId, CancellationToken ct)
+    {
+        var days = premium.CurrentValue.EarnedTrialDays;
+        await using var lease = await operations.AcquireAsync("premium:" + userId, ct);
+        var now = time.GetUtcNow();
+        if (await db.Subscriptions.AnyAsync(s => s.UserId == userId && s.Plan == SubscriptionPlan.Trial && s.StartsAt <= now && s.EndsAt > now, ct))
+        {
+            return await StatusAsync(userId, ct);
+        }
+
+        if (days <= 0)
+        {
+            throw new ConflictException("Sinov muddati hozir yo‘q.");
+        }
+
+        if (await TrialProblemAsync(userId, ct) is { } problem)
+        {
+            throw new ConflictException(problem);
+        }
+
+        db.Subscriptions.Add(new Subscription
+        {
+            Id = Guid.CreateVersion7(now),
+            UserId = userId,
+            Plan = SubscriptionPlan.Trial,
+            StartsAt = now,
+            EndsAt = now.AddDays(days),
+            Source = SubscriptionSource.Promo,
+            CreatedAt = now,
+        });
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Earned trial started for {UserId}: {Days} days", userId, days);
+        return await StatusAsync(userId, ct);
+    }
+
+    /// <summary>L-64: counts one Premium page view for a known feature key; anything else is ignored.</summary>
+    public async Task CountViewAsync(string? feature, CancellationToken ct)
+    {
+        if (feature is null || !PremiumFeatures.All.Contains(feature))
+        {
+            return;
+        }
+
+        var day = Domain.KoreaTime.Day(time.GetUtcNow());
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            if (await db.PremiumViews.Where(v => v.Feature == feature && v.Day == day).ExecuteUpdateAsync(v => v.SetProperty(x => x.Count, x => x.Count + 1), ct) > 0)
+            {
+                return;
+            }
+
+            db.PremiumViews.Add(new PremiumView { Feature = feature, Day = day, Count = 1 });
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return;
+            }
+            catch (DbUpdateException)
+            {
+                // Another view made today's row first: count on it.
+                db.DiscardChanges();
+            }
+        }
+    }
+
+    private async Task<string?> TrialProblemAsync(Guid userId, CancellationToken ct)
+    {
+        if (await db.Subscriptions.AnyAsync(s => s.UserId == userId && s.Plan == SubscriptionPlan.Trial, ct))
+        {
+            return "Sinov muddatidan avval foydalangansiz.";
+        }
+
+        if (await IsPremiumAsync(userId, ct))
+        {
+            return "Premium allaqachon faol.";
+        }
+
+        return await db.UnitProgress.AnyAsync(p => p.UserId == userId && p.Status == Domain.Catalog.UnitProgressStatus.Passed, ct)
+            ? null
+            : "Sinov birinchi bo‘lim testidan keyin ochiladi.";
     }
 
     public PremiumPlansDto Plans()
