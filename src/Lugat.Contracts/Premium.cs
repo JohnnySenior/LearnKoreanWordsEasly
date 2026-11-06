@@ -59,3 +59,40 @@ public sealed record RefundPaymentRequest(string? Note);
 public sealed record CreatePromoCodeRequest(string Code, int DiscountPercent, int? CommissionPercent, Guid? TeacherUserId, DateTimeOffset? ValidUntil);
 
 public sealed record PromoCodeDto(Guid Id, string Code, int DiscountPercent, int CommissionPercent, string? Teacher, bool IsActive, DateTimeOffset? ValidUntil, int Payments);
+
+/// <summary>L-64: how many words the learner missed lately, for the Premium page; never the words themselves.</summary>
+public sealed record MistakeCountDto(int Count, int Days);
+
+/// <summary>
+/// L-64: which Premium feature a learner wanted, so the Premium page can say what it gives. A view key, not a rule:
+/// whether the learner has Premium is decided by the server only (spec §0.6).
+/// </summary>
+public static class PremiumFeatures
+{
+    public const string Mistakes = "xatolar";
+    public const string WeakPoints = "zaif";
+    public const string Ladder = "zinapoya";
+    public const string Traps = "tuzoqlar";
+    public const string Listening = "tinglash";
+    public const string Sentence = "gap";
+    public const string Speaking = "talaffuz";
+
+    public static readonly IReadOnlyList<string> All = [Mistakes, WeakPoints, Ladder, Traps, Listening, Sentence, Speaking];
+
+    /// <summary>The feature a refused API path belongs to ("/api/mistakes" → "xatolar"); null when it is none of them.</summary>
+    public static string? KeyOf(string? path)
+    {
+        var p = (path ?? "").Split('?', '#')[0].TrimEnd('/').ToLowerInvariant();
+        static bool Under(string p, string root) => p == root || p.StartsWith(root + "/", StringComparison.Ordinal);
+        return p switch
+        {
+            _ when Under(p, "/api/mistakes") => Mistakes,
+            _ when Under(p, "/api/weak-points") => WeakPoints,
+            _ when Under(p, "/api/ladders") => Ladder,
+            _ when Under(p, "/api/traps") => Traps,
+            _ when Under(p, "/api/listening") => Listening,
+            _ when Under(p, "/api/practice") => Sentence,
+            _ => null,
+        };
+    }
+}

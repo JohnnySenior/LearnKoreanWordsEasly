@@ -90,6 +90,11 @@ public static class MeEndpoints
             return TypedResults.NoContent();
         }).RequireRateLimiting(PushRateLimitPolicy);
 
+        // L-64: only the number, for the Premium page a free learner sees; the notebook itself stays Premium.
+        app.MapGet("/api/mistakes/count", async (ClaimsPrincipal user, Application.Mistakes.MistakeService s, CancellationToken ct) =>
+                new MistakeCountDto((await s.GetAsync(user.GetUserId(), ct)).Words.Count, Application.Mistakes.MistakeService.Days))
+            .RequireAuthorization();
+
         // The mistakes notebook (D-41).
         app.MapGet("/api/mistakes", (ClaimsPrincipal user, Application.Mistakes.MistakeService s, CancellationToken ct) => s.GetAsync(user.GetUserId(), ct))
             .RequireAuthorization().RequirePremium();

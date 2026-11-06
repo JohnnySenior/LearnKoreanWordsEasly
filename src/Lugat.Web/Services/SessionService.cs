@@ -46,7 +46,8 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
     public event Action? Changed;
 
     /// <summary>A Premium feature was asked for without Premium (403 "premium-required", spec §11): show the Premium page.</summary>
-    public event Action? PremiumRequired;
+    /// <summary>A Premium feature was refused; the argument is its key (PremiumFeatures.KeyOf), or null.</summary>
+    public event Action<string?>? PremiumRequired;
 
     public Task<SessionState> EnsureSignedInAsync()
     {
@@ -332,7 +333,7 @@ public sealed class SessionService(HttpClient http, BrowserInterop browser)
             var (detail, type) = await ReadProblemAsync(response, cts.Token);
             if (type == "premium-required")
             {
-                PremiumRequired?.Invoke();
+                PremiumRequired?.Invoke(PremiumFeatures.KeyOf(response.RequestMessage?.RequestUri?.AbsolutePath));
             }
 
             return new ApiResult<T>(default, (int)response.StatusCode, detail ?? "Kutilmagan xato yuz berdi. Qayta urinib ko‘ring.");

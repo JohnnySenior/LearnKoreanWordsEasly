@@ -534,3 +534,10 @@ Bosqichlar spec §13 bo‘yicha.
 **Kartochka: baholashda bo‘sh qizil chiziq (2026-11-05):**
 - [x] Johnny: «Eslay olmadim / Qiynalib esladim / Oson esladim» bosilganda bir lahzaga bo‘sh qizil quti va «Qayta yuborish» chiqib yo‘qolardi. Sabab: javob yuborilayotgan paytda ham «yuborilmadi» bloki ko‘rsatilardi (`_pending` bor, xato matni yo‘q).
 - [x] `Practice.razor`: blok faqat yuborish muvaffaqiyatsiz bo‘lganda (`_sending` tugagach); matnsiz bo‘lsa standart «Javob yuborilmadi…». Chromium: 2 s sekinlatilgan javobda quti yo‘q (0), uzilgan javobda «Qayta yuborish» va xato matni chiqadi.
+
+**«Nega Premium?» — kontekstli Premium oynasi (L-64, 1-qism, 2026-11-06):**
+- [x] Rad etilgan Premium so‘rovi → `premium?f=<kalit>`; Mashqlar’dagi qulfli qatorlar ham kalit bilan (Talaffuz — `talaffuz`).
+- [x] `GET /api/mistakes/count` — faqat son va kunlar (Premium shart emas); daftar o‘zi Premium bo‘lib qoladi.
+- [x] Premium sahifasida «Siz «Xatolarim»ni ochmoqchi edingiz», bir jumla va o‘z xatolar soni; noma’lum kalitda blok yo‘q.
+- [x] Testlar: 12 ta `KeyOf` (Application), 2 ta API (bepul o‘quvchiga son, JSON’da so‘z yo‘q, daftar 403; mehmonga 401). Chromium 360px yorug‘/qorong‘i: Mashqlar → Xatolarim → blok va son; scroll yo‘q.
+- [ ] 2-qism: ishlab topilgan 3 kunlik sinov, tugash eslatmasi, ko‘rsatkichlar.
