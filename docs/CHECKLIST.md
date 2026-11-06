@@ -540,4 +540,5 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] `GET /api/mistakes/count` — faqat son va kunlar (Premium shart emas); daftar o‘zi Premium bo‘lib qoladi.
 - [x] Premium sahifasida «Siz «Xatolarim»ni ochmoqchi edingiz», bir jumla va o‘z xatolar soni; noma’lum kalitda blok yo‘q.
 - [x] Testlar: 12 ta `KeyOf` (Application), 2 ta API (bepul o‘quvchiga son, JSON’da so‘z yo‘q, daftar 403; mehmonga 401). Chromium 360px yorug‘/qorong‘i: Mashqlar → Xatolarim → blok va son; scroll yo‘q.
-- [ ] 2-qism: ishlab topilgan 3 kunlik sinov, tugash eslatmasi, ko‘rsatkichlar.
+- [x] 2-qism: ishlab topilgan 3 kunlik sinov (`Premium:EarnedTrialDays`), Premium sahifasidagi karta va «…ni ochish», natija ekranidagi havola (eslatma taklifi bo‘lmasa), tugashdan 1 kun oldin bitta xabar, «Premium sinovi» ko‘rsatkichlari va `premium_views` (migratsiya).
+- [x] 2-qism testlari: 6 ta API (birinchi bo‘limdan keyin ochiladi, 3 kun, qayta bosish, tugagach 403 va qayta berilmaydi; ro‘yxatdan o‘tish sinovi olganga yo‘q; 0 = o‘chiq; xabar bir marta va `/premium`; eslatma o‘chiq yoki to‘lov bo‘lsa xabar yo‘q; ko‘rishlar faqat ma’lum kalitlar). Chromium 360px yorug‘/qorong‘i: karta, boshlash → «Premium faol (sinov muddati)» va ««Xatolarim»ni ochish»; scroll yo‘q.

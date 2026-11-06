@@ -154,3 +154,16 @@ public static class Money
         ? $"{amount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(',', ' ')} so‘m"
         : $"₩{amount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)}";
 }
+
+/// <summary>
+/// L-64: the Premium page opened for a locked feature (<c>premium?f=xatolar</c>), counted per feature and Korea day,
+/// so the admin sees which feature brings learners to Premium. Nothing about the learner is stored.
+/// </summary>
+public sealed class PremiumView
+{
+    public string Feature { get; set; } = "";
+
+    public DateOnly Day { get; set; }
+
+    public int Count { get; set; }
+}

@@ -74,7 +74,16 @@ public sealed record MetricsDto(
     IReadOnlyList<UnitPassRateDto> Units,
     IReadOnlyList<GroupPilotDto> Groups,
     ReminderChannelsDto? Channels = null,
-    IReadOnlyList<FirstUnitReturnDto>? FirstUnitReturn = null);
+    IReadOnlyList<FirstUnitReturnDto>? FirstUnitReturn = null,
+    TrialMetricsDto? Trials = null);
+
+/// <summary>
+/// L-64: trials started in the last 7 and 30 days; of the trials that ended in the last 60 days, how many learners
+/// paid between the trial's start and 14 days after its end; and Premium page views per locked feature in 30 days.
+/// </summary>
+public sealed record TrialMetricsDto(int Started7, int Started30, int Ended60, int PaidAfter, IReadOnlyList<FeatureViewsDto> Views30);
+
+public sealed record FeatureViewsDto(string Feature, int Views);
 
 /// <summary>
 /// L-63: of the learners active in the last 30 days, how a reminder can reach them now. Reminders off counts as none;

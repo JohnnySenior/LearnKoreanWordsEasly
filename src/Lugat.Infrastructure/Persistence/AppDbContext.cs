@@ -33,6 +33,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<SourceVisit> SourceVisits => Set<SourceVisit>();
 
+    public DbSet<Domain.Premium.PremiumView> PremiumViews => Set<Domain.Premium.PremiumView>();
+
     public DbSet<Domain.Teaching.Group> Groups => Set<Domain.Teaching.Group>();
 
     public DbSet<Domain.Teaching.GroupMember> GroupMembers => Set<Domain.Teaching.GroupMember>();
@@ -141,6 +143,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(u => u.Version).IsRowVersion();
             e.HasOne<Domain.Premium.PromoCode>().WithMany().HasForeignKey(u => u.PromoCodeId).OnDelete(DeleteBehavior.Restrict);
             e.Property(u => u.SignupSource).HasMaxLength(Application.Users.SourceService.MaxLength);
+        });
+
+        b.Entity<Domain.Premium.PremiumView>(e =>
+        {
+            e.ToTable("premium_views");
+            e.HasKey(x => new { x.Feature, x.Day });
+            e.Property(x => x.Feature).HasMaxLength(16);
         });
 
         b.Entity<SourceVisit>(e =>

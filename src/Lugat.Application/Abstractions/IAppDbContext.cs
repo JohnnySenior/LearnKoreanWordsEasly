@@ -18,6 +18,8 @@ public interface IAppDbContext
 
     DbSet<Domain.Premium.Subscription> Subscriptions { get; }
 
+    DbSet<Domain.Premium.PremiumView> PremiumViews { get; }
+
     DbSet<Domain.Premium.Payment> Payments { get; }
 
     DbSet<Domain.Premium.PromoCode> PromoCodes { get; }

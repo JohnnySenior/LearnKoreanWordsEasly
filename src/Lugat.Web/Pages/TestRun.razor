@@ -107,6 +107,11 @@
             {
                 <p class="muted small-text" role="status">@_offerMessage</p>
             }
+            else if (_offer == Offer.Hidden && _trial is { Eligible: true } trial)
+            {
+                @* L-64: only when the reminder offer is not shown, so the screen asks for at most one thing besides sharing. *@
+                <p class="trial-line small-text"><a href="premium">Premium’ni @trial.Days kun bepul sinab ko‘ring</a></p>
+            }
             @if (result.Share is { } share)
             {
                 @* L-59: optional and second to "Keyingi bo‘lim"; the card says only what is true (the unit was finished). *@
@@ -554,6 +559,7 @@ else
     private enum Offer { Unchecked, Hidden, Shown, Answered }
 
     private Offer _offer;
+    private TrialOfferDto? _trial;
     private bool _offerBusy;
     private string? _offerMessage;
 
@@ -573,6 +579,9 @@ else
             || (await Api.GetAsync<PreferencesDto>("api/me/preferences")).Value is not { PushAvailable: true }
             || await Push.StateAsync() != "ready")
         {
+            // L-64: the earned trial line takes the place of the reminder offer.
+            _trial = (await Api.GetAsync<TrialOfferDto>("api/premium/trial")).Value;
+            StateHasChanged();
             return;
         }
 

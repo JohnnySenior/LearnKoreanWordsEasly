@@ -994,6 +994,23 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("payments", (string)null);
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Premium.PremiumView", b =>
+                {
+                    b.Property<string>("Feature")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Feature", "Day");
+
+                    b.ToTable("premium_views", (string)null);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Premium.PromoCode", b =>
                 {
                     b.Property<Guid>("Id")

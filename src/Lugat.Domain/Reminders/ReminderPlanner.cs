@@ -7,6 +7,9 @@ public enum ReminderSlot
 
     /// <summary>The daily reminder at the learner's time, on the days they chose (spec §8).</summary>
     Daily,
+
+    /// <summary>L-64: once, about a day before a Premium trial ends.</summary>
+    TrialEnd,
 }
 
 /// <summary>Days a reminder may come. Stored as flags; every day by default (spec §8).</summary>
