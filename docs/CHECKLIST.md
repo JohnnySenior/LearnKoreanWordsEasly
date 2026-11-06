@@ -542,3 +542,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: 12 ta `KeyOf` (Application), 2 ta API (bepul o‘quvchiga son, JSON’da so‘z yo‘q, daftar 403; mehmonga 401). Chromium 360px yorug‘/qorong‘i: Mashqlar → Xatolarim → blok va son; scroll yo‘q.
 - [x] 2-qism: ishlab topilgan 3 kunlik sinov (`Premium:EarnedTrialDays`), Premium sahifasidagi karta va «…ni ochish», natija ekranidagi havola (eslatma taklifi bo‘lmasa), tugashdan 1 kun oldin bitta xabar, «Premium sinovi» ko‘rsatkichlari va `premium_views` (migratsiya).
 - [x] 2-qism testlari: 6 ta API (birinchi bo‘limdan keyin ochiladi, 3 kun, qayta bosish, tugagach 403 va qayta berilmaydi; ro‘yxatdan o‘tish sinovi olganga yo‘q; 0 = o‘chiq; xabar bir marta va `/premium`; eslatma o‘chiq yoki to‘lov bo‘lsa xabar yo‘q; ko‘rishlar faqat ma’lum kalitlar). Chromium 360px yorug‘/qorong‘i: karta, boshlash → «Premium faol (sinov muddati)» va ««Xatolarim»ni ochish»; scroll yo‘q.
+
+**/soz sahifasida tuzoq bloki va manba (L-65, 2026-11-06):**
+- [x] «O‘zbeklar shu yerda adashadi»: tasdiqlangan sahnada savol (ikki variant, tasodifiy tartib) + izoh; sahna tasdiqlanmagan bo‘lsa faqat izoh; tuzoqsiz so‘zda blok va skript yo‘q.
+- [x] `?src=ig` → CTA, `/sinab` va logotip havolasida `soz-ig`; noto‘g‘ri/uzun `src` → `soz`; canonical’da `src` yo‘q; 301 da `src` saqlanadi.
+- [x] Description’da izohning 1-jumlasi, ikki nuqta yo‘q.
+- [x] Testlar: 4 ta API (`SeoPageTests`), 1 ta JS (so‘z sahifasida `#start` yo‘q — `/api/visits` ga so‘rov ham, saqlangan manba ham yo‘q; savol ishlaydi).
+- [ ] 2 haftadan keyin: Admin → Manbalar’da `soz` va `soz-ig` konversiyasi; Search Console’da `/soz/*` CTR.

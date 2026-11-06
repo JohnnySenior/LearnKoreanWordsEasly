@@ -41,7 +41,7 @@ public static class SeoEndpoints
     {
         var baseUrl = (app.ServiceProvider.GetRequiredService<IConfiguration>()["Seo:BaseUrl"] ?? "https://koreyscha.com").TrimEnd('/');
 
-        app.MapGet("/soz/{slug}", async (string slug, HttpContext http, SeoService seo, CancellationToken ct) =>
+        app.MapGet("/soz/{slug}", async (string slug, string? src, HttpContext http, SeoService seo, CancellationToken ct) =>
         {
             var word = await seo.WordAsync(slug, ct);
             if (word is null)
@@ -49,14 +49,17 @@ public static class SeoEndpoints
                 var lower = slug.ToLowerInvariant();
                 if (lower != slug && await seo.WordAsync(lower, ct) is not null)
                 {
-                    return Results.Redirect($"/soz/{Uri.EscapeDataString(lower)}", permanent: true);
+                    return Results.Redirect($"/soz/{Uri.EscapeDataString(lower)}{http.Request.QueryString}", permanent: true);
                 }
 
                 return NotFound(http);
             }
 
+            // L-65: "soz-ig" from /soz/mul?src=ig (an Instagram DM link), else "soz" — the /sinab rule. The page never
+            // counts a visit itself: the app counts it once when the visitor follows a link with this src.
+            var source = string.IsNullOrWhiteSpace(src) ? "soz" : SourceService.Normalize("soz-" + src.Trim()) ?? "soz";
             http.Response.Headers.CacheControl = CacheControl;
-            return Results.Content(WordPage(word, baseUrl), "text/html; charset=utf-8");
+            return Results.Content(WordPage(word, baseUrl, source), "text/html; charset=utf-8");
         }).AllowAnonymous();
 
         app.MapGet("/sinab", async (string? src, HttpContext http, SeoService seo, IntroductionService lessons, CancellationToken ct) =>
@@ -130,13 +133,31 @@ public static class SeoEndpoints
         return trimmed.Length > 0 && trimmed[^1] is '.' or '?' or '!' or '…' or '。' ? trimmed : trimmed + ".";
     }
 
-    private static string WordPage(SeoWord w, string baseUrl)
+    /// <summary>The first sentence of a note: "Bu so‘z… Ikkinchisi." → "Bu so‘z…"; the whole text when it has one.</summary>
+    private static string FirstSentence(string text)
+    {
+        var t = text.Trim();
+        for (var i = 0; i < t.Length - 1; i++)
+        {
+            if (t[i] is '.' or '!' or '?' && char.IsWhiteSpace(t[i + 1]))
+            {
+                return t[..(i + 1)];
+            }
+        }
+
+        return t;
+    }
+
+    private static string WordPage(SeoWord w, string baseUrl, string source)
     {
         var url = $"{baseUrl}/soz/{w.Slug}";
         var reading = string.IsNullOrWhiteSpace(w.Romanization) ? "" : $" ({w.Romanization})";
         var title = $"{w.Word}{reading} — o‘zbekcha tarjimasi va misol | Koreyscha";
-        var description = Clip($"{w.Word}{reading} — {Sentence(w.Translation)} Koreyscha so‘zning o‘zbekcha tarjimasi"
-            + (w.ExampleKo is null ? "." : $" va misol: {Sentence(w.ExampleKo)}") + " Koreyscha ilovasida bepul yodlang.", 160);
+        // With a trap its first sentence follows the translation (L-65): it is what sets the page apart in a search result.
+        var description = Clip(w.Trap is { } trap
+            ? $"{w.Word}{reading} — {Sentence(w.Translation)} {Sentence(FirstSentence(trap.Note))} Koreyscha ilovasida bepul yodlang."
+            : $"{w.Word}{reading} — {Sentence(w.Translation)} Koreyscha so‘zning o‘zbekcha tarjimasi"
+                + (w.ExampleKo is null ? "." : $" va misol: {Sentence(w.ExampleKo)}") + " Koreyscha ilovasida bepul yodlang.", 160);
         var jsonLd = JsonSerializer.Serialize(new Dictionary<string, object?>
         {
             ["@context"] = "https://schema.org",
@@ -177,8 +198,21 @@ public static class SeoEndpoints
             body.Append("</section>");
         }
 
-        body.Append($"<a class=\"cta\" href=\"/bolimlar/{w.UnitId}?src=soz\">Ilovada yodlashni boshlash →</a>");
-        body.Append("<a class=\"try\" href=\"/sinab?src=soz\">Kirmasdan 1 daqiqada sinab ko‘rish →</a>");
+        var question = w.Trap is { Wrong: { } wrong, Right: { } right };
+        if (w.Trap is { } t)
+        {
+            // L-65: the question first, so the note does not give the answer away; the note stays visible and indexed.
+            body.Append("<section class=\"trap-note\"><h2>O‘zbeklar shu yerda adashadi</h2>");
+            if (question)
+            {
+                TrapQuestion(body, null, t.Cue, t.Wrong!, t.Right!, null);
+            }
+
+            body.Append($"<p class=\"trap-text\">{E(t.Note)}</p></section>");
+        }
+
+        body.Append($"<a class=\"cta\" href=\"/bolimlar/{w.UnitId}?src={E(source)}\">Ilovada yodlashni boshlash →</a>");
+        body.Append($"<a class=\"try\" href=\"/sinab?src={E(source)}\">Kirmasdan 1 daqiqada sinab ko‘rish →</a>");
         body.Append($"<p class=\"note\">{E(w.Level.ToString())} darajaning {w.UnitNumber}-bo‘limi: 25 ta so‘z kartochka, mashq va test bilan. Telegram yoki Google orqali bepul kirasiz.</p>");
         body.Append("</article>");
         if (w.Related.Count > 0)
@@ -192,7 +226,42 @@ public static class SeoEndpoints
             body.Append("</ul></section>");
         }
 
-        return Page(title, description, url, body.ToString(), jsonLd);
+        return Page(title, description, url, body.ToString(), jsonLd, script: question ? "/js/sinab.js" : null, brandSource: source);
+    }
+
+    /// <summary>
+    /// One "Qaysi biri to‘g‘ri?" question (L-58, L-65), wired by sinab.js: the two Korean lines in random order. The
+    /// right answer reaches the page on purpose: nothing is scored or saved, it only shows the idea. Without a label the
+    /// word page's own heading names the word; without a note the "why" shows only the right line.
+    /// </summary>
+    private static void TrapQuestion(StringBuilder body, string? label, string? cue, string wrong, string right, string? why)
+    {
+        body.Append("<div class=\"trap\">");
+        if (label is not null)
+        {
+            body.Append($"<p class=\"label\">{label}</p>");
+        }
+
+        if (!string.IsNullOrWhiteSpace(cue))
+        {
+            body.Append($"<p class=\"cue\">{E(cue)}</p>");
+        }
+
+        body.Append("<p class=\"ask\">Qaysi biri to‘g‘ri?</p><div class=\"options\">");
+        var options = new[] { (Text: wrong, Right: false), (Text: right, Right: true) };
+        if (Random.Shared.Next(2) == 1)
+        {
+            Array.Reverse(options);
+        }
+
+        foreach (var o in options)
+        {
+            body.Append($"<button type=\"button\" class=\"opt\" lang=\"ko\" data-right=\"{(o.Right ? "1" : "0")}\">{E(o.Text)}</button>");
+        }
+
+        body.Append("</div><p class=\"verdict\" aria-live=\"polite\" hidden></p>");
+        body.Append($"<div class=\"why\" hidden><p class=\"right\" lang=\"ko\">✓ {E(right)}</p>{(why is null ? "" : $"<p>{E(why)}</p>")}</div>");
+        body.Append("</div>");
     }
 
     private static string ListPage(SeoListPage list, string baseUrl)
@@ -268,29 +337,7 @@ public static class SeoEndpoints
             body.Append("<p class=\"intro\">O‘zbekcha o‘ylab gapirsangiz, koreyschada qayerda adashasiz? Ikkala gapdan to‘g‘risini tanlang.</p>");
             foreach (var q in traps)
             {
-                body.Append("<div class=\"trap\">");
-                body.Append($"<p class=\"label\"><span lang=\"ko\">{E(q.Word)}</span> — {E(q.Translation)}</p>");
-                if (!string.IsNullOrWhiteSpace(q.Cue))
-                {
-                    body.Append($"<p class=\"cue\">{E(q.Cue)}</p>");
-                }
-
-                body.Append("<p class=\"ask\">Qaysi biri to‘g‘ri?</p><div class=\"options\">");
-                // The right answer reaches the page on purpose (L-58): nothing is scored or saved, it only shows the idea.
-                var options = new[] { (Text: q.Wrong, Right: false), (Text: q.Right, Right: true) };
-                if (Random.Shared.Next(2) == 1)
-                {
-                    Array.Reverse(options);
-                }
-
-                foreach (var o in options)
-                {
-                    body.Append($"<button type=\"button\" class=\"opt\" lang=\"ko\" data-right=\"{(o.Right ? "1" : "0")}\">{E(o.Text)}</button>");
-                }
-
-                body.Append("</div><p class=\"verdict\" aria-live=\"polite\" hidden></p>");
-                body.Append($"<div class=\"why\" hidden><p class=\"right\" lang=\"ko\">✓ {E(q.Right)}</p><p>{E(q.Why)}</p></div>");
-                body.Append("</div>");
+                TrapQuestion(body, $"<span lang=\"ko\">{E(q.Word)}</span> — {E(q.Translation)}", q.Cue, q.Wrong, q.Right, q.Why);
             }
 
             body.Append($"<p class=\"score\" id=\"score\" data-total=\"{traps.Count}\" aria-live=\"polite\" hidden></p></section>");
@@ -301,7 +348,7 @@ public static class SeoEndpoints
         return Page(title, description, $"{baseUrl}/sinab", body.ToString(), null, script: "/js/sinab.js");
     }
 
-    private static string Page(string title, string description, string? canonical, string body, string? jsonLd, bool noIndex = false, string? script = null)
+    private static string Page(string title, string description, string? canonical, string body, string? jsonLd, bool noIndex = false, string? script = null, string brandSource = "soz")
     {
         var head = new StringBuilder();
         head.Append($"<title>{E(title)}</title>");
@@ -336,7 +383,7 @@ public static class SeoEndpoints
             <style>{{Css}}</style>
             </head>
             <body>
-            <header class="top"><a class="brand" href="/?src=soz"><span class="mark" lang="ko" aria-hidden="true">ㅋ</span>Koreyscha</a><a href="/soz">Barcha so‘zlar</a></header>
+            <header class="top"><a class="brand" href="/?src={{E(brandSource)}}"><span class="mark" lang="ko" aria-hidden="true">ㅋ</span>Koreyscha</a><a href="/soz">Barcha so‘zlar</a></header>
             <main>{{body}}</main>
             {{(script is null ? "" : $"<script type=\"module\" src=\"{script}\"></script>")}}
             <footer>So‘zlar ro‘yxati: <span lang="ko">국립국어원 「한국어 학습용 어휘 목록」</span> (KOGL 1-tur). Tarjima va misollar muharrir tomonidan tekshirilgan.</footer>
@@ -408,6 +455,10 @@ public static class SeoEndpoints
         .opt.right{box-shadow:inset 0 0 0 2px var(--ink)}.opt.wrong{text-decoration:line-through;opacity:.7}
         .verdict{font-weight:700;margin:12px 0 0}.why{background:var(--accent-soft);border-radius:14px;padding:10px 12px;margin:10px 0 0}.why p{margin:4px 0}.why .right{font-size:19px;font-weight:700}
         .score{font-size:20px;font-weight:700;margin:4px 4px 0}
+        .trap-note{margin:18px 0 0}.trap-note h2{margin:0 0 6px;font-size:17px;color:var(--accent-ink)}
+        .trap-note .trap{background:var(--surface);box-shadow:none;border-radius:14px;padding:14px;margin:8px 0 0}
+        .trap-note .opt{background:var(--card);min-height:48px}
+        .trap-text{background:var(--accent-soft);border-radius:14px;padding:10px 12px;margin:10px 0 0}
         button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
         @media (prefers-reduced-motion:reduce){.cta,.related li a,.words li a,.controls button,.opt{transition:none}.frag{animation:none}}
         """;

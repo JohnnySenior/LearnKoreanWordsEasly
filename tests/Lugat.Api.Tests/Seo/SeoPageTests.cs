@@ -169,6 +169,109 @@ public class SeoPageTests
         Assert.Contains("Disallow: /admin", robots);
     }
 
+    private const string Note = "Bu yerda o‘zbekcha «suv ichmoq» deb so‘zma-so‘z aytiladi. Koreyschada 마시다 bilan aytiladi.";
+
+    /// <summary>물 with a confirmed trap scene, 학교 with only the note and an unconfirmed scene, 사랑 with none (L-65).</summary>
+    private static Task SetupTrapsAsync(ApiFactory factory) => SetupAsync(factory, (_, words) =>
+    {
+        (words[3].TrapUz, words[3].TrapCue, words[3].TrapWrong, words[3].TrapRight) = (Note, "Do‘stingizga aytasiz:", "물을 먹어요 <틀림>", "물을 마셔요");
+        (words[4].TrapUz, words[4].TrapWrong, words[4].TrapRight, words[4].TrapScenePending) = ("Maktab haqida izoh.", "학교 A", "학교 B", true);
+    });
+
+    [Fact]
+    public async Task A_word_with_a_confirmed_trap_shows_the_question_and_the_note_and_loads_the_trap_script()
+    {
+        await using var factory = new ApiFactory();
+        await SetupTrapsAsync(factory);
+        var html = await factory.CreateClient().GetStringAsync("/soz/mul");
+
+        Assert.Contains("<section class=\"trap-note\"><h2>O‘zbeklar shu yerda adashadi</h2>", html);
+        Assert.Contains($"<p class=\"trap-text\">{System.Net.WebUtility.HtmlEncode(Note)}</p>", html);
+        Assert.Contains("<p class=\"ask\">Qaysi biri to‘g‘ri?</p>", html);
+        Assert.Contains("data-right=\"0\">물을 먹어요 &lt;틀림&gt;</button>", html);
+        Assert.Contains("data-right=\"1\">물을 마셔요</button>", html);
+        Assert.Contains("<p class=\"cue\">Do‘stingizga aytasiz:</p>", html);
+        Assert.Contains("<script type=\"module\" src=\"/js/sinab.js\"></script>", html);
+        // The block sits after the example and before the call to action; the note is not repeated in the answer.
+        Assert.True(html.IndexOf("trap-note", StringComparison.Ordinal) < html.IndexOf("class=\"cta\"", StringComparison.Ordinal));
+        Assert.Equal(1, CountOf(html[html.IndexOf("<main>", StringComparison.Ordinal)..], System.Net.WebUtility.HtmlEncode("«suv ichmoq»"))); // the head has it in the description
+        // No #start and no taster data: sinab.js wires the question only and counts no visit.
+        Assert.DoesNotContain("id=\"start\"", html);
+        Assert.DoesNotContain("taster-data", html);
+    }
+
+    [Fact]
+    public async Task An_unconfirmed_scene_shows_only_the_note_and_a_word_without_a_trap_shows_nothing()
+    {
+        await using var factory = new ApiFactory();
+        await SetupTrapsAsync(factory);
+        var client = factory.CreateClient();
+
+        var pending = await client.GetStringAsync("/soz/hakgyo");
+        Assert.Contains("<p class=\"trap-text\">Maktab haqida izoh.</p>", pending); // checked with the word, as on the card
+        Assert.DoesNotContain("class=\"trap\"", pending);
+        Assert.DoesNotContain("학교 A", pending);
+        Assert.DoesNotContain("sinab.js", pending);
+
+        var none = await client.GetStringAsync("/soz/sarang");
+        Assert.DoesNotContain("class=\"trap-note\"", none);
+        Assert.DoesNotContain("adashadi", none);
+        Assert.DoesNotContain("sinab.js", none);
+    }
+
+    [Fact]
+    public async Task The_src_of_the_link_reaches_every_way_into_the_app_but_not_the_canonical()
+    {
+        await using var factory = new ApiFactory();
+        await SetupTrapsAsync(factory);
+        var client = factory.CreateClient();
+
+        var ig = await client.GetStringAsync("/soz/mul?src=IG");
+        Assert.Contains($"href=\"/bolimlar/{ApiFactory.Unit(1)}?src=soz-ig\"", ig);
+        Assert.Contains("href=\"/sinab?src=soz-ig\"", ig);
+        Assert.Contains("href=\"/?src=soz-ig\"", ig);
+        Assert.Contains("<link rel=\"canonical\" href=\"https://koreyscha.com/soz/mul\">", ig);
+        Assert.Contains("<meta property=\"og:url\" content=\"https://koreyscha.com/soz/mul\">", ig);
+
+        foreach (var bad in new[] { "<script>", new string('a', 40), "  " })
+        {
+            var html = await client.GetStringAsync("/soz/mul?src=" + Uri.EscapeDataString(bad));
+            Assert.Contains($"href=\"/bolimlar/{ApiFactory.Unit(1)}?src=soz\"", html);
+            Assert.Contains("href=\"/?src=soz\"", html);
+            Assert.DoesNotContain("<script>", html);
+        }
+
+        // An upper-case address keeps the src on its way to the lasting one.
+        var redirect = await factory.CreateClient(new() { AllowAutoRedirect = false }).GetAsync("/soz/MUL?src=ig");
+        Assert.Equal(HttpStatusCode.MovedPermanently, redirect.StatusCode);
+        Assert.Equal("/soz/mul?src=ig", redirect.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task The_description_carries_the_first_sentence_of_the_trap_without_a_double_full_stop()
+    {
+        await using var factory = new ApiFactory();
+        await SetupTrapsAsync(factory);
+        var html = await factory.CreateClient().GetStringAsync("/soz/mul");
+
+        var meta = html[html.IndexOf("<meta name=\"description\"", StringComparison.Ordinal)..];
+        meta = meta[..meta.IndexOf('>')];
+        Assert.Contains("물 (mul) — suv. Bu yerda o‘zbekcha «suv ichmoq» deb so‘zma-so‘z aytiladi. Koreyscha ilovasida bepul yodlang.", System.Net.WebUtility.HtmlDecode(meta));
+        Assert.DoesNotContain("마시다", meta); // only the first sentence
+        Assert.DoesNotContain("..", meta);
+    }
+
+    private static int CountOf(string text, string part)
+    {
+        var n = 0;
+        for (var i = text.IndexOf(part, StringComparison.Ordinal); i >= 0; i = text.IndexOf(part, i + part.Length, StringComparison.Ordinal))
+        {
+            n++;
+        }
+
+        return n;
+    }
+
     [Fact]
     public void Slugs_are_lower_case_latin_with_single_hyphens()
     {
