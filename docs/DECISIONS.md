@@ -713,3 +713,18 @@ Bepul o‘quvchi Premium funksiyani ochganda izohsiz umumiy Premium sahifasiga, 
 - Bo‘lim testi natijasi: eslatma taklifi (L-63) ko‘rsatilmagan holdagina «Premium’ni 3 kun bepul sinab ko‘ring» havolasi.
 - Tugash xabari: sinov tugashiga 24 soatdan kam (lekin 1 soatdan ko‘p) qolganda, keyin to‘langan obuna bo‘lmasa, bir marta (`ReminderDelivery`, kalit `trial-end:<obuna>`, `Slot = TrialEnd`), eslatma qoidasi bilan (avval push, bo‘lmasa bot); eslatmalar o‘chiq bo‘lsa yuborilmaydi; qayta urinilmaydi. Havola — `/premium`.
 - Ko‘rsatkichlar (Admin → Ko‘rsatkichlar → «Premium sinovi»): 7/30 kunda boshlangan sinovlar; oxirgi 60 kunda tugaganlardan sinov boshidan tugaganidan 14 kun keyingacha to‘lov tasdiqlanganlar; `premium?f=` ko‘rishlari kalit bo‘yicha (30 kun) — yangi `premium_views` jadvali (kalit, Koreya kuni, son; o‘quvchi haqida hech narsa saqlanmaydi; faqat ma’lum kalitlar).
+
+## L-65 · 2026-11-06 · /soz sahifasida tuzoq bloki va manba
+
+**Nega:** bosh sahifa Koreyscha’ni «Har so‘zda — o‘zbeklar adashadigan joy» bilan taklif qiladi, Google’dan kelgan odam esa `/soz/{slug}` da faqat tarjima, o‘qilish va misolni ko‘rardi. Instagram (ChatPlace DM) dan so‘z sahifasiga berilgan havola Admin → Manbalar’da Google’dan kelganlar (`soz`) bilan aralashib ketardi.
+
+**Nima o‘zgardi:**
+- `SeoWord.Trap` (`SeoTrap`: izoh, vaziyat, xato va to‘g‘ri gap). **Izoh (`TrapUz`)** so‘z Reviewed bo‘lsa doim beriladi — u so‘z bilan birga tekshirilgan va ilova kartasida ham doim ko‘rinadi. **Sahna** (vaziyat va ikki gap) faqat `TrapScenePending == false` va ikkala gap bo‘lsa — kartadagi qoida bilan bir xil (`CatalogAdminService`), `/sinab` dagi shart ham shu. Brifda izoh ham `TrapScenePending` ga bog‘langan edi; Johnny bilan kelishildi: tekshirilmagan bu AI sahnasi, izoh emas.
+- Sahifada misoldan keyin, CTA dan oldin «O‘zbeklar shu yerda adashadi»: sahna bo‘lsa avval «Qaysi biri to‘g‘ri?» (ikki variant tasodifiy tartibda), keyin izoh ochiq matn sifatida. Izoh savoldan oldin tursa, javobni aytib qo‘yardi; shuning uchun javobdagi `.why` bu sahifada faqat «✓ to‘g‘ri gap» ni ko‘rsatadi va izoh takrorlanmaydi. Izoh `hidden` emas — qidiruv tizimi ham o‘qiydi. Savol markup’i `/sinab` bilan bitta yordamchida (`TrapQuestion`).
+- Sahna bo‘lsa `/js/sinab.js` ulanadi (yangi JS yo‘q). Sahnasiz so‘zda skript yo‘q.
+- `?src=X` → `soz-X` (`SourceService.Normalize`, noto‘g‘ri yoki uzun bo‘lsa `soz`) — `/sinab` dagi usul. CTA, `/sinab?src=…` va logotip havolasi shu manbani oladi; canonical va og:url’da `src` yo‘q. Katta harfli manzil kichigiga 301 bilan o‘tganda `?src` saqlanadi.
+- Meta description: tuzoq bo‘lsa «so‘z (o‘qilishi) — tarjima. {izohning 1-jumlasi} Koreyscha ilovasida bepul yodlang.» (160 belgiga sig‘ishi uchun umumiy «tarjimasi va misol» qismi tushadi); tuzoqsiz so‘zda o‘zgarmadi. JSON-LD o‘zgarmadi.
+
+**Nega sahifa tashrif yozmaydi:** `sinab.js` `/api/visits` ni faqat `#start` havolasi bor sahifada yuboradi; so‘z sahifasida u yo‘q. Tashrifni ilova o‘zi bir marta sanaydi — odam `?src=soz…` havolasi bilan kirganda (`MainLayout`). Sahifa ham yozsa, Google’dan kelib hech narsa bosmagan har ko‘rish `soz` qatorini to‘ldirib, «Tashrif → Ro‘yxatdan o‘tish» ulushini buzardi. Shu sabab qurilmada manba ham saqlanmaydi (JS testi).
+
+Ochiq: «shu bo‘limdagi boshqa so‘zlar» havolalari `src` ni o‘tkazmaydi — Instagram’dan kelib boshqa so‘zga o‘tgan odam `soz` bo‘lib sanaladi.

@@ -83,3 +83,49 @@ test('the source is kept once and the visit is posted only when none was kept be
     assert.equal(rememberSource(blocked, 'sinab', v => posted.push(v)), false); // storage off: the page still works
     assert.deepEqual(posted, ['sinab-ig']);
 });
+
+/** A word page (L-65) as the browser sees it: one trap question, no #start link and no taster data. */
+function wordPageDom() {
+    const node = (props = {}) => {
+        const listeners = {};
+        return {
+            hidden: true, disabled: false, textContent: '', dataset: {}, ...props,
+            classList: { set: new Set(), add(c) { this.set.add(c); }, contains(c) { return this.set.has(c); } },
+            addEventListener(name, fn) { listeners[name] = fn; },
+            click() { listeners.click?.(); },
+        };
+    };
+    const buttons = [node({ dataset: { right: '0' } }), node({ dataset: { right: '1' } })];
+    const verdict = node(), why = node();
+    const trap = node({
+        querySelectorAll: s => (s === '.opt' ? buttons : []),
+        querySelector: s => (s === '.verdict' ? verdict : s === '.why' ? why : null),
+    });
+    return {
+        buttons, verdict, why,
+        document: { getElementById: () => null, querySelectorAll: s => (s === '.trap' ? [trap] : []) },
+    };
+}
+
+test('on a word page the trap works and no visit is posted, since there is no #start link', async () => {
+    const dom = wordPageDom(), requests = [], stored = new Map();
+    const saved = { document: globalThis.document, fetch: globalThis.fetch, window: globalThis.window };
+    globalThis.document = dom.document;
+    globalThis.fetch = (url, init) => { requests.push(url); return Promise.resolve({ ok: true }); };
+    globalThis.window = { localStorage: { getItem: k => stored.get(k) ?? null, setItem: (k, v) => stored.set(k, v) } };
+    try {
+        // A fresh copy of the module, so its page code runs against this document.
+        await import('data:text/javascript;base64,' + Buffer.from(source + '\n// word page').toString('base64'));
+        dom.buttons[0].click();
+        await tick();
+    } finally {
+        Object.assign(globalThis, saved);
+    }
+
+    assert.deepEqual(requests, []); // nothing to /api/visits, nothing at all
+    assert.equal(stored.size, 0);   // and no source kept on the device
+    assert.equal(dom.verdict.hidden, false);
+    assert.equal(dom.why.hidden, false);
+    assert.ok(dom.buttons[1].classList.contains('right'));
+    assert.ok(dom.buttons[0].classList.contains('wrong'));
+});

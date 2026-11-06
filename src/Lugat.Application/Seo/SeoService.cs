@@ -19,7 +19,14 @@ public sealed record SeoWord(
     Guid UnitId,
     int UnitNumber,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<SeoLink> Related);
+    IReadOnlyList<SeoLink> Related,
+    SeoTrap? Trap = null);
+
+/// <summary>
+/// The word's trap for an Uzbek speaker (L-65): the checked note, and the scene only when an editor confirmed it
+/// (<c>TrapScenePending == false</c>, as on the learner's card).
+/// </summary>
+public sealed record SeoTrap(string Note, string? Cue, string? Wrong, string? Right);
 
 public sealed record SeoLevelGroup(CatalogLevel Level, IReadOnlyList<SeoLink> Words);
 
@@ -57,6 +64,11 @@ public sealed class SeoService(IAppDbContext db, IOperationLock operations, Time
         public int UnitNumber { get; init; }
         public int? OrderInUnit { get; init; }
         public DateTimeOffset UpdatedAt { get; init; }
+        public string? TrapUz { get; init; }
+        public string? TrapCue { get; init; }
+        public string? TrapWrong { get; init; }
+        public string? TrapRight { get; init; }
+        public bool TrapScenePending { get; init; }
     }
 
     private IQueryable<Row> Public() =>
@@ -68,6 +80,7 @@ public sealed class SeoService(IAppDbContext db, IOperationLock operations, Time
             Id = w.Id, Word = w.Word, Homonym = w.Homonym, Pos = w.Pos, Romanization = w.Romanization, Translation = w.TranslationUz!,
             Level = w.Level, FreqRank = w.FreqRank, ExampleKo = w.ExampleKo, ExampleUz = w.ExampleUz, UnitId = u.Id, UnitNumber = u.Number,
             OrderInUnit = w.OrderInUnit, UpdatedAt = w.UpdatedAt,
+            TrapUz = w.TrapUz, TrapCue = w.TrapCue, TrapWrong = w.TrapWrong, TrapRight = w.TrapRight, TrapScenePending = w.TrapScenePending,
         };
 
     public async Task<SeoWord?> WordAsync(string slug, CancellationToken ct)
@@ -87,7 +100,19 @@ public sealed class SeoService(IAppDbContext db, IOperationLock operations, Time
             .Take(RelatedCount).OrderBy(s => s.OrderInUnit)
             .Select(s => new SeoLink(slugs[s.Id], s.Word, s.Translation)).ToList();
         return new SeoWord(slug, word.Word, word.Romanization, word.Translation, CatalogPos.Uzbek(word.Pos), word.Level,
-            word.ExampleKo, word.ExampleUz, word.UnitId, word.UnitNumber, word.UpdatedAt, related);
+            word.ExampleKo, word.ExampleUz, word.UnitId, word.UnitNumber, word.UpdatedAt, related, Trap(word));
+    }
+
+    /// <summary>The note always (it was checked with the word); the scene only when it is confirmed and complete.</summary>
+    private static SeoTrap? Trap(Row w)
+    {
+        if (string.IsNullOrWhiteSpace(w.TrapUz))
+        {
+            return null;
+        }
+
+        var scene = !w.TrapScenePending && !string.IsNullOrWhiteSpace(w.TrapWrong) && !string.IsNullOrWhiteSpace(w.TrapRight);
+        return new SeoTrap(w.TrapUz.Trim(), scene ? w.TrapCue : null, scene ? w.TrapWrong : null, scene ? w.TrapRight : null);
     }
 
     public async Task<SeoListPage> ListAsync(int page, CancellationToken ct)
