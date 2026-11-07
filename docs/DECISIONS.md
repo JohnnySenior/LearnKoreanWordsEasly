@@ -728,3 +728,11 @@ Bepul o‘quvchi Premium funksiyani ochganda izohsiz umumiy Premium sahifasiga, 
 **Nega sahifa tashrif yozmaydi:** `sinab.js` `/api/visits` ni faqat `#start` havolasi bor sahifada yuboradi; so‘z sahifasida u yo‘q. Tashrifni ilova o‘zi bir marta sanaydi — odam `?src=soz…` havolasi bilan kirganda (`MainLayout`). Sahifa ham yozsa, Google’dan kelib hech narsa bosmagan har ko‘rish `soz` qatorini to‘ldirib, «Tashrif → Ro‘yxatdan o‘tish» ulushini buzardi. Shu sabab qurilmada manba ham saqlanmaydi (JS testi).
 
 Ochiq: «shu bo‘limdagi boshqa so‘zlar» havolalari `src` ni o‘tkazmaydi — Instagram’dan kelib boshqa so‘zga o‘tgan odam `soz` bo‘lib sanaladi.
+
+## L-66 · 2026-11-07 · Schema markup: WebSite va BreadcrumbList
+
+Johnny brifida bosh sahifaga `SoftwareApplication` + `WebSite`, so‘z sahifasiga `DefinedTerm` + `BreadcrumbList`, tuzoq savoli uchun `FAQPage` so‘ralgan edi. Ko‘rib chiqib, faqat haqiqiy foyda beradiganlari qilindi (Johnny bilan kelishildi):
+- **`/` — `WebSite`** (`index.html` `<head>`, birinchi HTML’da): `name` «Koreyscha», `alternateName` «koreyscha.com», `url`, `inLanguage` uz. Google qidiruvda sayt nomini shundan oladi; «Koreyscha» umumiy so‘z bo‘lgani uchun busiz domen ko‘rsatilishi mumkin. `SearchAction` yo‘q — saytda qidiruv yo‘q, Google sitelinks qidiruv qutisini o‘chirgan.
+- **`/soz/{slug}` — bitta JSON-LD blokida `@graph`:** mavjud `DefinedTerm` (L-56, o‘zgarmadi; `inDefinedTermSet.url` — `/soz`) va yangi `BreadcrumbList`: Koreyscha (`/`) › So‘zlar (`/soz`) › so‘z. Bitta funksiya (`SeoEndpoints.WordJsonLd`) mavjud `SeoWord` dan yasaydi; URL’lar `Seo:BaseUrl` bilan to‘liq; so‘zda yo‘q maydon (romanizatsiya) `null` emas, umuman yozilmaydi; `?src` JSON-LD’ga tushmaydi.
+- **Qilinmadi:** `FAQPage` — Google 2023-yildan FAQ natijasini faqat davlat va sog‘liqni saqlash saytlariga ko‘rsatadi, «Qaysi biri to‘g‘ri?» esa FAQ emas, viktorina va har sahifada bir xil savol. `SoftwareApplication` — rich result uchun reyting yoki sharh majburiy (bizda yo‘q, o‘ylab topilmaydi), «Android, iOS» PWA uchun noto‘g‘ri, `index.html` esa ilovaning barcha sahifalariga beriladi (`MapFallbackToFile`).
+- Kutilgan natija kichik: sayt nomi va kompyuterdagi qidiruvda «Koreyscha › So‘zlar › …» zanjiri (telefonda Google uni ko‘rsatmaydi). `DefinedTerm` uchun Google’da rich result yo‘q.

@@ -261,6 +261,48 @@ public class SeoPageTests
         Assert.DoesNotContain("..", meta);
     }
 
+    [Fact]
+    public async Task One_json_ld_block_holds_the_term_and_its_breadcrumb_with_absolute_urls()
+    {
+        await using var factory = new ApiFactory();
+        await SetupAsync(factory, (_, words) => words[3].Romanization = null); // 물: no romanization, no alternateName
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<Lugat.Application.Seo.SeoService>().EnsureSlugsAsync(CancellationToken.None);
+        }
+
+        var html = await factory.CreateClient().GetStringAsync("/soz/sarang");
+        Assert.Equal(1, CountOf(html, "application/ld+json"));
+        var start = html.IndexOf("application/ld+json", StringComparison.Ordinal);
+        var json = html[(html.IndexOf('>', start) + 1)..html.IndexOf("</script>", start, StringComparison.Ordinal)];
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var graph = doc.RootElement.GetProperty("@graph");
+        Assert.Equal("https://schema.org", doc.RootElement.GetProperty("@context").GetString());
+
+        var term = graph.EnumerateArray().Single(e => e.GetProperty("@type").GetString() == "DefinedTerm");
+        Assert.Equal("사랑", term.GetProperty("name").GetString());
+        Assert.Equal("sarang", term.GetProperty("alternateName").GetString());
+        Assert.Equal("sevgi", term.GetProperty("description").GetString());
+        Assert.Equal("https://koreyscha.com/soz/sarang", term.GetProperty("url").GetString());
+        Assert.Equal("https://koreyscha.com/soz", term.GetProperty("inDefinedTermSet").GetProperty("url").GetString());
+
+        var crumbs = graph.EnumerateArray().Single(e => e.GetProperty("@type").GetString() == "BreadcrumbList")
+            .GetProperty("itemListElement").EnumerateArray()
+            .Select(i => (i.GetProperty("position").GetInt32(), i.GetProperty("name").GetString(), i.GetProperty("item").GetString())).ToList();
+        Assert.Equal([(1, "Koreyscha", "https://koreyscha.com/"), (2, "So‘zlar", "https://koreyscha.com/soz"), (3, "사랑", "https://koreyscha.com/soz/sarang")], crumbs);
+
+        // The JSON-LD stays the same whatever src the link carried (L-65).
+        var withSource = await factory.CreateClient().GetStringAsync("/soz/sarang?src=ig");
+        Assert.DoesNotContain("src=", withSource[withSource.IndexOf("application/ld+json", StringComparison.Ordinal)..withSource.IndexOf("</script>", withSource.IndexOf("application/ld+json", StringComparison.Ordinal), StringComparison.Ordinal)]);
+
+        // A word without a romanization has no alternateName at all, not a null.
+        var list = await factory.CreateClient().GetStringAsync("/soz");
+        var slug = System.Text.RegularExpressions.Regex.Match(list, "href=\"/soz/([^\"]+)\"><span lang=\"ko\">물</span>").Groups[1].Value;
+        var plain = await factory.CreateClient().GetStringAsync("/soz/" + slug);
+        Assert.DoesNotContain("alternateName", plain);
+        Assert.DoesNotContain("null", plain[plain.IndexOf("application/ld+json", StringComparison.Ordinal)..]);
+    }
+
     private static int CountOf(string text, string part)
     {
         var n = 0;

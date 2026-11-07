@@ -50,3 +50,11 @@ test('the home page carries canonical and Open Graph tags', () => {
     assert.match(index, /<link rel="canonical" href="https:\/\/koreyscha\.com\/" \/>/);
     for (const p of ['og:title', 'og:description', 'og:url']) assert.match(index, new RegExp(`<meta property="${p}" content="[^"]+" />`));
 });
+
+test('the home page names the site for search results in one WebSite JSON-LD block (L-66)', () => {
+    const blocks = [...index.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+    assert.equal(blocks.length, 1);
+    const site = JSON.parse(blocks[0][1]);
+    assert.deepEqual(site, { '@context': 'https://schema.org', '@type': 'WebSite', name: 'Koreyscha', alternateName: 'koreyscha.com', url: 'https://koreyscha.com/', inLanguage: 'uz' });
+    assert.ok(index.indexOf('application/ld+json') < index.indexOf('</head>')); // in the first HTML, before any script runs
+});
