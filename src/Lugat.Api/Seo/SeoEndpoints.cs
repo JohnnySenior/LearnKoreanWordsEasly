@@ -148,6 +148,55 @@ public static class SeoEndpoints
         return t;
     }
 
+    /// <summary>
+    /// The word page's one JSON-LD block (L-56, L-66): the word as a DefinedTerm and the way to it as a BreadcrumbList
+    /// (Koreyscha › So‘zlar › the word), together in one @graph. Only what the page shows; every URL absolute.
+    /// </summary>
+    private static string WordJsonLd(SeoWord w, string url, string baseUrl) => JsonSerializer.Serialize(new Dictionary<string, object?>
+    {
+        ["@context"] = "https://schema.org",
+        ["@graph"] = new object[]
+        {
+            Without(new Dictionary<string, object?>
+            {
+                ["@type"] = "DefinedTerm",
+                ["name"] = w.Word,
+                ["alternateName"] = string.IsNullOrWhiteSpace(w.Romanization) ? null : w.Romanization,
+                ["description"] = w.Translation,
+                ["inLanguage"] = "ko",
+                ["url"] = url,
+                ["inDefinedTermSet"] = new Dictionary<string, object?>
+                {
+                    ["@type"] = "DefinedTermSet",
+                    ["name"] = "Koreyscha lug‘ati",
+                    ["url"] = $"{baseUrl}/soz",
+                },
+            }),
+            new Dictionary<string, object?>
+            {
+                ["@type"] = "BreadcrumbList",
+                ["itemListElement"] = new object[]
+                {
+                    Crumb(1, "Koreyscha", $"{baseUrl}/"),
+                    Crumb(2, "So‘zlar", $"{baseUrl}/soz"),
+                    Crumb(3, w.Word, url),
+                },
+            },
+        },
+    }, JsonLd);
+
+    /// <summary>A field the word does not have is left out, never written as null.</summary>
+    private static Dictionary<string, object?> Without(Dictionary<string, object?> fields) =>
+        fields.Where(f => f.Value is not null).ToDictionary(f => f.Key, f => f.Value);
+
+    private static Dictionary<string, object?> Crumb(int position, string name, string item) => new()
+    {
+        ["@type"] = "ListItem",
+        ["position"] = position,
+        ["name"] = name,
+        ["item"] = item,
+    };
+
     private static string WordPage(SeoWord w, string baseUrl, string source)
     {
         var url = $"{baseUrl}/soz/{w.Slug}";
@@ -158,22 +207,7 @@ public static class SeoEndpoints
             ? $"{w.Word}{reading} — {Sentence(w.Translation)} {Sentence(FirstSentence(trap.Note))} Koreyscha ilovasida bepul yodlang."
             : $"{w.Word}{reading} — {Sentence(w.Translation)} Koreyscha so‘zning o‘zbekcha tarjimasi"
                 + (w.ExampleKo is null ? "." : $" va misol: {Sentence(w.ExampleKo)}") + " Koreyscha ilovasida bepul yodlang.", 160);
-        var jsonLd = JsonSerializer.Serialize(new Dictionary<string, object?>
-        {
-            ["@context"] = "https://schema.org",
-            ["@type"] = "DefinedTerm",
-            ["name"] = w.Word,
-            ["alternateName"] = w.Romanization,
-            ["description"] = w.Translation,
-            ["inLanguage"] = "ko",
-            ["url"] = url,
-            ["inDefinedTermSet"] = new Dictionary<string, object?>
-            {
-                ["@type"] = "DefinedTermSet",
-                ["name"] = "Koreyscha lug‘ati",
-                ["url"] = $"{baseUrl}/soz",
-            },
-        }, JsonLd);
+        var jsonLd = WordJsonLd(w, url, baseUrl);
 
         var body = new StringBuilder();
         body.Append($"<nav class=\"crumbs\"><a href=\"/soz\">So‘zlar</a> › {E(Level(w.Level))}</nav>");

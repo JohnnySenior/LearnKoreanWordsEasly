@@ -549,3 +549,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Description’da izohning 1-jumlasi, ikki nuqta yo‘q.
 - [x] Testlar: 4 ta API (`SeoPageTests`), 1 ta JS (so‘z sahifasida `#start` yo‘q — `/api/visits` ga so‘rov ham, saqlangan manba ham yo‘q; savol ishlaydi). Chromium 360 va 390px, yorug‘/qorong‘i: variant bosiladi, baho va to‘g‘ri gap chiqadi, tugma 49px, `/api` so‘rovi va saqlangan manba yo‘q, konsol xatosi va yonlama scroll yo‘q.
 - [ ] 2 haftadan keyin: Admin → Manbalar’da `soz` va `soz-ig` konversiyasi; Search Console’da `/soz/*` CTR.
+
+**Schema markup: WebSite va BreadcrumbList (L-66, 2026-11-07):**
+- [x] `/` — `index.html` `<head>` da bitta `WebSite` JSON-LD (JS testi: bitta blok, aniq qiymatlar, `</head>` dan oldin).
+- [x] `/soz/{slug}` — bitta blokda `@graph`: `DefinedTerm` + `BreadcrumbList` (Koreyscha › So‘zlar › so‘z), to‘liq URL’lar, `?src` tushmaydi, romanizatsiyasiz so‘zda `alternateName` va `null` yo‘q (API testi).
+- [ ] Deploydan keyin Johnny: Rich Results Test’da bitta `/soz/...` va `/` ni tekshirish; Search Console → «Yaxshilashlar» → «Navigatsiya zanjiri»da xato yo‘qligi (bir necha kundan keyin).
