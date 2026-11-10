@@ -1,5 +1,6 @@
 @page "/oqituvchi/guruh/{Id:guid}"
 @using Lugat.Contracts
+@using Lugat.Domain.Teaching
 @inject SessionService Api
 @inject BrowserInterop Browser
 @inject NavigationManager Nav
@@ -76,6 +77,29 @@
 </section>
 
 <section class="card">
+    <h2>Lug‘atlar</h2>
+    <p class="muted small-text">O‘z kitobingizdagi darsning so‘zlari (L-67): faylni yuklaysiz, tekshirasiz, guruhga berasiz — o‘quvchilarda kartochka bo‘lib chiqadi.</p>
+    @if (_decks is null)
+    {
+        <p class="muted">Yuklanmoqda…</p>
+    }
+    else
+    {
+        @foreach (var d in _decks)
+        {
+            <a class="button block" href="@($"oqituvchi/lugat/{d.Id}")">
+                <span>@d.Name</span>
+                <span class="aside">@d.Words so‘z · @(d.Status == GroupDeckStatus.Published ? "berilgan" : "qoralama") →</span>
+            </a>
+        }
+    }
+    <div class="row-between" style="margin-top:12px;align-items:center">
+        <input class="input" style="flex:1;min-width:0" maxlength="60" placeholder="Yangi lug‘at nomi, masalan: 3-dars" aria-label="Yangi lug‘at nomi" @bind="_deckName" @bind:event="oninput" />
+        <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_deckName))" @onclick="CreateDeckAsync">Yaratish</button>
+    </div>
+</section>
+
+<section class="card">
     <h2>Eng qiyin 10 so‘z</h2>
     @if (_group.HardestWords.Count == 0)
     {
@@ -104,6 +128,8 @@
     [Parameter] public Guid Id { get; set; }
 
     private GroupDetailDto? _group;
+    private List<GroupDeckSummaryDto>? _decks;
+    private string _deckName = "";
     private string? _error;
     private bool _busy;
     private bool _copied;
@@ -116,6 +142,21 @@
     {
         var result = await Api.GetAsync<GroupDetailDto>($"api/teacher/groups/{Id}");
         (_group, _error) = (result.Value, result.Error);
+        _decks = (await Api.GetAsync<List<GroupDeckSummaryDto>>($"api/teacher/groups/{Id}/decks")).Value;
+    }
+
+    private async Task CreateDeckAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Post, $"api/teacher/groups/{Id}/decks", new CreateGroupDeckRequest(Guid.NewGuid(), _deckName.Trim()));
+        _busy = false;
+        if (result.Value is { } deck)
+        {
+            Nav.NavigateTo($"oqituvchi/lugat/{deck.Id}");
+            return;
+        }
+
+        _error = result.Error;
     }
 
     private async Task CopyAsync() => _copied = await Browser.CopyTextAsync(InviteUrl);

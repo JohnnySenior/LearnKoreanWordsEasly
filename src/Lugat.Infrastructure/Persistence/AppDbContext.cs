@@ -57,6 +57,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<WordDeck> WordDecks => Set<WordDeck>();
 
+    public DbSet<Domain.Teaching.GroupDeck> GroupDecks => Set<Domain.Teaching.GroupDeck>();
+
+    public DbSet<Domain.Teaching.GroupDeckWord> GroupDeckWords => Set<Domain.Teaching.GroupDeckWord>();
+
     public DbSet<PersonalWord> PersonalWords => Set<PersonalWord>();
 
     public DbSet<Domain.Catalog.UserUnitProgress> UnitProgress => Set<Domain.Catalog.UserUnitProgress>();
@@ -401,6 +405,40 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<WordDeck>().WithMany().HasForeignKey(x => x.DeckId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.GroupDeckId, x.OwnerId });
+            e.HasOne<Domain.Teaching.GroupDeck>().WithMany().HasForeignKey(x => x.GroupDeckId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<Domain.Teaching.GroupDeckWord>().WithMany().HasForeignKey(x => x.GroupDeckWordId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<Domain.Teaching.GroupDeck>(e =>
+        {
+            e.ToTable("group_decks");
+            e.Property(x => x.Id).ValueGeneratedNever(); // chosen by the page once (API01)
+            e.Property(x => x.Name).HasMaxLength(Domain.Teaching.GroupDeck.MaxName);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasIndex(x => x.GroupId);
+            e.HasOne<Domain.Teaching.Group>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.TeacherUserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Domain.Teaching.GroupDeckWord>(e =>
+        {
+            e.ToTable("group_deck_words");
+            e.Property(x => x.Korean).HasMaxLength(Domain.Teaching.GroupDeckWord.MaxKorean);
+            e.Property(x => x.Uzbek).HasMaxLength(Domain.Teaching.GroupDeckWord.MaxUzbek);
+            e.Property(x => x.Source).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.Romanization).HasMaxLength(100);
+            e.Property(x => x.ExampleKo).HasMaxLength(200);
+            e.Property(x => x.ExampleUz).HasMaxLength(300);
+            e.Property(x => x.TrapUz).HasMaxLength(1000);
+            e.Property(x => x.TrapCue).HasMaxLength(120);
+            e.Property(x => x.TrapWrong).HasMaxLength(60);
+            e.Property(x => x.TrapRight).HasMaxLength(60);
+            e.HasIndex(x => new { x.GroupDeckId, x.Order });
+            e.HasOne<Domain.Teaching.GroupDeck>().WithMany().HasForeignKey(x => x.GroupDeckId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Domain.Catalog.CatalogWord>().WithMany().HasForeignKey(x => x.CatalogWordId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.SharedItemId).OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<LearningItem>(e =>

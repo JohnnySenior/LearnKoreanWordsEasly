@@ -28,6 +28,10 @@ public interface IAppDbContext
 
     DbSet<Domain.Teaching.GroupMember> GroupMembers { get; }
 
+    DbSet<Domain.Teaching.GroupDeck> GroupDecks { get; }
+
+    DbSet<Domain.Teaching.GroupDeckWord> GroupDeckWords { get; }
+
     DbSet<Domain.Teaching.CommissionPayout> CommissionPayouts { get; }
 
     DbSet<Domain.Operations.AdminAuditEntry> AdminAudit { get; }

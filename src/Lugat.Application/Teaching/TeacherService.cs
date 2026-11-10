@@ -65,7 +65,9 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
     public async Task CloseGroupAsync(Guid teacherId, Guid groupId, CancellationToken ct)
     {
         var group = await OwnGroupAsync(teacherId, groupId, ct);
-        group.ClosedAt = time.GetUtcNow();
+        var now = time.GetUtcNow();
+        group.ClosedAt = now;
+        await GroupDeckService.WithdrawGroupAsync(db, groupId, null, now, ct); // its decks go from the learners (L-67)
         await db.SaveChangesAsync(ct);
     }
 

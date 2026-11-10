@@ -36,6 +36,14 @@ public sealed class PersonalWord
 
     public Guid? DeckId { get; set; }
 
+    /// <summary>Set when the word came from a teacher's group deck (L-67): the learner practises it but cannot remove it.</summary>
+    public Guid? GroupDeckId { get; set; }
+
+    public Guid? GroupDeckWordId { get; set; }
+
+    /// <summary>The deck made this row (not a word the learner had before and the deck linked): leaving the group takes it away.</summary>
+    public bool FromGroupDeck { get; set; }
+
     public PersonalWordSource Source { get; set; }
 
     /// <summary>The catalog word the content was taken from, when it was.</summary>
