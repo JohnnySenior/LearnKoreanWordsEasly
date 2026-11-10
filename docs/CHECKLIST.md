@@ -554,3 +554,11 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] `/` — `index.html` `<head>` da bitta `WebSite` JSON-LD (JS testi: bitta blok, aniq qiymatlar, `</head>` dan oldin).
 - [x] `/soz/{slug}` — bitta blokda `@graph`: `DefinedTerm` + `BreadcrumbList` (Koreyscha › So‘zlar › so‘z), to‘liq URL’lar, `?src` tushmaydi, romanizatsiyasiz so‘zda `alternateName` va `null` yo‘q (API testi).
 - [ ] Deploydan keyin Johnny: Rich Results Test’da bitta `/soz/...` va `/` ni tekshirish; Search Console → «Yaxshilashlar» → «Navigatsiya zanjiri»da xato yo‘qligi (bir necha kundan keyin).
+
+**O‘qituvchining o‘z lug‘ati (L-67, 1-bosqich, 2026-11-10):**
+- [x] `GroupDeck`/`GroupDeckWord` (migratsiya `GroupDecks`), `PersonalWord.GroupDeckId/GroupDeckWordId/FromGroupDeck`.
+- [x] O‘qituvchi: lug‘at yaratish, xlsx/txt yuklash yoki qo‘lda, jadval (tahrir, o‘chirish), lug‘at bilan moslashtirish (umumiy item yoki nusxa), «AI to‘ldirish» (10 tadan), «Guruhga berish», qaytarib olish; Premium sharti AI va nashrda.
+- [x] O‘quvchi: qo‘shilganda/nashrda kartochkalar, «Mening so‘zlarim»da «O‘qituvchidan» chiplari, mashqlarda `guruh:{id}` to‘plami, o‘chirish/ko‘chirish 409; chiqqanda, qaytarib olinganda, guruh yopilganda olinadi.
+- [x] Testlar: 4 ta parser (Application), 4 ta API (fayl → moslashtirish → AI → nashr → o‘quvchi; avvaldan bor so‘z bog‘lanadi; boshqa o‘qituvchi 404 va guruh yopilishi; tahrir tekshiruvi va qayta moslashtirish).
+- [x] Chromium 360px yorug‘/qorong‘i: guruh sahifasida «Lug‘atlar» → yaratish → matndan 3 so‘z → «Guruhga berish» → «Mening so‘zlarim»da «3-dars sinov (3)» chipi, «O‘qituvchidan» belgisi, o‘chirish yo‘q; konsol xatosi va yonlama scroll yo‘q.
+- [ ] 2-bosqich: rasm va PDF; 3-bosqich: o‘qituvchiga natijalar; 4-bosqich: alohida tarif.

@@ -59,12 +59,18 @@ public sealed record MyWordDto(
     Guid? DeckId,
     MyWordState State,
     DateTimeOffset CreatedAt,
-    DateOnly IntroduceOn);
+    DateOnly IntroduceOn,
+    Guid? GroupDeckId = null,
+    bool FromGroupDeck = false);
 
 public sealed record WordDeckDto(Guid Id, string Name, int Words);
 
 /// <param name="Unsorted">Words in no deck ("Umumiy").</param>
-public sealed record MyWordsDto(IReadOnlyList<MyWordDto> Words, IReadOnlyList<WordDeckDto> Decks, int Unsorted, int? AiLeftToday);
+public sealed record MyWordsDto(IReadOnlyList<MyWordDto> Words, IReadOnlyList<WordDeckDto> Decks, int Unsorted, int? AiLeftToday,
+    IReadOnlyList<GroupDeckOptionDto>? GroupDecks = null);
+
+/// <summary>A teacher's deck the learner practises (L-67): read-only for the learner. <paramref name="Key"/> is "guruh:{id}".</summary>
+public sealed record GroupDeckOptionDto(string Key, string Name, string GroupName, int Words);
 
 public sealed record DeckNameRequest(string Name);
 

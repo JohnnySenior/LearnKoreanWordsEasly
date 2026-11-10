@@ -1,5 +1,6 @@
 using Lugat.Domain.Catalog;
 using Lugat.Domain.Premium;
+using Lugat.Domain.Teaching;
 
 namespace Lugat.Contracts;
 
@@ -64,3 +65,52 @@ public sealed record CommissionMonthDto(DateOnly Month, int Payments, int Amount
 public sealed record CommissionReportDto(IReadOnlyList<TeacherPromoDto> Codes, IReadOnlyList<CommissionMonthDto> Months, int Payments, IReadOnlyList<MoneyTotalDto> Totals);
 
 public sealed record MoneyTotalDto(Currency Currency, int Amount, int Commission);
+
+// A teacher's own vocabulary lists for a group (L-67).
+
+public sealed record GroupDeckSummaryDto(Guid Id, string Name, GroupDeckStatus Status, int Words, DateTimeOffset CreatedAt, DateTimeOffset? PublishedAt);
+
+/// <param name="Id">Chosen by the page once, so a double tap makes one deck (API01).</param>
+public sealed record CreateGroupDeckRequest(Guid Id, string Name);
+
+public sealed record RenameGroupDeckRequest(string Name);
+
+/// <param name="Shared">The learners share the course's item for this word (the teacher's translation is one of its meanings).</param>
+/// <param name="CatalogUnit">The unit the catalog word is in, when the catalog has the word.</param>
+public sealed record GroupDeckWordDto(
+    Guid Id,
+    int Order,
+    string Korean,
+    string Uzbek,
+    GroupWordSource Source,
+    bool Shared,
+    string? CatalogUnit,
+    string? Romanization,
+    string? ExampleKo,
+    string? ExampleUz,
+    string? TrapUz,
+    TrapSceneDto? TrapScene);
+
+/// <param name="CanPublish">The teacher has the paid plan that AI filling and publishing need.</param>
+/// <param name="AiPending">Words the catalog does not have and the AI has not filled yet.</param>
+public sealed record GroupDeckDto(
+    Guid Id,
+    Guid GroupId,
+    string GroupName,
+    string Name,
+    GroupDeckStatus Status,
+    DateTimeOffset? PublishedAt,
+    IReadOnlyList<GroupDeckWordDto> Words,
+    int Members,
+    bool CanPublish,
+    int AiPending);
+
+/// <param name="Problems">Why rows were skipped, in Uzbek, at most 20.</param>
+public sealed record GroupDeckImportDto(GroupDeckDto Deck, int Added, int Skipped, IReadOnlyList<string> Problems);
+
+public sealed record AddGroupWordRequest(string Korean, string Uzbek);
+
+public sealed record UpdateGroupWordRequest(string Korean, string Uzbek, string? Romanization, string? ExampleKo, string? ExampleUz, string? TrapUz);
+
+/// <param name="Left">Words still without content after this call (another call fills the next ten).</param>
+public sealed record GroupDeckFillDto(GroupDeckDto Deck, int Filled, int Left);

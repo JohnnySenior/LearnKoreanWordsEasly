@@ -1327,6 +1327,123 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.ToTable("groups", (string)null);
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Teaching.GroupDeck", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("TeacherUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("TeacherUserId");
+
+                    b.ToTable("group_decks", (string)null);
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Teaching.GroupDeckWord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CatalogWordId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExampleKo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ExampleUz")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("GroupDeckId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Korean")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Romanization")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("SharedItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("TrapCue")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("TrapRight")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("TrapUz")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("TrapWrong")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Uzbek")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogWordId");
+
+                    b.HasIndex("SharedItemId");
+
+                    b.HasIndex("GroupDeckId", "Order");
+
+                    b.ToTable("group_deck_words", (string)null);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Teaching.GroupMember", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1741,6 +1858,15 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<bool>("FromGroupDeck")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("GroupDeckId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("GroupDeckWordId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateOnly>("IntroduceOn")
                         .HasColumnType("date");
 
@@ -1779,7 +1905,11 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("DeckId");
 
+                    b.HasIndex("GroupDeckWordId");
+
                     b.HasIndex("LearningItemId");
+
+                    b.HasIndex("GroupDeckId", "OwnerId");
 
                     b.HasIndex("OwnerId", "IntroduceOn");
 
@@ -2135,6 +2265,40 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Lugat.Domain.Teaching.GroupDeck", b =>
+                {
+                    b.HasOne("Lugat.Domain.Teaching.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Lugat.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("TeacherUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Lugat.Domain.Teaching.GroupDeckWord", b =>
+                {
+                    b.HasOne("Lugat.Domain.Catalog.CatalogWord", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogWordId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Lugat.Domain.Teaching.GroupDeck", null)
+                        .WithMany()
+                        .HasForeignKey("GroupDeckId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Lugat.Domain.Vocabulary.LearningItem", null)
+                        .WithMany()
+                        .HasForeignKey("SharedItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("Lugat.Domain.Teaching.GroupMember", b =>
                 {
                     b.HasOne("Lugat.Domain.Teaching.Group", null)
@@ -2222,6 +2386,16 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.HasOne("Lugat.Domain.Vocabulary.WordDeck", null)
                         .WithMany()
                         .HasForeignKey("DeckId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Lugat.Domain.Teaching.GroupDeck", null)
+                        .WithMany()
+                        .HasForeignKey("GroupDeckId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Lugat.Domain.Teaching.GroupDeckWord", null)
+                        .WithMany()
+                        .HasForeignKey("GroupDeckWordId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Lugat.Domain.Vocabulary.LearningItem", null)

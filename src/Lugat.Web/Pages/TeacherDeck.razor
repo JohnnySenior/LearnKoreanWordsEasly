@@ -1,0 +1,326 @@
+@page "/oqituvchi/lugat/{Id:guid}"
+@using Lugat.Contracts
+@using Lugat.Domain.Teaching
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>Lug‘at — Koreyscha</PageTitle>
+
+@* L-67: the teacher's own vocabulary list for a group. Upload two columns, check the table, let the AI fill what the
+   catalog lacks, give it to the group. The translation is always the teacher's. *@
+@if (_deck is null)
+{
+    <a class="back" href="oqituvchi">← O‘qituvchi paneli</a>
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<a class="back" href="@($"oqituvchi/guruh/{_deck.GroupId}")">← @_deck.GroupName</a>
+<header class="page-head">
+    <div>
+        <h1>@_deck.Name</h1>
+        <span class="muted small-text">
+            @(_deck.Status == GroupDeckStatus.Published ? $"Guruhga berilgan · {Format.DayMonth(_deck.PublishedAt!.Value)}" : "Qoralama — o‘quvchilar hali ko‘rmaydi") · @_deck.Members o‘quvchi · @_deck.Words.Count so‘z
+        </span>
+    </div>
+</header>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+@if (!_deck.CanPublish)
+{
+    <div class="notice">
+        Lug‘atni tuzish bepul. AI to‘ldirish va guruhga berish uchun <a href="premium">Premium</a> kerak — o‘quvchilaringiz uchun esa vazifa bepul.
+    </div>
+}
+
+@if (_deck.Status == GroupDeckStatus.Draft)
+{
+    <section class="card">
+        <h2>So‘zlarni yuklash</h2>
+        <p class="muted small-text">Bir ustunda koreyscha so‘z, ikkinchisida o‘zbekcha tarjimangiz. Excel (.xlsx), yoki oddiy matn: har qatorda «학교 - maktab».</p>
+        <InputFile OnChange="UploadAsync" accept=".xlsx,.xls,.txt,.tsv,.csv" disabled="@_busy" />
+        <label class="field" style="margin-top:12px">
+            Yoki shu yerga qo‘ying
+            <textarea class="input" rows="4" placeholder="학교 - maktab (har qatorda bitta so‘z)" @bind="_paste" @bind:event="oninput" disabled="@_busy"></textarea>
+        </label>
+        <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_paste))" @onclick="PasteAsync">Ro‘yxatdan qo‘shish</button>
+        @if (_import is { } imported)
+        {
+            <p class="muted small-text" role="status" style="margin-top:10px">
+                @imported.Added ta so‘z qo‘shildi@(imported.Skipped > 0 ? $", {imported.Skipped} ta o‘tkazib yuborildi" : "").
+            </p>
+            @if (imported.Problems.Count > 0)
+            {
+                <ul class="muted small-text">
+                    @foreach (var p in imported.Problems)
+                    {
+                        <li>@p</li>
+                    }
+                </ul>
+            }
+        }
+        <p class="muted small-text" style="margin-top:14px">Yoki bittadan qo‘shing</p>
+        <div style="display:grid;gap:8px">
+            <input class="input" maxlength="50" lang="ko" placeholder="koreyscha so‘z" aria-label="Koreyscha so‘z" @bind="_newKorean" @bind:event="oninput" />
+            <input class="input" maxlength="300" placeholder="o‘zbekcha tarjima" aria-label="O‘zbekcha tarjima" @bind="_newUzbek" @bind:event="oninput" />
+            <button class="button small" disabled="@(_busy || string.IsNullOrWhiteSpace(_newKorean) || string.IsNullOrWhiteSpace(_newUzbek))" @onclick="AddAsync">Qo‘shish</button>
+        </div>
+    </section>
+}
+
+<section class="card">
+    <h2>So‘zlar (@_deck.Words.Count)</h2>
+    @if (_deck.Words.Count == 0)
+    {
+        <p class="muted">Hali so‘z yo‘q.</p>
+    }
+    else
+    {
+        <p class="muted small-text">«Lug‘atdan» — bizning tekshirilgan lug‘atimizda bor: o‘qilishi, misol va tuzoq undan. «AI» — AI yozgan, siz ko‘rib chiqasiz. Tarjima hamma holda sizniki.</p>
+        <ul class="word-list">
+            @foreach (var w in _deck.Words)
+            {
+                var word = w;
+                <li>
+                    @if (_editing == w.Id)
+                    {
+                        <label class="field">Koreyscha<input class="input" lang="ko" maxlength="50" @bind="_edit.Korean" /></label>
+                        <label class="field">O‘zbekcha<input class="input" maxlength="300" @bind="_edit.Uzbek" /></label>
+                        <label class="field">O‘qilishi<input class="input" maxlength="100" @bind="_edit.Romanization" /></label>
+                        <label class="field">Misol (koreyscha)<input class="input" lang="ko" maxlength="200" @bind="_edit.ExampleKo" /></label>
+                        <label class="field">Misol (o‘zbekcha)<input class="input" maxlength="300" @bind="_edit.ExampleUz" /></label>
+                        <label class="field">Tuzoq (o‘zbeklar shu yerda adashadi)<textarea class="input" rows="2" maxlength="1000" @bind="_edit.TrapUz"></textarea></label>
+                        <div class="row-between">
+                            <button class="button small primary" disabled="@_busy" @onclick="SaveEditAsync">Saqlash</button>
+                            <button class="button small" @onclick="() => _editing = null">Bekor</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row-between">
+                            <span><strong class="ko" lang="ko">@w.Korean</strong>@if (w.Romanization is not null) {<span class="muted"> [@w.Romanization]</span>} — @w.Uzbek</span>
+                            @switch (w.Source)
+                            {
+                                case GroupWordSource.Catalog: <Tag>Lug‘atdan@(w.CatalogUnit is null ? "" : $" · {w.CatalogUnit}")</Tag> break;
+                                case GroupWordSource.Ai: <Tag Kind="accent">AI</Tag> break;
+                                default: <Tag Kind="outline">Faqat tarjima</Tag> break;
+                            }
+                        </div>
+                        @if (w.ExampleKo is not null)
+                        {
+                            <span class="muted small-text"><span lang="ko">@w.ExampleKo</span> — @w.ExampleUz</span>
+                        }
+                        @if (w.TrapUz is not null)
+                        {
+                            <span class="small-text" style="display:block;margin-top:4px">Tuzoq: @w.TrapUz</span>
+                        }
+                        @if (_deck.Status == GroupDeckStatus.Draft)
+                        {
+                            <div class="row-between" style="margin-top:6px">
+                                <button class="link-btn" disabled="@_busy" @onclick="() => StartEdit(word)">Tahrirlash</button>
+                                @if (_removing == w.Id)
+                                {
+                                    <Confirm Question="O‘chirilsinmi?" ValueChanged="v => RemoveAsync(word, v)" />
+                                }
+                                else
+                                {
+                                    <button class="link-btn muted" disabled="@_busy" @onclick="() => _removing = word.Id">O‘chirish</button>
+                                }
+                            </div>
+                        }
+                    }
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@if (_deck.Status == GroupDeckStatus.Draft)
+{
+    <section class="card">
+        @if (_deck.AiPending > 0)
+        {
+            <p>Lug‘atimizda yo‘q <strong>@_deck.AiPending ta</strong> so‘z bor. AI ularga o‘qilishi, misol va tuzoq yozadi (bir bosishda 10 tagacha); tarjimangiz o‘zgarmaydi.</p>
+            <button class="button block" disabled="@(_busy || !_deck.CanPublish)" @onclick="FillAsync"><span>@(_busy ? "AI yozmoqda…" : "AI to‘ldirish")</span></button>
+        }
+        else if (_deck.Words.Count > 0)
+        {
+            <p class="muted small-text">Hamma so‘zda karta mazmuni bor.</p>
+        }
+        @if (_fillNote is not null)
+        {
+            <p class="muted small-text" role="status">@_fillNote</p>
+        }
+        @if (_confirmPublish)
+        {
+            <p style="margin-top:12px"><strong>Guruhga berilsinmi?</strong> @_deck.Members o‘quvchida shu @_deck.Words.Count ta so‘z kartochka bo‘lib chiqadi. Keyin lug‘at o‘zgartirilmaydi, faqat qaytarib olinadi.</p>
+            <button class="button primary" disabled="@_busy" @onclick="PublishAsync">Ha, guruhga berish</button>
+            <button class="button" @onclick="() => _confirmPublish = false">Bekor</button>
+        }
+        else
+        {
+            <button class="button primary block" style="margin-top:12px" disabled="@(_busy || _deck.Words.Count == 0 || !_deck.CanPublish)" @onclick="() => _confirmPublish = true"><span>Guruhga berish</span></button>
+        }
+    </section>
+}
+
+<section class="card danger-zone">
+    @if (_confirmArchive)
+    {
+        <p><strong>Lug‘at qaytarib olinsinmi?</strong> O‘quvchilardagi shu lug‘at kartochkalari yo‘qoladi (o‘rgangani tarixda qoladi).</p>
+        <button class="button" disabled="@_busy" @onclick="ArchiveAsync">Ha, qaytarib olish</button>
+        <button class="button" @onclick="() => _confirmArchive = false">Bekor</button>
+    }
+    else
+    {
+        <button class="button" @onclick="() => _confirmArchive = true">@(_deck.Status == GroupDeckStatus.Published ? "Lug‘atni qaytarib olish" : "Lug‘atni o‘chirish")</button>
+    }
+</section>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private sealed class Edit
+    {
+        public string Korean = "", Uzbek = "";
+        public string? Romanization, ExampleKo, ExampleUz, TrapUz;
+    }
+
+    private GroupDeckDto? _deck;
+    private GroupDeckImportDto? _import;
+    private string? _error;
+    private string? _fillNote;
+    private string _paste = "";
+    private string _newKorean = "";
+    private string _newUzbek = "";
+    private Guid? _editing;
+    private Guid? _removing;
+    private Edit _edit = new();
+    private bool _busy;
+    private bool _confirmPublish;
+    private bool _confirmArchive;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAsync<GroupDeckDto>($"api/teacher/decks/{Id}");
+        (_deck, _error) = (result.Value, result.Error);
+    }
+
+    private void Apply(ApiResult<GroupDeckDto> result)
+    {
+        _busy = false;
+        _error = result.Error;
+        if (result.Value is { } deck)
+        {
+            _deck = deck;
+        }
+    }
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await using var stream = e.File.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            await ImportAsync(buffer.ToArray(), e.File.Name);
+        }
+        catch (IOException)
+        {
+            _error = "Fayl juda katta (2 MB gacha).";
+        }
+    }
+
+    private Task PasteAsync() => ImportAsync(System.Text.Encoding.UTF8.GetBytes(_paste), "royxat.txt");
+
+    private async Task ImportAsync(byte[] content, string fileName)
+    {
+        (_busy, _error, _import) = (true, null, null);
+        var result = await Api.UploadAsync<GroupDeckImportDto>($"api/teacher/decks/{Id}/import", content, fileName, "application/octet-stream");
+        _busy = false;
+        _error = result.Error;
+        if (result.Value is { } imported)
+        {
+            (_import, _deck, _paste) = (imported, imported.Deck, "");
+        }
+    }
+
+    private async Task AddAsync()
+    {
+        (_busy, _error) = (true, null);
+        var result = await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Post, $"api/teacher/decks/{Id}/words", new AddGroupWordRequest(_newKorean.Trim(), _newUzbek.Trim()));
+        Apply(result);
+        if (result.Ok)
+        {
+            (_newKorean, _newUzbek) = ("", "");
+        }
+    }
+
+    private void StartEdit(GroupDeckWordDto w)
+    {
+        _editing = w.Id;
+        _edit = new Edit { Korean = w.Korean, Uzbek = w.Uzbek, Romanization = w.Romanization, ExampleKo = w.ExampleKo, ExampleUz = w.ExampleUz, TrapUz = w.TrapUz };
+    }
+
+    private async Task SaveEditAsync()
+    {
+        (_busy, _error) = (true, null);
+        var request = new UpdateGroupWordRequest(_edit.Korean, _edit.Uzbek, _edit.Romanization, _edit.ExampleKo, _edit.ExampleUz, _edit.TrapUz);
+        var result = await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Put, $"api/teacher/decks/{Id}/words/{_editing}", request);
+        Apply(result);
+        if (result.Ok)
+        {
+            _editing = null;
+        }
+    }
+
+    private async Task RemoveAsync(GroupDeckWordDto w, bool? yes)
+    {
+        _removing = null;
+        if (yes != true)
+        {
+            return;
+        }
+
+        (_busy, _error) = (true, null);
+        Apply(await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Delete, $"api/teacher/decks/{Id}/words/{w.Id}"));
+    }
+
+    private async Task FillAsync()
+    {
+        (_busy, _error, _fillNote) = (true, null, null);
+        var result = await Api.SendJsonAsync<GroupDeckFillDto>(HttpMethod.Post, $"api/teacher/decks/{Id}/fill", null, TimeSpan.FromSeconds(120));
+        _busy = false;
+        _error = result.Error;
+        if (result.Value is { } fill)
+        {
+            _deck = fill.Deck;
+            _fillNote = fill.Left > 0 ? $"{fill.Filled} ta so‘z yozildi; yana {fill.Left} ta qoldi — «AI to‘ldirish»ni yana bosing." : $"{fill.Filled} ta so‘z yozildi. Ko‘rib chiqing, kerak bo‘lsa tahrirlang.";
+        }
+    }
+
+    private async Task PublishAsync()
+    {
+        (_busy, _error) = (true, null);
+        Apply(await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Post, $"api/teacher/decks/{Id}/publish"));
+        _confirmPublish = false;
+    }
+
+    private async Task ArchiveAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<object>(HttpMethod.Delete, $"api/teacher/decks/{Id}");
+        _busy = false;
+        if (result.Ok)
+        {
+            Nav.NavigateTo($"oqituvchi/guruh/{_deck!.GroupId}");
+            return;
+        }
+
+        _error = result.Error;
+    }
+}

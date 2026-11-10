@@ -45,6 +45,8 @@ public sealed class GroupService(IAppDbContext db, TimeProvider time)
         }
 
         await AttachPromoAsync(userId, await TeacherPromoAsync(group.TeacherUserId, ct), ct);
+        // The teacher's published decks come with the group (L-67).
+        await GroupDeckService.GivePublishedDecksAsync(db, group.Id, userId, now, ct);
         try
         {
             await db.SaveChangesAsync(ct);
@@ -70,7 +72,9 @@ public sealed class GroupService(IAppDbContext db, TimeProvider time)
     {
         var member = await db.GroupMembers.SingleOrDefaultAsync(m => m.GroupId == groupId && m.UserId == userId, ct)
             ?? throw new NotFoundException("Guruh topilmadi.");
-        member.LeftAt ??= time.GetUtcNow();
+        var now = time.GetUtcNow();
+        member.LeftAt ??= now;
+        await GroupDeckService.WithdrawGroupAsync(db, groupId, userId, now, ct); // the teacher's decks go with the group (L-67)
         await db.SaveChangesAsync(ct);
     }
 

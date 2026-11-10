@@ -106,7 +106,7 @@
 }
 
 <h2 style="margin-top:24px">Ro‘yxat (@_data.Words.Count)</h2>
-@if (_data.Words.Count == 0 && _data.Decks.Count == 0)
+@if (_data.Words.Count == 0 && _data.Decks.Count == 0 && (_data.GroupDecks?.Count ?? 0) == 0)
 {
     <p class="muted">Hozircha so‘z yo‘q. Yuqorida birinchi so‘zingizni qidiring.</p>
 }
@@ -119,6 +119,12 @@ else
         {
             var id = d.Id.ToString();
             <button class="chip wide @(_deck == id ? "selected" : "")" role="radio" aria-checked="@(_deck == id)" @onclick="() => _deck = id">@d.Name (@d.Words)</button>
+        }
+        @foreach (var g in _data.GroupDecks ?? [])
+        {
+            @* L-67: the teacher's decks — practised here, changed only by the teacher. *@
+            var key = g.Key;
+            <button class="chip wide @(_deck == key ? "selected" : "")" role="radio" aria-checked="@(_deck == key)" @onclick="() => _deck = key" title="@g.GroupName guruhi">@g.Name (@g.Words)</button>
         }
     </div>
     <div class="chips" role="radiogroup" aria-label="Holat">
@@ -147,8 +153,14 @@ else
                     <Tag Kind="outline">@StateLabel(w.State)</Tag>
                 </div>
                 <span class="muted small-text">
-                    @(w.Source == PersonalWordSource.Ai ? "AI izohi" : "Lug‘atdan") · @Format.DayMonth(w.CreatedAt)@(w.IntroduceOn > Today ? $" · takrorga {Format.Day(w.IntroduceOn)} kuni qo‘shiladi" : "")
+                    @(w.FromGroupDeck ? "O‘qituvchidan" : w.Source == PersonalWordSource.Ai ? "AI izohi" : "Lug‘atdan") · @Format.DayMonth(w.CreatedAt)@(w.IntroduceOn > Today ? $" · takrorga {Format.Day(w.IntroduceOn)} kuni qo‘shiladi" : "")
                 </span>
+                @if (w.FromGroupDeck)
+                {
+                    <span class="muted small-text" style="display:block;margin-top:6px">O‘qituvchingiz bergan so‘z: vazifa guruhda turguncha o‘chirilmaydi.</span>
+                }
+                else
+                {
                 <div class="row-between" style="margin-top:6px;align-items:center">
                     <select class="input" style="flex:1;min-width:0" aria-label="To‘plamga ko‘chirish" @onchange="e => MoveAsync(word, (string?)e.Value)">
                         <option value="" selected="@(w.DeckId is null)">Umumiy</option>
@@ -157,7 +169,11 @@ else
                             <option value="@d.Id" selected="@(w.DeckId == d.Id)">@d.Name</option>
                         }
                     </select>
-                    @if (_removing == w.Id)
+                    @if (w.GroupDeckId is not null)
+                    {
+                        <span class="muted small-text">Guruh vazifasida ham</span>
+                    }
+                    else if (_removing == w.Id)
                     {
                         <Confirm Question="O‘chirilsinmi?" ValueChanged="v => RemoveAsync(word, v)" />
                     }
@@ -166,6 +182,7 @@ else
                         <button class="button small" disabled="@_busy" @onclick="() => _removing = word.Id">O‘chirish</button>
                     }
                 </div>
+                }
             </li>
         }
     </ul>
@@ -247,7 +264,10 @@ else
     {
         var q = _query.Trim();
         return _data!.Words
-            .Where(w => _deck is null || (_deck == Unsorted ? w.DeckId is null : w.DeckId?.ToString() == _deck))
+            .Where(w => _deck is null
+                || (_deck == Unsorted ? w.DeckId is null && !w.FromGroupDeck
+                    : _deck.StartsWith("guruh:") ? w.GroupDeckId?.ToString() == _deck["guruh:".Length..]
+                    : w.DeckId?.ToString() == _deck))
             .Where(w => _state is null || w.State == _state)
             .Where(w => q.Length == 0 || w.Korean.Contains(q, StringComparison.Ordinal) || w.Uzbek.Contains(q, StringComparison.OrdinalIgnoreCase))
             .ToList();

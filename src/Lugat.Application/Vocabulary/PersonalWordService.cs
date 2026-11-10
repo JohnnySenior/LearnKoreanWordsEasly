@@ -167,9 +167,13 @@ public sealed class PersonalWordService(
     public async Task<MyWordsDto> ListAsync(Guid ownerId, string? deck, string? query, MyWordState? state, CancellationToken ct)
     {
         var rows = db.PersonalWords.AsNoTracking().Where(w => w.OwnerId == ownerId);
-        if (deck == "umumiy")
+        if (deck == Unsorted)
         {
-            rows = rows.Where(w => w.DeckId == null);
+            rows = rows.Where(w => w.DeckId == null && !w.FromGroupDeck);
+        }
+        else if (GroupDeckId(deck) is { } groupDeck)
+        {
+            rows = rows.Where(w => w.GroupDeckId == groupDeck);
         }
         else if (Guid.TryParse(deck, out var deckId))
         {
@@ -188,7 +192,8 @@ public sealed class PersonalWordService(
             words = words.Where(w => w.State == wanted).ToList();
         }
 
-        var counts = await db.PersonalWords.Where(w => w.OwnerId == ownerId).GroupBy(w => w.DeckId)
+        // A word the teacher's deck made is not "Umumiy": it is listed under its group deck (L-67); the learner's own word that the deck linked stays where it was.
+        var counts = await db.PersonalWords.Where(w => w.OwnerId == ownerId && !w.FromGroupDeck).GroupBy(w => w.DeckId)
             .Select(g => new { g.Key, Count = g.Count() }).ToListAsync(ct);
         var decks = await db.WordDecks.AsNoTracking().Where(d => d.OwnerId == ownerId).OrderBy(d => d.Name).ToListAsync(ct);
         var unlimited = await premium.CanUseAiAsync(ownerId, ct);
@@ -196,8 +201,25 @@ public sealed class PersonalWordService(
             words,
             decks.Select(d => new WordDeckDto(d.Id, d.Name, counts.FirstOrDefault(c => c.Key == d.Id)?.Count ?? 0)).ToList(),
             counts.FirstOrDefault(c => c.Key == null)?.Count ?? 0,
-            unlimited ? null : Math.Max(0, FreeAiPerDay - await AiUsedTodayAsync(ownerId, ct)));
+            unlimited ? null : Math.Max(0, FreeAiPerDay - await AiUsedTodayAsync(ownerId, ct)),
+            await GroupDecksAsync(db, ownerId, ct));
     }
+
+    /// <summary>"guruh:{id}" → the group deck id (L-67); null for any other deck key.</summary>
+    public static Guid? GroupDeckId(string? key) =>
+        key is not null && key.StartsWith(Teaching.GroupDeckService.KeyPrefix, StringComparison.Ordinal)
+            && Guid.TryParse(key.AsSpan(Teaching.GroupDeckService.KeyPrefix.Length), out var id) ? id : null;
+
+    /// <summary>The teachers' decks the learner practises now, with their active words (L-67).</summary>
+    public static async Task<List<GroupDeckOptionDto>> GroupDecksAsync(IAppDbContext db, Guid ownerId, CancellationToken ct) =>
+        await (from d in db.GroupDecks
+               join g in db.Groups on d.GroupId equals g.Id
+               where d.Status == Domain.Teaching.GroupDeckStatus.Published && db.PersonalWords.Any(w => w.OwnerId == ownerId && w.GroupDeckId == d.Id)
+               orderby d.PublishedAt
+               select new GroupDeckOptionDto(Teaching.GroupDeckService.KeyPrefix + d.Id, d.Name, g.Name,
+                   (from w in db.PersonalWords join i in db.LearningItems on w.LearningItemId equals i.Id
+                    where w.OwnerId == ownerId && w.GroupDeckId == d.Id && i.IsActive select w).Count()))
+            .ToListAsync(ct);
 
     public async Task<WordDeckDto> CreateDeckAsync(Guid ownerId, DeckNameRequest request, CancellationToken ct)
     {
@@ -239,6 +261,10 @@ public sealed class PersonalWordService(
     public async Task<MyWordDto> MoveAsync(Guid ownerId, Guid wordId, MoveMyWordRequest request, CancellationToken ct)
     {
         var word = await db.PersonalWords.SingleOrDefaultAsync(w => w.Id == wordId && w.OwnerId == ownerId, ct) ?? throw new NotFoundException("So‘z topilmadi.");
+        if (word.FromGroupDeck)
+        {
+            throw new ConflictException(TeacherWord);
+        }
         if (request.DeckId is { } deckId)
         {
             await OwnDeckAsync(ownerId, deckId, ct);
@@ -256,6 +282,10 @@ public sealed class PersonalWordService(
     public async Task RemoveAsync(Guid ownerId, Guid wordId, CancellationToken ct)
     {
         var word = await db.PersonalWords.SingleOrDefaultAsync(w => w.Id == wordId && w.OwnerId == ownerId, ct) ?? throw new NotFoundException("So‘z topilmadi.");
+        if (word.GroupDeckId is not null)
+        {
+            throw new ConflictException(TeacherWord);
+        }
         var item = await db.LearningItems.SingleAsync(i => i.Id == word.LearningItemId, ct);
         if (item.Kind == LearningItemKind.Personal && item.OwnerId == ownerId)
         {
@@ -270,14 +300,19 @@ public sealed class PersonalWordService(
     /// <summary>The deck key of own words in no deck (<see cref="WordDeckOptionDto.Key"/>).</summary>
     public const string Unsorted = "umumiy";
 
+    private const string TeacherWord = "Bu so‘zni o‘qituvchingiz bergan: vazifa guruhda turguncha uni o‘chirib yoki ko‘chirib bo‘lmaydi.";
+
     /// <summary>Learning items of the learner's own words in these decks (keys of <see cref="DeckOptionsAsync"/>).</summary>
     public static IQueryable<Guid> DeckItems(IAppDbContext db, Guid ownerId, IReadOnlyCollection<string>? decks)
     {
         var keys = decks ?? [];
         var unsorted = keys.Contains(Unsorted);
         var ids = keys.Select(k => Guid.TryParse(k, out var id) ? id : (Guid?)null).OfType<Guid>().ToList();
+        var groups = keys.Select(GroupDeckId).OfType<Guid>().ToList();
         return db.PersonalWords
-            .Where(w => w.OwnerId == ownerId && ((unsorted && w.DeckId == null) || (w.DeckId != null && ids.Contains(w.DeckId.Value))))
+            .Where(w => w.OwnerId == ownerId && ((unsorted && w.DeckId == null && !w.FromGroupDeck)
+                || (w.DeckId != null && ids.Contains(w.DeckId.Value))
+                || (w.GroupDeckId != null && groups.Contains(w.GroupDeckId.Value))))
             .Select(w => w.LearningItemId);
     }
 
@@ -289,7 +324,7 @@ public sealed class PersonalWordService(
     {
         var counts = await (from w in db.PersonalWords
                 join i in db.LearningItems on w.LearningItemId equals i.Id
-                where w.OwnerId == ownerId && i.IsActive
+                where w.OwnerId == ownerId && i.IsActive && !w.FromGroupDeck
                 group w by w.DeckId into g
                 select new { g.Key, Words = g.Count() })
             .ToListAsync(ct);
@@ -302,6 +337,9 @@ public sealed class PersonalWordService(
 
         result.AddRange(decks.Where(d => counts.Any(c => c.Key == d.Id))
             .Select(d => new WordDeckOptionDto(d.Id.ToString(), d.Name, counts.First(c => c.Key == d.Id).Words)));
+        // The teachers' decks after the learner's own (L-67): "3-dars (Ansan guruhi)".
+        result.AddRange((await GroupDecksAsync(db, ownerId, ct)).Where(d => d.Words > 0)
+            .Select(d => new WordDeckOptionDto(d.Key, $"{d.Name} ({d.GroupName})", d.Words)));
         return result;
     }
 
@@ -409,7 +447,7 @@ public sealed class PersonalWordService(
                 : own.All(c => c.Phase == LearningPhase.New) ? MyWordState.New
                 : MyWordState.Learning;
             return new MyWordDto(w.Id, w.LearningItemId, item.Korean, item.Uzbek, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz, w.Source, w.DeckId,
-                state, w.CreatedAt, w.IntroduceOn);
+                state, w.CreatedAt, w.IntroduceOn, w.GroupDeckId, w.FromGroupDeck);
         }).ToList();
     }
 

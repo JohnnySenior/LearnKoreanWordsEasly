@@ -36,7 +36,11 @@ public static class CatalogFiles
     }
 
     /// <summary>An .xlsx with one sheet: a title line, the header, then the rows (inline strings, numbers for 순위).</summary>
-    public static byte[] Xlsx(IEnumerable<ListRow> rows, string[]? header = null)
+    public static byte[] Xlsx(IEnumerable<ListRow> rows, string[]? header = null) =>
+        XlsxOf([["한국어 학습용 어휘 목록"], header ?? Header, .. rows.Select(row => new object?[] { row.Rank, row.Word, row.Pos, row.Gloss, row.Level })]);
+
+    /// <summary>An .xlsx with one sheet holding exactly these rows (strings and ints), for any two-column list (L-67).</summary>
+    public static byte[] XlsxOf(IEnumerable<IEnumerable<object?>> rows)
     {
         var sheet = new StringBuilder("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>""");
         var r = 1;
@@ -58,11 +62,9 @@ public static class CatalogFiles
             r++;
         }
 
-        Row(["한국어 학습용 어휘 목록"]);
-        Row(header ?? Header);
         foreach (var row in rows)
         {
-            Row([row.Rank, row.Word, row.Pos, row.Gloss, row.Level]);
+            Row(row);
         }
 
         sheet.Append("</sheetData></worksheet>");

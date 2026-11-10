@@ -14,7 +14,7 @@ Ushbu hujjat C# asosida kod yozadigan AI agentlar (Claude Code, Codex) va dastur
    **https://github.com/JohnnySenior/KoreanAiTeacher**
    Ishni boshlashdan oldin shu repodagi `README.md`, `AGENTS.md`, `docs/SPECIFICATION.md`, `docs/DECISIONS.md` (D-01…D-54) va `docs/CHECKLIST.md` ni to‘liq o‘qing. Arxitektura, kod uslubi, nomlash, test usuli va UX qoidalari o‘sha repodagidek bo‘ladi. Shubha bo‘lsa — KoreanAiTeacher qanday qilgan bo‘lsa, shunday qiling.
 2. **KoreanAiTeacher repo’siga hech narsa yozmang.** U faqat o‘qish uchun manba. Barcha ish yangi repoda bo‘ladi: **https://github.com/JohnnySenior/LearnKoreanWordsEasly** (§13.1).
-3. **Maqsaddan og‘ishmang.** Bu — umumiy (ommaviy) foydalanuvchilar uchun koreys tilini **o‘zbek tilida** o‘rgatadigan mahsulot: v1 — **lug‘at yodlash**, v2 — **grammatika** (§17, 2026-11-02 da qo‘shildi). PDF import, TOPIK insho, kitob testlari, dars kalendari, mock imtihon **yo‘q** (§3, §17.14). Ularni “foydali bo‘lar” deb qaytarmang.
+3. **Maqsaddan og‘ishmang.** Bu — umumiy (ommaviy) foydalanuvchilar uchun koreys tilini **o‘zbek tilida** o‘rgatadigan mahsulot: v1 — **lug‘at yodlash**, v2 — **grammatika** (§17, 2026-11-02 da qo‘shildi). TOPIK insho, kitob testlari, dars kalendari, mock imtihon **yo‘q** (§3, §17.14). Ularni “foydali bo‘lar” deb qaytarmang. Kurs kontentiga PDF import yo‘q; **o‘qituvchining o‘z lug‘ati** (ikki ustunli fayl → guruhga vazifa) bor — L-67, u kurs kontentiga tushmaydi.
 4. **Talab maqomlari** KoreanAiTeacher’dagidek: **KELISHILGAN** (Johnny tasdiqlagan — o‘zgartirmang), **TEXNIK ASOS** (taklif; asos bilan o‘zgartirsa bo‘ladi, `docs/DECISIONS.md` ga yozing), **TEKSHIRILADI** (real sinovsiz va’da qilmang), **JOHNNY TASDIQLAYDI** (standart qiymat bilan qiling, lekin ochiq savol sifatida qayd eting).
 5. **C# va .NET 10** (KELISHILGAN). Backend ASP.NET Core, frontend Blazor WebAssembly. Tilni yoki frameworkni almashtirmang.
 6. **Barcha mantiq serverda.** Takrorlash, bo‘lim qulfi, test baholash, premium tekshiruvi — backend’da. Klient faqat ko‘rsatadi. Sabab: keyinchalik Meta ko‘zoynagi (Web App) va boshqa klientlar shu API’dan foydalanadi (§14).
@@ -138,7 +138,7 @@ Kontent **umumiy** (barcha foydalanuvchilar uchun bitta) — AI har foydalanuvch
 | AI sarf nazorati, kunlik limit (D-50, BUD03–05) | **Olinadi** | Limit tarif bo‘yicha (§7.4). |
 | Telegram eslatmalari (D-16) | **Olinadi** | Faqat Telegram orqali kirganlar uchun (§8). |
 | Zaxira nusxa (D-22, D-37, D-51) | **Olinadi** | |
-| PDF import, lug‘at parseri (D-09, D-10) | **Yo‘q** | Kontent admin importi orqali. |
+| PDF import, lug‘at parseri (D-09, D-10) | **Kurs uchun yo‘q** | Kontent admin importi orqali. O‘qituvchi o‘z guruhiga ikki ustunli lug‘at yuklaydi (L-67): u kurs kontenti emas, faqat guruh a’zolariga ko‘rinadi. |
 | Grammatika (D-12, D-24, D-26–28) | **v2 — §17** | 2026-11-02: Johnny bilan KELISHILGAN. KAT kodi asos bo‘lishi mumkin, lekin tuzilma §17 dagidek (bo‘limlar, tanishuv, tuzoq, test). |
 | Kitob testlari, imtihon sanasi, TOPIK yozish (D-33–35, D-49) | **Yo‘q** | |
 | Dars topshiriqlari, kalendar (D-15, D-18, D-43, D-44) | **Yo‘q** | O‘rniga bo‘limlar. |
