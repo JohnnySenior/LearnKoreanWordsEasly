@@ -49,11 +49,13 @@ public sealed record CrosswordHomeDto(
     IReadOnlyList<CrosswordSizeDto> Sizes,
     CrosswordDto? Active,
     Guid? CurrentUnitId,
-    IReadOnlyList<CrosswordUnitDto>? Units = null);
+    IReadOnlyList<CrosswordUnitDto>? Units = null,
+    IReadOnlyList<WordDeckOptionDto>? Decks = null);
 
 /// <param name="Id">Chosen by the client, so a double tap never makes two crosswords (API01).</param>
 /// <param name="UnitIds">Open units to take words from, at least two (three for the large one); none: all open units.</param>
-public sealed record StartCrosswordRequest(Guid Id, CrosswordSize Size, IReadOnlyList<Guid>? UnitIds = null);
+/// <param name="Deck">A teacher's deck ("guruh:{id}", L-68): its words instead of the units; no unit needs to be open.</param>
+public sealed record StartCrosswordRequest(Guid Id, CrosswordSize Size, IReadOnlyList<Guid>? UnitIds = null, string? Deck = null);
 
 public sealed record CrosswordAnswerRequest(int Index, string Answer);
 

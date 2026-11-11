@@ -13,6 +13,9 @@ public static class MyWordEndpoints
         var words = app.MapGroup("/api/my-words").RequireAuthorization();
         words.MapGet("/", (string? deck, string? q, MyWordState? state, ClaimsPrincipal user, PersonalWordService s, CancellationToken ct) =>
             s.ListAsync(user.GetUserId(), deck, q, state, ct));
+        // A teacher's deck as the learner sees it (L-68).
+        words.MapGet("/group-decks/{id:guid}", (Guid id, ClaimsPrincipal user, PersonalWordService s, CancellationToken ct) =>
+            s.GroupDeckAsync(user.GetUserId(), id, ct));
         words.MapPost("/lookup", (MyWordLookupRequest body, ClaimsPrincipal user, PersonalWordService s, CancellationToken ct) =>
             s.LookupAsync(user.GetUserId(), body, ct));
         words.MapPost("/", (AddMyWordRequest body, ClaimsPrincipal user, PersonalWordService s, CancellationToken ct) =>

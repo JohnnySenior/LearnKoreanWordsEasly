@@ -210,16 +210,59 @@ public sealed class PersonalWordService(
         key is not null && key.StartsWith(Teaching.GroupDeckService.KeyPrefix, StringComparison.Ordinal)
             && Guid.TryParse(key.AsSpan(Teaching.GroupDeckService.KeyPrefix.Length), out var id) ? id : null;
 
-    /// <summary>The teachers' decks the learner practises now, with their active words (L-67).</summary>
-    public static async Task<List<GroupDeckOptionDto>> GroupDecksAsync(IAppDbContext db, Guid ownerId, CancellationToken ct) =>
-        await (from d in db.GroupDecks
-               join g in db.Groups on d.GroupId equals g.Id
-               where d.Status == Domain.Teaching.GroupDeckStatus.Published && db.PersonalWords.Any(w => w.OwnerId == ownerId && w.GroupDeckId == d.Id)
-               orderby d.PublishedAt
-               select new GroupDeckOptionDto(Teaching.GroupDeckService.KeyPrefix + d.Id, d.Name, g.Name,
-                   (from w in db.PersonalWords join i in db.LearningItems on w.LearningItemId equals i.Id
-                    where w.OwnerId == ownerId && w.GroupDeckId == d.Id && i.IsActive select w).Count()))
+    /// <summary>The teachers' decks the learner practises now, with their active words and how many are learned (L-67, L-68).</summary>
+    public static async Task<List<GroupDeckOptionDto>> GroupDecksAsync(IAppDbContext db, Guid ownerId, CancellationToken ct, DateTimeOffset? now = null)
+    {
+        var decks = await (from d in db.GroupDecks
+                           join g in db.Groups on d.GroupId equals g.Id
+                           where d.Status == Domain.Teaching.GroupDeckStatus.Published && db.PersonalWords.Any(w => w.OwnerId == ownerId && w.GroupDeckId == d.Id)
+                           orderby d.PublishedAt
+                           select new { d.Id, d.Name, Group = g.Name, Teacher = db.Users.Where(u => u.Id == g.TeacherUserId).Select(u => u.DisplayName).FirstOrDefault() })
             .ToListAsync(ct);
+        if (decks.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = decks.Select(d => (Guid?)d.Id).ToList();
+        var words = await (from w in db.PersonalWords
+                           join i in db.LearningItems on w.LearningItemId equals i.Id
+                           where w.OwnerId == ownerId && ids.Contains(w.GroupDeckId) && i.IsActive
+                           select new { w.GroupDeckId, w.LearningItemId }).ToListAsync(ct);
+        var itemIds = words.Select(w => w.LearningItemId).Distinct().ToList();
+        var at = now ?? DateTimeOffset.UtcNow;
+        var learned = (await db.Cards.AsNoTracking().Where(c => c.OwnerId == ownerId && itemIds.Contains(c.LearningItemId)).ToListAsync(ct))
+            .GroupBy(c => c.LearningItemId)
+            .Where(g => g.Count() == 2 && g.All(c => Mastery.IsMastered(c.ToState(), at)))
+            .Select(g => g.Key).ToHashSet();
+        return decks.Select(d =>
+        {
+            var mine = words.Where(w => w.GroupDeckId == d.Id).ToList();
+            return new GroupDeckOptionDto(Teaching.GroupDeckService.KeyPrefix + d.Id, d.Name, d.Group, mine.Count,
+                mine.Count(w => learned.Contains(w.LearningItemId)), d.Id, d.Teacher);
+        }).ToList();
+    }
+
+    /// <summary>
+    /// One teacher's deck as the learner sees it (L-68): every word with its state, and the last finished test of
+    /// it. 404 unless the deck was given to this learner.
+    /// </summary>
+    public async Task<GroupDeckLearnerDto> GroupDeckAsync(Guid ownerId, Guid deckId, CancellationToken ct)
+    {
+        var option = (await GroupDecksAsync(db, ownerId, ct, time.GetUtcNow())).FirstOrDefault(d => d.Id == deckId)
+            ?? throw new NotFoundException("Lug‘at topilmadi.");
+        var rows = await db.PersonalWords.AsNoTracking().Where(w => w.OwnerId == ownerId && w.GroupDeckId == deckId).ToListAsync(ct);
+        var order = await db.GroupDeckWords.AsNoTracking().Where(w => w.GroupDeckId == deckId).ToDictionaryAsync(w => w.Id, w => w.Order, ct);
+        var words = (await ToDtosAsync(ownerId, rows, ct))
+            .OrderBy(w => rows.First(r => r.Id == w.Id).GroupDeckWordId is { } g ? order.GetValueOrDefault(g) : int.MaxValue).ToList();
+        var test = await db.TestRuns.AsNoTracking()
+            .Where(r => r.OwnerId == ownerId && r.GroupDeckId == deckId && r.Status == Domain.Testing.TestRunStatus.Finished)
+            .OrderByDescending(r => r.FinishedAt).FirstOrDefaultAsync(ct);
+        var published = await db.GroupDecks.AsNoTracking().Where(d => d.Id == deckId).Select(d => d.PublishedAt).SingleAsync(ct);
+        return new GroupDeckLearnerDto(deckId, option.Key, option.Name, option.GroupName, option.TeacherName, published, words,
+            words.Count(w => w.State == MyWordState.Learned), words.Count(w => w.State == MyWordState.Learning), words.Count(w => w.State == MyWordState.New),
+            test is null ? null : new GroupDeckTestDto(test.Id, test.Answers.Count(a => a.IsCorrect), test.Questions.Count - test.Answers.Count(a => a.Technical), test.FinishedAt!.Value));
+    }
 
     public async Task<WordDeckDto> CreateDeckAsync(Guid ownerId, DeckNameRequest request, CancellationToken ct)
     {

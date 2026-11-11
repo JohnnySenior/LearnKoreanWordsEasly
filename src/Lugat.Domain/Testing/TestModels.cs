@@ -123,6 +123,9 @@ public sealed class TestRun
     /// <summary>The unit of a unit test.</summary>
     public Guid? UnitId { get; set; }
 
+    /// <summary>A test of exactly one teacher's deck (L-68): its score shows in the teacher's report. No pass mark.</summary>
+    public Guid? GroupDeckId { get; set; }
+
     /// <summary>Right answers needed to pass: ceil(questions × pass percent), fixed when the test is made.</summary>
     public int? PassMark { get; set; }
 

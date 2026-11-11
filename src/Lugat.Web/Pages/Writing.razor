@@ -131,6 +131,9 @@ else
     /// <summary>Preselected unit, from the unit page (spec §4.3 step 3).</summary>
     [SupplyParameterFromQuery(Name = "unit")] public Guid? Unit { get; set; }
 
+    /// <summary>A deck to start with, e.g. a teacher's deck from its page (L-68).</summary>
+    [SupplyParameterFromQuery(Name = "deck")] public string? Deck { get; set; }
+
     private Guid? _table;
     private List<TestTableOptionDto> _tables = [];
     private string? _deck;
@@ -150,6 +153,7 @@ else
         _tables = options?.Tables.ToList() ?? [];
         _decks = options?.Decks?.ToList() ?? [];
         _table = _tables.Any(t => t.UnitId == Unit) ? Unit : null;
+        _deck = _table is null && _decks.Any(d => d.Key == Deck) ? Deck : null;
     }
 
     private void Pick(Guid? unit, string? deck) => (_table, _deck) = (unit, deck);

@@ -562,3 +562,11 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: 4 ta parser (Application), 4 ta API (fayl → moslashtirish → AI → nashr → o‘quvchi; avvaldan bor so‘z bog‘lanadi; boshqa o‘qituvchi 404 va guruh yopilishi; tahrir tekshiruvi va qayta moslashtirish).
 - [x] Chromium 360px yorug‘/qorong‘i: guruh sahifasida «Lug‘atlar» → yaratish → matndan 3 so‘z → «Guruhga berish» → «Mening so‘zlarim»da «3-dars sinov (3)» chipi, «O‘qituvchidan» belgisi, o‘chirish yo‘q; konsol xatosi va yonlama scroll yo‘q.
 - [ ] 2-bosqich: rasm va PDF; 3-bosqich: o‘qituvchiga natijalar; 4-bosqich: alohida tarif.
+
+**O‘quvchi tomonida o‘qituvchi lug‘ati (L-68, 2026-11-11):**
+- [x] «Mening so‘zlarim»: «O‘qituvchi vazifalari» papkalari; o‘z so‘zlar ro‘yxati alohida.
+- [x] Lug‘at sahifasi: holat, oxirgi sinov, jadval, kartochka / sinov / yozma mashq / krossvord.
+- [x] Lug‘at sinovi `TestRun.GroupDeckId` bilan (migratsiya), o‘tish chegarasisiz; krossvord lug‘atdan, ochiq bo‘limsiz; kesishmaydigan so‘zlarda xabar.
+- [x] Testlar: 2 ta API (papka va sahifa, tartib, 404, sinov lug‘atga yoziladi va oxirgi sinov bo‘lib chiqadi, aralash sinov yozilmaydi; krossvord lug‘atdan).
+- [x] Chromium 360px yorug‘/qorong‘i: papka → lug‘at sahifasi (jadval 7 so‘z, 4 tugma) → krossvord lug‘atdan (6 so‘z) → sinov ochildi; yonlama scroll va konsol xatosi yo‘q.
+- [ ] PR B: o‘qituvchiga lug‘at hisoboti.

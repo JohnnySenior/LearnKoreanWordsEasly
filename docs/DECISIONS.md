@@ -757,3 +757,14 @@ O‘qituvchilar (bir nechtasi bilan gaplashildi) bitta narsani so‘rashdi: o‘
 **Chegaralar:** lug‘atda 200 ta so‘z, fayl 2 MB, nashr qilingan lug‘at o‘zgartirilmaydi (faqat qaytarib olinadi — o‘quvchilarda bir xil bo‘lsin); «AI izohi» va «O‘qituvchidan» belgilari kartada; AI tuzog‘i o‘qituvchi ko‘rib tasdiqlagani (jadvalda ko‘rinadi, tahrirlanadi). Kitobdan matn saqlanmaydi: faqat so‘z va tarjima; misolni AI yangidan yozadi.
 
 **Keyingi bosqichlar:** (2) rasm va PDF — AI ikki ustunli jadvalni o‘qiydi, o‘qituvchi tekshiradi; (3) o‘qituvchiga natija: har o‘quvchi lug‘atdan qanchasini o‘rgangani, sinov natijasi; (4) alohida tarif.
+
+## L-68 · 2026-11-11 · O‘quvchi tomonida o‘qituvchi lug‘ati: alohida papka, jadval, sinov, krossvord
+
+Johnny sinovidan (2026-11-11): o‘qituvchi lug‘ati «Mening so‘zlarim» ichida aralash chiqardi, tepadagi «Kartochkada takrorlash» hammasini olardi, jadval yo‘q edi, krossvordda bu so‘zlar yo‘q edi, o‘quvchi lug‘at sinovini qanday topshirishi aniq emas edi.
+
+- **«Mening so‘zlarim»:** tepada «O‘qituvchi vazifalari» — har lug‘at alohida papka («1-dars · Ansan · Ustoz · 12 / 20 o‘rganilgan»). Pastdagi ro‘yxat, «Kartochkada takrorlash», to‘plam chiplari faqat o‘quvchining **o‘z** so‘zlari (`FromGroupDeck` so‘zlari chiqmaydi). O‘quvchi avvaldan o‘zi qo‘shgan va lug‘atga bog‘langan so‘z o‘z ro‘yxatida qoladi.
+- **Lug‘at sahifasi** `/sozlarim/guruh/{id}` (`GET /api/my-words/group-decks/{id}`, berilmagan lug‘at — 404): holat (o‘rganilgan / o‘rganilmoqda / yangi), oxirgi sinov natijasi, so‘zlar jadvali o‘qituvchi tartibida (koreyscha, o‘qilishi, o‘zbekcha, holat); tugmalar: «Kartochkada yodlash» (60 tagacha), «Sinov topshirish», «Yozma mashq» (`?deck=` bilan tanlangan holda), «Krossvord» (6+ so‘z).
+- **Lug‘at sinovi:** odatdagi Aralash sinov, faqat shu lug‘at tanlansa (`Decks = ["guruh:{id}"]`, bo‘lim yo‘q) `TestRun.GroupDeckId` yoziladi va nomi lug‘at nomi bo‘ladi (migratsiya `TestRunGroupDeck`). **O‘tish chegarasi yo‘q** (Johnny, 2026-11-11): bo‘lim testidagi 80% keyingi bo‘limni ochish uchun; bu yerda faqat ball, keyin o‘qituvchi hisobotida. Savollar soni so‘zlarga qarab: ≤ 12 → 10, ≤ 24 → 20, aks holda 30. Bo‘lim bilan aralashtirilgan sinov lug‘atniki hisoblanmaydi.
+- **Krossvord:** `CrosswordHomeDto.Decks` (6+ so‘zli o‘qituvchi lug‘atlari), `StartCrosswordRequest.Deck`. Lug‘atdan krossvord uchun ochiq bo‘lim shart emas (bo‘limlar qoidasi L-55 o‘zgarmadi). So‘zlari bir-biri bilan kesishmasa (qisqa ro‘yxatda bo‘ladi) — bitta so‘zli krossvord emas, tushunarli xabar.
+
+Keyingi (PR B): o‘qituvchiga lug‘at hisoboti — o‘quvchilar va so‘zlar jadvali, sinov natijalari, xatolarda «A-9» o‘rniga lug‘at nomi.

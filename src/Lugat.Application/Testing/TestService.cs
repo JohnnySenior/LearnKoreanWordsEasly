@@ -451,7 +451,15 @@ public sealed class TestService(
             throw new ValidationException("Savol tuzib bo‘lmadi: variantlar uchun kamida 4 ta so‘z kerak.");
         }
 
-        return new TestRun { Title = await UnitTitleAsync(words, ct, own), Questions = questions, Provider = provider, Warning = warning };
+        var run = new TestRun { Title = await UnitTitleAsync(words, ct, own), Questions = questions, Provider = provider, Warning = warning };
+        // Only the teacher's deck chosen: the test is that deck's, named after it (L-68).
+        if ((request.UnitIds ?? []).Count == 0 && request.Decks is [var only] && Vocabulary.PersonalWordService.GroupDeckId(only) is { } deckId
+            && await db.GroupDecks.AsNoTracking().Where(d => d.Id == deckId).Select(d => d.Name).FirstOrDefaultAsync(ct) is { } name)
+        {
+            (run.GroupDeckId, run.Title) = (deckId, name);
+        }
+
+        return run;
     }
 
     private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;

@@ -38,11 +38,18 @@ public sealed partial class CrosswordService(IAppDbContext db, TimeProvider time
             .GroupBy(r => r.Unit).ToDictionary(g => g.Key, g => g.Count());
         var list = await db.Units.Where(u => unitIds.Contains(u.Id)).OrderBy(u => u.Level).ThenBy(u => u.Number)
             .Select(u => new { u.Id, u.Level, u.Number }).ToListAsync(ct);
+        // The teachers' decks (L-68): a crossword from one of them needs no open unit.
+        var decks = (await Vocabulary.PersonalWordService.GroupDecksAsync(db, ownerId, ct))
+            .Where(d => d.Words >= MinDeckWords).Select(d => new WordDeckOptionDto(d.Key, d.Name, d.Words)).ToList();
         return new CrosswordHomeDto(open, UnitsForCrossword,
-            Sizes.Select(s => new CrosswordSizeDto(s.Size, s.Title, s.Words, s.Units, open >= s.Units)).ToList(),
+            Sizes.Select(s => new CrosswordSizeDto(s.Size, s.Title, s.Words, s.Units, open >= s.Units || decks.Count > 0)).ToList(),
             active is null ? null : ToDto(active), current?.Id,
-            list.Select(u => new CrosswordUnitDto(u.Id, Study.LearnerItems.Label(u.Level, u.Number), words.GetValueOrDefault(u.Id))).ToList());
+            list.Select(u => new CrosswordUnitDto(u.Id, Study.LearnerItems.Label(u.Level, u.Number), words.GetValueOrDefault(u.Id))).ToList(),
+            decks);
     }
+
+    /// <summary>A teacher's deck needs this many words for a crossword (fewer seldom cross).</summary>
+    public const int MinDeckWords = 6;
 
     /// <summary>How many of the learner's last crosswords count as recent: their words wait until the others are used.</summary>
     public const int RecentCrosswords = 2;
@@ -71,13 +78,39 @@ public sealed partial class CrosswordService(IAppDbContext db, TimeProvider time
             return same.OwnerId == ownerId ? ToDto(same) : throw new ConflictException("Bu krossvord boshqa foydalanuvchiga tegishli.");
         }
 
-        var progress = await units.SyncAsync(ownerId, ct);
         var size = Sizes.SingleOrDefault(s => s.Size == request.Size);
         if (size.Title is null)
         {
             throw new ValidationException("Krossvord o‘lchami noto‘g‘ri.");
         }
 
+        List<WordRow> rows;
+        if (Vocabulary.PersonalWordService.GroupDeckId(request.Deck) is { } deckId)
+        {
+            rows = await DeckRows(ownerId, deckId).AsNoTracking().ToListAsync(ct);
+            if (rows.Count < MinDeckWords)
+            {
+                throw new ValidationException($"Krossvord uchun lug‘atda kamida {MinDeckWords} ta so‘z bo‘lsin.");
+            }
+        }
+        else
+        {
+            rows = await UnitRowsAsync(ownerId, request, size, ct);
+        }
+
+        return await BuildAsync(ownerId, request, size.Words, rows, ct);
+    }
+
+    /// <summary>The words of a teacher's deck the learner has (L-68), with the example the deck gave.</summary>
+    private IQueryable<WordRow> DeckRows(Guid ownerId, Guid deckId) =>
+        from p in db.PersonalWords
+        join i in db.LearningItems on p.LearningItemId equals i.Id
+        where p.OwnerId == ownerId && p.GroupDeckId == deckId && i.IsActive
+        select new WordRow { Id = i.Id, Korean = i.Korean, Uzbek = i.Uzbek, ExampleKo = p.ExampleKo, ExampleUz = p.ExampleUz }; // no unit: Guid.Empty by default
+
+    private async Task<List<WordRow>> UnitRowsAsync(Guid ownerId, StartCrosswordRequest request, (CrosswordSize Size, string Title, int Words, int Units) size, CancellationToken ct)
+    {
+        var progress = await units.SyncAsync(ownerId, ct);
         if (progress.Count < size.Units)
         {
             throw new ValidationException($"{size.Title} krossvord {size.Units}-bo‘lim ochilganda ochiladi.");
@@ -96,8 +129,12 @@ public sealed partial class CrosswordService(IAppDbContext db, TimeProvider time
             throw new ValidationException($"{size.Title} krossvord uchun kamida {least} ta bo‘lim tanlang.");
         }
 
+        return await Rows(unitIds).AsNoTracking().ToListAsync(ct);
+    }
+
+    private async Task<CrosswordDto> BuildAsync(Guid ownerId, StartCrosswordRequest request, int wordCount, List<WordRow> rows, CancellationToken ct)
+    {
         // Every word of the chosen units counts the same (L-55); only words of the last crosswords wait their turn.
-        var rows = await Rows(unitIds).AsNoTracking().ToListAsync(ct);
         var recent = (await db.Crosswords.Where(x => x.OwnerId == ownerId).OrderByDescending(x => x.CreatedAt).Take(RecentCrosswords)
                 .AsNoTracking().ToListAsync(ct))
             .SelectMany(x => x.Words).Select(w => w.LearningItemId).ToHashSet();
@@ -109,7 +146,13 @@ public sealed partial class CrosswordService(IAppDbContext db, TimeProvider time
             throw new ValidationException("Krossvord uchun so‘z yetarli emas.");
         }
 
-        var (gridRows, gridCols, words) = CrosswordGenerator.Build(pool, size.Words, Random.Shared);
+        var (gridRows, gridCols, words) = CrosswordGenerator.Build(pool, wordCount, Random.Shared);
+        if (words.Count < 2)
+        {
+            // A short teacher's list whose words share no syllable (L-68): no crossword, rather than a single word.
+            throw new ValidationException("Bu so‘zlar bir-biri bilan kesishmaydi, krossvord tuzib bo‘lmadi. Boshqa mashqni tanlang.");
+        }
+
         var now = time.GetUtcNow();
         foreach (var old in await db.Crosswords.Where(x => x.OwnerId == ownerId && x.Status == CrosswordStatus.Active).ToListAsync(ct))
         {
