@@ -85,8 +85,8 @@
     private string? _error;
     private bool _busy;
 
-    /// <summary>Every word about once: 10 questions for a short list, else 20 (or 30 for a long one).</summary>
-    private int TestCount => _deck!.Words.Count <= 12 ? 10 : _deck.Words.Count <= 24 ? 20 : 30;
+    /// <summary>One question per word, as in the unit test (L-70); a long list is asked 30 at a time, drawn anew.</summary>
+    private int TestCount => Math.Min(_deck!.Words.Count, 30);
 
     protected override async Task OnParametersSetAsync()
     {

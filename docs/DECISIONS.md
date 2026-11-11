@@ -782,3 +782,8 @@ L-67 ning 2-bosqichi. O‘qituvchi kitobni emas, o‘zi tayyorlagan ikki ustunli
 - HEIC qabul qilinmaydi: iPhone’da rasm galereyadan tanlanganda brauzer o‘zi JPEG qiladi.
 
 Keyingi (L-67 4-bosqich): alohida «O‘qituvchi» tarifi — o‘qituvchilar sinab ko‘rgach.
+
+## L-70 · 2026-11-11 · Lug‘at sinovi bo‘lim testi kabi
+
+Johnny sinovidan: o‘qituvchi lug‘atining sinovi faqat variantli edi — bepul o‘quvchida gapli (AI) savollar yo‘q, variantdan to‘g‘risini topish oson; bo‘lim testi esa qiyinroq va to‘g‘riroq. Endi faqat bitta o‘qituvchi lug‘ati tanlangan sinov (`Decks = ["guruh:{id}"]`, bo‘lim yo‘q) **bo‘lim testi generatori** bilan tuziladi (`UnitTestGenerator`, L-38): har so‘zga bitta savol — ma’nosini tanlash, koreyschasini tanlash, ma’nosidan koreyschasini **yozish** (40%), eshitib tanlash va eshitib yozish (ovoz xizmati bo‘lmasa ma’no savoliga almashadi). AI ishlatilmaydi, bepul va Premium o‘quvchiga bir xil. Uzun lug‘atdan har safar 30 tagacha so‘z yangidan tanlanadi; savollar soni so‘zlar soni (4–30). Noto‘g‘ri variantlar lug‘atdan va o‘quvchining boshqa so‘zlaridan. O‘tish chegarasi hamon yo‘q (L-68), ball o‘qituvchi hisobotiga tushadi. Boshqa sinovlar (Aralash sinov, bo‘lim bilan aralash) o‘zgarmadi.
+

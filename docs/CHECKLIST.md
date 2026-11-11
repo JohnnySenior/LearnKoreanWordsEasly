@@ -580,3 +580,9 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: 1 ta provayder (rasm bloklari), 1 ta API (Premium’siz 403 va AI chaqirilmaydi; o‘qilgan juftlar, takror va kirillcha rad; PDF media turi; ro‘yxat topilmasa 422; 5 MB dan katta — 413, AI chaqirilmaydi).
 - [x] Chromium 360px yorug‘/qorong‘i: yuklash maydoni rasm va PDF’ni qabul qiladi, izoh ko‘rinadi; scroll va konsol xatosi yo‘q. L-68 hisobot testidagi tasodifiy natijaga bog‘liq tekshiruv mustahkamlandi.
 - [ ] Johnny: haqiqiy telefon surati va PDF lug‘at bilan sinash (AI qanchalik aniq o‘qiydi).
+
+**Lug‘at sinovi bo‘lim testi kabi (L-70, 2026-11-11):**
+- [x] Faqat o‘qituvchi lug‘ati tanlangan sinov `UnitTestGenerator` bilan: yozish va eshitish savollari, AI’siz; har so‘zga bitta savol (4–30).
+- [x] Test: 6 so‘zli lug‘at → 6 savol, yozma savol bor, AI chaqirilmaydi, 31 savol — 422.
+- [ ] Muddat (Johnny: «bajardi» nimani anglatishini tanlaydi); o‘qituvchi uchun batafsil statistika.
+
