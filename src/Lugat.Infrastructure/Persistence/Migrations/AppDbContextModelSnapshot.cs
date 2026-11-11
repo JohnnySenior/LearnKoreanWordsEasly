@@ -1558,6 +1558,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("GroupDeckId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("OpenedUnitId")
                         .HasColumnType("uuid");
 

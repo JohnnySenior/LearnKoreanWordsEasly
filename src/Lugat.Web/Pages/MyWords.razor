@@ -17,6 +17,21 @@
     </div>
 </header>
 
+@if (_data?.GroupDecks is { Count: > 0 } assigned)
+{
+    @* L-68: the teachers' decks first, each as its own folder; their words are not mixed into the list below. *@
+    <section class="card">
+        <span class="kicker accent">O‘qituvchi vazifalari</span>
+        @foreach (var g in assigned)
+        {
+            <a class="button block deck-folder" href="@($"sozlarim/guruh/{g.Id}")">
+                <span class="deck-folder-text"><strong>@g.Name</strong><span class="muted small-text">@g.GroupName@(g.TeacherName is null ? "" : $" · {g.TeacherName}")</span></span>
+                <span class="aside">@g.Learned / @g.Words o‘rganilgan →</span>
+            </a>
+        }
+    </section>
+}
+
 <label class="field">
     Koreyscha yoki o‘zbekcha so‘z
     <input class="input" maxlength="50" placeholder="masalan: 월급 yoki maosh" @bind="_text" @bind:event="oninput" @onkeydown="KeyAsync" />
@@ -105,8 +120,8 @@
     return;
 }
 
-<h2 style="margin-top:24px">Ro‘yxat (@_data.Words.Count)</h2>
-@if (_data.Words.Count == 0 && _data.Decks.Count == 0 && (_data.GroupDecks?.Count ?? 0) == 0)
+<h2 style="margin-top:24px">O‘z so‘zlarim (@Own.Count())</h2>
+@if (!Own.Any() && _data.Decks.Count == 0)
 {
     <p class="muted">Hozircha so‘z yo‘q. Yuqorida birinchi so‘zingizni qidiring.</p>
 }
@@ -119,12 +134,6 @@ else
         {
             var id = d.Id.ToString();
             <button class="chip wide @(_deck == id ? "selected" : "")" role="radio" aria-checked="@(_deck == id)" @onclick="() => _deck = id">@d.Name (@d.Words)</button>
-        }
-        @foreach (var g in _data.GroupDecks ?? [])
-        {
-            @* L-67: the teacher's decks — practised here, changed only by the teacher. *@
-            var key = g.Key;
-            <button class="chip wide @(_deck == key ? "selected" : "")" role="radio" aria-checked="@(_deck == key)" @onclick="() => _deck = key" title="@g.GroupName guruhi">@g.Name (@g.Words)</button>
         }
     </div>
     <div class="chips" role="radiogroup" aria-label="Holat">
@@ -260,14 +269,14 @@ else
         _error = result.Ok ? _error : result.Error;
     }
 
+    /// <summary>The learner's own words: the teachers' decks have their own pages (L-68).</summary>
+    private IEnumerable<MyWordDto> Own => _data?.Words.Where(w => !w.FromGroupDeck) ?? [];
+
     private List<MyWordDto> Shown()
     {
         var q = _query.Trim();
-        return _data!.Words
-            .Where(w => _deck is null
-                || (_deck == Unsorted ? w.DeckId is null && !w.FromGroupDeck
-                    : _deck.StartsWith("guruh:") ? w.GroupDeckId?.ToString() == _deck["guruh:".Length..]
-                    : w.DeckId?.ToString() == _deck))
+        return Own
+            .Where(w => _deck is null || (_deck == Unsorted ? w.DeckId is null : w.DeckId?.ToString() == _deck))
             .Where(w => _state is null || w.State == _state)
             .Where(w => q.Length == 0 || w.Korean.Contains(q, StringComparison.Ordinal) || w.Uzbek.Contains(q, StringComparison.OrdinalIgnoreCase))
             .ToList();

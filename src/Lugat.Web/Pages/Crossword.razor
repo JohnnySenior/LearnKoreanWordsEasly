@@ -19,7 +19,7 @@
 {
     <p class="muted">Yuklanmoqda…</p>
 }
-else if (_home.OpenUnits < _home.UnitsNeeded)
+else if (_home.OpenUnits < _home.UnitsNeeded && (_home.Decks?.Count ?? 0) == 0)
 {
     <section class="home-due">
         <span class="kicker">🔒 Hali yopiq</span>
@@ -42,7 +42,22 @@ else if (_game is null || _choosing)
             <button class="btn btn-primary block big" @onclick="() => _choosing = false"><span>Davom ettirish</span><Icon Name="arrow-right" /></button>
         </section>
     }
-    @if (_home.Units is { Count: > 0 } units)
+    @if (_home.Decks is { Count: > 0 } decks)
+    {
+        @* L-68: a teacher's deck instead of the units. *@
+        <section class="card">
+            <span class="kicker accent">O‘qituvchi vazifalari</span>
+            <div class="chips" role="radiogroup" aria-label="O‘qituvchi lug‘ati">
+                @foreach (var d in decks)
+                {
+                    var key = d.Key;
+                    <button class="chip wide @(_deck == key ? "selected" : "")" role="radio" aria-checked="@(_deck == key)" title="@($"{d.Words} ta so‘z")" @onclick="() => _deck = _deck == key ? null : key">@d.Name</button>
+                }
+            </div>
+            <p class="muted small-text">@(_deck is null ? "Tanlansa, krossvord faqat shu lug‘at so‘zlaridan tuziladi." : "Krossvord shu lug‘at so‘zlaridan tuziladi.")</p>
+        </section>
+    }
+    @if (_deck is null && _home.OpenUnits >= _home.UnitsNeeded && _home.Units is { Count: > 0 } units)
     {
         <section class="card">
             <span class="kicker">Bo‘limlar</span>
@@ -65,7 +80,7 @@ else if (_game is null || _choosing)
             </button>
         }
     </section>
-    <button class="btn btn-primary block big" disabled="@(_busy || UnitsMissing > 0)" @onclick="StartAsync"><span>@(_home.Active is null ? "Boshlash" : "Yangisini boshlash")</span><Icon Name="arrow-right" /></button>
+    <button class="btn btn-primary block big" disabled="@(_busy || (_deck is null && (UnitsMissing > 0 || _home.OpenUnits < _home.UnitsNeeded)))" @onclick="StartAsync"><span>@(_home.Active is null ? "Boshlash" : "Yangisini boshlash")</span><Icon Name="arrow-right" /></button>
 }
 else
 {
@@ -195,6 +210,11 @@ else
     /// <summary>Chosen units; none means all open units.</summary>
     private readonly HashSet<Guid> _units = [];
 
+    /// <summary>A teacher's deck to build from instead of the units (L-68).</summary>
+    private string? _deck;
+
+    [SupplyParameterFromQuery(Name = "deck")] public string? Deck { get; set; }
+
     private int UnitsLeast => Math.Max(_home?.UnitsNeeded ?? 2, _home?.Sizes.FirstOrDefault(s => s.Size == _size)?.UnitsNeeded ?? 2);
 
     /// <summary>How many more units to choose; 0 when none is chosen (all units are used).</summary>
@@ -220,6 +240,11 @@ else
         _home = home.Value;
         _game = _home?.Active;
         _choosing = _game is not null; // an unfinished one is offered to continue first
+        _deck = _home?.Decks?.Any(d => d.Key == Deck) == true ? Deck : null;
+        if (_deck is not null && _game is not null)
+        {
+            _choosing = true; // came for this deck: offer a new one at once
+        }
         _size = _home?.Sizes.Where(s => s.Available).Select(s => s.Size).DefaultIfEmpty(CrosswordSize.Small).Last() ?? CrosswordSize.Small;
         if (_size == CrosswordSize.Large) _size = CrosswordSize.Medium;
         FirstOpen();
@@ -228,7 +253,7 @@ else
     private async Task StartAsync()
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<CrosswordDto>(HttpMethod.Post, "api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), _size, _home?.Units?.Select(u => u.UnitId).Where(_units.Contains).ToList()));
+        var result = await Api.SendJsonAsync<CrosswordDto>(HttpMethod.Post, "api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), _size, _deck is null ? _home?.Units?.Select(u => u.UnitId).Where(_units.Contains).ToList() : null, _deck));
         _busy = false;
         _error = result.Ok ? null : result.Error;
         if (result.Value is { } game)

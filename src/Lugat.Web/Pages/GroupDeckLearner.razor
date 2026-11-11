@@ -1,0 +1,133 @@
+@page "/sozlarim/guruh/{Id:guid}"
+@using Lugat.Contracts
+@inject SessionService Api
+@inject NavigationManager Nav
+
+<PageTitle>O‘qituvchi vazifasi — Koreyscha</PageTitle>
+
+@* L-68: one teacher's deck as the learner sees it — its own folder: the table of words with the learner's state, and
+   the ways to practise exactly these words. The test of it shows in the teacher's report; it has no pass mark. *@
+<a class="back" href="sozlarim">← Mening so‘zlarim</a>
+
+@if (_deck is null)
+{
+    <p class="muted">@(_error ?? "Yuklanmoqda…")</p>
+    return;
+}
+
+<header class="page-head">
+    <div>
+        <span class="kicker accent">O‘qituvchi vazifasi</span>
+        <h1>@_deck.Name</h1>
+        <span class="muted small-text">@_deck.GroupName@(_deck.TeacherName is null ? "" : $" · {_deck.TeacherName}") · @_deck.Words.Count so‘z</span>
+    </div>
+</header>
+
+@if (_error is not null)
+{
+    <div class="notice" role="alert">@_error</div>
+}
+
+<section class="card">
+    <div class="deck-progress" aria-label="Holat">
+        <div><strong>@_deck.Learned</strong><span class="muted small-text">o‘rganilgan</span></div>
+        <div><strong>@_deck.Learning</strong><span class="muted small-text">o‘rganilmoqda</span></div>
+        <div><strong>@_deck.New</strong><span class="muted small-text">yangi</span></div>
+    </div>
+    @if (_deck.LastTest is { } t)
+    {
+        <p class="small-text" style="margin:10px 0 0">Oxirgi sinov: <strong>@t.Correct / @t.Questions</strong> · @Format.DayMonth(t.FinishedAt) — <a href="@($"sinov/{t.TestId}")">natijani ko‘rish</a></p>
+    }
+    <p class="muted small-text" style="margin:8px 0 0">Bu so‘zlar kunlik takrorga ham qo‘shilgan: kuniga 10 tagacha yangisi.</p>
+</section>
+
+<div class="deck-actions">
+    <button class="btn btn-primary block big" disabled="@_busy" @onclick="DrillAsync"><span>Kartochkada yodlash</span><span class="aside">@Math.Min(_deck.Words.Count, MaxDrill) so‘z</span></button>
+    <button class="btn btn-secondary block" disabled="@(_busy || _deck.Words.Count < MinTestWords)" @onclick="TestAsync"><span>Sinov topshirish</span><span class="aside">@TestCount savol</span></button>
+    <a class="btn btn-secondary block" href="@($"mashq/yozish?deck={Uri.EscapeDataString(_deck.Key)}")"><span>Yozma mashq</span><Icon Name="arrow-right" /></a>
+    @if (_deck.Words.Count >= MinCrosswordWords)
+    {
+        <a class="btn btn-secondary block" href="@($"mashq/krossvord?deck={Uri.EscapeDataString(_deck.Key)}")"><span>Krossvord</span><Icon Name="arrow-right" /></a>
+    }
+</div>
+@if (_deck.Words.Count < MinTestWords)
+{
+    <p class="muted small-text">Sinov uchun lug‘atda kamida @MinTestWords ta so‘z bo‘lishi kerak.</p>
+}
+
+<section class="card">
+    <h2>So‘zlar</h2>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Koreyscha</th><th>O‘zbekcha</th><th>Holat</th></tr></thead>
+            <tbody>
+                @foreach (var w in _deck.Words)
+                {
+                    <tr>
+                        <td><strong class="ko" lang="ko">@w.Korean</strong>@if (w.Romanization is not null) {<span class="muted small-text" style="display:block">@w.Romanization</span>}</td>
+                        <td class="wrap">@w.Uzbek</td>
+                        <td><Tag Kind="@(w.State == MyWordState.Learned ? "accent" : "outline")">@StateLabel(w.State)</Tag></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private const int MaxDrill = 60;
+    private const int MinTestWords = 4;
+    private const int MinCrosswordWords = 6;
+
+    private GroupDeckLearnerDto? _deck;
+    private string? _error;
+    private bool _busy;
+
+    /// <summary>Every word about once: 10 questions for a short list, else 20 (or 30 for a long one).</summary>
+    private int TestCount => _deck!.Words.Count <= 12 ? 10 : _deck.Words.Count <= 24 ? 20 : 30;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var result = await Api.GetAsync<GroupDeckLearnerDto>($"api/my-words/group-decks/{Id}");
+        (_deck, _error) = (result.Value, result.Error);
+    }
+
+    private static string StateLabel(MyWordState state) => state switch
+    {
+        MyWordState.Learned => "O‘rganilgan",
+        MyWordState.Learning => "O‘rganilmoqda",
+        _ => "Yangi",
+    };
+
+    private async Task DrillAsync()
+    {
+        _busy = true;
+        var ids = _deck!.Words.Take(MaxDrill).Select(w => w.LearningItemId).ToList();
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(null, true, LearningItemIds: ids));
+        _busy = false;
+        if (result.Value?.Session is not null)
+        {
+            Nav.NavigateTo("mashq/kartochka");
+            return;
+        }
+
+        _error = result.Value?.Message ?? result.Error;
+    }
+
+    private async Task TestAsync()
+    {
+        _busy = true;
+        var request = new CreateTestRequest(Guid.NewGuid(), null, TestCount, Decks: [_deck!.Key]);
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, "api/tests", request, TimeSpan.FromSeconds(90));
+        _busy = false;
+        if (result.Value is { } test)
+        {
+            Nav.NavigateTo($"sinov/{test.Id}");
+            return;
+        }
+
+        _error = result.Error;
+    }
+}

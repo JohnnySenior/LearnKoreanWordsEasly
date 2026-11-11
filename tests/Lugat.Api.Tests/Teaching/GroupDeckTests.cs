@@ -37,7 +37,7 @@ public class GroupDeckTests
 
     private static async Task<T> OkAsync<T>(HttpResponseMessage response)
     {
-        Assert.True(response.StatusCode == HttpStatusCode.OK, $"{response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+        Assert.True(response.StatusCode is HttpStatusCode.OK or HttpStatusCode.Created, $"{response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
         return (await response.Content.ReadFromJsonAsync<T>(ApiFactory.Json))!;
     }
 
@@ -284,5 +284,89 @@ public class GroupDeckTests
 
         Assert.Empty((await OkAsync<GroupDeckDto>(await teacher.DeleteAsync($"/api/teacher/decks/{deck.Id}/words/{word.Id}"))).Words);
         Assert.Contains("so‘zlarni qo‘shing", await DetailAsync(await teacher.PostAsync($"/api/teacher/decks/{deck.Id}/publish", null), HttpStatusCode.UnprocessableEntity));
+    }
+
+    /// <summary>A published deck of six words the catalog does not have, for one learner.</summary>
+    private async Task<(HttpClient Learner, GroupDeckDto Deck)> PublishedSixAsync(ApiFactory factory)
+    {
+        var (teacher, group) = await SetupAsync(factory, LearnerA);
+        await GivePremiumAsync(factory, Teacher);
+        var deck = await CreateDeckAsync(teacher, group.Id, "1-dars");
+        var file = CatalogFiles.XlsxOf([["대학", "universitet"], ["학생", "talaba"], ["생일", "tug‘ilgan kun"], ["일본", "Yaponiya"], ["본사", "bosh ofis"], ["사과", "olma"]]);
+        await OkAsync<GroupDeckImportDto>(await ImportAsync(teacher, deck.Id, file));
+        var published = await OkAsync<GroupDeckDto>(await teacher.PostAsync($"/api/teacher/decks/{deck.Id}/publish", null));
+        return (await factory.SignedInClientAsync(LearnerA), published);
+    }
+
+    [Fact]
+    public async Task The_learner_sees_the_deck_as_its_own_folder_and_a_test_of_it_is_kept_with_the_deck()
+    {
+        await using var factory = NewFactory();
+        var (learner, deck) = await PublishedSixAsync(factory);
+
+        var list = (await learner.GetFromJsonAsync<MyWordsDto>("/api/my-words", ApiFactory.Json))!;
+        var folder = Assert.Single(list.GroupDecks!);
+        Assert.Equal((deck.Id, "1-dars", "Ansan", "Ustoz", 6, 0), (folder.Id, folder.Name, folder.GroupName, folder.TeacherName, folder.Words, folder.Learned));
+        Assert.All(list.Words, w => Assert.True(w.FromGroupDeck));
+
+        var page = await OkAsync<GroupDeckLearnerDto>(await learner.GetAsync($"/api/my-words/group-decks/{deck.Id}"));
+        Assert.Equal(["대학", "학생", "생일", "일본", "본사", "사과"], page.Words.Select(w => w.Korean)); // the teacher's order
+        Assert.Equal((0, 0, 6, (GroupDeckTestDto?)null), (page.Learned, page.Learning, page.New, page.LastTest));
+
+        // Another learner, or a deck not given: 404.
+        var stranger = await factory.SignedInClientAsync(LearnerB);
+        Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/api/my-words/group-decks/{deck.Id}")).StatusCode);
+
+        // The test of exactly this deck is named after it and kept with it; no pass mark.
+        var test = await OkAsync<TestDto>(await learner.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 10, Decks: [page.Key]), ApiFactory.Json));
+        Assert.Equal("1-dars", test.Title);
+        foreach (var q in test.Questions)
+        {
+            await learner.PostAsJsonAsync($"/api/tests/{test.Id}/answers", new TestAnswerRequest(q.Index, q.Options.FirstOrDefault() ?? "x"), ApiFactory.Json);
+        }
+
+        await OkAsync<TestDto>(await learner.PostAsync($"/api/tests/{test.Id}/finish", null));
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var run = await scope.ServiceProvider.GetRequiredService<AppDbContext>().TestRuns.SingleAsync(r => r.Id == test.Id);
+            Assert.Equal((deck.Id, (int?)null, (bool?)null), (run.GroupDeckId, run.PassMark, run.Passed));
+        }
+
+        var after = await OkAsync<GroupDeckLearnerDto>(await learner.GetAsync($"/api/my-words/group-decks/{deck.Id}"));
+        Assert.Equal(test.Id, after.LastTest!.TestId);
+        Assert.Equal(test.Questions.Count, after.LastTest.Questions);
+
+        // Mixed with a unit, the test is not the deck's.
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await ApiFactory.OpenUnitAsync(scope.ServiceProvider, await TeachingTests.UserIdAsync(factory, LearnerA), 1, [("학교", "maktab"), ("물", "suv"), ("사랑", "sevgi")]);
+        }
+
+        var mixed = await OkAsync<TestDto>(await learner.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), [ApiFactory.Unit(1)], 10, Decks: [page.Key]), ApiFactory.Json));
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            Assert.Null((await scope.ServiceProvider.GetRequiredService<AppDbContext>().TestRuns.SingleAsync(r => r.Id == mixed.Id)).GroupDeckId);
+        }
+    }
+
+    [Fact]
+    public async Task A_crossword_can_be_made_from_the_deck_without_any_open_unit()
+    {
+        await using var factory = NewFactory();
+        var (learner, deck) = await PublishedSixAsync(factory);
+        var key = GroupDeckService.Key(deck.Id);
+
+        var home = await OkAsync<CrosswordHomeDto>(await learner.GetAsync("/api/crosswords"));
+        Assert.True(home.OpenUnits < home.UnitsNeeded); // only A-1 is open: too few units for a crossword of units
+        Assert.Contains(home.Decks!, d => d.Key == key && d.Words == 6);
+        Assert.True(home.Sizes.First(s => s.Size == Lugat.Domain.Games.CrosswordSize.Small).Available);
+
+        var game = await OkAsync<CrosswordDto>(await learner.PostAsJsonAsync("/api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), Lugat.Domain.Games.CrosswordSize.Small, null, key), ApiFactory.Json));
+        Assert.InRange(game.Clues.Count, 2, 6);
+        var deckUzbek = new[] { "universitet", "talaba", "tug‘ilgan kun", "Yaponiya", "bosh ofis", "olma" };
+        Assert.All(game.Clues, c => Assert.Contains(c.Uzbek, deckUzbek));
+
+        // Without a deck the units rule stays.
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await learner.PostAsJsonAsync("/api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), Lugat.Domain.Games.CrosswordSize.Small), ApiFactory.Json)).StatusCode);
     }
 }

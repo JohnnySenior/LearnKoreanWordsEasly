@@ -70,7 +70,25 @@ public sealed record MyWordsDto(IReadOnlyList<MyWordDto> Words, IReadOnlyList<Wo
     IReadOnlyList<GroupDeckOptionDto>? GroupDecks = null);
 
 /// <summary>A teacher's deck the learner practises (L-67): read-only for the learner. <paramref name="Key"/> is "guruh:{id}".</summary>
-public sealed record GroupDeckOptionDto(string Key, string Name, string GroupName, int Words);
+/// <param name="Learned">Words of the deck the learner has learned (both cards mastered, L-68).</param>
+public sealed record GroupDeckOptionDto(string Key, string Name, string GroupName, int Words, int Learned = 0, Guid Id = default, string? TeacherName = null);
+
+/// <summary>The learner's view of one teacher's deck (L-68): its words with the learner's state, and the last test of it.</summary>
+public sealed record GroupDeckLearnerDto(
+    Guid Id,
+    string Key,
+    string Name,
+    string GroupName,
+    string? TeacherName,
+    DateTimeOffset? PublishedAt,
+    IReadOnlyList<MyWordDto> Words,
+    int Learned,
+    int Learning,
+    int New,
+    GroupDeckTestDto? LastTest);
+
+/// <param name="Correct">Right answers out of <paramref name="Questions"/> (technical errors not counted).</param>
+public sealed record GroupDeckTestDto(Guid TestId, int Correct, int Questions, DateTimeOffset FinishedAt);
 
 public sealed record DeckNameRequest(string Name);
 
