@@ -41,6 +41,29 @@
     </section>
 }
 
+@if (_student.Decks is { Count: > 0 } decks)
+{
+    @* L-68: the teacher's own decks for this learner. *@
+    <section class="card">
+        <h2>Sizning lug‘atlaringiz</h2>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Lug‘at</th><th class="num">O‘rgandi</th><th class="num">Oxirgi sinov</th></tr></thead>
+                <tbody>
+                    @foreach (var d in decks)
+                    {
+                        <tr>
+                            <td class="wrap"><a href="@($"oqituvchi/lugat/{d.DeckId}")">@d.Name</a></td>
+                            <td class="num">@d.Learned / @d.Words</td>
+                            <td class="num">@(d.LastTestPercent is { } p ? $"{p}% · {Format.DayMonth(d.LastTestAt!.Value)}" : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
 <section class="card">
     <h2>Bo‘limlar</h2>
     @if (_student.Units.Count == 0)

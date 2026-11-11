@@ -18,7 +18,7 @@ namespace Lugat.Application.Teaching;
 /// not left; anyone else is 404, as if they did not exist (spec §6.4, §13.8). What is shown is limited to unit
 /// results, activity and most-missed words: no answer history, payments or logins.
 /// </summary>
-public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeService mistakes)
+public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeService mistakes, GroupDeckReport decks)
 {
     public const int MaxGroupName = 100;
 
@@ -105,9 +105,13 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
             .ToList();
 
         var missed = (await mistakes.WordsOfAsync(ids, ct)).SelectMany(p => p.Value.Select(w => (Word: w, Learner: p.Key))).ToList();
+        // A word the teacher gave in a deck is named after the deck, not the course unit it may also be in (L-68).
+        var labels = await decks.DeckLabelsAsync(teacherId, ids, ct);
 
         var hardest = missed.GroupBy(x => x.Word.LearningItemId)
-            .Select(g => new MissedWordDto(g.First().Word.Korean, g.First().Word.Uzbek, g.First().Word.Unit, g.Sum(x => x.Word.Mistakes), g.Select(x => x.Learner).Distinct().Count(),
+            .Select(g => new MissedWordDto(g.First().Word.Korean, g.First().Word.Uzbek,
+                g.Select(x => labels.GetValueOrDefault((x.Learner, x.Word.LearningItemId))).FirstOrDefault(l => l is not null) ?? g.First().Word.Unit,
+                g.Sum(x => x.Word.Mistakes), g.Select(x => x.Learner).Distinct().Count(),
                 g.SelectMany(x => x.Word.Sources).Distinct().ToList()))
             .OrderByDescending(w => w.Mistakes).ThenByDescending(w => w.Learners).ThenBy(w => w.Korean, StringComparer.Ordinal)
             .Take(TopWords)
@@ -129,12 +133,14 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
         }
 
         var units = (await UnitsOfAsync([userId], ct))[userId];
+        var labels = await decks.DeckLabelsAsync(teacherId, [userId], ct);
         var words = (await mistakes.GetAsync(userId, ct)).Words.Take(TopWords)
-            .Select(w => new MissedWordDto(w.Korean, w.Uzbek, w.Unit, w.Mistakes, 1, w.Sources)).ToList();
+            .Select(w => new MissedWordDto(w.Korean, w.Uzbek, labels.GetValueOrDefault((userId, w.LearningItemId)) ?? w.Unit, w.Mistakes, 1, w.Sources)).ToList();
         var (reviewed, due) = await ReviewsOfAsync([userId], ct);
         var week = new StudentWeekDto(reviewed.GetValueOrDefault(userId), due.GetValueOrDefault(userId), await PracticeOfAsync(userId, ct));
         return new StudentDetailDto(userId, visible[0], CurrentUnit(units),
-            units.Select(u => new StudentUnitDto(u.Label, u.Status, u.Best, u.Attempts, u.PassedBy)).ToList(), words, week);
+            units.Select(u => new StudentUnitDto(u.Label, u.Status, u.Best, u.Attempts, u.PassedBy)).ToList(), words, week,
+            await decks.StudentDecksAsync(teacherId, userId, ct));
     }
 
     public const int WeekDays = 7;

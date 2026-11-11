@@ -72,6 +72,60 @@
     </section>
 }
 
+@if (_deck.Status == GroupDeckStatus.Published && _report is { } report)
+{
+    @* L-68: what each learner did with exactly these words; counts and scores, never the answers. *@
+    <section class="card">
+        <h2>O‘quvchilar</h2>
+        @if (report.Students.Count == 0)
+        {
+            <p class="muted">Guruhda hali o‘quvchi yo‘q.</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>Ism</th><th class="num">O‘rgandi</th><th class="num">Jarayonda</th><th class="num">Boshlamagan</th><th class="num">Takror (7 kun)</th><th class="num">Sinov</th></tr></thead>
+                    <tbody>
+                        @foreach (var s in report.Students)
+                        {
+                            <tr>
+                                <td class="wrap"><a href="@($"oqituvchi/oquvchi/{s.UserId}")">@(s.Name ?? "—")</a></td>
+                                <td class="num">@s.Learned / @s.Words</td>
+                                <td class="num">@s.Learning</td>
+                                <td class="num">@s.New</td>
+                                <td class="num">@s.Reviewed7</td>
+                                <td class="num">@(s.LastTestPercent is { } p ? $"{p}%" : "—")@if (s.Tests > 1) {<span class="muted small-text" style="display:block">@s.Tests marta, eng yaxshi @s.BestTestPercent%</span>}</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="muted small-text">«O‘rgandi» — ikkala kartochkasi ham mustahkam (Mening so‘zlarim’dagi «O‘rganilgan»). «Takror» — shu lug‘at kartochkalaridan oxirgi 7 kunda javob berganlari. «Sinov» — oxirgi lug‘at sinovi, o‘tish chegarasi yo‘q.</p>
+        }
+    </section>
+
+    <section class="card">
+        <h2>So‘zlar bo‘yicha</h2>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>So‘z</th><th class="num">O‘rgangan</th><th class="num">Xato</th></tr></thead>
+                <tbody>
+                    @foreach (var w in report.WordStats)
+                    {
+                        <tr>
+                            <td class="wrap"><strong class="ko" lang="ko">@w.Korean</strong> — @w.Uzbek</td>
+                            <td class="num">@w.Learned / @report.Students.Count</td>
+                            <td class="num">@(w.Mistakes == 0 ? "—" : $"{w.Mistakes} ({w.Learners} kishi)")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="muted small-text">Eng ko‘p xato qilingan so‘zlar tepada (oxirgi 60 kun: kartochka va sinovlar).</p>
+    </section>
+}
+
 <section class="card">
     <h2>So‘zlar (@_deck.Words.Count)</h2>
     @if (_deck.Words.Count == 0)
@@ -191,6 +245,7 @@
     }
 
     private GroupDeckDto? _deck;
+    private GroupDeckReportDto? _report;
     private GroupDeckImportDto? _import;
     private string? _error;
     private string? _fillNote;
@@ -208,6 +263,15 @@
     {
         var result = await Api.GetAsync<GroupDeckDto>($"api/teacher/decks/{Id}");
         (_deck, _error) = (result.Value, result.Error);
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        if (_deck?.Status == GroupDeckStatus.Published)
+        {
+            _report = (await Api.GetAsync<GroupDeckReportDto>($"api/teacher/decks/{Id}/report")).Value;
+        }
     }
 
     private void Apply(ApiResult<GroupDeckDto> result)
@@ -308,6 +372,7 @@
         (_busy, _error) = (true, null);
         Apply(await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Post, $"api/teacher/decks/{Id}/publish"));
         _confirmPublish = false;
+        await LoadReportAsync();
     }
 
     private async Task ArchiveAsync()

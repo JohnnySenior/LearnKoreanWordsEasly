@@ -569,4 +569,5 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Lug‘at sinovi `TestRun.GroupDeckId` bilan (migratsiya), o‘tish chegarasisiz; krossvord lug‘atdan, ochiq bo‘limsiz; kesishmaydigan so‘zlarda xabar.
 - [x] Testlar: 2 ta API (papka va sahifa, tartib, 404, sinov lug‘atga yoziladi va oxirgi sinov bo‘lib chiqadi, aralash sinov yozilmaydi; krossvord lug‘atdan).
 - [x] Chromium 360px yorug‘/qorong‘i: papka → lug‘at sahifasi (jadval 7 so‘z, 4 tugma) → krossvord lug‘atdan (6 so‘z) → sinov ochildi; yonlama scroll va konsol xatosi yo‘q.
-- [ ] PR B: o‘qituvchiga lug‘at hisoboti.
+- [x] PR B: lug‘at hisoboti (o‘quvchilar va so‘zlar jadvali, sinovlar), xatolarda lug‘at nomi (guruh va o‘quvchi sahifasi), o‘quvchi sahifasida «Sizning lug‘atlaringiz».
+- [x] PR B testi: 1 ta API (holat sonlari, 7 kunlik takror, sinov foizi, eng ko‘p xato so‘z, «1-dars» yorlig‘i, boshqa o‘qituvchi 404, o‘quvchi 403).
