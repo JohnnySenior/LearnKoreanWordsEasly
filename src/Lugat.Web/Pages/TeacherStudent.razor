@@ -48,7 +48,7 @@
         <h2>Sizning lug‘atlaringiz</h2>
         <div class="table-wrap">
             <table class="data-table">
-                <thead><tr><th>Lug‘at</th><th class="num">O‘rgandi</th><th class="num">Oxirgi sinov</th></tr></thead>
+                <thead><tr><th>Lug‘at</th><th class="num">O‘rgandi</th><th class="num">Oxirgi sinov</th><th>Vazifa</th></tr></thead>
                 <tbody>
                     @foreach (var d in decks)
                     {
@@ -56,6 +56,7 @@
                             <td class="wrap"><a href="@($"oqituvchi/lugat/{d.DeckId}")">@d.Name</a></td>
                             <td class="num">@d.Learned / @d.Words</td>
                             <td class="num">@(d.LastTestPercent is { } p ? $"{p}% · {Format.DayMonth(d.LastTestAt!.Value)}" : "—")</td>
+                            <td class="wrap">@(d.Done is not { } h ? "—" : h.Done ? $"✓ Bajardi · {Format.DayMonth(h.DoneAt!.Value)}" : $"{h.Seen}/{h.Words} so‘z · {(h.TestTaken ? "sinov bor" : "sinov yo‘q")}")@(d.DueOn is { } due ? $" (muddat {Format.Day(due)})" : "")</td>
                         </tr>
                     }
                 </tbody>

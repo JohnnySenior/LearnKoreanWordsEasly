@@ -584,5 +584,15 @@ Bosqichlar spec §13 bo‘yicha.
 **Lug‘at sinovi bo‘lim testi kabi (L-70, 2026-11-11):**
 - [x] Faqat o‘qituvchi lug‘ati tanlangan sinov `UnitTestGenerator` bilan: yozish va eshitish savollari, AI’siz; har so‘zga bitta savol (4–30).
 - [x] Test: 6 so‘zli lug‘at → 6 savol, yozma savol bor, AI chaqirilmaydi, 31 savol — 422.
-- [ ] Muddat (Johnny: «bajardi» nimani anglatishini tanlaydi); o‘qituvchi uchun batafsil statistika.
+- [x] Muddat — L-71 da.
+- [ ] O‘qituvchi uchun batafsil statistika.
+
+**Lug‘at muddati (L-71, 2026-11-11):**
+- [x] O‘qituvchi lug‘atga muddat qo‘yadi, suradi yoki olib tashlaydi (qoralama yoki e’lon qilingan); o‘tgan kun va 120 kundan uzoq — 422. Muddat — o‘qituvchi vaqt zonasida shu kun oxiri.
+- [x] «Bajardi» = lug‘atdagi har so‘z kartochkada ko‘rilgan VA lug‘at sinovi topshirilgan, ikkalasi muddatgacha. O‘tish foizi yo‘q: oxirgi sinov bali ko‘rsatiladi.
+- [x] O‘qituvchi: lug‘at hisobotida «Vazifa» ustuni (✓ Bajardi · sana · ball yoki nima qolgani; muddat o‘tgach «Bajarmadi»), o‘quvchi sahifasida ham.
+- [x] O‘quvchi: lug‘at papkasida muddat yoki «✓ bajarildi»; lug‘at sahifasida muddat, necha kun qolgani va nima qolgani — bosimsiz (§1.4).
+- [x] Eslatma: muddatdan taxminan bir kun oldin, bajarmagan va eslatmasi yoqilgan o‘quvchiga bir marta (««1-dars» lug‘ati muddati ertaga. Qoldi: 3 ta so‘z va sinov.»).
+- [x] Testlar: muddat tekshiruvi va boshqa o‘qituvchi 404; bajardi qoidasi, muddatdan keyingi ish hisoblanmaydi, muddat surilsa hisoblanadi; eslatma bir marta, bajarganga va eslatmasi o‘chiqqa yo‘q.
+- [ ] Johnny: telefonda o‘qituvchi va o‘quvchi tomonini sinash.
 

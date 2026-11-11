@@ -48,6 +48,14 @@ public sealed class GroupDeck
 
     public DateTimeOffset? ArchivedAt { get; set; }
 
+    /// <summary>
+    /// The day the homework is due (L-71), as the teacher chose it; <see cref="DueAt"/> is the end of that day in the
+    /// teacher's time zone. Both null: no deadline.
+    /// </summary>
+    public DateOnly? DueOn { get; set; }
+
+    public DateTimeOffset? DueAt { get; set; }
+
     public uint Version { get; set; }
 
     public const int MaxName = 60;

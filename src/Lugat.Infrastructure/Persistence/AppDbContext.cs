@@ -418,6 +418,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
             e.Property(x => x.Version).IsRowVersion();
             e.HasIndex(x => x.GroupId);
+            e.HasIndex(x => x.DueAt);
             e.HasOne<Domain.Teaching.Group>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.TeacherUserId).OnDelete(DeleteBehavior.Cascade);
         });

@@ -37,6 +37,21 @@
     </div>
 }
 
+<section class="card">
+    @* L-71: the homework's due day; it can be set or moved after publishing too. *@
+    <h2>Muddat</h2>
+    <p class="muted small-text">Bajardi — hamma so‘zni kartochkada ko‘rgan va lug‘at sinovini topshirgan. O‘tish foizi yo‘q: qancha ball yetarli ekanini o‘quvchilarga o‘zingiz aytasiz.</p>
+    <div class="row-between" style="align-items:center;gap:8px;flex-wrap:wrap">
+        <input class="input" style="flex:1 1 160px;min-width:160px" type="date" aria-label="Muddat" @bind="_due" />
+        <button class="button small" disabled="@_busy" @onclick="SaveDueAsync">Saqlash</button>
+        @if (_deck.DueOn is not null)
+        {
+            <button class="link-btn muted" disabled="@_busy" @onclick="ClearDueAsync">Olib tashlash</button>
+        }
+    </div>
+    <p class="small-text" style="margin:8px 0 0">@(_deck.DueOn is { } due ? $"Muddat: {Format.Day(due)} (shu kun oxirigacha)" : "Muddat qo‘yilmagan.")</p>
+</section>
+
 @if (_deck.Status == GroupDeckStatus.Draft)
 {
     <section class="card">
@@ -86,7 +101,7 @@
         {
             <div class="table-wrap">
                 <table class="data-table">
-                    <thead><tr><th>Ism</th><th class="num">O‘rgandi</th><th class="num">Jarayonda</th><th class="num">Boshlamagan</th><th class="num">Takror (7 kun)</th><th class="num">Sinov</th></tr></thead>
+                    <thead><tr><th>Ism</th><th class="num">O‘rgandi</th><th class="num">Jarayonda</th><th class="num">Boshlamagan</th><th class="num">Takror (7 kun)</th><th class="num">Sinov</th><th>Vazifa</th></tr></thead>
                     <tbody>
                         @foreach (var s in report.Students)
                         {
@@ -97,6 +112,7 @@
                                 <td class="num">@s.New</td>
                                 <td class="num">@s.Reviewed7</td>
                                 <td class="num">@(s.LastTestPercent is { } p ? $"{p}%" : "—")@if (s.Tests > 1) {<span class="muted small-text" style="display:block">@s.Tests marta, eng yaxshi @s.BestTestPercent%</span>}</td>
+                                <td class="wrap">@Homework(s.Done, report.DueOn is not null, report.DuePassed)</td>
                             </tr>
                         }
                     </tbody>
@@ -247,6 +263,44 @@
 
     private GroupDeckDto? _deck;
     private GroupDeckReportDto? _report;
+    private DateTime? _due;
+
+    /// <summary>"✓ Bajardi · 14-noyabr · 85%", or what is left: "12/20 so‘z · sinov yo‘q".</summary>
+    private static string Homework(DeckDoneDto? d, bool hasDue, bool passed)
+    {
+        if (d is null)
+        {
+            return "—";
+        }
+
+        if (d.Done)
+        {
+            return $"✓ Bajardi · {Format.DayMonth(d.DoneAt!.Value)}" + (d.TestPercent is { } p ? $" · {p}%" : "");
+        }
+
+        var left = $"{d.Seen}/{d.Words} so‘z · " + (d.TestTaken ? $"sinov {d.TestPercent}%" : "sinov yo‘q");
+        return hasDue && passed ? $"Bajarmadi: {left}" : left;
+    }
+
+    private async Task SaveDueAsync()
+    {
+        if (_due is not { } day)
+        {
+            return;
+        }
+
+        (_busy, _error) = (true, null);
+        Apply(await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Put, $"api/teacher/decks/{Id}/due", new SetDeckDueRequest(DateOnly.FromDateTime(day))));
+        await LoadReportAsync();
+    }
+
+    private async Task ClearDueAsync()
+    {
+        (_busy, _error) = (true, null);
+        Apply(await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Put, $"api/teacher/decks/{Id}/due", new SetDeckDueRequest(null)));
+        _due = null;
+        await LoadReportAsync();
+    }
     private GroupDeckImportDto? _import;
     private string? _error;
     private string? _fillNote;
@@ -264,6 +318,7 @@
     {
         var result = await Api.GetAsync<GroupDeckDto>($"api/teacher/decks/{Id}");
         (_deck, _error) = (result.Value, result.Error);
+        _due = _deck?.DueOn?.ToDateTime(TimeOnly.MinValue);
         await LoadReportAsync();
     }
 

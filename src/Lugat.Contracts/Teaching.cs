@@ -69,7 +69,10 @@ public sealed record MoneyTotalDto(Currency Currency, int Amount, int Commission
 
 // A teacher's own vocabulary lists for a group (L-67).
 
-public sealed record GroupDeckSummaryDto(Guid Id, string Name, GroupDeckStatus Status, int Words, DateTimeOffset CreatedAt, DateTimeOffset? PublishedAt);
+public sealed record GroupDeckSummaryDto(Guid Id, string Name, GroupDeckStatus Status, int Words, DateTimeOffset CreatedAt, DateTimeOffset? PublishedAt, DateOnly? DueOn = null);
+
+/// <param name="DueOn">The day the homework is due (L-71); null removes the deadline.</param>
+public sealed record SetDeckDueRequest(DateOnly? DueOn);
 
 /// <param name="Id">Chosen by the page once, so a double tap makes one deck (API01).</param>
 public sealed record CreateGroupDeckRequest(Guid Id, string Name);
@@ -104,7 +107,8 @@ public sealed record GroupDeckDto(
     IReadOnlyList<GroupDeckWordDto> Words,
     int Members,
     bool CanPublish,
-    int AiPending);
+    int AiPending,
+    DateOnly? DueOn = null);
 
 /// <param name="Problems">Why rows were skipped, in Uzbek, at most 20.</param>
 public sealed record GroupDeckImportDto(GroupDeckDto Deck, int Added, int Skipped, IReadOnlyList<string> Problems);
@@ -133,13 +137,25 @@ public sealed record DeckStudentDto(
     int Tests,
     int? LastTestPercent,
     DateTimeOffset? LastTestAt,
-    int? BestTestPercent);
+    int? BestTestPercent,
+    DeckDoneDto? Done = null);
+
+/// <summary>
+/// The homework (L-71): done when every word was seen on a card and the deck test was taken, by the due time (or by
+/// now when there is none). No pass mark: the teacher tells the class what score is enough.
+/// </summary>
+/// <param name="Seen">Words answered on a card at least once by the due time.</param>
+/// <param name="TestPercent">The last deck test finished by the due time.</param>
+/// <param name="DoneAt">When both were first true.</param>
+public sealed record DeckDoneDto(int Words, int Seen, bool TestTaken, int? TestPercent, bool Done, DateTimeOffset? DoneAt);
 
 /// <param name="Learned">Learners who learned the word.</param>
 /// <param name="Mistakes">Mistakes on it in the last 60 days, all learners together; <paramref name="Learners"/> who made them.</param>
 public sealed record DeckWordStatDto(string Korean, string Uzbek, int Learned, int Mistakes, int Learners);
 
-public sealed record GroupDeckReportDto(Guid DeckId, string Name, int Words, IReadOnlyList<DeckStudentDto> Students, IReadOnlyList<DeckWordStatDto> WordStats);
+public sealed record GroupDeckReportDto(Guid DeckId, string Name, int Words, IReadOnlyList<DeckStudentDto> Students, IReadOnlyList<DeckWordStatDto> WordStats,
+    DateOnly? DueOn = null, bool DuePassed = false);
 
 /// <summary>One teacher's deck on a learner's page (L-68).</summary>
-public sealed record StudentDeckDto(Guid DeckId, string Name, int Words, int Learned, int? LastTestPercent, DateTimeOffset? LastTestAt);
+public sealed record StudentDeckDto(Guid DeckId, string Name, int Words, int Learned, int? LastTestPercent, DateTimeOffset? LastTestAt,
+    DateOnly? DueOn = null, DeckDoneDto? Done = null);

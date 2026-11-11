@@ -25,7 +25,7 @@
         @foreach (var g in assigned)
         {
             <a class="button block deck-folder" href="@($"sozlarim/guruh/{g.Id}")">
-                <span class="deck-folder-text"><strong>@g.Name</strong><span class="muted small-text">@g.GroupName@(g.TeacherName is null ? "" : $" · {g.TeacherName}")</span></span>
+                <span class="deck-folder-text"><strong>@g.Name</strong><span class="muted small-text">@g.GroupName@(g.TeacherName is null ? "" : $" · {g.TeacherName}")@(g.Done ? " · ✓ bajarildi" : g.DueOn is { } due ? $" · muddat {Format.Day(due)}" : "")</span></span>
                 <span class="aside">@g.Learned / @g.Words o‘rganilgan →</span>
             </a>
         }

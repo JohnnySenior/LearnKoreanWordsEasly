@@ -47,7 +47,7 @@ public sealed class GroupDeckService(
     {
         await OwnGroupAsync(teacherId, groupId, ct);
         return await db.GroupDecks.Where(d => d.GroupId == groupId && d.Status != GroupDeckStatus.Archived).OrderBy(d => d.CreatedAt)
-            .Select(d => new GroupDeckSummaryDto(d.Id, d.Name, d.Status, db.GroupDeckWords.Count(w => w.GroupDeckId == d.Id), d.CreatedAt, d.PublishedAt))
+            .Select(d => new GroupDeckSummaryDto(d.Id, d.Name, d.Status, db.GroupDeckWords.Count(w => w.GroupDeckId == d.Id), d.CreatedAt, d.PublishedAt, d.DueOn))
             .ToListAsync(ct);
     }
 
@@ -88,8 +88,45 @@ public sealed class GroupDeckService(
                 w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapSceneDto(w.TrapCue, wrong, right) : null)).ToList(),
             await db.GroupMembers.CountAsync(m => m.GroupId == deck.GroupId && m.LeftAt == null, ct),
             await premium.CanUseAiAsync(teacherId, ct),
-            words.Count(Pending));
+            words.Count(Pending),
+            deck.DueOn);
     }
+
+    /// <summary>
+    /// The homework's due day (L-71), before or after publishing (a teacher may give more time): due at the end of
+    /// that day in the teacher's time zone. Not in the past; null removes it.
+    /// </summary>
+    public async Task<GroupDeckDto> SetDueAsync(Guid teacherId, Guid deckId, SetDeckDueRequest request, CancellationToken ct)
+    {
+        var deck = await OwnDeckAsync(teacherId, deckId, ct);
+        if (request.DueOn is { } day)
+        {
+            var teacher = await db.Users.AsNoTracking().SingleAsync(u => u.Id == teacherId, ct);
+            var zone = teacher.Zone();
+            var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(time.GetUtcNow(), zone).DateTime);
+            if (day < today)
+            {
+                throw new ValidationException("Muddat bugundan oldin bo‘lmasin.");
+            }
+
+            if (day > today.AddDays(MaxDueDays))
+            {
+                throw new ValidationException($"Muddat {MaxDueDays} kundan uzoq bo‘lmasin.");
+            }
+
+            var end = day.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            (deck.DueOn, deck.DueAt) = (day, new DateTimeOffset(end, zone.GetUtcOffset(end)).ToUniversalTime());
+        }
+        else
+        {
+            (deck.DueOn, deck.DueAt) = (null, null);
+        }
+
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(teacherId, deckId, ct);
+    }
+
+    public const int MaxDueDays = 120;
 
     public async Task<GroupDeckDto> RenameAsync(Guid teacherId, Guid deckId, RenameGroupDeckRequest request, CancellationToken ct)
     {

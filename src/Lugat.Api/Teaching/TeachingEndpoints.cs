@@ -68,6 +68,8 @@ public static class TeachingEndpoints
             s.UpdateWordAsync(user.GetUserId(), id, wordId, body, ct));
         teacher.MapDelete("/decks/{id:guid}/words/{wordId:guid}", (Guid id, Guid wordId, ClaimsPrincipal user, GroupDeckService s, CancellationToken ct) =>
             s.RemoveWordAsync(user.GetUserId(), id, wordId, ct));
+        teacher.MapPut("/decks/{id:guid}/due", (Guid id, SetDeckDueRequest body, ClaimsPrincipal user, GroupDeckService s, CancellationToken ct) =>
+            s.SetDueAsync(user.GetUserId(), id, body, ct));
         teacher.MapGet("/decks/{id:guid}/report", (Guid id, ClaimsPrincipal user, GroupDeckReport s, CancellationToken ct) => s.ReportAsync(user.GetUserId(), id, ct));
         teacher.MapPost("/decks/{id:guid}/fill", (Guid id, ClaimsPrincipal user, GroupDeckService s, CancellationToken ct) => s.FillAsync(user.GetUserId(), id, ct));
         teacher.MapPost("/decks/{id:guid}/publish", (Guid id, ClaimsPrincipal user, GroupDeckService s, CancellationToken ct) => s.PublishAsync(user.GetUserId(), id, ct));
