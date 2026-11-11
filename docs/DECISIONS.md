@@ -771,3 +771,14 @@ Johnny sinovidan (2026-11-11): o‘qituvchi lug‘ati «Mening so‘zlarim» ich
 - **Lug‘at hisoboti** (`GET /api/teacher/decks/{id}/report`, nashr qilingan lug‘at sahifasida): har o‘quvchi — o‘rgandi / jarayonda / boshlamagan (holat «Mening so‘zlarim»dagi qoida bilan: ikkala kartochka mustahkam = o‘rgangan), shu lug‘at kartochkalaridan oxirgi 7 kunda javob bergani (har kartochka bir marta), lug‘at sinovlari soni, oxirgisi va eng yaxshisi (%, texnik xatolar hisobga olinmaydi). Har so‘z — nechta o‘quvchi o‘rgangan, oxirgi 60 kundagi xatolar va nechta kishi; eng ko‘p xato qilingani tepada.
 - **Xatolarda lug‘at nomi:** o‘qituvchi lug‘ati orqali kelgan so‘z guruh sahifasidagi «Eng qiyin 10 so‘z»da va o‘quvchi sahifasida lug‘at nomi bilan chiqadi («1-dars»), kursdagi bo‘lim nomi («A-9») bilan emas — so‘zni o‘qituvchi bergan (Johnny, 2026-11-11). Boshqa o‘qituvchining lug‘ati hisobga olinmaydi.
 - **O‘quvchi sahifasi:** «Sizning lug‘atlaringiz» — har lug‘atdan nechtasi o‘rganilgani va oxirgi sinov.
+
+## L-69 · 2026-11-11 · O‘qituvchi lug‘ati rasmdan va PDF’dan
+
+L-67 ning 2-bosqichi. O‘qituvchi kitobni emas, o‘zi tayyorlagan ikki ustunli lug‘atni (koreyscha | o‘zbekcha) rasm yoki PDF qilib yuklaydi (Johnny, 2026-11-08).
+- **Bitta yo‘l:** `POST /api/teacher/decks/{id}/import` fayl turiga qarab ishlaydi — `.xlsx/.xls/.txt/.tsv/.csv` avvalgidek o‘qiladi (AI’siz, bepul); `.jpg/.jpeg/.png/.webp` va `.pdf` AI’ga beriladi (`group-deck-read`). AI faqat ko‘rgan juftlarni ko‘chiradi: tarjima qilmaydi, tuzatmaydi, qo‘shmaydi, raqam va sarlavhani tashlab ketadi. Natija keyin xlsx bilan **bir xil** tekshiruvdan o‘tadi (`GroupDeckImport.Parse`: Hangul, lotin yozuvi, takror, 200 ta so‘z) va o‘qituvchi jadvalni ko‘rib, «Guruhga berish»ni o‘zi bosadi.
+- **Provayderlar:** rasm Claude’ga `image` blok, ChatGPT’ga `image_url` qism sifatida; PDF avvalgidek (`document` / `file`).
+- **Hajm:** rasm brauzerning o‘zida JPEG 2000 px ga kichraytiriladi (`RequestImageFileAsync`) — telefon surati tez yuklanadi va AI chegarasiga sig‘adi; rasm va PDF 5 MB gacha, Excel/matn 2 MB. Fayl saqlanmaydi.
+- **To‘lov:** AI chaqiruvi bo‘lgani uchun rasm/PDF o‘qish Premium talab qiladi (AI to‘ldirish va nashr kabi); Excel va matn bepul.
+- HEIC qabul qilinmaydi: iPhone’da rasm galereyadan tanlanganda brauzer o‘zi JPEG qiladi.
+
+Keyingi (L-67 4-bosqich): alohida «O‘qituvchi» tarifi — o‘qituvchilar sinab ko‘rgach.

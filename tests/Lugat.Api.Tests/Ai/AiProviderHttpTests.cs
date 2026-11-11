@@ -133,6 +133,27 @@ public class AiProviderHttpTests
     }
 
     [Fact]
+    public async Task A_photo_is_sent_as_an_image_to_claude_and_to_chatgpt()
+    {
+        var withPhoto = Request with { Attachments = [new AiAttachment("image/jpeg", "lugat.jpg", [1, 2, 3])] };
+        var claudeHandler = new Handler(HttpStatusCode.OK, """{"model":"m","content":[{"type":"tool_use","input":{"ok":true}}]}""");
+        var gptHandler = new Handler(HttpStatusCode.OK, """{"model":"m","choices":[{"message":{"content":"{\"ok\":true}"}}]}""");
+
+        await new AnthropicProvider(new HttpClient(claudeHandler), Options()).CompleteJsonAsync(withPhoto, CancellationToken.None);
+        await new OpenAiProvider(new HttpClient(gptHandler), Options()).CompleteJsonAsync(withPhoto, CancellationToken.None);
+
+        using var claude = JsonDocument.Parse(claudeHandler.RequestBody!);
+        var block = claude.RootElement.GetProperty("messages")[0].GetProperty("content")[0];
+        Assert.Equal("image", block.GetProperty("type").GetString());
+        Assert.Equal(("image/jpeg", "AQID"), (block.GetProperty("source").GetProperty("media_type").GetString(), block.GetProperty("source").GetProperty("data").GetString()));
+
+        using var gpt = JsonDocument.Parse(gptHandler.RequestBody!);
+        var part = gpt.RootElement.GetProperty("messages")[1].GetProperty("content")[0];
+        Assert.Equal("image_url", part.GetProperty("type").GetString());
+        Assert.Equal("data:image/jpeg;base64,AQID", part.GetProperty("image_url").GetProperty("url").GetString());
+    }
+
+    [Fact]
     public async Task ChatGPT_gets_room_to_think_and_an_empty_cut_off_answer_is_explained()
     {
         var handler = new Handler(HttpStatusCode.OK, """

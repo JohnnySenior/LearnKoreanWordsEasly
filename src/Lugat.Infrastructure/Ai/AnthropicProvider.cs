@@ -72,7 +72,7 @@ public sealed class AnthropicProvider(HttpClient http, IOptions<AiOptions> optio
             AiHttp.Int(usage, "output_tokens"));
     }
 
-    /// <summary>Plain text, or document blocks (PDF pages) followed by the text.</summary>
+    /// <summary>Plain text, or document blocks (PDF pages) and image blocks (photos, L-69) followed by the text.</summary>
     private static JsonNode Content(AiJsonRequest request)
     {
         if (request.Attachments is not { Count: > 0 } files)
@@ -85,7 +85,7 @@ public sealed class AnthropicProvider(HttpClient http, IOptions<AiOptions> optio
         {
             blocks.Add(new JsonObject
             {
-                ["type"] = "document",
+                ["type"] = f.MediaType.StartsWith("image/", StringComparison.Ordinal) ? "image" : "document",
                 ["source"] = new JsonObject { ["type"] = "base64", ["media_type"] = f.MediaType, ["data"] = Convert.ToBase64String(f.Content) },
             });
         }
@@ -169,7 +169,7 @@ public sealed class OpenAiProvider(HttpClient http, IOptions<AiOptions> options)
             AiHttp.Int(usage, "completion_tokens"));
     }
 
-    /// <summary>Plain text, or file parts (PDF pages, read with vision) followed by the text.</summary>
+    /// <summary>Plain text, or file parts (PDF pages, read with vision) and image parts (photos, L-69) followed by the text.</summary>
     private static JsonNode Content(AiJsonRequest request)
     {
         if (request.Attachments is not { Count: > 0 } files)
@@ -180,6 +180,16 @@ public sealed class OpenAiProvider(HttpClient http, IOptions<AiOptions> options)
         var parts = new JsonArray();
         foreach (var f in files)
         {
+            if (f.MediaType.StartsWith("image/", StringComparison.Ordinal))
+            {
+                parts.Add(new JsonObject
+                {
+                    ["type"] = "image_url",
+                    ["image_url"] = new JsonObject { ["url"] = $"data:{f.MediaType};base64,{Convert.ToBase64String(f.Content)}" },
+                });
+                continue;
+            }
+
             parts.Add(new JsonObject
             {
                 ["type"] = "file",

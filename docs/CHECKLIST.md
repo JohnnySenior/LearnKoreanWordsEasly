@@ -561,7 +561,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] O‘quvchi: qo‘shilganda/nashrda kartochkalar, «Mening so‘zlarim»da «O‘qituvchidan» chiplari, mashqlarda `guruh:{id}` to‘plami, o‘chirish/ko‘chirish 409; chiqqanda, qaytarib olinganda, guruh yopilganda olinadi.
 - [x] Testlar: 4 ta parser (Application), 4 ta API (fayl → moslashtirish → AI → nashr → o‘quvchi; avvaldan bor so‘z bog‘lanadi; boshqa o‘qituvchi 404 va guruh yopilishi; tahrir tekshiruvi va qayta moslashtirish).
 - [x] Chromium 360px yorug‘/qorong‘i: guruh sahifasida «Lug‘atlar» → yaratish → matndan 3 so‘z → «Guruhga berish» → «Mening so‘zlarim»da «3-dars sinov (3)» chipi, «O‘qituvchidan» belgisi, o‘chirish yo‘q; konsol xatosi va yonlama scroll yo‘q.
-- [ ] 2-bosqich: rasm va PDF; 3-bosqich: o‘qituvchiga natijalar; 4-bosqich: alohida tarif.
+- [x] 2-bosqich: rasm va PDF (L-69); 3-bosqich: o‘qituvchiga natijalar (L-68).
+- [ ] 4-bosqich: alohida «O‘qituvchi» tarifi — o‘qituvchilar sinab ko‘rgach.
 
 **O‘quvchi tomonida o‘qituvchi lug‘ati (L-68, 2026-11-11):**
 - [x] «Mening so‘zlarim»: «O‘qituvchi vazifalari» papkalari; o‘z so‘zlar ro‘yxati alohida.
@@ -572,3 +573,9 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] PR B: lug‘at hisoboti (o‘quvchilar va so‘zlar jadvali, sinovlar), xatolarda lug‘at nomi (guruh va o‘quvchi sahifasi), o‘quvchi sahifasida «Sizning lug‘atlaringiz».
 - [x] PR B Chromium 360px yorug‘/qorong‘i: lug‘at sahifasida «O‘quvchilar» (0 / 7, sinov 20%) va «So‘zlar bo‘yicha» (eng ko‘p xato tepada), o‘quvchi sahifasida «Sizning lug‘atlaringiz»; sahifa yonlama scroll’siz, keng jadval o‘z ichida suriladi, konsol xatosi yo‘q.
 - [x] PR B testi: 1 ta API (holat sonlari, 7 kunlik takror, sinov foizi, eng ko‘p xato so‘z, «1-dars» yorlig‘i, boshqa o‘qituvchi 404, o‘quvchi 403).
+
+**O‘qituvchi lug‘ati rasmdan va PDF’dan (L-69, 2026-11-11):**
+- [x] `.jpg/.png/.webp/.pdf` → AI ko‘chiradi (`group-deck-read`), keyin xlsx bilan bir xil tekshiruv; Premium sharti; 5 MB; rasm brauzerda JPEG 2000 px.
+- [x] Provayderlar: Claude `image`, ChatGPT `image_url`.
+- [x] Testlar: 1 ta provayder (rasm bloklari), 1 ta API (Premium’siz 403 va AI chaqirilmaydi; o‘qilgan juftlar, takror va kirillcha rad; PDF media turi; ro‘yxat topilmasa 422; 5 MB dan katta — 413, AI chaqirilmaydi).
+- [ ] Johnny: haqiqiy telefon surati va PDF lug‘at bilan sinash (AI qanchalik aniq o‘qiydi).
