@@ -1338,6 +1338,12 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("DueOn")
+                        .HasColumnType("date");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
 
@@ -1364,6 +1370,8 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasColumnName("xmin");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DueAt");
 
                     b.HasIndex("GroupId");
 

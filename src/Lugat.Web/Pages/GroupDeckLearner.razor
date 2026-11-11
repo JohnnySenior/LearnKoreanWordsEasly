@@ -34,6 +34,20 @@
         <div><strong>@_deck.Learning</strong><span class="muted small-text">o‘rganilmoqda</span></div>
         <div><strong>@_deck.New</strong><span class="muted small-text">yangi</span></div>
     </div>
+    @if (_deck.DueOn is { } due || _deck.Done)
+    {
+        @* L-71: a calm line, what is left, no pressure (spec §1.4). *@
+        <p class="small-text deck-due" style="margin:10px 0 0">
+            @if (_deck.Done)
+            {
+                <strong>✓ Vazifa bajarildi</strong>
+            }
+            else
+            {
+                <span>Muddat: <strong>@Format.Day(_deck.DueOn!.Value)</strong>@DaysLeft(_deck.DueOn!.Value) · Qoldi: @Left()</span>
+            }
+        </p>
+    }
     @if (_deck.LastTest is { } t)
     {
         <p class="small-text" style="margin:10px 0 0">Oxirgi sinov: <strong>@t.Correct / @t.Questions</strong> · @Format.DayMonth(t.FinishedAt) — <a href="@($"sinov/{t.TestId}")">natijani ko‘rish</a></p>
@@ -92,6 +106,33 @@
     {
         var result = await Api.GetAsync<GroupDeckLearnerDto>($"api/my-words/group-decks/{Id}");
         (_deck, _error) = (result.Value, result.Error);
+    }
+
+    private static string DaysLeft(DateOnly due)
+    {
+        var days = due.DayNumber - DateOnly.FromDateTime(DateTime.Now).DayNumber;
+        if (days < 0)
+        {
+            return " (o‘tdi)";
+        }
+
+        return days == 0 ? " (bugun)" : days == 1 ? " (ertaga)" : $" ({days} kun qoldi)";
+    }
+
+    private string Left()
+    {
+        var parts = new List<string>();
+        if (_deck!.Seen < _deck.Words.Count)
+        {
+            parts.Add($"{_deck.Words.Count - _deck.Seen} ta so‘zni kartochkada ko‘rish");
+        }
+
+        if (_deck.LastTest is null)
+        {
+            parts.Add("sinov");
+        }
+
+        return parts.Count == 0 ? "sinov" : string.Join(", ", parts);
     }
 
     private static string StateLabel(MyWordState state) => state switch

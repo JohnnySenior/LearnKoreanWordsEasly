@@ -787,3 +787,11 @@ Keyingi (L-67 4-bosqich): alohida «O‘qituvchi» tarifi — o‘qituvchilar si
 
 Johnny sinovidan: o‘qituvchi lug‘atining sinovi faqat variantli edi — bepul o‘quvchida gapli (AI) savollar yo‘q, variantdan to‘g‘risini topish oson; bo‘lim testi esa qiyinroq va to‘g‘riroq. Endi faqat bitta o‘qituvchi lug‘ati tanlangan sinov (`Decks = ["guruh:{id}"]`, bo‘lim yo‘q) **bo‘lim testi generatori** bilan tuziladi (`UnitTestGenerator`, L-38): har so‘zga bitta savol — ma’nosini tanlash, koreyschasini tanlash, ma’nosidan koreyschasini **yozish** (40%), eshitib tanlash va eshitib yozish (ovoz xizmati bo‘lmasa ma’no savoliga almashadi). AI ishlatilmaydi, bepul va Premium o‘quvchiga bir xil. Uzun lug‘atdan har safar 30 tagacha so‘z yangidan tanlanadi; savollar soni so‘zlar soni (4–30). Noto‘g‘ri variantlar lug‘atdan va o‘quvchining boshqa so‘zlaridan. O‘tish chegarasi hamon yo‘q (L-68), ball o‘qituvchi hisobotiga tushadi. Boshqa sinovlar (Aralash sinov, bo‘lim bilan aralash) o‘zgarmadi.
 
+## L-71 · 2026-11-11 · O‘qituvchi lug‘atiga muddat
+
+Johnny: «deyarli 99 foiz o‘zbek o‘qituvchilari muddat beradi». O‘qituvchi lug‘atga bir kun tanlaydi (`PUT /api/teacher/decks/{id}/due`, `null` — olib tashlash); muddat o‘sha kunning oxiri, o‘qituvchi vaqt zonasida (`GroupDeck.DueOn`, `DueAt`). Bugundan oldin yoki 120 kundan uzoq bo‘lmaydi; e’londan keyin ham surish mumkin.
+
+**Bajardi** (Johnny: «har so‘zni ko‘rishi kerak va sinovdan ham o‘tishi kerak»): lug‘atdagi har so‘z kamida bir marta kartochkada ko‘rilgan va lug‘at sinovi kamida bir marta yakunlangan — ikkalasi `DueAt` gacha. Muddatdan keyingi ish hisoblanmaydi (o‘qituvchi muddatni sursa, yangi muddatgacha hisoblanadi). O‘tish foizi yo‘q: oxirgi sinov bali ko‘rsatiladi, qancha ball yetarli ekanini o‘qituvchi o‘quvchilarga o‘zi aytadi. Bajarilgan vaqt — oxirgi kerakli qadam (so‘z yoki sinov) vaqti.
+
+Jazo, reyting yoki uyaltirish yo‘q (§1.4): o‘quvchi faqat «Muddat: … · Qoldi: …» va «✓ Vazifa bajarildi» ko‘radi. Muddatdan taxminan bir kun oldin bajarmagan o‘quvchiga bitta eslatma (Push, bo‘lmasa Telegram; eslatmasi o‘chiq bo‘lsa yo‘q; `ReminderDelivery` orqali bir marta). Ma’lumotlar bazasiga faqat ikki ustun qo‘shildi (`GroupDeckDue` migratsiyasi).
+

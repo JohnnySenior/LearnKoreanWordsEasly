@@ -10,6 +10,9 @@ public enum ReminderSlot
 
     /// <summary>L-64: once, about a day before a Premium trial ends.</summary>
     TrialEnd,
+
+    /// <summary>L-71: once, about a day before a teacher's deck is due, when it is not done yet.</summary>
+    DeckDue,
 }
 
 /// <summary>Days a reminder may come. Stored as flags; every day by default (spec §8).</summary>

@@ -86,21 +86,68 @@ public sealed class ReminderService(
             }
         }
 
+        // L-71: a teacher's deck due within a day, not done yet, gets one calm note — what is left, nothing more.
+        var decks = await db.GroupDecks.AsNoTracking()
+            .Where(d => d.Status == Domain.Teaching.GroupDeckStatus.Published && d.DueAt > noticeFrom && d.DueAt <= noticeTo)
+            .Select(d => new { d.Id, d.Name, d.DueAt }).ToListAsync(ct);
+        foreach (var deck in decks)
+        {
+            var learners = await db.PersonalWords.Where(p => p.GroupDeckId == deck.Id).Select(p => p.OwnerId).Distinct().ToListAsync(ct);
+            var reachable = users.Where(u => learners.Contains(u.User.Id)).ToList();
+            if (reachable.Count == 0)
+            {
+                continue;
+            }
+
+            var done = await Teaching.GroupDeckReport.DoneAsync(db, deck.Id, reachable.Select(u => u.User.Id).ToList(), now, ct);
+            foreach (var x in reachable.Where(x => !done[x.User.Id].Done))
+            {
+                var left = done[x.User.Id];
+                if (await DeliverOnceAsync(x.User, x.Chat is null ? null : ChatId(x.Chat), $"deck-due:{deck.Id:N}:{x.User.Id:N}", ReminderSlot.DeckDue,
+                        deck.DueAt!.Value - TrialEndNotice, DeckDueText(deck.Name, left), $"sozlarim/guruh/{deck.Id}", now, ct))
+                {
+                    sent++;
+                }
+            }
+        }
+
         return sent;
     }
 
+    /// <summary>«1-dars» muddati ertaga: what is left, in one calm sentence (spec §1.4: no pressure, no blame).</summary>
+    public static string DeckDueText(string deck, DeckDoneDto left)
+    {
+        var parts = new List<string>();
+        if (left.Seen < left.Words)
+        {
+            parts.Add($"{left.Words - left.Seen} ta so‘z");
+        }
+
+        if (!left.TestTaken)
+        {
+            parts.Add("sinov");
+        }
+
+        return $"«{deck}» lug‘ati muddati ertaga. Qoldi: {string.Join(" va ", parts)}.";
+    }
+
+    private Task<bool> DeliverTrialEndAsync(User user, long? chatId, Guid trialId, DateTimeOffset scheduledAt, DateTimeOffset now, CancellationToken ct) =>
+        DeliverOnceAsync(user, chatId, $"trial-end:{trialId:N}", ReminderSlot.TrialEnd, scheduledAt, TrialEndText, PremiumPath, now, ct);
+
     /// <summary>
     /// L-64: sent once per trial (its own outbox key), by the same channel rule as reminders; never retried, since a
-    /// missed note about a trial is not worth a second message.
+    /// missed note about a trial is not worth a second message. L-71: the deck due note goes the same way, once per
+    /// learner and deck.
     /// </summary>
-    private async Task<bool> DeliverTrialEndAsync(User user, long? chatId, Guid trialId, DateTimeOffset scheduledAt, DateTimeOffset now, CancellationToken ct)
+    private async Task<bool> DeliverOnceAsync(User user, long? chatId, string key, ReminderSlot slot, DateTimeOffset scheduledAt, string text, string path,
+        DateTimeOffset now, CancellationToken ct)
     {
         var delivery = new ReminderDelivery
         {
             Id = Guid.CreateVersion7(now),
             UserId = user.Id,
-            OccurrenceKey = $"trial-end:{trialId:N}",
-            Slot = ReminderSlot.TrialEnd,
+            OccurrenceKey = key,
+            Slot = slot,
             ScheduledAt = scheduledAt,
             Status = DeliveryStatus.Sending,
             CreatedAt = now,
@@ -121,7 +168,7 @@ public sealed class ReminderService(
             return false;
         }
 
-        var result = (await SendAsync(user, chatId, TrialEndText, ct, PremiumPath)).Result;
+        var result = (await SendAsync(user, chatId, text, ct, path)).Result;
         delivery.Attempts = 1;
         (delivery.Status, delivery.SentAt) = result.Outcome switch
         {
@@ -183,7 +230,7 @@ public sealed class ReminderService(
 
         if (chatId is { } chat && telegram.IsConfigured)
         {
-            var result = await telegram.SendAsync(chat, text, path == ReviewPath ? OpenAppButton : "Premium sahifasini ochish", ct, path);
+            var result = await telegram.SendAsync(chat, text, path == ReviewPath ? OpenAppButton : path == PremiumPath ? "Premium sahifasini ochish" : "Lug‘atni ochish", ct, path);
             await RecordBotAccessAsync(user, result, ct);
             return new(result, ReminderChannel.Telegram);
         }
