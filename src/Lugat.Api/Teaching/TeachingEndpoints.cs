@@ -53,9 +53,10 @@ public static class TeachingEndpoints
                 throw new ValidationException("Fayl tanlanmagan.");
             }
 
-            if (file.Length > GroupDeckService.MaxFileBytes)
+            var byAi = GroupDeckService.ReadByAi(file.FileName) is not null;
+            if (file.Length > (byAi ? GroupDeckService.MaxAiFileBytes : GroupDeckService.MaxFileBytes))
             {
-                throw new PayloadTooLargeException("Fayl juda katta (2 MB gacha).");
+                throw new PayloadTooLargeException(byAi ? "Rasm yoki PDF 5 MB dan oshmasin." : "Fayl juda katta (2 MB gacha).");
             }
 
             await using var stream = file.OpenReadStream();

@@ -405,10 +405,11 @@ public class GroupDeckTests
         Assert.Equal(finished.Score!.Value * 100 / test.Questions.Count, a.LastTestPercent!.Value, 1.0);
         var b = report.Students.Single(x => x.UserId != learnerAId);
         Assert.Equal((4, 0, 0, 4, 0, (int?)null), (b.Words, b.Reviewed7, b.Tests, b.New, b.Learned, b.LastTestPercent));
-        var top = report.WordStats[0];
-        Assert.Equal("학교", top.Korean); // the most missed first
-        Assert.True(top.Mistakes >= 1);
-        Assert.Equal(1, top.Learners);
+        // The test answers are random, so other words may be missed too; 학교 was certainly missed on its card.
+        var schoolStat = report.WordStats.Single(w => w.Korean == "학교");
+        Assert.True(schoolStat.Mistakes >= 1);
+        Assert.Equal(1, schoolStat.Learners);
+        Assert.Equal(report.WordStats.OrderByDescending(w => w.Mistakes).Select(w => w.Mistakes), report.WordStats.Select(w => w.Mistakes)); // most missed first
 
         // On the group page and the learner page the mistake is the deck's, and the deck shows with its last test.
         var groupPage = await OkAsync<GroupDetailDto>(await teacher.GetAsync($"/api/teacher/groups/{group.Id}"));
@@ -423,5 +424,43 @@ public class GroupDeckTests
         await TeachingTests.GrantAsync(factory, OtherTeacher, UserRoles.Teacher);
         Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/teacher/decks/{deck.Id}/report")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await learnerA.GetAsync($"/api/teacher/decks/{deck.Id}/report")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_photo_or_pdf_of_the_list_is_read_by_the_ai_and_checked_like_a_spreadsheet()
+    {
+        await using var factory = NewFactory();
+        var (teacher, group) = await SetupAsync(factory);
+        var deck = await CreateDeckAsync(teacher, group.Id);
+        _ai.Answer = _ => """
+            {"rows":[{"korean":"학교","uzbek":"maktab"},{"korean":"회사원","uzbek":"kompaniya xodimi"},{"korean":"학교","uzbek":"o‘quv yurti"},{"korean":"","uzbek":"sahifa 12"},{"korean":"물","uzbek":"сув"}]}
+            """;
+
+        // Without the paid plan the AI is not called and nothing is added.
+        Assert.Equal(HttpStatusCode.Forbidden, (await ImportAsync(teacher, deck.Id, [0xFF, 0xD8, 0xFF], "lugat.jpg")).StatusCode);
+        Assert.Empty(_ai.Requests);
+
+        await GivePremiumAsync(factory, Teacher);
+        var import = await OkAsync<GroupDeckImportDto>(await ImportAsync(teacher, deck.Id, [0xFF, 0xD8, 0xFF], "lugat.jpg"));
+        Assert.Equal(["학교", "회사원"], import.Deck.Words.Select(w => w.Korean));
+        Assert.Equal("kompaniya xodimi", import.Deck.Words[1].Uzbek); // the teacher's text, as read
+        Assert.Equal(2, import.Added);
+        Assert.Contains(import.Problems, p => p.Contains("takrorlangan"));
+        Assert.Contains(import.Problems, p => p.Contains("lotin"));
+        var request = Assert.Single(_ai.Requests);
+        Assert.Equal(GroupDeckService.ReadFeature, request.Feature);
+        var photo = Assert.Single(request.Attachments!);
+        Assert.Equal(("image/jpeg", 3), (photo.MediaType, photo.Content.Length));
+
+        // A PDF goes as a PDF; a file the AI finds no list in says so.
+        _ai.Answer = _ => """{"rows":[]}""";
+        Assert.Contains("lug‘at topilmadi", await DetailAsync(await ImportAsync(teacher, deck.Id, [0x25, 0x50, 0x44, 0x46], "darslik.pdf"), HttpStatusCode.UnprocessableEntity));
+        Assert.Equal("application/pdf", _ai.Requests[^1].Attachments!.Single().MediaType);
+        Assert.Equal(2, (await OkAsync<GroupDeckDto>(await teacher.GetAsync($"/api/teacher/decks/{deck.Id}"))).Words.Count);
+
+        // Too big for the AI: refused before any call.
+        var calls = _ai.Requests.Count;
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, (await ImportAsync(teacher, deck.Id, new byte[GroupDeckService.MaxAiFileBytes + 1], "katta.png")).StatusCode);
+        Assert.Equal(calls, _ai.Requests.Count);
     }
 }

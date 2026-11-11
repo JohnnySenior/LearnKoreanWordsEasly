@@ -41,8 +41,9 @@
 {
     <section class="card">
         <h2>So‘zlarni yuklash</h2>
-        <p class="muted small-text">Bir ustunda koreyscha so‘z, ikkinchisida o‘zbekcha tarjimangiz. Excel (.xlsx), yoki oddiy matn: har qatorda «학교 - maktab».</p>
-        <InputFile OnChange="UploadAsync" accept=".xlsx,.xls,.txt,.tsv,.csv" disabled="@_busy" />
+        <p class="muted small-text">Bir ustunda koreyscha so‘z, ikkinchisida o‘zbekcha tarjimangiz. Excel (.xlsx), oddiy matn (har qatorda «학교 - maktab»), yoki lug‘atingizning rasmi yoki PDF’i.</p>
+        <InputFile OnChange="UploadAsync" accept=".xlsx,.xls,.txt,.tsv,.csv,.pdf,image/jpeg,image/png,image/webp" disabled="@_busy" />
+        <p class="muted small-text">Rasm va PDF’ni AI o‘qiydi (Premium kerak): yozuv aniq ko‘rinsin, keyin jadvalni albatta tekshiring.@(_busy ? " O‘qilmoqda…" : "")</p>
         <label class="field" style="margin-top:12px">
             Yoki shu yerga qo‘ying
             <textarea class="input" rows="4" placeholder="학교 - maktab (har qatorda bitta so‘z)" @bind="_paste" @bind:event="oninput" disabled="@_busy"></textarea>
@@ -288,14 +289,26 @@
     {
         try
         {
-            await using var stream = e.File.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            var file = e.File;
+            var name = file.Name;
+            if (file.ContentType.StartsWith("image/", StringComparison.Ordinal))
+            {
+                // L-69: a phone photo is made smaller here (JPEG, 2000 px), so it uploads fast and fits the AI's limit.
+                (_busy, _error) = (true, null);
+                StateHasChanged();
+                file = await file.RequestImageFileAsync("image/jpeg", 2000, 2000);
+                name = Path.ChangeExtension(name, ".jpg");
+            }
+
+            var ai = name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase);
+            await using var stream = file.OpenReadStream(maxAllowedSize: ai ? 5 * 1024 * 1024 : 2 * 1024 * 1024);
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer);
-            await ImportAsync(buffer.ToArray(), e.File.Name);
+            await ImportAsync(buffer.ToArray(), name);
         }
         catch (IOException)
         {
-            _error = "Fayl juda katta (2 MB gacha).";
+            (_busy, _error) = (false, "Fayl juda katta: Excel va matn 2 MB gacha, rasm va PDF 5 MB gacha.");
         }
     }
 
