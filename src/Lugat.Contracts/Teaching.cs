@@ -45,7 +45,8 @@ public sealed record GroupDetailDto(Guid Id, string Name, string InviteCode, IRe
 
 public sealed record StudentUnitDto(string Unit, UnitProgressStatus Status, int? BestScorePercent, int Attempts, UnitPassedBy? PassedBy);
 
-public sealed record StudentDetailDto(Guid UserId, string? Name, string? CurrentUnit, IReadOnlyList<StudentUnitDto> Units, IReadOnlyList<MissedWordDto> TopMistakes, StudentWeekDto? Week = null);
+public sealed record StudentDetailDto(Guid UserId, string? Name, string? CurrentUnit, IReadOnlyList<StudentUnitDto> Units, IReadOnlyList<MissedWordDto> TopMistakes, StudentWeekDto? Week = null,
+    IReadOnlyList<StudentDeckDto>? Decks = null);
 
 /// <summary>The learner's last 7 days (L-61): counts only, never the answers themselves.</summary>
 /// <param name="Practice">Each exercise the learner did, in the Mashq page's order; ones not done are left out.</param>
@@ -114,3 +115,31 @@ public sealed record UpdateGroupWordRequest(string Korean, string Uzbek, string?
 
 /// <param name="Left">Words still without content after this call (another call fills the next ten).</param>
 public sealed record GroupDeckFillDto(GroupDeckDto Deck, int Filled, int Left);
+
+// The teacher's report on one deck (L-68): what each learner did with exactly these words. Counts and scores only,
+// never the answers themselves (spec §9.2).
+
+/// <param name="Learned">Words with both cards mastered; <paramref name="Learning"/> started; <paramref name="New"/> not yet seen.</param>
+/// <param name="Reviewed7">Cards of the deck answered in the last 7 days, each card once.</param>
+/// <param name="LastTestPercent">The last finished test of the deck, in percent of the counted questions.</param>
+public sealed record DeckStudentDto(
+    Guid UserId,
+    string? Name,
+    int Words,
+    int Learned,
+    int Learning,
+    int New,
+    int Reviewed7,
+    int Tests,
+    int? LastTestPercent,
+    DateTimeOffset? LastTestAt,
+    int? BestTestPercent);
+
+/// <param name="Learned">Learners who learned the word.</param>
+/// <param name="Mistakes">Mistakes on it in the last 60 days, all learners together; <paramref name="Learners"/> who made them.</param>
+public sealed record DeckWordStatDto(string Korean, string Uzbek, int Learned, int Mistakes, int Learners);
+
+public sealed record GroupDeckReportDto(Guid DeckId, string Name, int Words, IReadOnlyList<DeckStudentDto> Students, IReadOnlyList<DeckWordStatDto> WordStats);
+
+/// <summary>One teacher's deck on a learner's page (L-68).</summary>
+public sealed record StudentDeckDto(Guid DeckId, string Name, int Words, int Learned, int? LastTestPercent, DateTimeOffset? LastTestAt);

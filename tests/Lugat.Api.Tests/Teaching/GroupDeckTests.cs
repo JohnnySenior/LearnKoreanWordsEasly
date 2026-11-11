@@ -369,4 +369,59 @@ public class GroupDeckTests
         // Without a deck the units rule stays.
         Assert.Equal(HttpStatusCode.UnprocessableEntity, (await learner.PostAsJsonAsync("/api/crosswords", new StartCrosswordRequest(Guid.NewGuid(), Lugat.Domain.Games.CrosswordSize.Small), ApiFactory.Json)).StatusCode);
     }
+
+    [Fact]
+    public async Task The_teacher_sees_each_learners_progress_tests_and_mistakes_on_the_deck_named_after_it()
+    {
+        await using var factory = NewFactory();
+        var (teacher, group) = await SetupAsync(factory, LearnerA, LearnerB);
+        await GivePremiumAsync(factory, Teacher);
+        var deck = await CreateDeckAsync(teacher, group.Id, "1-dars");
+        // 학교 is also the course's A-1 word: a mistake on it must read "1-dars", not "A-1".
+        await OkAsync<GroupDeckImportDto>(await ImportAsync(teacher, deck.Id, CatalogFiles.XlsxOf([["학교", "maktab"], ["의자", "stul"], ["책상", "parta"], ["창문", "deraza"]])));
+        await OkAsync<GroupDeckDto>(await teacher.PostAsync($"/api/teacher/decks/{deck.Id}/publish", null));
+        var learnerA = await factory.SignedInClientAsync(LearnerA);
+        var learnerAId = await TeachingTests.UserIdAsync(factory, LearnerA);
+
+        // Learner A forgets 학교 on a card and takes the deck test.
+        var page = await OkAsync<GroupDeckLearnerDto>(await learnerA.GetAsync($"/api/my-words/group-decks/{deck.Id}"));
+        var school = page.Words.Single(w => w.Korean == "학교");
+        var session = (await OkAsync<StartSessionResponse>(await learnerA.PostAsJsonAsync("/api/sessions",
+            new StartSessionRequest(null, true, LearningItemIds: [school.LearningItemId]), ApiFactory.Json))).Session!;
+        await OkAsync<object>(await learnerA.PostAsJsonAsync($"/api/sessions/{session.Id}/answers",
+            new AnswerRequest(Guid.NewGuid(), session.Position, Lugat.Domain.Learning.ReviewAnswer.Forgot, false, 2000), ApiFactory.Json));
+        var test = await OkAsync<TestDto>(await learnerA.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 10, Decks: [page.Key]), ApiFactory.Json));
+        foreach (var q in test.Questions)
+        {
+            await learnerA.PostAsJsonAsync($"/api/tests/{test.Id}/answers", new TestAnswerRequest(q.Index, q.Options.FirstOrDefault() ?? "x"), ApiFactory.Json);
+        }
+
+        var finished = await OkAsync<TestDto>(await learnerA.PostAsync($"/api/tests/{test.Id}/finish", null));
+
+        var report = await OkAsync<GroupDeckReportDto>(await teacher.GetAsync($"/api/teacher/decks/{deck.Id}/report"));
+        Assert.Equal(("1-dars", 4, 2), (report.Name, report.Words, report.Students.Count));
+        var a = report.Students.Single(x => x.UserId == learnerAId);
+        Assert.Equal((4, 0, 1, 3, 1, 1), (a.Words, a.Learned, a.Learning, a.New, a.Reviewed7, a.Tests));
+        Assert.Equal(finished.Score!.Value * 100 / test.Questions.Count, a.LastTestPercent!.Value, 1.0);
+        var b = report.Students.Single(x => x.UserId != learnerAId);
+        Assert.Equal((4, 0, 0, 4, 0, (int?)null), (b.Words, b.Reviewed7, b.Tests, b.New, b.Learned, b.LastTestPercent));
+        var top = report.WordStats[0];
+        Assert.Equal("학교", top.Korean); // the most missed first
+        Assert.True(top.Mistakes >= 1);
+        Assert.Equal(1, top.Learners);
+
+        // On the group page and the learner page the mistake is the deck's, and the deck shows with its last test.
+        var groupPage = await OkAsync<GroupDetailDto>(await teacher.GetAsync($"/api/teacher/groups/{group.Id}"));
+        Assert.Equal("1-dars", groupPage.HardestWords.Single(w => w.Korean == "학교").Unit);
+        var student = await OkAsync<StudentDetailDto>(await teacher.GetAsync($"/api/teacher/students/{learnerAId}"));
+        Assert.Equal("1-dars", student.TopMistakes.Single(w => w.Korean == "학교").Unit);
+        var studentDeck = Assert.Single(student.Decks!);
+        Assert.Equal((deck.Id, "1-dars", 4, a.LastTestPercent), (studentDeck.DeckId, studentDeck.Name, studentDeck.Words, studentDeck.LastTestPercent));
+
+        // Another teacher: 404; a learner: 403.
+        var other = await factory.SignedInClientAsync(OtherTeacher, "Boshqa");
+        await TeachingTests.GrantAsync(factory, OtherTeacher, UserRoles.Teacher);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/teacher/decks/{deck.Id}/report")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await learnerA.GetAsync($"/api/teacher/decks/{deck.Id}/report")).StatusCode);
+    }
 }

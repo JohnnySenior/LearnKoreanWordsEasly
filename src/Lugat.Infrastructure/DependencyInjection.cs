@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Teaching.GroupService>();
         services.AddScoped<Application.Teaching.TeacherService>();
         services.AddScoped<Application.Teaching.GroupDeckService>();
+        services.AddScoped<Application.Teaching.GroupDeckReport>();
         services.AddScoped<Application.Admin.AdminService>();
         services.Configure<Application.Catalog.CatalogOptions>(config.GetSection(Application.Catalog.CatalogOptions.SectionName));
         services.AddSingleton<Application.Catalog.ICatalogFileReader, Catalog.CatalogFileReader>();
