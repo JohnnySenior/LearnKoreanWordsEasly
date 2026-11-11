@@ -570,4 +570,5 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: 2 ta API (papka va sahifa, tartib, 404, sinov lug‘atga yoziladi va oxirgi sinov bo‘lib chiqadi, aralash sinov yozilmaydi; krossvord lug‘atdan).
 - [x] Chromium 360px yorug‘/qorong‘i: papka → lug‘at sahifasi (jadval 7 so‘z, 4 tugma) → krossvord lug‘atdan (6 so‘z) → sinov ochildi; yonlama scroll va konsol xatosi yo‘q.
 - [x] PR B: lug‘at hisoboti (o‘quvchilar va so‘zlar jadvali, sinovlar), xatolarda lug‘at nomi (guruh va o‘quvchi sahifasi), o‘quvchi sahifasida «Sizning lug‘atlaringiz».
+- [x] PR B Chromium 360px yorug‘/qorong‘i: lug‘at sahifasida «O‘quvchilar» (0 / 7, sinov 20%) va «So‘zlar bo‘yicha» (eng ko‘p xato tepada), o‘quvchi sahifasida «Sizning lug‘atlaringiz»; sahifa yonlama scroll’siz, keng jadval o‘z ichida suriladi, konsol xatosi yo‘q.
 - [x] PR B testi: 1 ta API (holat sonlari, 7 kunlik takror, sinov foizi, eng ko‘p xato so‘z, «1-dars» yorlig‘i, boshqa o‘qituvchi 404, o‘quvchi 403).
