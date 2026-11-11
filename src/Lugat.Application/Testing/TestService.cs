@@ -20,6 +20,7 @@ public sealed class TestService(
     TestQuestionGenerator generator,
     Speech.SpeakingService speaking,
     Speech.SpeechService speech,
+    Speech.ISpeechSynthesizer synthesizer,
     Vocabulary.UsageService usage,
     Catalog.UnitTestService unitTests,
     Catalog.UnitProgressService units,
@@ -418,6 +419,14 @@ public sealed class TestService(
 
     private async Task<TestRun> BuildAsync(Guid ownerId, CreateTestRequest request, CancellationToken ct)
     {
+        // Only the teacher's deck chosen: built like the unit test, typed and heard questions included (L-70).
+        // One question per word, so any count up to 30 (a 7-word deck asks 7).
+        if ((request.UnitIds ?? []).Count == 0 && request.Decks is [var only] && Vocabulary.PersonalWordService.GroupDeckId(only) is { } deckOnly)
+        {
+            return request.Count is >= 4 and <= 30 ? await BuildDeckAsync(ownerId, request, deckOnly, only, ct)
+                : throw new ValidationException("Lug‘at sinovida 4 dan 30 gacha savol bo‘ladi.");
+        }
+
         if (!Counts.Contains(request.Count))
         {
             throw new ValidationException("Savollar soni 10, 20 yoki 30 bo‘lsin.");
@@ -451,15 +460,39 @@ public sealed class TestService(
             throw new ValidationException("Savol tuzib bo‘lmadi: variantlar uchun kamida 4 ta so‘z kerak.");
         }
 
-        var run = new TestRun { Title = await UnitTitleAsync(words, ct, own), Questions = questions, Provider = provider, Warning = warning };
-        // Only the teacher's deck chosen: the test is that deck's, named after it (L-68).
-        if ((request.UnitIds ?? []).Count == 0 && request.Decks is [var only] && Vocabulary.PersonalWordService.GroupDeckId(only) is { } deckId
-            && await db.GroupDecks.AsNoTracking().Where(d => d.Id == deckId).Select(d => d.Name).FirstOrDefaultAsync(ct) is { } name)
+        return new TestRun { Title = await UnitTitleAsync(words, ct, own), Questions = questions, Provider = provider, Warning = warning };
+    }
+
+    /// <summary>
+    /// A test of one teacher's deck (L-68, L-70): the unit test's mix — meaning and word chosen, the word typed from
+    /// its meaning, heard and chosen or typed — so recognising options is not enough; no AI, so the same for a free
+    /// learner. One question per word, at most <see cref="CreateTestRequest.Count"/> words drawn anew each time.
+    /// Wrong options come from the deck and the learner's other words. Kept with the deck; no pass mark.
+    /// </summary>
+    private async Task<TestRun> BuildDeckAsync(Guid ownerId, CreateTestRequest request, Guid deckId, string key, CancellationToken ct)
+    {
+        var name = await db.GroupDecks.AsNoTracking().Where(d => d.Id == deckId).Select(d => d.Name).FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Lug‘at topilmadi.");
+        var deckItems = Vocabulary.PersonalWordService.DeckItems(db, ownerId, [key]);
+        var deck = await Study.LearnerItems.Of(db, ownerId).Where(s => deckItems.Contains(s.Id)).AsNoTracking().ToListAsync(ct);
+        if (deck.Count < 4)
         {
-            (run.GroupDeckId, run.Title) = (deckId, name);
+            throw new ValidationException("Sinov uchun lug‘atda kamida 4 ta so‘z bo‘lishi kerak.");
         }
 
-        return run;
+        var random = new Random(Random.Shared.Next());
+        var others = await Study.LearnerItems.Of(db, ownerId).Where(s => !deckItems.Contains(s.Id)).OrderBy(s => s.Order).Take(200).AsNoTracking().ToListAsync(ct);
+        static Catalog.UnitTestWord Word(Domain.Vocabulary.LearningItem i) =>
+            new(i.Id, i.Korean, i.KoreanNote is null ? i.Korean : $"{i.Korean} {i.KoreanNote}", i.Uzbek, "");
+        var asked = deck.OrderBy(_ => random.Next()).Take(Math.Clamp(request.Count, 4, Math.Max(4, deck.Count))).Select(Word).ToList();
+        var pool = deck.Concat(others).Select(Word).ToList();
+        return new TestRun
+        {
+            Title = name,
+            GroupDeckId = deckId,
+            Questions = Catalog.UnitTestGenerator.Build(asked, pool, synthesizer.IsConfigured, random),
+            Warning = synthesizer.IsConfigured ? null : "Ovoz xizmati ulanmagan: tinglash savollari ma’no savollariga almashtirildi.",
+        };
     }
 
     private static string Cut(string text, int max) => text.Length > max ? text[..max] : text;

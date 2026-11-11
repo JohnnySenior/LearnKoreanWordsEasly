@@ -318,8 +318,15 @@ public class GroupDeckTests
         Assert.Equal(HttpStatusCode.NotFound, (await stranger.GetAsync($"/api/my-words/group-decks/{deck.Id}")).StatusCode);
 
         // The test of exactly this deck is named after it and kept with it; no pass mark.
-        var test = await OkAsync<TestDto>(await learner.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 10, Decks: [page.Key]), ApiFactory.Json));
+        var aiCalls = _ai.Requests.Count;
+        var test = await OkAsync<TestDto>(await learner.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 6, Decks: [page.Key]), ApiFactory.Json));
         Assert.Equal("1-dars", test.Title);
+        // Like the unit test (L-70): one question per word, some typed from the meaning; no AI, so a free learner gets the same.
+        Assert.Equal(6, test.Questions.Count);
+        Assert.Contains(test.Questions, q => q.Kind == Lugat.Domain.Testing.TestQuestionKind.WordKoreanTyped && q.Options.Count == 0);
+        Assert.Contains(test.Questions, q => q.Kind is Lugat.Domain.Testing.TestQuestionKind.WordMeaning or Lugat.Domain.Testing.TestQuestionKind.WordKorean);
+        Assert.Equal(aiCalls, _ai.Requests.Count);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await learner.PostAsJsonAsync("/api/tests", new CreateTestRequest(Guid.NewGuid(), null, 31, Decks: [page.Key]), ApiFactory.Json)).StatusCode);
         foreach (var q in test.Questions)
         {
             await learner.PostAsJsonAsync($"/api/tests/{test.Id}/answers", new TestAnswerRequest(q.Index, q.Options.FirstOrDefault() ?? "x"), ApiFactory.Json);
