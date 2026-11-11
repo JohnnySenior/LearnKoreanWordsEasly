@@ -578,4 +578,5 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] `.jpg/.png/.webp/.pdf` → AI ko‘chiradi (`group-deck-read`), keyin xlsx bilan bir xil tekshiruv; Premium sharti; 5 MB; rasm brauzerda JPEG 2000 px.
 - [x] Provayderlar: Claude `image`, ChatGPT `image_url`.
 - [x] Testlar: 1 ta provayder (rasm bloklari), 1 ta API (Premium’siz 403 va AI chaqirilmaydi; o‘qilgan juftlar, takror va kirillcha rad; PDF media turi; ro‘yxat topilmasa 422; 5 MB dan katta — 413, AI chaqirilmaydi).
+- [x] Chromium 360px yorug‘/qorong‘i: yuklash maydoni rasm va PDF’ni qabul qiladi, izoh ko‘rinadi; scroll va konsol xatosi yo‘q. L-68 hisobot testidagi tasodifiy natijaga bog‘liq tekshiruv mustahkamlandi.
 - [ ] Johnny: haqiqiy telefon surati va PDF lug‘at bilan sinash (AI qanchalik aniq o‘qiydi).

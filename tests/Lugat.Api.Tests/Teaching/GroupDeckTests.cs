@@ -405,10 +405,11 @@ public class GroupDeckTests
         Assert.Equal(finished.Score!.Value * 100 / test.Questions.Count, a.LastTestPercent!.Value, 1.0);
         var b = report.Students.Single(x => x.UserId != learnerAId);
         Assert.Equal((4, 0, 0, 4, 0, (int?)null), (b.Words, b.Reviewed7, b.Tests, b.New, b.Learned, b.LastTestPercent));
-        var top = report.WordStats[0];
-        Assert.Equal("학교", top.Korean); // the most missed first
-        Assert.True(top.Mistakes >= 1);
-        Assert.Equal(1, top.Learners);
+        // The test answers are random, so other words may be missed too; 학교 was certainly missed on its card.
+        var schoolStat = report.WordStats.Single(w => w.Korean == "학교");
+        Assert.True(schoolStat.Mistakes >= 1);
+        Assert.Equal(1, schoolStat.Learners);
+        Assert.Equal(report.WordStats.OrderByDescending(w => w.Mistakes).Select(w => w.Mistakes), report.WordStats.Select(w => w.Mistakes)); // most missed first
 
         // On the group page and the learner page the mistake is the deck's, and the deck shows with its last test.
         var groupPage = await OkAsync<GroupDetailDto>(await teacher.GetAsync($"/api/teacher/groups/{group.Id}"));
