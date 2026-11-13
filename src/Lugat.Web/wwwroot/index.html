@@ -44,7 +44,8 @@
         <!-- L-60: shown until Blazor starts. Keep in step with Shared/BootScreen.razor, Shared/SigninIntro.razor and Shared/Landing.razor. -->
         <main class="content signin-page boot">
             <header class="app-header"><span class="app-header-title">Koreyscha</span><span class="app-header-right boot-landing"><span class="tag tag-neutral">A · B · C</span></span></header>
-            <p class="boot-loading" role="status" aria-live="polite"><span class="boot-dot" aria-hidden="true"></span>Yuklanmoqda…</p>
+            <p class="boot-loading" role="status" aria-live="polite"><span class="boot-dot" aria-hidden="true"></span>Yuklanmoqda…<span class="boot-percent" aria-hidden="true"></span></p>
+            <div class="boot-bar" aria-hidden="true"><span></span></div>
             <div class="boot-landing">
                 <div class="signin-words">
                     <div><span lang="ko">하다</span><small>qilmoq</small></div>
@@ -54,8 +55,16 @@
                     <h1>Koreys tili so‘zlari — o‘zbek tilida.</h1>
                     <p>Eng ko‘p ishlatiladigan so‘zlardan boshlab, 25 talik bo‘limlarda. Bo‘lim faqat testdan 80% bilan tugaydi.</p>
                 </section>
+                <!-- L-72: sign-in works before the app has started (js/boot-signin.js). -->
+                <div id="boot-signin" class="boot-signin">
+                    <div class="signin-buttons">
+                        <button id="boot-telegram" class="btn btn-primary block big" type="button" disabled><span>Telegram orqali kirish</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+                        <div id="boot-google" class="signin-google"></div>
+                    </div>
+                    <p id="boot-signin-note" class="muted small-text" hidden></p>
+                </div>
                 <div class="boot-actions">
-                    <a class="btn btn-primary block" href="/sinab?src=bosh" target="_top"><span>Kirmasdan 1 daqiqada sinab ko‘rish</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
+                    <a class="btn btn-secondary block" href="/sinab?src=bosh" target="_top"><span>Kirmasdan 1 daqiqada sinab ko‘rish</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
                     <a class="btn btn-ghost" href="/soz" target="_top">Koreyscha so‘zlar ro‘yxati</a>
                 </div>
                 <div class="landing">
@@ -121,6 +130,10 @@
         // Enter presses the page's main button (L-49).
         import { installEnterKey } from './js/app.js';
         installEnterKey();
+    </script>
+    <script type="module">
+        import { start } from './js/boot-signin.js';
+        start();
     </script>
 </body>
 

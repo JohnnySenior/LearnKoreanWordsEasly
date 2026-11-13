@@ -596,3 +596,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: muddat tekshiruvi va boshqa o‘qituvchi 404; bajardi qoidasi, muddatdan keyingi ish hisoblanmaydi, muddat surilsa hisoblanadi; eslatma bir marta, bajarganga va eslatmasi o‘chiqqa yo‘q.
 - [ ] Johnny: telefonda o‘qituvchi va o‘quvchi tomonini sinash.
 
+**Birinchi ochilish tezroq, kirish tugmasi darhol (L-72, 2026-11-13):**
+- [x] Statik bosh sahifada Telegram/Google kirish (ilovasiz), token ilova kalitida; ilova o‘zi davom ettiradi yoki bir marta qayta yuklanadi.
+- [x] `/sinab`, `/soz`, so‘z sahifalari ilova fayllarini oldindan yuklaydi; «Yuklanmoqda… %» chizig‘i.
+- [x] O‘lchov (CPU 4×): sinab ko‘rishdan keyin ilova 10 → 3,7 s (4G), 19 → 5,3 s (sekin tarmoq); kirish tugmasi ~2 s da.
+- [x] Testlar: web (endpoint va kalit ilova bilan bir xil, Telegram ma’lumoti, qayta yuklash sharti, sahifa tartibi, foiz chizig‘i), API (oldindan yuklanadigan fayllar ro‘yxati va skript). Chromium: ilova ishga tushishidan oldin va keyin Telegram kirishi; 360px yorug‘/qorong‘i.
+- [ ] Johnny: Android telefonda Instagram’dan kelib sinab ko‘rish → kirish; haqiqiy Telegram va Google tugmasi.
+

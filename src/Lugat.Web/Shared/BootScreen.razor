@@ -5,8 +5,14 @@
     <p class="boot-loading" role="status" aria-live="polite"><span class="boot-dot" aria-hidden="true"></span>Yuklanmoqda…</p>
     <div class="boot-landing">
         <SigninIntro />
+        @* L-72: the static page's sign-in buttons stand here for the moment until SignIn takes over. *@
+        <div class="boot-signin">
+            <div class="signin-buttons">
+                <button class="btn btn-primary block big" type="button" disabled><span>Telegram orqali kirish</span><Icon Name="arrow-right" /></button>
+            </div>
+        </div>
         <div class="boot-actions">
-            <a class="btn btn-primary block" href="@TasterLink" target="_top"><span>Kirmasdan 1 daqiqada sinab ko‘rish</span><Icon Name="arrow-right" /></a>
+            <a class="btn btn-secondary block" href="@TasterLink" target="_top"><span>Kirmasdan 1 daqiqada sinab ko‘rish</span><Icon Name="arrow-right" /></a>
             <a class="btn btn-ghost" href="/soz" target="_top">Koreyscha so‘zlar ro‘yxati</a>
         </div>
         <Landing Boot />

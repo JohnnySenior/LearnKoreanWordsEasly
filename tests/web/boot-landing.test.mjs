@@ -26,7 +26,7 @@ test('the static landing has the same sentences as the Blazor sign-in screen', (
 });
 
 test('the main link goes to the taster as "bosh", the same link the Blazor screens use', () => {
-    assert.match(bootHtml, /<a class="btn btn-primary block" href="\/sinab\?src=bosh" target="_top">/);
+    assert.match(bootHtml, /<a class="btn btn-secondary block" href="\/sinab\?src=bosh" target="_top">/); // L-72: sign-in comes first
     assert.match(bootHtml, /<a class="btn btn-ghost" href="\/soz" target="_top">Koreyscha so‘zlar ro‘yxati<\/a>/);
     assert.match(boot, /TasterLink = "\/sinab\?src=bosh"/);
     assert.match(layout, /href="@BootScreen\.TasterLink" target="_top"/); // target: Blazor must not route /sinab itself
@@ -40,7 +40,7 @@ test('a returning user sees only the brand and "Yuklanmoqda…": the key is Sess
     assert.match(css, /\.returning \.boot-landing \{ display: none; \}/);
     // The brand and the loading line stay outside .boot-landing; everything else is inside it.
     assert.match(bootHtml, /<span class="app-header-title">Koreyscha<\/span>/);
-    assert.match(bootHtml, /<p class="boot-loading" role="status" aria-live="polite">.*Yuklanmoqda…<\/p>/);
+    assert.match(bootHtml, /<p class="boot-loading" role="status" aria-live="polite">.*Yuklanmoqda…<span class="boot-percent" aria-hidden="true"><\/span><\/p>/);
     const before = bootHtml.slice(0, bootHtml.indexOf('<div class="boot-landing">'));
     assert.ok(!before.includes('signin-words') && !before.includes('/sinab'));
     assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.boot-dot \{ animation: none; \} \}/);

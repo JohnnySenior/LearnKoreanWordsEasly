@@ -404,6 +404,12 @@ h1 + .card, p + .card, .notice + .card { border-top: 2px solid var(--color-divid
 @media (prefers-reduced-motion: reduce) { .boot-dot { animation: none; } }
 .boot-actions { display: grid; justify-items: center; gap: 4px; padding: 16px 0 0; }
 .returning .boot-landing { display: none; }
+/* L-72: how far the app's first download is (Blazor sets these on <html> while it loads). */
+.boot-percent::before { content: var(--blazor-load-percentage-text, ""); margin-left: 2px; }
+.boot-bar { height: 3px; margin: 6px 0 0; border-radius: 2px; background: var(--color-rule-soft); overflow: hidden; }
+.boot-bar > span { display: block; height: 100%; width: var(--blazor-load-percentage, 0%); background: var(--color-accent); transition: width .3s; }
+.boot-signin { padding: 16px 0 0; }
+.boot-signin .signin-google:empty { display: none; }
 
 #blazor-error-ui {
     background: var(--color-accent-100);
