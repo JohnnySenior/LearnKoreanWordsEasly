@@ -795,3 +795,11 @@ Johnny: «deyarli 99 foiz o‘zbek o‘qituvchilari muddat beradi». O‘qituvch
 
 Jazo, reyting yoki uyaltirish yo‘q (§1.4): o‘quvchi faqat «Muddat: … · Qoldi: …» va «✓ Vazifa bajarildi» ko‘radi. Muddatdan taxminan bir kun oldin bajarmagan o‘quvchiga bitta eslatma (Push, bo‘lmasa Telegram; eslatmasi o‘chiq bo‘lsa yo‘q; `ReminderDelivery` orqali bir marta). Ma’lumotlar bazasiga faqat ikki ustun qo‘shildi (`GroupDeckDue` migratsiyasi).
 
+## L-72 · 2026-11-13 · Birinchi ochilish tezroq, kirish tugmasi darhol
+
+Johnny: Android’da Instagram yoki Google’dan kelgan foydalanuvchi «sinab ko‘rish»dan keyin ro‘yxatdan o‘tish joyini topolmagan — uzoq «Yuklanmoqda…», tugma faqat ilova yuklangach chiqqan. O‘lchov (360px, CPU 4× sekin): ilova birinchi marta ~2,9 MB yuklaydi; kirish tugmasi 4G’da ~10 s, sekin tarmoqda ~19 s dan keyin chiqardi, shu payt sahifada faqat yana «sinab ko‘rish» bor edi. Keyingi ochilish ~2,5 s.
+
+1. **Kirish tugmasi ilovasiz** (`wwwroot/js/boot-signin.js`): bosh sahifaning statik qismida «Telegram orqali kirish» birinchi, Google tugmasi uning ostida, «Kirmasdan sinab ko‘rish» endi ikkinchi darajali. Ular `SignIn.razor` bilan bir xil endpoint’larga (`api/auth/telegram-login`, `api/auth/google`) yuboradi va refresh tokenni ilovaning o‘z kalitida (`lugat.refresh`) saqlaydi; ilova ishga tushganda sessiyani davom ettiradi. Agar ilova shu orada o‘z kirish ekranini ko‘rsatib bo‘lgan bo‘lsa, sahifa bir marta qayta yuklanadi. Tugma ~2 s da ishlaydi.
+2. **Ilovani oldindan yuklash**: `/sinab` (1 s dan keyin), `/soz` va so‘z sahifalari (8 s dan keyin) sahifa yuklangach ilova fayllarini (`_framework/*.wasm`, `*.js`, ilova CSS/JS) past ustuvorlik bilan `prefetch` qiladi. Darhol chiqib ketgan mehmon hech narsa yuklamaydi. Sinab ko‘rishdan keyin ilova 4G’da ~3,7 s, sekin tarmoqda ~5,3 s da ochiladi (avval 10 va 19 s).
+3. **Yuklanish foizi**: «Yuklanmoqda… 40%» va ingichka chiziq (Blazor’ning `--blazor-load-percentage` qiymatlari).
+

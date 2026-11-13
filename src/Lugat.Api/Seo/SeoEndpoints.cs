@@ -40,6 +40,7 @@ public static class SeoEndpoints
     public static IEndpointRouteBuilder MapSeoEndpoints(this IEndpointRouteBuilder app)
     {
         var baseUrl = (app.ServiceProvider.GetRequiredService<IConfiguration>()["Seo:BaseUrl"] ?? "https://koreyscha.com").TrimEnd('/');
+        appFiles = AppFiles(app.ServiceProvider.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider);
 
         app.MapGet("/soz/{slug}", async (string slug, string? src, HttpContext http, SeoService seo, CancellationToken ct) =>
         {
@@ -379,10 +380,49 @@ public static class SeoEndpoints
 
         body.Append($"<a class=\"cta\" id=\"start\" data-source=\"{E(source)}\" href=\"/?src={E(source)}\">Har bir so‘zda shunday tushuntirish bor — 1-bo‘limni bepul boshlang →</a>");
         body.Append("<p class=\"note\">Telegram yoki Google orqali bepul kirasiz. Kartochka, mashq va test ilovaning ichida.</p>");
-        return Page(title, description, $"{baseUrl}/sinab", body.ToString(), null, script: "/js/sinab.js");
+        // The taster leads to the app: fetch it at once.
+        return Page(title, description, $"{baseUrl}/sinab", body.ToString(), null, script: "/js/sinab.js", prefetchAfterMs: 1000);
     }
 
-    private static string Page(string title, string description, string? canonical, string body, string? jsonLd, bool noIndex = false, string? script = null, string brandSource = "soz")
+    /// <summary>The files the app downloads when it starts (published <c>_framework</c> code and the app's own CSS and JS).</summary>
+    private static IReadOnlyList<string> appFiles = [];
+
+    /// <summary>
+    /// L-72: what the app needs on its first start: the runtime and assemblies (<c>_framework/*.wasm</c>, <c>*.js</c>),
+    /// not the ICU data (the browser picks one of three by its language) nor compressed copies (the server chooses those).
+    /// </summary>
+    public static IReadOnlyList<string> AppFiles(Microsoft.Extensions.FileProviders.IFileProvider webRoot)
+    {
+        var framework = webRoot.GetDirectoryContents("_framework");
+        var files = framework.Exists
+            ? framework.Where(f => !f.IsDirectory && (f.Name.EndsWith(".wasm", StringComparison.Ordinal) || f.Name.EndsWith(".js", StringComparison.Ordinal)))
+                .Select(f => "/_framework/" + f.Name).Order(StringComparer.Ordinal).ToList()
+            : [];
+        if (files.Count == 0)
+        {
+            return []; // not published (development, tests): nothing to fetch ahead
+        }
+
+        return [.. files, "/css/app.css", "/css/introduction.css", "/js/app.js", "/js/boot-signin.js"];
+    }
+
+    /// <summary>
+    /// L-72: while the visitor reads a public page, the browser fetches the app in the background at low priority, so
+    /// the app opens in seconds when they go on (a first start was 10–20 s on a slow Android). Started after the page
+    /// has loaded and after <paramref name="delayMs"/>, so a visitor who leaves at once spends nothing.
+    /// </summary>
+    public static string PrefetchScript(IReadOnlyList<string> files, int delayMs)
+    {
+        if (files.Count == 0)
+        {
+            return "";
+        }
+
+        var list = JsonSerializer.Serialize(files);
+        return $"<script>addEventListener('load',()=>setTimeout(()=>{{for(const u of {list}){{const l=document.createElement('link');l.rel='prefetch';l.href=u;document.head.appendChild(l);}}}},{delayMs}));</script>";
+    }
+
+    private static string Page(string title, string description, string? canonical, string body, string? jsonLd, bool noIndex = false, string? script = null, string brandSource = "soz", int prefetchAfterMs = 8000)
     {
         var head = new StringBuilder();
         head.Append($"<title>{E(title)}</title>");
@@ -420,6 +460,7 @@ public static class SeoEndpoints
             <header class="top"><a class="brand" href="/?src={{E(brandSource)}}"><span class="mark" lang="ko" aria-hidden="true">ㅋ</span>Koreyscha</a><a href="/soz">Barcha so‘zlar</a></header>
             <main>{{body}}</main>
             {{(script is null ? "" : $"<script type=\"module\" src=\"{script}\"></script>")}}
+            {{(noIndex ? "" : PrefetchScript(appFiles, prefetchAfterMs))}}
             <footer>So‘zlar ro‘yxati: <span lang="ko">국립국어원 「한국어 학습용 어휘 목록」</span> (KOGL 1-tur). Tarjima va misollar muharrir tomonidan tekshirilgan.</footer>
             </body>
             </html>
