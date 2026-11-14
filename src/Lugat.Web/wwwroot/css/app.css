@@ -1133,6 +1133,40 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .score-chart .hit { fill: transparent; }
 .score-chart .label { font: 800 13px var(--font-heading); fill: var(--color-text); }
 .chart-x { display: flex; justify-content: space-between; font-size: 12px; color: var(--color-muted); padding-left: 24px; margin-top: 4px; }
+/* L-73: the teacher's group summary, trends, scores and "E'tibor bering". 2 tiles a row on a phone, 4 on a computer. */
+.insight-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0 4px; }
+@media (min-width: 720px) { .insight-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.insight-tile { display: grid; align-content: start; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--color-card); border: 1px solid var(--color-rule-soft); min-width: 0; }
+.insight-tile strong { font: 800 26px/1.1 var(--font-heading); font-variant-numeric: tabular-nums; color: var(--color-text); }
+.insight-tile strong small { font: 600 14px var(--font-body); color: var(--color-muted); }
+.insight-tile strong small.up { color: var(--color-done-fg); }
+.insight-tile strong small.down { color: var(--color-warn); }
+.insight-tile > span { font-size: 13px; color: var(--color-muted); display: grid; gap: 2px; }
+.insight-tile > span small { font-size: 12px; overflow-wrap: anywhere; }
+.insight-tile.alert { border-color: var(--color-warn); }
+.insight-tile.alert strong, .insight-tile.alert > span { color: var(--color-warn); }
+.chart-title { font: 600 13px var(--font-body); color: var(--color-muted); margin: 14px 0 0; }
+.trend-chart .chart-x { padding-left: 30px; }
+.week-bars .fill { fill: var(--color-text); }
+.week-bars .hit { fill: transparent; }
+.week-bars text.axis { font-size: 10px; }
+.score-bars { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.score-bars li { display: grid; grid-template-columns: minmax(0, 9em) 1fr 3em; align-items: center; gap: 10px; font-size: 14px; }
+.score-bars a { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score-bars svg { width: 100%; height: 12px; display: block; }
+.score-bars .track { fill: var(--color-rule-soft); }
+.score-bars .fill { fill: var(--color-neutral-600); }
+.score-bars li.low .fill { fill: var(--color-accent); }
+.score-bars .mark { stroke: var(--color-muted); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 2 2; }
+.score-bars .num { text-align: right; font-variant-numeric: tabular-nums; }
+.score-bars li.low .num { color: var(--color-warn); font-weight: 700; }
+.attention-list { list-style: none; margin: 0; padding: 0; }
+.attention-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 0; border-bottom: 1px solid var(--color-rule-soft); }
+.attention-list a { font-weight: 600; }
+.risk-flags { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.risk-flag { background: var(--color-accent-100); color: var(--color-accent-800); }
+.risk-mark { margin-left: 6px; color: var(--color-warn); cursor: help; }
+.attention-notice .risk-flags { margin-left: 4px; vertical-align: middle; }
 
 /* Before sign-in: what the app is (L-41). Same flat language as the app: 2px rules, no cards, left-aligned. */
 .landing { display: grid; gap: 14px; padding: 20px 0 24px; }

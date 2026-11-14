@@ -7,7 +7,8 @@
 
 <PageTitle>Guruh — Koreyscha</PageTitle>
 
-@* One group (spec §9.2): the learners table and the group's hardest words. *@
+@* One group (spec §9.2): the summary, trends, scores and "E'tibor bering" (L-73), the learners table and the group's
+   hardest words. Every number comes from the server; the page only lays them out. *@
 <a class="back" href="oqituvchi">← O‘qituvchi paneli</a>
 
 @if (_group is null)
@@ -20,6 +21,62 @@
 @if (_error is not null)
 {
     <div class="notice" role="alert">@_error</div>
+}
+
+@if (_insights is { } ins)
+{
+    <div class="insight-tiles" role="list" aria-label="Guruh xulosasi">
+        <div class="insight-tile" role="listitem">
+            <strong>@ins.ActiveToday<small> / @ins.Members</small></strong>
+            <span>Bugun faol</span>
+        </div>
+        @if (ins.Homework is { } hw)
+        {
+            <div class="insight-tile" role="listitem" title="@($"«{hw.Name}» · muddat {Format.Day(hw.DueOn)}: {hw.Done} / {hw.Members}")">
+                <strong>@hw.Percent%</strong>
+                <span>Vazifani bajardi<small>«@hw.Name» · @(hw.DuePassed ? "muddat o‘tdi" : $"muddat {Format.Day(hw.DueOn)}")</small></span>
+            </div>
+        }
+        <div class="insight-tile" role="listitem">
+            <strong>@(ins.AverageTestPercent is { } avg ? $"{avg}%" : "—")@if (ins.AverageTestChange is { } ch) {<small class="@(ch > 0 ? "up" : ch < 0 ? "down" : null)"> @(ch > 0 ? $"+{ch}" : ch < 0 ? $"−{-ch}" : "±0")</small>}</strong>
+            <span>O‘rtacha test<small>@(ins.AverageTestChange is null ? "oxirgi bo‘lim testlari" : "o‘tgan haftaga nisbatan")</small></span>
+        </div>
+        <div class="insight-tile @(ins.Attention.Count > 0 ? "alert" : null)" role="listitem">
+            <strong>@ins.Attention.Count</strong>
+            <span>E’tibor bering</span>
+        </div>
+    </div>
+
+    @if (ins.Attention.Count > 0)
+    {
+        <section class="card">
+            <h2>E’tibor bering</h2>
+            <ul class="attention-list">
+                @foreach (var a in ins.Attention)
+                {
+                    <li><a href="@($"oqituvchi/oquvchi/{a.UserId}")">@(a.Name ?? "—")</a><RiskFlags Flags="a.Flags" /></li>
+                }
+            </ul>
+        </section>
+    }
+
+    <section class="card">
+        <h2>Oxirgi 8 hafta</h2>
+        <h3 class="chart-title">Takrorlangan kartochkalar</h3>
+        <TrendChart Label="Guruh har hafta takrorlagan kartochkalar, oxirgi 8 hafta" Points="@Trend(ins.Weeks, w => w.Reviewed, "karta")" />
+        <h3 class="chart-title">Faol o‘quvchilar</h3>
+        <TrendChart Label="Har hafta faol bo‘lgan o‘quvchilar, oxirgi 8 hafta" Points="@Trend(ins.Weeks, w => w.Active, "o‘quvchi")" />
+        <p class="muted small-text">Haftalar dushanbadan (Koreya vaqti). Kartochka haftasiga bir marta sanaladi; oxirgi nuqta — shu hafta hozirgacha.</p>
+    </section>
+
+    @if (ins.Scores.Count > 0)
+    {
+        <section class="card">
+            <h2>Test ballari</h2>
+            <ScoreBars Scores="ins.Scores" LowPercent="ins.LowScorePercent" />
+            <p class="muted small-text">Har o‘quvchining oxirgi bo‘lim testi. @ins.LowScorePercent% dan pasti boshqa rangda.</p>
+        </section>
+    }
 }
 
 <section class="card">
@@ -59,7 +116,7 @@
                     @foreach (var s in _group.Students)
                     {
                         <tr>
-                            <td class="wrap"><a href="@($"oqituvchi/oquvchi/{s.UserId}")">@(s.Name ?? "—")</a></td>
+                            <td class="wrap"><a href="@($"oqituvchi/oquvchi/{s.UserId}")">@(s.Name ?? "—")</a>@if (Flagged(s.UserId) is { } flags) {<span class="risk-mark" role="img" aria-label="@($"E’tibor bering: {flags}")" title="@flags">⚠</span>}</td>
                             <td>@(s.CurrentUnit ?? "—")</td>
                             <td class="num">@s.PassedUnits</td>
                             <td class="num">@(s.LastTestPercent is { } p ? $"{p}%" : "—")</td>
@@ -128,6 +185,7 @@
     [Parameter] public Guid Id { get; set; }
 
     private GroupDetailDto? _group;
+    private GroupInsightsDto? _insights;
     private List<GroupDeckSummaryDto>? _decks;
     private string _deckName = "";
     private string? _error;
@@ -143,7 +201,15 @@
         var result = await Api.GetAsync<GroupDetailDto>($"api/teacher/groups/{Id}");
         (_group, _error) = (result.Value, result.Error);
         _decks = (await Api.GetAsync<List<GroupDeckSummaryDto>>($"api/teacher/groups/{Id}/decks")).Value;
+        _insights = (await Api.GetAsync<GroupInsightsDto>($"api/teacher/groups/{Id}/insights")).Value;
     }
+
+    /// <summary>The learner's flags as one line for the table's warning mark, or null when there are none.</summary>
+    private string? Flagged(Guid userId) =>
+        _insights?.Attention.FirstOrDefault(a => a.UserId == userId) is { } a ? string.Join(" · ", a.Flags.Select(f => f.Detail)) : null;
+
+    private static IReadOnlyList<TrendChart.TrendPoint> Trend(IReadOnlyList<WeekPointDto> weeks, Func<WeekPointDto, int> value, string unit) =>
+        weeks.Select(w => new TrendChart.TrendPoint(Format.Day(w.WeekStart), value(w), $"{Format.Day(w.WeekStart)} haftasi: {value(w)} {unit}")).ToList();
 
     private async Task CreateDeckAsync()
     {

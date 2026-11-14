@@ -1,0 +1,21 @@
+@using Lugat.Contracts
+
+@* L-73: a learner's risk flags as short tags, most serious first (the server's order). *@
+<span class="risk-flags">
+    @foreach (var f in Flags)
+    {
+        <span class="tag risk-flag" title="@Title(f.Kind)">@f.Detail</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<RiskFlagDto> Flags { get; set; } = [];
+
+    private static string Title(RiskKind kind) => kind switch
+    {
+        RiskKind.Inactive => "Kirmayapti",
+        RiskKind.ScoreDrop => "Ball tushdi",
+        RiskKind.HomeworkLate => "Vazifa kechikdi",
+        _ => "Takror to‘planib qoldi",
+    };
+}

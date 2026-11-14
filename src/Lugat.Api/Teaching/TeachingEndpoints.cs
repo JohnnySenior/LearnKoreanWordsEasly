@@ -33,6 +33,9 @@ public static class TeachingEndpoints
         teacher.MapGet("/groups", (ClaimsPrincipal user, TeacherService s, CancellationToken ct) => s.GroupsAsync(user.GetUserId(), ct));
         teacher.MapPost("/groups", (CreateGroupRequest body, ClaimsPrincipal user, TeacherService s, CancellationToken ct) => s.CreateGroupAsync(user.GetUserId(), body, ct));
         teacher.MapGet("/groups/{id:guid}", (Guid id, ClaimsPrincipal user, TeacherService s, CancellationToken ct) => s.GroupAsync(user.GetUserId(), id, ct));
+        // L-73: the group summary, 8-week trends, scores and "E'tibor bering"; the same for one learner.
+        teacher.MapGet("/groups/{id:guid}/insights", (Guid id, ClaimsPrincipal user, TeacherInsightsService s, CancellationToken ct) => s.GroupAsync(user.GetUserId(), id, ct));
+        teacher.MapGet("/students/{id:guid}/insights", (Guid id, ClaimsPrincipal user, TeacherInsightsService s, CancellationToken ct) => s.StudentAsync(user.GetUserId(), id, ct));
         teacher.MapPost("/groups/{id:guid}/invite", (Guid id, ClaimsPrincipal user, TeacherService s, CancellationToken ct) => s.NewInviteAsync(user.GetUserId(), id, ct));
         teacher.MapDelete("/groups/{id:guid}", async (Guid id, ClaimsPrincipal user, TeacherService s, CancellationToken ct) =>
         {

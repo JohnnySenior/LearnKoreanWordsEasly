@@ -1,0 +1,76 @@
+@using System.Globalization
+
+@* L-73: one series over the 8 weeks (cards reviewed, or learners active), drawn like ScoreChart: one ink line,
+   recessive 0 / half / top grid, the last value labelled, a tooltip on every point. No second axis. *@
+@if (Points.Count >= 2)
+{
+    var last = Points[^1];
+    <figure class="score-chart trend-chart" aria-label="@Label">
+        <svg viewBox="0 0 @W @H" role="img">
+            @foreach (var y in Grid)
+            {
+                <line class="grid" x1="@Pad" x2="@(W - Pad)" y1="@Y(y)" y2="@Y(y)" />
+                @SvgText("axis", "0", F(Yv(y) + 4), y.ToString(CultureInfo.InvariantCulture))
+            }
+            <polyline class="line" points="@Line()" />
+            @for (var i = 0; i < Points.Count; i++)
+            {
+                var p = Points[i];
+                <g class="pt">
+                    <title>@p.Tooltip</title>
+                    <circle class="hit" cx="@X(i)" cy="@Y(p.Value)" r="14" />
+                    <circle class="dot" cx="@X(i)" cy="@Y(p.Value)" r="4" />
+                </g>
+            }
+            @SvgText("label", X(Points.Count - 1), F(Yv(last.Value) - 10), last.Value.ToString(CultureInfo.InvariantCulture), "end")
+        </svg>
+        <figcaption class="chart-x"><span>@Points[0].Label</span><span>@last.Label</span></figcaption>
+    </figure>
+}
+
+@code {
+    public sealed record TrendPoint(string Label, int Value, string Tooltip);
+
+    /// <summary>Oldest first. Fewer than two points draw nothing.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<TrendPoint> Points { get; set; } = [];
+
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+
+    private const int W = 320;
+    private const int H = 150;
+    private const int Pad = 30;
+
+    /// <summary>A round top (1, 2, 5 × 10ⁿ) at or above the largest value, so the grid reads 0 / half / top.</summary>
+    private int Top
+    {
+        get
+        {
+            var max = Math.Max(1, Points.Max(p => p.Value));
+            var step = (int)Math.Pow(10, Math.Floor(Math.Log10(max)));
+            foreach (var m in new[] { 1, 2, 5, 10 })
+            {
+                if (m * step >= max)
+                {
+                    return m * step;
+                }
+            }
+
+            return 10 * step;
+        }
+    }
+
+    private IEnumerable<int> Grid => Top >= 2 ? [0, Top / 2, Top] : [0, Top];
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+
+    private string X(int i) => F(Pad + i * (W - 1.5 * Pad) / (Points.Count - 1));
+
+    private double Yv(int value) => 10 + (Top - Math.Clamp(value, 0, Top)) * (H - 20) / (double)Top;
+
+    private string Y(int value) => F(Yv(value));
+
+    private string Line() => string.Join(' ', Points.Select((p, i) => $"{X(i)},{Y(p.Value)}"));
+
+    private static MarkupString SvgText(string cls, string x, string y, string value, string anchor = "start") =>
+        new($"<text class=\"{cls}\" x=\"{x}\" y=\"{y}\" text-anchor=\"{anchor}\">{System.Net.WebUtility.HtmlEncode(value)}</text>");
+}

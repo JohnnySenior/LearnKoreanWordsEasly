@@ -159,14 +159,17 @@ public sealed class TeacherService(IAppDbContext db, TimeProvider time, MistakeS
             .GroupBy(e => e.OwnerId)
             .Select(g => new { g.Key, Count = g.Select(e => e.CardId).Distinct().Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
-        var due = await (from c in db.Cards
-                         join i in db.LearningItems on c.LearningItemId equals i.Id
-                         where ids.Contains(c.OwnerId) && i.IsActive && c.Phase != LearningPhase.New && c.DueAt <= now
-                         group c by c.OwnerId into g
-                         select new { g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
-        return (reviewed, due);
+        return (reviewed, await DueOfAsync(db, ids, now, ct));
     }
+
+    /// <summary>Cards waiting for review now, per learner, as the learner's own Today page counts them (L-61). One query.</summary>
+    internal static async Task<Dictionary<Guid, int>> DueOfAsync(IAppDbContext db, IReadOnlyCollection<Guid> ids, DateTimeOffset now, CancellationToken ct) =>
+        await (from c in db.Cards
+               join i in db.LearningItems on c.LearningItemId equals i.Id
+               where ids.Contains(c.OwnerId) && i.IsActive && c.Phase != LearningPhase.New && c.DueAt <= now
+               group c by c.OwnerId into g
+               select new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
     /// <summary>What the learner practised in the last 7 days (L-61), in the Mashq page's order; nothing about the answers.</summary>
     private async Task<IReadOnlyList<PracticeCountDto>> PracticeOfAsync(Guid userId, CancellationToken ct)
