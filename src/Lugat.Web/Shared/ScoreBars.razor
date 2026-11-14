@@ -1,0 +1,28 @@
+@using Lugat.Contracts
+
+@* L-73: each learner's last unit test, highest first; below Teaching:LowScorePercent in the accent colour. The name
+   opens the learner's page; each bar has its tooltip. *@
+<ul class="score-bars" aria-label="@Label">
+    @foreach (var s in Scores)
+    {
+        var tip = $"{s.Name ?? "O‘quvchi"}: {s.Percent}%" + (s.Low ? $" — {LowPercent}% dan past" : "");
+        <li class="@(s.Low ? "low" : null)">
+            <a href="@($"oqituvchi/oquvchi/{s.UserId}")">@(s.Name ?? "—")</a>
+            <svg viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="@tip">
+                <title>@tip</title>
+                <rect class="track" x="0" y="0" width="100" height="10" rx="2" />
+                <rect class="fill" x="0" y="0" width="@Math.Clamp(s.Percent, 0, 100)" height="10" rx="2" />
+                <line class="mark" x1="@LowPercent" x2="@LowPercent" y1="0" y2="10" />
+            </svg>
+            <span class="num">@s.Percent%</span>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<StudentScoreDto> Scores { get; set; } = [];
+
+    [Parameter, EditorRequired] public int LowPercent { get; set; }
+
+    [Parameter] public string Label { get; set; } = "O‘quvchilarning oxirgi test ballari";
+}

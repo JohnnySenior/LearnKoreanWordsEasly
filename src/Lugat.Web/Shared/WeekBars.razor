@@ -1,0 +1,46 @@
+@using System.Globalization
+
+@* L-73: one learner's cards reviewed per week (8 bars), a tooltip on each bar; the value sits above a bar that has one. *@
+@if (Points.Count > 0)
+{
+    <figure class="score-chart week-bars" aria-label="@Label">
+        <svg viewBox="0 0 @W @H" role="img">
+            <line class="grid" x1="0" x2="@W" y1="@Base" y2="@Base" />
+            @for (var i = 0; i < Points.Count; i++)
+            {
+                var p = Points[i];
+                var h = BarHeight(p.Value);
+                <g class="bar">
+                    <title>@p.Tooltip</title>
+                    <rect class="hit" x="@F(Slot * i)" y="0" width="@F(Slot)" height="@Base" />
+                    <rect class="fill" x="@F(Slot * i + Gap / 2)" y="@F(Base - h)" width="@F(Slot - Gap)" height="@F(h)" rx="2" />
+                </g>
+                @if (p.Value > 0)
+                {
+                    @SvgText("axis", F(Slot * i + Slot / 2), F(Base - h - 4), p.Value.ToString(CultureInfo.InvariantCulture))
+                }
+            }
+        </svg>
+        <figcaption class="chart-x" style="padding-left:0"><span>@Points[0].Label</span><span>@Points[^1].Label</span></figcaption>
+    </figure>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TrendChart.TrendPoint> Points { get; set; } = [];
+
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+
+    private const int W = 320;
+    private const int H = 130;
+    private const double Base = H - 2;
+    private const double Gap = 10;
+
+    private double Slot => W / (double)Points.Count;
+
+    private double BarHeight(int value) => value <= 0 ? 0 : Math.Max(2, value * (Base - 18) / Math.Max(1, Points.Max(p => p.Value)));
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+
+    private static MarkupString SvgText(string cls, string x, string y, string value) =>
+        new($"<text class=\"{cls}\" x=\"{x}\" y=\"{y}\" text-anchor=\"middle\">{System.Net.WebUtility.HtmlEncode(value)}</text>");
+}

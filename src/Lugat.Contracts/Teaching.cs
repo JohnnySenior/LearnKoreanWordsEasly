@@ -159,3 +159,54 @@ public sealed record GroupDeckReportDto(Guid DeckId, string Name, int Words, IRe
 /// <summary>One teacher's deck on a learner's page (L-68).</summary>
 public sealed record StudentDeckDto(Guid DeckId, string Name, int Words, int Learned, int? LastTestPercent, DateTimeOffset? LastTestAt,
     DateOnly? DueOn = null, DeckDoneDto? Done = null);
+
+// ---- L-73: the group summary, 8-week trends and "E'tibor bering" (spec §9.2). Numbers and scores only. ----
+
+/// <summary>Why a learner may need the teacher's attention; also the order of seriousness (first is most serious).</summary>
+public enum RiskKind
+{
+    /// <summary>"Kirmayapti": no active day for <c>Teaching:Risk:InactiveDays</c> days or more.</summary>
+    Inactive,
+
+    /// <summary>"Ball tushdi": the last unit test is <c>Teaching:Risk:ScoreDropPoints</c> or more below the one before.</summary>
+    ScoreDrop,
+
+    /// <summary>"Vazifa kechikdi": a deck's due time passed and the learner had not done it (L-71).</summary>
+    HomeworkLate,
+
+    /// <summary>"Takror to‘planib qoldi": <c>Teaching:Risk:DueBacklog</c> or more cards waiting.</summary>
+    DueBacklog,
+}
+
+/// <param name="Detail">A short Uzbek note for the teacher, e.g. "4 kun kirmadi", "Test 81% → 58%".</param>
+public sealed record RiskFlagDto(RiskKind Kind, string Detail);
+
+/// <summary>A learner on the "E'tibor bering" list, with every reason found.</summary>
+public sealed record StudentRiskDto(Guid UserId, string? Name, IReadOnlyList<RiskFlagDto> Flags);
+
+/// <summary>One week (Korea time, from Monday). For a group: cards reviewed by all and learners active; for a learner: cards and active days.</summary>
+/// <param name="Reviewed">Cards answered that week, each card once (L-61).</param>
+/// <param name="Active">Group: learners with an active day that week. Learner: active days that week.</param>
+public sealed record WeekPointDto(DateOnly WeekStart, int Reviewed, int Active);
+
+/// <summary>A learner's last unit test, for the scores chart; <c>Low</c> is below <c>Teaching:LowScorePercent</c>.</summary>
+public sealed record StudentScoreDto(Guid UserId, string? Name, int Percent, bool Low);
+
+/// <summary>The group's latest deck with a due day (L-71) and how many members had done it by then (or so far).</summary>
+public sealed record HomeworkSummaryDto(Guid DeckId, string Name, DateOnly DueOn, bool DuePassed, int Done, int Members, int Percent);
+
+/// <param name="ActiveToday">Members who opened the app today (Korea time).</param>
+/// <param name="Homework">Null when the group has no published deck with a due day.</param>
+/// <param name="AverageTestPercent">The average of the members' last unit tests; null when nobody took one.</param>
+/// <param name="AverageTestChange">Against the same average a week ago, in points; null when there was none then.</param>
+/// <param name="Weeks">The last 8 weeks, oldest first; the last one is this week so far.</param>
+/// <param name="Scores">Members with a unit test, highest first.</param>
+/// <param name="Attention">Members with a risk flag, most serious first.</param>
+public sealed record GroupInsightsDto(int Members, int ActiveToday, HomeworkSummaryDto? Homework, int? AverageTestPercent, int? AverageTestChange,
+    IReadOnlyList<WeekPointDto> Weeks, IReadOnlyList<StudentScoreDto> Scores, IReadOnlyList<StudentRiskDto> Attention, int LowScorePercent);
+
+/// <summary>A finished unit test (score only, never the answers).</summary>
+public sealed record TestPointDto(DateTimeOffset At, int Percent, string? Unit);
+
+/// <summary>One learner: the last 8 weeks, unit test scores over time (oldest first) and risk flags.</summary>
+public sealed record StudentInsightsDto(IReadOnlyList<WeekPointDto> Weeks, IReadOnlyList<TestPointDto> Tests, IReadOnlyList<RiskFlagDto> Flags, int LowScorePercent);

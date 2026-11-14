@@ -5,7 +5,8 @@
 
 <PageTitle>O‘quvchi — Koreyscha</PageTitle>
 
-@* One learner of the teacher's group (spec §9.2): scores by unit and the most-missed words. Nothing else. *@
+@* One learner of the teacher's group (spec §9.2): risk flags, the last 8 weeks and unit test scores over time (L-73),
+   scores by unit and the most-missed words. Nothing else. *@
 <a class="back" href="oqituvchi">← O‘qituvchi paneli</a>
 
 @if (_student is null)
@@ -16,6 +17,36 @@
 
 <h1>@(_student.Name ?? "O‘quvchi")</h1>
 <p class="muted">Joriy bo‘lim: @(_student.CurrentUnit ?? "—")</p>
+@if (_insights is { Flags.Count: > 0 } flagged)
+{
+    <div class="notice attention-notice" role="status"><strong>E’tibor bering:</strong> <RiskFlags Flags="flagged.Flags" /></div>
+}
+
+@if (_insights is { } ins)
+{
+    <section class="card">
+        <h2>Oxirgi 8 hafta</h2>
+        <h3 class="chart-title">Takrorlagan kartochkalar</h3>
+        <WeekBars Label="Har hafta takrorlagan kartochkalar, oxirgi 8 hafta" Points="@Points(ins.Weeks, w => w.Reviewed, "karta")" />
+        <h3 class="chart-title">Faol kunlar</h3>
+        <WeekBars Label="Har haftadagi faol kunlar, oxirgi 8 hafta" Points="@Points(ins.Weeks, w => w.Active, "kun")" />
+        <p class="muted small-text">Haftalar dushanbadan (Koreya vaqti). Kartochka haftasiga bir marta sanaladi.</p>
+    </section>
+    @if (ins.Tests.Count > 0)
+    {
+        <section class="card">
+            <h2>Bo‘lim testlari</h2>
+            @if (ins.Tests.Count >= 2)
+            {
+                <ScoreChart Label="Bo‘lim testlari ballari, vaqt bo‘yicha" Points="@ins.Tests.Select(t => new ScoreChart.ScorePoint(t.At, t.Percent, $"{t.Unit ?? "Test"} · {Format.DayMonth(t.At)}: {t.Percent}%")).ToList()" />
+            }
+            else
+            {
+                <p class="muted">Bitta test: @(ins.Tests[0].Unit ?? "—") · @ins.Tests[0].Percent% · @Format.DayMonth(ins.Tests[0].At)</p>
+            }
+        </section>
+    }
+}
 
 @if (_student.Week is { } week)
 {
@@ -108,13 +139,18 @@
     [Parameter] public Guid Id { get; set; }
 
     private StudentDetailDto? _student;
+    private StudentInsightsDto? _insights;
     private string? _error;
 
     protected override async Task OnParametersSetAsync()
     {
         var result = await Api.GetAsync<StudentDetailDto>($"api/teacher/students/{Id}");
         (_student, _error) = (result.Value, result.Error);
+        _insights = (await Api.GetAsync<StudentInsightsDto>($"api/teacher/students/{Id}/insights")).Value;
     }
+
+    private static IReadOnlyList<TrendChart.TrendPoint> Points(IReadOnlyList<WeekPointDto> weeks, Func<WeekPointDto, int> value, string unit) =>
+        weeks.Select(w => new TrendChart.TrendPoint(Format.Day(w.WeekStart), value(w), $"{Format.Day(w.WeekStart)} haftasi: {value(w)} {unit}")).ToList();
 
     private static string Status(StudentUnitDto u) => u.Status switch
     {

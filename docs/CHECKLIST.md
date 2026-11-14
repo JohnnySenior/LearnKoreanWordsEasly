@@ -603,3 +603,12 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: web (endpoint va kalit ilova bilan bir xil, Telegram ma’lumoti, qayta yuklash sharti, sahifa tartibi, foiz chizig‘i), API (oldindan yuklanadigan fayllar ro‘yxati va skript). Chromium: ilova ishga tushishidan oldin va keyin Telegram kirishi; 360px yorug‘/qorong‘i.
 - [ ] Johnny: Android telefonda Instagram’dan kelib sinab ko‘rish → kirish; haqiqiy Telegram va Google tugmasi.
 
+**O‘qituvchi paneli: guruh xulosasi, trendlar, «E’tibor bering» (L-73, 2026-11-14):**
+- [x] `TeacherInsightsService` + `GET /api/teacher/groups/{id}/insights`, `GET /api/teacher/students/{id}/insights`; yangi DTO’lar, eski DTO’lar o‘zgarmadi; chegaralar `Teaching:*` (`.env.example`).
+- [x] Guruh sahifasi: 4 kartochka (telefonda 2, kompyuterda 4 ustun), «E’tibor bering» ro‘yxati, 8 haftalik ikki trend grafigi, test ballari ustunlari (60% dan pasti qizil), jadvalda ⚠ belgisi.
+- [x] O‘quvchi sahifasi: xavf belgilari, 8 hafta (takror va faol kunlar ustunlari), bo‘lim testlari grafigi (`ScoreChart`).
+- [x] Testlar (8 ta, real PostgreSQL + FakeTimeProvider): karta haftasiga bir marta, hafta chegarasi dushanba 00:00 Seul; har xavf belgisi chegarada chiqadi, bir kun/ball oldin chiqmaydi; muddatli lug‘at yo‘q — `Homework` null; boshqa o‘qituvchi — 404, o‘quvchi — 403; javobda javoblar/to‘lov/login yo‘q; 2 va 6 o‘quvchida so‘rovlar soni bir xil.
+- [x] Chromium (Development + namunaviy guruh): 390px va 1280px, yorug‘/qorong‘i — gorizontal scroll va konsol xatosi yo‘q; skrinshotlar `docs/screenshots/l73-*.png`.
+- [ ] Johnny: haqiqiy guruhda chegaralar (3 kun, 15 ball, 100 karta) to‘g‘ri tuyuladimi — kerak bo‘lsa Railway’da `Teaching__Risk__*` bilan o‘zgartiriladi.
+- [ ] Ochiq: «E’tibor bering» belgisi uchun o‘qituvchiga Telegram/push xabari yo‘q (talab qilinmagan).
+
