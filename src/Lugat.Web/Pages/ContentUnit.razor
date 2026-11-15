@@ -44,6 +44,17 @@
         <button class="button" disabled="@(_busy || _unit.Unit.Reviewed < _unit.Unit.Words)" @onclick="PublishAsync">Nashr qilish</button>
     }
 </div>
+@if (_unit.HintsNeeded > 0)
+{
+    @* L-74: shared meanings without a hint, so the editor looks only at these. *@
+    <div class="notice" role="status">
+        <strong>Ishora kerak: @_unit.HintsNeeded so‘z.</strong> Ma’nosi boshqa so‘z bilan bir xil, farqi yozilmagan:
+        @foreach (var w in _unit.Words.Where(w => w.SameMeaning is { Count: > 0 }))
+        {
+            <a class="hint-link" href="@($"kontent/{Id}#w-{w.Id}")" lang="ko">@w.Word</a>
+        }
+    </div>
+}
 <p class="muted small-text">
     AI qoralamasi 10 tadan so‘z yozadi; tekshiruvdan o‘tmagan javob saqlanmaydi. Har so‘zni o‘qib, tuzatib, «Tekshirildi» qiling.
     Barcha so‘z tekshirilgach bo‘limni nashr qilish mumkin; nashrdan keyin so‘zlar boshqa bo‘limga ko‘chmaydi.
@@ -128,14 +139,18 @@
                 {
                     <span class="pill @scene.Css">@scene.Text</span>
                 }
+                @if (word.SameMeaning is { Count: > 0 })
+                {
+                    <span class="pill pill-warn">Ishora kerak</span>
+                }
                 <span class="pill @(word.Status == CatalogWordStatus.Reviewed ? "pill-ok" : "pill-warn")">@(word.Status == CatalogWordStatus.Reviewed ? "Tekshirildi" : "Qoralama")</span>
             </span>
         </div>
         <label class="field">Tarjima (1–3 ma’no, «;» bilan)<input class="input" maxlength="300" @bind="edit.TranslationUz" /></label>
         @if (word.SameMeaning is { Count: > 0 } same)
         {
-            @* L-37: asked from Uzbek, both words are right. *@
-            <p class="notice small-text">Bu ma’no boshqa so‘zda ham bor: <span lang="ko">@string.Join(", ", same)</span>. O‘zbekchadan so‘ralganda ilova farqini ko‘rsatadi; aniqroq bo‘lsin desangiz, tarjimaga qavsda izoh qo‘shing, masalan «emas (fe’ldan oldin)».</p>
+            @* L-37, L-74: asked from Uzbek, both words are right; a hint in parentheses after the shared meaning tells them apart. *@
+            <p class="notice small-text">⚠ Ishora kerak: bu ma’no <span lang="ko">@string.Join(", ", same)</span> so‘zida ham bor. Shu ma’nodan keyin qavsda farqini yozing, masalan «juda (ijobiy: juda yaxshi)». Ishora bo‘lmasa, ilova o‘zi «@string.Join(", ", same) emas» deb ko‘rsatadi.</p>
         }
         <label class="field">Lotincha o‘qilishi<input class="input" maxlength="100" @bind="edit.Romanization" /></label>
         <label class="field">Misol (koreyscha, ≤ 8 so‘z)<input class="input" lang="ko" maxlength="200" @bind="edit.ExampleKo" /></label>

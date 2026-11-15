@@ -167,7 +167,8 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             Summary(unit, words.Count(w => w.TranslationUz != null), words.Count(w => w.Status == CatalogWordStatus.Reviewed)),
             dtos,
             words.Count(CatalogDraftService.NeedsDraft),
-            words.Count(TrapSceneService.NeedsScene));
+            words.Count(TrapSceneService.NeedsScene),
+            dtos.Count(d => d.SameMeaning is { Count: > 0 }));
     }
 
     /// <summary>
@@ -400,7 +401,8 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             w.ReviewedAt, w.AiProvider,
             (usages.GetValueOrDefault(w.Id)?.Questions ?? []).Select(q => new CatalogQuestionDto(q.Uzbek, q.Sentence, q.Answer, q.Wrong, q.ExplanationUz)).ToList(),
             w.Version,
-            w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Of(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [],
+            // L-74: only a shared meaning without a hint in parentheses needs the editor.
+            w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Unhinted(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [],
             w.TrapCue, w.TrapWrong, w.TrapRight, w.TrapScenePending, w.TrapSceneAskedAt is not null)).ToList();
     }
 }

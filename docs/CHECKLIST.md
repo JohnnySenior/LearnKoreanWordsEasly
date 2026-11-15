@@ -612,3 +612,11 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Johnny: haqiqiy guruhda chegaralar (3 kun, 15 ball, 100 karta) to‘g‘ri tuyuladimi — kerak bo‘lsa Railway’da `Teaching__Risk__*` bilan o‘zgartiriladi.
 - [ ] Ochiq: «E’tibor bering» belgisi uchun o‘qituvchiga Telegram/push xabari yo‘q (talab qilinmagan).
 
+**Bir xil ma’noli so‘zlarga AI ishora (L-74, 2026-11-15):**
+- [x] AI qoralamasi oldingi so‘zlarni ma’nosi bilan ko‘radi va umumiy ma’noga qavsda o‘zbekcha ishora yozadi (koreyscha harfsiz).
+- [x] Ma’nolar qavsdan tashqarida bo‘linadi; qavsli ishorali ma’no uchun ilova «… emas» qo‘shmaydi, admin ogohlantirishi chiqmaydi.
+- [x] Admin bo‘lim sahifasi: «Ishora kerak: N so‘z» ro‘yxati va so‘z belgisi.
+- [x] Testlar: ma’nolarni bo‘lish va ishorasiz ma’no (unit), qoralama so‘rovida oldingi ma’nolar va qoida, ishora yozilgach ogohlantirish yo‘qolishi (API).
+- [ ] Johnny: keyingi bo‘limni AI qoralama qilib, ishoralar sifatini ko‘rish.
+- [ ] Keyin: bo‘lim testidagi yozma savolda sinonimni xato demaslik (3-taklif).
+

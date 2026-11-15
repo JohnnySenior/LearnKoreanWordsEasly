@@ -279,6 +279,42 @@ public class CatalogTests
     }
 
     [Fact]
+    public async Task The_draft_sees_earlier_meanings_and_a_shared_meaning_without_a_hint_is_flagged()
+    {
+        // L-74: 아주 / 너무 "juda" — the AI is shown the meanings of earlier words and asked for a hint in parentheses;
+        // the editor is warned only about a shared meaning that has none.
+        _ai.Answer = r => Draft(r.UserContent, (_, _) => null);
+        await using var factory = NewFactory();
+        var admin = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var editor = await EditorAsync(factory);
+        await ImportAsync(admin, CatalogFiles.Xlsx(SmallList()), "a.xlsx");
+        await admin.PostAsync("/api/admin/catalog/levels/A/split", null);
+        var unitId = (await UnitsAsync(editor, CatalogLevel.A))[0].Id;
+
+        var first = await ReadAsync<UnitAdminDto>(await editor.PostAsync($"/api/admin/units/{unitId}/draft", null));
+        await ReadAsync<UnitAdminDto>(await editor.PostAsync($"/api/admin/units/{unitId}/draft", null));
+
+        Assert.Contains("hint in parentheses", _ai.Requests[0].Instructions);
+        Assert.Contains("no Korean letters", _ai.Requests[0].Instructions);
+        // The second call knows the words the first one translated, with their meanings.
+        Assert.Contains($"{first.Words[0].Word} — ma’no 1; ikkinchi ma’no", _ai.Requests[1].UserContent);
+
+        // Every drafted word shares "ikkinchi ma’no" without a hint.
+        var unit = await UnitAsync(editor, unitId);
+        var drafted = unit.Words.Where(w => w.TranslationUz is not null).ToList();
+        Assert.Equal(drafted.Count, unit.HintsNeeded);
+        Assert.All(drafted, w => Assert.NotEmpty(w.SameMeaning!));
+
+        // A hint after the shared meaning clears the warning for that word only.
+        var word = drafted[0];
+        var saved = await ReadAsync<CatalogWordAdminDto>(await editor.PutAsJsonAsync($"/api/admin/catalog/words/{word.Id}",
+            new UpdateCatalogWordRequest("boshqa so‘z; ikkinchi ma'no (birinchisi)", word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.Theme,
+                [.. word.Questions.Select(q => new CatalogQuestionDto(q.Uzbek, q.Sentence, q.Answer, q.Wrong, q.ExplanationUz))], word.Version), ApiFactory.Json));
+        Assert.Empty(saved.SameMeaning!);
+        Assert.Equal(drafted.Count - 1, (await UnitAsync(editor, unitId)).HintsNeeded);
+    }
+
+    [Fact]
     public async Task An_unusable_AI_answer_saves_nothing()
     {
         _ai.Answer = r => Draft(r.UserContent, (_, _) => "cyrillic");
