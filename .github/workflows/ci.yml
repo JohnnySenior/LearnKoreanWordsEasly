@@ -19,7 +19,9 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:16
+        # Same major as production (Railway postgres-ssl:18). The runner's pg_dump (Ubuntu 26.04) writes
+        # "SET transaction_timeout", which a 16 server rejects on restore (BackupTests).
+        image: postgres:18
         env:
           POSTGRES_USER: lugat
           POSTGRES_PASSWORD: lugat
