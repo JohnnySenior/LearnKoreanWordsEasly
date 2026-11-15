@@ -1612,4 +1612,4 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .share-mini-ko { font-size: 15px; font-weight: 700; color: var(--color-accent-700); line-height: 1.1; white-space: nowrap; overflow: hidden; }
 .share-mini i { display: block; height: 5px; border-radius: 3px; background: var(--color-neutral-300); }
 .share-mini i + i { width: 70%; }
-
+.hint-link { margin-left: 8px; font-weight: 700; }

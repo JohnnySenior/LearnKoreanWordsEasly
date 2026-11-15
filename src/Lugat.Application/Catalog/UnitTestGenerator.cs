@@ -52,7 +52,7 @@ public static partial class UnitTestGenerator
         if (kind == TestQuestionKind.WordKoreanTyped)
         {
             // 안 / 아니다 "emas": the prompt says which one is meant (L-37).
-            var twins = Vocabulary.MeaningTwins.Of(w.ItemId, w.Korean, w.Uzbek, twinPool);
+            var twins = Vocabulary.MeaningTwins.Unhinted(w.ItemId, w.Korean, w.Uzbek, twinPool);
             var prompt = twins.Count == 0 ? w.Uzbek : $"{w.Uzbek} ({Vocabulary.MeaningTwins.Hint(w.Pos, twins)})";
             return new TestQuestion(0, kind, prompt, null, null, [], w.Korean, null, null, w.ItemId, false);
         }
@@ -91,10 +91,44 @@ public static partial class UnitTestGenerator
 
     /// <summary>"bor bo‘lmoq; -da bo‘lmoq" → {"bor bo'lmoq", "-da bo'lmoq"}; "men (do‘stona)" counts as "men".</summary>
     public static HashSet<string> Meanings(string uzbek) =>
-        uzbek.Split([';', ','], StringSplitOptions.RemoveEmptyEntries)
-            .Select(m => TextNormalizer.Key(Parenthesis().Replace(m, " ")))
-            .Where(m => m.Length > 0)
-            .ToHashSet();
+        Segments(uzbek).Select(Key).Where(m => m.Length > 0).ToHashSet();
+
+    /// <summary>
+    /// L-74: the meanings that carry no hint in parentheses — "juda (ijobiy); ko‘p" → {"ko'p"}. A shared meaning with a
+    /// hint is already told apart, so the app adds no "… emas" of its own and the editor gets no warning.
+    /// </summary>
+    public static HashSet<string> BareMeanings(string uzbek) =>
+        Segments(uzbek).Where(s => !Parenthesis().IsMatch(s)).Select(Key).Where(m => m.Length > 0).ToHashSet();
+
+    private static string Key(string segment) => TextNormalizer.Key(Parenthesis().Replace(segment, " "));
+
+    /// <summary>Meanings split on ";" and "," outside parentheses: "juda (ijobiy, me’yorda); ko‘p" has two.</summary>
+    public static List<string> Segments(string uzbek)
+    {
+        var parts = new List<string>();
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i < uzbek.Length; i++)
+        {
+            var c = uzbek[i];
+            if (c == '(')
+            {
+                depth++;
+            }
+            else if (c == ')' && depth > 0)
+            {
+                depth--;
+            }
+            else if (depth == 0 && c is ';' or ',')
+            {
+                parts.Add(uzbek[start..i]);
+                start = i + 1;
+            }
+        }
+
+        parts.Add(uzbek[start..]);
+        return parts.Where(p => p.Trim().Length > 0).ToList();
+    }
 
     private static List<string> Shuffle(List<string> items, Random random) => items.OrderBy(_ => random.Next()).ToList();
 

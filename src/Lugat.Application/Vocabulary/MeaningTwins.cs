@@ -26,12 +26,23 @@ public static class MeaningTwins
     }
 
     /// <summary>
+    /// L-74: the twins of a shared meaning that this word's translation does not yet tell apart with a hint in
+    /// parentheses (the editor's or the AI draft's, e.g. "juda (ijobiy)"). The app's own "… emas" is added only for
+    /// these, and the content page warns only for these.
+    /// </summary>
+    public static List<Twin> Unhinted(Guid id, string korean, string uzbek, IEnumerable<Twin> pool)
+    {
+        var bare = UnitTestGenerator.BareMeanings(uzbek);
+        return bare.Count == 0 ? [] : Of(id, korean, uzbek, pool).Where(t => UnitTestGenerator.Meanings(t.Uzbek).Overlaps(bare)).ToList();
+    }
+
+    /// <summary>
     /// What tells this word from its twins on an Uzbek → Korean prompt: its part of speech when that differs
     /// ("ravish"), else the twins themselves ("아니다 emas"); null when the learner has no twin of it.
     /// </summary>
     public static async Task<string?> HintAsync(IAppDbContext db, Guid ownerId, LearningItem sense, CancellationToken ct)
     {
-        var twins = Of(sense.Id, sense.Korean, sense.Uzbek, await LearnerPoolAsync(db, ownerId, ct));
+        var twins = Unhinted(sense.Id, sense.Korean, sense.Uzbek, await LearnerPoolAsync(db, ownerId, ct));
         if (twins.Count == 0)
         {
             return null;

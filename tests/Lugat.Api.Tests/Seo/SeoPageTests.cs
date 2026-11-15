@@ -233,12 +233,17 @@ public class SeoPageTests
         Assert.Contains("<link rel=\"canonical\" href=\"https://koreyscha.com/soz/mul\">", ig);
         Assert.Contains("<meta property=\"og:url\" content=\"https://koreyscha.com/soz/mul\">", ig);
 
+        // The page's own scripts (the app prefetch of L-72 when the app is built) are there whatever the src; a bad src
+        // adds none of its own.
+        static int Scripts(string html) => html.Split("<script").Length - 1;
         foreach (var bad in new[] { "<script>", new string('a', 40), "  " })
         {
             var html = await client.GetStringAsync("/soz/mul?src=" + Uri.EscapeDataString(bad));
             Assert.Contains($"href=\"/bolimlar/{ApiFactory.Unit(1)}?src=soz\"", html);
             Assert.Contains("href=\"/?src=soz\"", html);
-            Assert.DoesNotContain("<script>", html);
+            Assert.Equal(Scripts(ig), Scripts(html));
+            Assert.DoesNotContain("src=<script>", html);
+            Assert.DoesNotContain("<script>\"", html);
         }
 
         // An upper-case address keeps the src on its way to the lasting one.

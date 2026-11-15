@@ -816,3 +816,13 @@ Johnny: o‘qituvchi jadvalda faqat «oxirgi 7 kun»ni ko‘radi — o‘quvchi 
 - **Maxfiylik (§9.2) o‘zgarmadi:** faqat son va ball; javoblar, to‘lovlar, login yo‘q (test tekshiradi). Test ballari saralangan ro‘yxat faqat o‘qituvchiga; o‘quvchiga reyting ko‘rsatilmaydi (§1.4). Boshqa o‘qituvchining guruhi yoki o‘quvchisi — avvalgidek 404 (bor-yo‘qligi ham bilinmasin), o‘qituvchi bo‘lmagan foydalanuvchi — 403.
 - Migratsiya yo‘q: kerakli indekslar bor (`review_events (OwnerId, OccurredAt)`, `user_activity_days (UserId, Day)`).
 
+## L-74 · 2026-11-15 · Bir xil ma’noli so‘zlarga AI ishora yozadi
+
+Johnny (admin sifatida): AI qoralamasi deyarli xatosiz, lekin shakli boshqa, ma’nosi bir xil so‘zlarni (아주 / 너무 "juda") ajratmaydi; o‘zbekchadan koreyschani yozganda o‘quvchi qaysi biri kutilayotganini bilmaydi, shuning uchun u tekshiruvda qavsga ishorani qo‘lda yozib chiqadi. L-37 dagi avtomatik «… emas» va admin ogohlantirishi bor edi, lekin AI ma’nolarni ko‘rmasdi va ishora yozilgandan keyin ham ogohlantirish qolardi.
+
+- **Qoralama:** `<known>` endi oldingi so‘zlarni o‘zbekcha ma’nosi bilan beradi ("너무 — juda; haddan tashqari", qatorma-qator). Qoida: ma’no `<known>` yoki shu partiyadagi boshqa so‘z bilan bir xil bo‘lsa, shu ma’nodan keyin qavsda 2–6 so‘zli o‘zbekcha ishora — nozik farqi, qachon ishlatilishi yoki odatiy misol ("juda (ijobiy: juda yaxshi)", "juda (ortiqcha: juda qimmat)"). Ishorada koreys harfi va so‘zning o‘zi bo‘lmaydi (javobni aytib qo‘ymasin; tarjima tekshiruvi ham Hangulni qabul qilmaydi), qavs ichida «;» va «,» yo‘q. Shu partiyadagi juftlarga har xil ishora. Ma’no boshqa so‘zda bo‘lmasa — ishora yo‘q.
+- **Ma’nolarni bo‘lish:** «;» va «,» endi faqat qavsdan tashqarida bo‘ladi ("juda (ijobiy, me’yorda); ko‘p" — ikki ma’no). Qavs ichi avvalgidek ma’noga kirmaydi.
+- **Ishorali ma’no ajratilgan hisoblanadi** (`MeaningTwins.Unhinted`): umumiy ma’no qavsli ishora bilan yozilgan bo‘lsa — ilova o‘zining «… emas» ishorasini qo‘shmaydi (kartochka, yozma mashq, bo‘lim testidagi yozma savol) va kontent sahifasida ogohlantirish chiqmaydi. Juftlik o‘zi saqlanadi: test variantida bir-biriga distraktor bo‘lmaydi, yozma mashqda boshqasini yozish «Ma’nosi to‘g‘ri, boshqa so‘z» (L-37).
+- **Admin:** bo‘lim sahifasi tepasida «Ishora kerak: N so‘z» va so‘zlar ro‘yxati (havola bilan), so‘z kartasida «Ishora kerak» belgisi va qisqa yo‘riqnoma. `UnitAdminDto.HintsNeeded`.
+- Javob baholash (bo‘lim testida sinonimni xato demaslik) bu safar o‘zgarmadi — Johnny keyinroq hal qiladi.
+

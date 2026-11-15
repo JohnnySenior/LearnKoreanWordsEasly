@@ -78,7 +78,7 @@ public sealed class WritingService(IAppDbContext db, AiGateway ai, TimeProvider 
             return d == ReviewDirection.KoreanToUzbek
                 ? new WritingPromptDto(s.Id, d, s.Korean, s.KoreanNote, unit)
                 : new WritingPromptDto(s.Id, d, s.Uzbek, null, unit,
-                    MeaningTwins.Of(s.Id, s.Korean, s.Uzbek, twinPool) is { Count: > 0 } twins ? MeaningTwins.Hint(posOf.GetValueOrDefault(s.Id), twins) : null);
+                    MeaningTwins.Unhinted(s.Id, s.Korean, s.Uzbek, twinPool) is { Count: > 0 } twins ? MeaningTwins.Hint(posOf.GetValueOrDefault(s.Id), twins) : null);
         }).ToList();
     }
 

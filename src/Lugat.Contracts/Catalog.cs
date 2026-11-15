@@ -128,7 +128,8 @@ public sealed record CatalogWordAdminDto(
 
 /// <param name="Remaining">Words still waiting for an AI draft.</param>
 /// <param name="ScenesRemaining">Words with a trap note the AI has not yet been asked to act out (L-52).</param>
-public sealed record UnitAdminDto(UnitAdminSummaryDto Unit, IReadOnlyList<CatalogWordAdminDto> Words, int Remaining, int ScenesRemaining = 0);
+/// <param name="HintsNeeded">Words sharing a meaning with another word without a hint in parentheses (L-74).</param>
+public sealed record UnitAdminDto(UnitAdminSummaryDto Unit, IReadOnlyList<CatalogWordAdminDto> Words, int Remaining, int ScenesRemaining = 0, int HintsNeeded = 0);
 
 /// <summary>All content fields; the official ones (word, homonym, part of speech, level, rank) cannot be changed.</summary>
 public sealed record UpdateCatalogWordRequest(
