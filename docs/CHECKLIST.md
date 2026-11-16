@@ -680,3 +680,13 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Release build 0 warning/error; Application 140/140, tegishli API 35/35 (6 yangi), barcha 6 browser oqimi o‘tdi.
 - [x] Yakuniy 360px yorug‘/qorong‘i tekshiruv 2/2: 25 taklifni kartalarni ochmasdan ko‘rish, bittasini tuzatib 24 tasini birga tasdiqlash.
 - [ ] GitHub CI va production deploy holati alohida tekshiriladi. Lokal AI javoblari test provayderidan; pulli xizmatlar chaqirilmadi.
+
+## AI fallback timeout tuzatishi · L-78 · 2026-11-16
+
+- [x] Production log: Claude 400 `invalid_request_error`, keyingi OpenAI ~40 s timeout; fallback haqiqatan ishga tushgan.
+- [x] Qolgan vaqt qolgan provayderlarga beriladi; talaffuz ro‘yxati uchun 75 s so‘rov chegarasi, umumiy deadline saqlanadi.
+- [x] Kredit yetishmasligining aniq HTTP 400 shakli maxfiy matnni chiqarmasdan ajratiladi; ikki xato ham ko‘rsatiladi.
+- [x] Release build: 0 warning/error. Application 146/146, tegishli AI API/provayder testlari 44/44.
+- [x] Real PostgreSQL + boshqariladigan provayderlar: tez rad etilgan Claude’dan keyin sekinroq OpenAI yakunlaydi;
+  umumiy deadline, user cancellation, ikki urinishning sarf yozuvi va ikki xatoning saqlanishi tekshirildi.
+- [ ] GitHub CI va production deploy tekshiriladi. Haqiqiy pulli API bu sinovlarda chaqirilmadi; balans hali tasdiqlanmagan.

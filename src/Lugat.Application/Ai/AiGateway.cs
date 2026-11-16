@@ -85,11 +85,15 @@ public sealed class AiGateway(
             throw new ServiceUnavailableException("AI xizmati hali ulanmagan: serverda API kaliti yo‘q. Johnny Railway sozlamalariga kalit qo‘shishi kerak.");
         }
 
+        var overall = Stopwatch.StartNew();
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
         deadline.CancelAfter(Options.TotalTimeout);
         string? lastError = null;
-        foreach (var provider in candidates.Where(p => p.IsConfigured))
+        var failures = new List<string>();
+        var available = candidates.Where(p => p.IsConfigured).ToList();
+        for (var index = 0; index < available.Count; index++)
         {
+            var provider = available[index];
             if (deadline.IsCancellationRequested) break;
             // The reservation is persisted under a DB lock before contacting a billable provider.
             var output = provider.Kind == AiProviderKind.OpenAi ? Math.Max(request.MaxOutputTokens * 4, 8000) : request.MaxOutputTokens;
@@ -106,7 +110,14 @@ public sealed class AiGateway(
             }
             var watch = Stopwatch.StartNew();
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
-            timeout.CancelAfter(TimeSpan.FromTicks(Math.Min((request.Timeout ?? Options.Timeout).Ticks, Options.TotalTimeout.Ticks / Math.Max(1, candidates.Count))));
+            var budget = AttemptTimeout(request.Timeout ?? Options.Timeout, Options.TotalTimeout - overall.Elapsed, available.Count - index);
+            if (budget <= TimeSpan.Zero)
+            {
+                lastError = "javob kechikdi";
+                await usage.FailAsync(reservation, 0, lastError);
+                break;
+            }
+            timeout.CancelAfter(budget);
             try
             {
                 var response = await provider.CompleteJsonAsync(request, timeout.Token);
@@ -128,13 +139,23 @@ public sealed class AiGateway(
                     OperationCanceledException or HttpRequestException => "javob kechikdi yoki aloqa uzildi",
                     _ => "kutilmagan javob",
                 };
+                failures.Add(ex is AiProviderException ? lastError : $"{Label(provider.Kind)}: {lastError}");
                 // The exception type only: a message can quote the request, e.g. an invalid header value (the key).
                 logger.LogWarning("AI call {Feature} via {Provider} failed: {Error} ({ErrorType})", request.Feature, provider.Kind, lastError, ex.GetType().Name);
                 await usage.FailAsync(reservation, (int)watch.ElapsedMilliseconds, lastError);
             }
         }
 
-        throw new ServiceUnavailableException($"AI xizmati hozir javob bermadi ({lastError}). Yozganingiz saqlandi, birozdan keyin qayta urinib ko‘ring.");
+        var reason = failures.Count > 0 ? string.Join("; ", failures) : lastError;
+        throw new ServiceUnavailableException($"AI xizmati hozir javob bermadi ({reason}). Yozganingiz saqlandi, birozdan keyin qayta urinib ko‘ring.");
+    }
+
+    /// <summary>Reserve time for remaining providers, then return unused time to fallback attempts.</summary>
+    public static TimeSpan AttemptTimeout(TimeSpan requested, TimeSpan remaining, int providersLeft)
+    {
+        if (requested <= TimeSpan.Zero || remaining <= TimeSpan.Zero) return TimeSpan.Zero;
+        var share = TimeSpan.FromTicks(remaining.Ticks / Math.Max(1, providersLeft));
+        return requested < share ? requested : share;
     }
 
     /// <summary>A delivered response can still fail the feature's content validation; keep its billable usage.</summary>

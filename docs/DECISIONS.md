@@ -897,3 +897,19 @@ Har so‘zdagi eski muharrir alohida tuzatish uchun qoladi; bo‘lim bo‘yicha 
 Yangi API: POST `/api/admin/units/{id}/prepare`; POST `.../pronunciations/draft` va PUT `.../pronunciations/review`
 bo‘lim hamda `/api/teacher/decks/{id}` uchun. AI mavjud `catalog-draft` / `group-deck` budjeti orqali, tasdiqlash bepul.
 Talaffuzni guruhlab tasdiqlash ham muharrir/egasi tomonidan aniq «Ko‘rib chiqdim» amali; AI o‘zini tasdiqlamaydi.
+
+## L-78 · AI fallback uchun qolgan vaqt va kredit xatosi (2026-11-16)
+
+Production’da L-77 talaffuz tayyorlashning keyingi qismi to‘xtadi: Claude `invalid_request_error` bilan darhol rad etdi,
+OpenAI esa taxminan 40 soniyadan keyin `TaskCanceledException` qaytardi. Eski gateway har urinishga umumiy vaqtni
+boshlang‘ich provayderlar soniga bo‘lib berardi; birinchi xizmat ishlatmagan vaqt fallback’ga o‘tmas edi.
+
+Endi har urinish qolgan haqiqiy vaqtni hali qolgan provayderlar soniga bo‘ladi. Darhol rad etilgan birinchi xizmatning
+bo‘sh vaqti keyingi xizmatga o‘tadi. Talaffuz ro‘yxati 75 soniyagacha kutishi mumkin, lekin gateway’ning umumiy
+`TotalTimeout` chegarasi va chaqiruvchining cancellation’i saqlanadi; Cloudflare va klient chegaralari oshirilmaydi.
+Model tanlovi, fallback tartibi, token rezervi, tarif va kunlik/oylik limitlar o‘zgarmaydi.
+
+Anthropic API past balansni HTTP 400 + `invalid_request_error` qilib ham qaytaradi. Faqat aniq «credit balance is too low»
+yoki «insufficient credits» belgisi bo‘lsa, xato «hisobda API mablag‘i yetarli emas» deb ajratiladi. Javob matni, so‘rov va
+kalit log/UI’ga ko‘chirilmaydi. Ikkala provayder ham ishlamasa, avvalgi sabab so‘nggi timeout bilan yo‘qolmaydi.
+Bu tasnif avvalgi logning o‘zidan Claude balansi tugaganini isbotlamaydi; billing egasi tomonidan tekshiriladi.

@@ -217,6 +217,7 @@ internal static class AiHttp
         {
             401 or 403 => new AiProviderException($"{name}: API kaliti noto‘g‘ri yoki ruxsat yo‘q", transient: false),
             404 => new AiProviderException($"{name}: model topilmadi, model nomini tekshiring", transient: false),
+            400 when HasInsufficientCredit(body) => new AiProviderException($"{name}: hisobda API mablag‘i yetarli emas", transient: false),
             400 => new AiProviderException($"{name}: so‘rov qabul qilinmadi ({errorType ?? "400"})", transient: false),
             402 => new AiProviderException($"{name}: hisobda mablag‘ yetarli emas", transient: false),
             429 when errorType is "insufficient_quota" => new AiProviderException($"{name}: hisobda mablag‘ yoki limit tugagan", transient: false),
@@ -228,6 +229,24 @@ internal static class AiHttp
 
     public static int Int(JsonElement parent, string name) =>
         parent.ValueKind == JsonValueKind.Object && parent.TryGetProperty(name, out var v) && v.TryGetInt32(out var i) ? i : 0;
+
+    /// <summary>Anthropic reports low credit as HTTP 400. Classify it without exposing its response text.</summary>
+    private static bool HasInsufficientCredit(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.Object
+                && error.TryGetProperty("message", out var value) && value.ValueKind == JsonValueKind.String)
+            {
+                var message = value.GetString()!;
+                return message.Contains("credit balance is too low", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("insufficient credits", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        catch (JsonException) { }
+        return false;
+    }
 
     private static string? TryErrorType(string body)
     {
