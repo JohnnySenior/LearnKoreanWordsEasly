@@ -36,6 +36,9 @@ test('a reviewed pronunciation appears beside the word and remains hidden behind
         await noteEditor.getByRole('textbox', { name: 'Qisqa o‘zbekcha izoh' }).fill('ㅎ va ㄷ birlashib ㅌ kabi aytiladi.');
         await noteEditor.getByRole('button', { name: 'Tasdiqlash', exact: true }).click();
         await expect(noteEditor.getByRole('status')).toHaveText('Talaffuz tasdiqlandi.');
+        // Simulate a previously published Korean-only note through the real API, without AI or API mocks.
+        const saved = (await api(`/api/admin/units/${unitId}`)).words.find(w => w.id === word.id);
+        await api(endpoint, 'PUT', { reading: '조타', explanationUz: 'ㅎ과 ㄷ이 만나 ㅌ으로 발음됩니다.', reviewed: true, version: saved.version });
         await page.goto(`/bolimlar/${unitId}`);
         await expect(page.locator('.pronunciation-summary > summary')).toContainText('Talaffuzga e’tibor', { timeout: 30_000 });
         const row = page.locator('.word-table tbody > tr').filter({ has: page.getByText('좋다', { exact: true }) }).first();
@@ -46,6 +49,8 @@ test('a reviewed pronunciation appears beside the word and remains hidden behind
         await expect(ear).toHaveAttribute('aria-expanded', 'true');
         const note = page.locator('.word-table .pronunciation-body');
         await expect(note).toContainText('[조타]');
+        await expect(note).toContainText('«좋다» so‘zi «조타» deb o‘qiladi.');
+        await expect(note).not.toContainText('발음됩니다');
         await expect(note).toContainText('Yozishda 좋다 yoziladi.');
         const premium = await api('/api/me/premium');
         await expect(note.getByRole('link', { name: /Talaffuzni mashq qilish/ })).toHaveAttribute('href', premium.isPremium ? 'sinov/ogzaki' : 'premium?f=talaffuz');

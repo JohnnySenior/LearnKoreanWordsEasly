@@ -32,31 +32,34 @@ public class PronunciationTests
         AiProviders = ai is null ? [] : [ai],
     };
 
-    [Fact]
-    public async Task Legacy_rule_labels_are_readable_for_editor_and_learner_without_rewriting_the_database()
+    [Theory]
+    [InlineData("좋다", "조타", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (거센소리되기).", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (undoshning kuchli nafas bilan aytilishi).")]
+    [InlineData("들어가다", "드러가다", "받침 ’ㄹ’ 다음 모음 ’ㅓ’가 이어지며 연음화: ㄹ이 다음 음절 초성으로 이동", "Bo‘g‘in oxiridagi undosh keyingi unliga ulanib o‘qiladi. «들어가다» so‘zi «드러가다» deb o‘qiladi.")]
+    public async Task Legacy_notes_are_readable_for_editor_and_learner_without_rewriting_the_database(string korean, string reading, string oldNote, string readable)
     {
-        await using var f = Factory();
+        await using var f = new ApiFactory { Premium = false, AdminTelegramIds = [ApiFactory.UserA], TableWords = [(korean, "ma’no")] };
         var admin = await f.SignedInClientAsync(ApiFactory.UserA);
         var learner = await f.SignedInClientAsync(ApiFactory.UserB);
         await learner.PostAsync(ApiFactory.TestWordsPath, null);
-        const string oldNote = "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (거센소리되기).";
-        const string readable = "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (undoshning kuchli nafas bilan aytilishi).";
+        uint version;
         await using (var scope = f.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var word = await db.CatalogWords.SingleAsync(w => w.Word == "좋다");
-            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = ("조타", oldNote, true);
+            var word = await db.CatalogWords.SingleAsync(w => w.Word == korean);
+            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (reading, oldNote, true);
             await db.SaveChangesAsync();
+            version = word.Version;
         }
         var unit = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{ApiFactory.Unit(1)}", ApiFactory.Json))!;
-        Assert.Equal(readable, unit.Words.Single(w => w.Word == "좋다").PronunciationReview!.ExplanationUz);
+        Assert.Equal(readable, unit.Words.Single(w => w.Word == korean).PronunciationReview!.ExplanationUz);
         var page = (await learner.GetFromJsonAsync<UnitDto>($"/api/units/{ApiFactory.Unit(1)}", ApiFactory.Json))!;
-        Assert.Equal(readable, page.Words.Single(w => w.Word == "좋다").Pronunciation!.ExplanationUz);
+        Assert.Equal(readable, page.Words.Single(w => w.Word == korean).Pronunciation!.ExplanationUz);
         await using var check = f.Services.CreateAsyncScope();
-        var stored = await check.ServiceProvider.GetRequiredService<AppDbContext>().CatalogWords.SingleAsync(w => w.Word == "좋다");
+        var stored = await check.ServiceProvider.GetRequiredService<AppDbContext>().CatalogWords.SingleAsync(w => w.Word == korean);
         Assert.Equal(oldNote, stored.PronunciationNoteUz);
         Assert.True(stored.PronunciationReviewed);
-        Assert.Equal("조타", stored.PronunciationKo);
+        Assert.Equal(reading, stored.PronunciationKo);
+        Assert.Equal(version, stored.Version);
     }
 
     [Fact]

@@ -711,3 +711,13 @@ Bosqichlar spec §13 bo‘yicha.
   bazadagi dastlabki izoh, talaffuz va tasdiqning read paytida o‘zgarmasligi tekshirildi.
 - [ ] To‘liq GitHub CI tekshiriladi.
 - [ ] Production nashri tekshiriladi. Haqiqiy pulli AI chaqirilmagan; noma’lum eski koreyscha nasr umumiy tarjima qilinmaydi.
+
+## Eski nashrdagi koreyscha izoh · L-81 · 2026-11-16
+
+- [x] Koreyscha nasr ustun eski izoh uchun o‘qishga asoslangan o‘zbekcha eslatma; katalog/ustoz/o‘quvchi DTO’da.
+- [x] Oddiy ulanish faqat butun reading aniq mos kelsa izohlanadi; qolgan holatda qoida taxmin qilinmaydi.
+- [x] Read-only: baza, tasdiq, nashr va progress o‘zgarmaydi; AI chaqiruv va qayta tasdiq talab etilmaydi.
+- [x] Release build 0 warning/error; talaffuz Application 39/39, real PostgreSQL/API 14/14.
+  Asl izoh, reading, tasdiq va xmin read paytida o‘zgarmasligi qo‘shimcha 2/2 regressiyada tasdiqlandi.
+- [x] Real Chromium/API/PostgreSQL 6/6, telefon yorug‘/qorong‘i: eski koreyscha nasr o‘rnida o‘zbekcha eslatma.
+- [ ] To‘liq CI va production nashri tekshiriladi; haqiqiy pulli AI ishlatilmagan.
