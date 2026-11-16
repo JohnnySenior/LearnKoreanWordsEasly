@@ -142,7 +142,7 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
         group ? GroupDeckService.Feature : CatalogDraftService.Feature,
         PronunciationService.Instructions + "\nReturn a words array, one entry per input. Copy each id and korean exactly. A null reading means you are unsure, not unchanged pronunciation.",
         JsonSerializer.Serialize(words.Select(w => new { id = w.Id, korean = w.Korean, meaning = w.Meaning })),
-        "pronunciation_list", Schema, 4000);
+        "pronunciation_list", Schema, 4000, Timeout: TimeSpan.FromSeconds(75));
 
     private const string Schema = """
         {"type":"object","additionalProperties":false,"required":["words"],"properties":{"words":{"type":"array","maxItems":10,

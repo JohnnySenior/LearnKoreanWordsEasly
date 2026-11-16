@@ -82,6 +82,8 @@ public class AiProviderHttpTests
     }
 
     [Theory]
+    [InlineData(HttpStatusCode.BadRequest, """{"error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. private sk-ant-test"}}""", false, "mablag‘i")]
+    [InlineData(HttpStatusCode.BadRequest, """{"error":{"type":"invalid_request_error","message":"Unsupported schema; private sk-secret"}}""", false, "so‘rov qabul qilinmadi")]
     [InlineData(HttpStatusCode.Unauthorized, """{"error":{"type":"authentication_error"}}""", false, "API kaliti")]
     [InlineData(HttpStatusCode.NotFound, """{"error":{"type":"not_found_error"}}""", false, "model")]
     [InlineData(HttpStatusCode.TooManyRequests, """{"error":{"code":"insufficient_quota"}}""", false, "mablag‘")]

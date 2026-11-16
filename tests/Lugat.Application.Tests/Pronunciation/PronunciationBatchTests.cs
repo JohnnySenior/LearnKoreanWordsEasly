@@ -41,6 +41,7 @@ public class PronunciationBatchTests
     {
         var request = PronunciationBatchService.BuildRequest([_word]);
         Assert.Equal("catalog-draft", request.Feature);
+        Assert.Equal(TimeSpan.FromSeconds(75), request.Timeout);
         Assert.Contains(_word.Id.ToString(), request.UserContent);
         using var schema = JsonDocument.Parse(request.JsonSchema);
         Assert.Equal(10, schema.RootElement.GetProperty("properties").GetProperty("words").GetProperty("maxItems").GetInt32());
