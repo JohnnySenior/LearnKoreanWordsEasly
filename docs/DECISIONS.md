@@ -925,3 +925,17 @@ Bo‘sh qatorning o‘zida «AI qayta tekshirsin» mavjud single-word suggestion
 versiya va AI limitlari bilan); qaytgan taklif yana muharrir tasdig‘ini kutadi. Shuningdek KRdict rasmiy lug‘atining
 qidiruv havolasi yangi tabda, `noopener noreferrer` bilan ochiladi. Bu avtomatik lug‘at API integratsiyasi emas.
 Stop tugmasi faqat batch tayyorlash paytida ko‘rsatiladi; saqlash yoki bitta so‘zni tekshirishda noto‘g‘ri stop yo‘q.
+
+## L-80 · Talaffuz izohi boshlovchi uchun o‘zbekcha (2026-11-16)
+
+AI talaffuz ko‘rsatmasi butun izohni sodda o‘zbekcha lotinda yozishni va koreyscha ilmiy atamani qavsda ham
+qo‘shmaslikni aniq talab qiladi. Hangul tovush harflari va qisqa so‘z misollari qoladi; qo‘shimcha ko‘p bo‘g‘inli
+misollar «...» ichida yoziladi. Single-word va batch bitta ko‘rsatma/AI tekshiruvidan foydalanadi. Faqat koreyscha
+yoki o‘zbekcha prefiks ortidagi koreyscha nasr yaroqli AI qoralamasi bo‘lib saqlanmaydi. Bu evristik yozuv
+tekshiruvi, tilni semantik aniqlash emas. Qo‘lda tahrirlashga yangi majburiy AI talabi qo‘shilmaydi.
+
+Eski izohlardagi ma’lum, alohida qavs ichidagi qoida nomlari (`거센소리되기`, `경음화`, `비음화` va boshqalar)
+aniq o‘zbekcha iboralarga almashtirib ko‘rsatiladi. Bu umumiy tarjimon emas: boshqa koreyscha matn yoki harf/so‘z
+misoli taxminan tarjima qilinmaydi. Katalog/ustoz tahrir DTO va o‘quvchi talaffuz DTO bir xil o‘qish funksiyasidan
+foydalanadi. Read paytida baza, tasdiq, talaffuz, versiya yoki progress o‘zgarmaydi; muharrir keyingi saqlashida
+izohning o‘qiladigan shakli yoziladi. Pulli AI qayta chaqirilmaydi, eski kartalar uchun qo‘shimcha click yo‘q.

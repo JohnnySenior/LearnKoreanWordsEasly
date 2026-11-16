@@ -6,6 +6,30 @@ namespace Lugat.Application.Tests.Pronunciation;
 public class PronunciationTests
 {
     [Theory]
+    [InlineData("거센소리되기", "undoshning kuchli nafas bilan aytilishi")]
+    [InlineData("격음화", "undoshning kuchli nafas bilan aytilishi")]
+    [InlineData("경음화", "undoshning tarangroq aytilishi")]
+    [InlineData("비음화", "undoshning burun tovushiga aylanishi")]
+    [InlineData("연음", "oxirgi undoshning keyingi bo‘g‘inga ulanib aytilishi")]
+    public void Legacy_parenthesized_rule_labels_are_readable_without_rewriting_sound_examples(string label, string expected)
+    {
+        var note = $"ㄱ + ㅎ birikmasi ㅋ kabi aytiladi ({label}). Misol: (학교 → 학꾜).";
+        var readable = PronunciationExplanation.Readable(note);
+        Assert.Equal($"ㄱ + ㅎ birikmasi ㅋ kabi aytiladi ({expected}). Misol: (학교 → 학꾜).", readable);
+        Assert.Equal(readable, PronunciationExplanation.Readable(readable));
+        Assert.Equal(readable, PronunciationService.Check("학교", "학꾜", note, true).Explanation);
+        Assert.Equal(readable, PronunciationService.Learner("학교", "학꾜", note, true)!.ExplanationUz);
+    }
+
+    [Fact]
+    public void Explanations_without_labels_and_null_are_preserved()
+    {
+        Assert.Null(PronunciationExplanation.Readable(null));
+        const string note = "ㄱ tovushi ㅁ oldida ㅇ kabi aytiladi. 국물 → 궁물.";
+        Assert.Equal(note, PronunciationExplanation.Readable(note));
+    }
+
+    [Theory]
     [InlineData("국물", "궁물")]
     [InlineData("같이", "가치")]
     [InlineData("학교", "학꾜")]

@@ -700,3 +700,14 @@ Bosqichlar spec §13 bo‘yicha.
   Tanlangan qatorni bo‘shatish → tanlovdan chiqadi → payload’da faqat 24 to‘liq talaffuz → 24 tasi saqlanadi, 1 tasi qoladi.
 - [ ] GitHub CI va production deploy tekshiriladi. Pulli AI chaqirilmadi. KRdict sahifasi avtomatik muhitda 403 berdi;
   URL/target xavfsizligi tekshirildi, haqiqiy foydalanuvchi brauzerida tashqi sahifa alohida tekshiriladi.
+
+## O‘zbekcha talaffuz izohlari · L-80 · 2026-11-16
+
+- [x] Umumiy AI prompt: sodda o‘zbekcha, koreyscha qoida atamasi yo‘q; harf va qisqa misollar qoladi.
+- [x] AI-only tekshiruvi koreyscha nasr/fillerni rad etadi; qo‘lda tahrirning avvalgi validatsiyasi saqlanadi.
+- [x] Eski qavsdagi ma’lum atamalar katalog/ustoz tahriri va o‘quvchi DTO’da o‘zbekcha ko‘rinadi, read baza yozmaydi.
+- [x] Release build: 0 warning/error. Talaffuz Application 30/30, real PostgreSQL/API 13/13 regressiya o‘tdi.
+  Koreyscha nasr rad etilishi, misollarning saqlanishi, eski izohning admin/o‘quvchi API’da o‘zbekcha ko‘rinishi,
+  bazadagi dastlabki izoh, talaffuz va tasdiqning read paytida o‘zgarmasligi tekshirildi.
+- [ ] To‘liq GitHub CI tekshiriladi.
+- [ ] Production nashri tekshiriladi. Haqiqiy pulli AI chaqirilmagan; noma’lum eski koreyscha nasr umumiy tarjima qilinmaydi.

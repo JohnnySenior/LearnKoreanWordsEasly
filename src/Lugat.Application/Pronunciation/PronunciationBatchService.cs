@@ -130,7 +130,7 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
             if (duplicates.Contains(draft.Id) || !expected.TryGetValue(draft.Id, out var word) || draft.Korean != word.Korean) continue;
             try
             {
-                var value = PronunciationService.Check(word.Korean, draft.Reading, draft.ExplanationUz, false);
+                var value = PronunciationService.CheckDraft(word.Korean, draft.Reading, draft.ExplanationUz);
                 result[draft.Id] = draft with { Reading = value.Reading, ExplanationUz = value.Explanation };
             }
             catch (ValidationException) { /* A malformed answer stays unasked, ready to retry. */ }
