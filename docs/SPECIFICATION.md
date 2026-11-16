@@ -638,3 +638,12 @@ Har bosqich alohida PR(lar), `dotnet test` va JS testlari yashil, DECISIONS va C
 - Grammatika uchun AI tomonidan avtomatik o‘quv dasturi tuzish (ro‘yxatni muharrir beradi, §17.4).
 - Yozma insho baholash (TOPIK yozish).
 
+
+### Qo‘shimcha · Yozilishi va aytilishi farqli so‘zlar (L-76, 2026-11-16, KELISHILGAN)
+
+- Bo‘lim va o‘qituvchi lug‘atida tasdiqlangan talaffuz farqlari soni, ochiladigan ro‘yxat va so‘z yonida quloq belgisi.
+- Masalan: 국물 → [궁물], qisqa o‘zbekcha izoh, tinglash va «Yozishda 국물 yoziladi». Bu yordam bepul.
+- AI faqat taklif qiladi; katalogda muharrir, guruhda ustoz tasdiqlaydi. Tekshirilmagan so‘z «oddiy o‘qiladi» degani emas.
+- O‘qituvchi guruhga berilgan lug‘atda ham talaffuzni tuzata oladi; lug‘at tarkibi, tarjima va progressga tegmaydi.
+- Premium tugmasi mavjud talaffuz mashqiga olib boradi; alohida bo‘limga mos yangi mashq hozircha yo‘q.
+- Kartochkaning yashirin koreyscha javobi talaffuz orqali ochilmaydi; yozma testda asl imlo talab qilinadi.

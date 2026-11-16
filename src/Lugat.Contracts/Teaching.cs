@@ -93,7 +93,8 @@ public sealed record GroupDeckWordDto(
     string? ExampleKo,
     string? ExampleUz,
     string? TrapUz,
-    TrapSceneDto? TrapScene);
+    TrapSceneDto? TrapScene,
+    PronunciationReviewDto? PronunciationReview = null);
 
 /// <param name="CanPublish">The teacher has the paid plan that AI filling and publishing need.</param>
 /// <param name="AiPending">Words the catalog does not have and the AI has not filled yet.</param>

@@ -1,0 +1,49 @@
+@using Lugat.Contracts
+@inject SessionService Api
+<details class="pronunciation-editor">
+    <summary>Talaffuz · @(Review?.Reviewed == true ? "tasdiqlangan" : Review?.Reading is not null ? "qoralama — tekshiring" : "hali tekshirilmagan")</summary>
+    <p class="muted small-text">O‘zgarmasa, so‘zning o‘zini yozing. Tasdiqlanmagan talaffuz o‘quvchiga ko‘rsatilmaydi.</p>
+    <label class="field">Hangul bilan talaffuzi<input class="input" lang="ko" maxlength="100" @bind="_reading" disabled="@_busy" /></label>
+    <label class="field">Qisqa o‘zbekcha izoh<textarea class="input" maxlength="500" rows="2" @bind="_explanation" disabled="@_busy"></textarea></label>
+    <div class="pronunciation-editor-actions">
+        <button type="button" class="button small" disabled="@(_busy || Review?.Reviewed == true)" @onclick="SuggestAsync">AI taklif qilsin · Premium</button>
+        <button type="button" class="button small" disabled="@_busy" @onclick="() => SaveAsync(false)">Qoralama saqlash</button>
+        <button type="button" class="button small primary" disabled="@_busy" @onclick="() => SaveAsync(true)">Tasdiqlash</button>
+    </div>
+    @if (_note is not null) { <p class="small-text" role="status">@_note</p> }
+</details>
+@code {
+    [Parameter, EditorRequired] public string Url { get; set; } = "";
+    [Parameter] public PronunciationReviewDto? Review { get; set; }
+    [Parameter] public EventCallback<PronunciationReviewDto> Changed { get; set; }
+    private string? _reading, _explanation, _note;
+    private uint? _loadedVersion;
+    private bool _busy;
+    protected override void OnParametersSet()
+    {
+        if (_loadedVersion != Review?.Version)
+        {
+            _loadedVersion = Review?.Version;
+            _reading = Review?.Reading;
+            _explanation = Review?.ExplanationUz;
+        }
+    }
+    private async Task SuggestAsync()
+    {
+        _busy = true;
+        _note = "AI taklif tayyorlamoqda…";
+        await ApplyAsync(await Api.SendJsonAsync<PronunciationReviewDto>(HttpMethod.Post, Url + "/suggest", new PronunciationVersionRequest(Review?.Version ?? 0), TimeSpan.FromSeconds(120)), "AI taklifi tayyor. Tekshiring va tasdiqlang.");
+    }
+    private async Task SaveAsync(bool reviewed)
+    {
+        _busy = true;
+        _note = null;
+        await ApplyAsync(await Api.SendJsonAsync<PronunciationReviewDto>(HttpMethod.Put, Url, new ReviewPronunciationRequest(_reading, _explanation, reviewed, Review?.Version ?? 0)), reviewed ? "Talaffuz tasdiqlandi." : "Qoralama saqlandi; o‘quvchiga ko‘rinmaydi.");
+    }
+    private async Task ApplyAsync(ApiResult<PronunciationReviewDto> result, string success)
+    {
+        _busy = false;
+        _note = result.Error ?? success;
+        if (result.Value is { } value) await Changed.InvokeAsync(value);
+    }
+}

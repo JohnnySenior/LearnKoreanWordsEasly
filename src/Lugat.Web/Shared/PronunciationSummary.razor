@@ -1,0 +1,11 @@
+@if (Count > 0)
+{
+    <details class="pronunciation-summary">
+        <summary><Icon Name="ear" /><span><strong>Talaffuzga e’tibor · @Count ta so‘z</strong><small>Yozilishi va aytilishi farqlanadi</small></span><Icon Name="chevron-right" Size="18" /></summary>
+        <div class="pronunciation-list">@ChildContent</div>
+    </details>
+}
+@code {
+    [Parameter] public int Count { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

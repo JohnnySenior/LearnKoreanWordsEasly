@@ -157,6 +157,7 @@
             {
                 var word = w;
                 <li>
+                    <PronunciationEditor @key="w.Id" Url="@($"api/teacher/decks/{Id}/words/{w.Id}/pronunciation")" Review="w.PronunciationReview" Changed="r => PronunciationChanged(w.Id, r)" />
                     @if (_editing == w.Id)
                     {
                         <label class="field">Koreyscha<input class="input" lang="ko" maxlength="50" @bind="_edit.Korean" /></label>
@@ -390,6 +391,11 @@
         {
             (_newKorean, _newUzbek) = ("", "");
         }
+    }
+
+    private void PronunciationChanged(Guid wordId, PronunciationReviewDto review)
+    {
+        if (_deck is not null) _deck = _deck with { Words = _deck.Words.Select(w => w.Id == wordId ? w with { PronunciationReview = review } : w).ToList() };
     }
 
     private void StartEdit(GroupDeckWordDto w)

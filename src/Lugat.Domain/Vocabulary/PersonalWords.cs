@@ -49,6 +49,13 @@ public sealed class PersonalWord
     /// <summary>The catalog word the content was taken from, when it was.</summary>
     public Guid? CatalogWordId { get; set; }
 
+    /// <summary>Standard Hangul reading; null means not checked, not necessarily unchanged pronunciation.</summary>
+    public string? PronunciationKo { get; set; }
+
+    public string? PronunciationNoteUz { get; set; }
+
+    public bool PronunciationReviewed { get; set; }
+
     public string? Romanization { get; set; }
 
     public string? ExampleKo { get; set; }

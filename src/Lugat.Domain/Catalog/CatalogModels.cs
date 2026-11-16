@@ -67,6 +67,13 @@ public sealed class CatalogWord
 
     public string? TranslationUz { get; set; }
 
+    /// <summary>Standard Hangul reading; null means not checked, not necessarily unchanged pronunciation.</summary>
+    public string? PronunciationKo { get; set; }
+
+    public string? PronunciationNoteUz { get; set; }
+
+    public bool PronunciationReviewed { get; set; }
+
     public string? Romanization { get; set; }
 
     public string? ExampleKo { get; set; }

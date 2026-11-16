@@ -50,6 +50,11 @@ public static class CatalogEndpoints
 
         editor.MapGet("/units", (CatalogLevel level, CatalogAdminService catalog, CancellationToken ct) => catalog.UnitsAsync(level, ct));
         editor.MapGet("/units/{id:guid}", (Guid id, CatalogAdminService catalog, CancellationToken ct) => catalog.UnitAsync(id, ct));
+        editor.MapPut("/catalog/words/{id:guid}/pronunciation", (Guid id, ReviewPronunciationRequest body, ClaimsPrincipal user, Lugat.Application.Pronunciation.PronunciationService s, CancellationToken ct) =>
+            s.CatalogAsync(user.GetUserId(), id, body, false, ct));
+        editor.MapPost("/catalog/words/{id:guid}/pronunciation/suggest", (Guid id, PronunciationVersionRequest body, ClaimsPrincipal user, Lugat.Application.Pronunciation.PronunciationService s, CancellationToken ct) =>
+            s.CatalogAsync(user.GetUserId(), id, new ReviewPronunciationRequest(null, null, false, body.Version), true, ct));
+
         editor.MapPost("/units/{id:guid}/draft", (Guid id, ClaimsPrincipal user, CatalogDraftService drafts, CancellationToken ct) =>
             drafts.DraftNextAsync(user.GetUserId(), id, ct));
         editor.MapPost("/units/{id:guid}/publish", (Guid id, CatalogAdminService catalog, CancellationToken ct) => catalog.PublishAsync(id, ct));

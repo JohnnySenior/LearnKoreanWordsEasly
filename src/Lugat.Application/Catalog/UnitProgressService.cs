@@ -1,3 +1,4 @@
+using Lugat.Application.Pronunciation;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Study;
 using Lugat.Contracts;
@@ -41,10 +42,12 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
         var started = (await db.Cards.Where(c => c.OwnerId == userId && ids.Contains(c.LearningItemId) && c.Phase != LearningPhase.New)
             .Select(c => c.LearningItemId).Distinct().ToListAsync(ct)).ToHashSet();
         var summary = (await SummariesAsync(userId, [unit], [progress], ct))[0];
+        var pronunciationCount = words.Count(x => PronunciationService.Learner(x.Word.Word, x.Word.PronunciationKo, x.Word.PronunciationNoteUz, x.Word.PronunciationReviewed) is not null);
         return new UnitDto(summary, progress.StartedAt is not null, words.Select(x => new CatalogWordDto(
             x.Word.Id, x.ItemId, started.Contains(x.ItemId), x.Word.OrderInUnit ?? 0, x.Word.Word, x.Word.Homonym, x.Word.Pos,
             CatalogPos.Uzbek(x.Word.Pos), x.Word.TranslationUz!, x.Word.Romanization, x.Word.ExampleKo, x.Word.ExampleUz,
-            x.Word.TrapUz, x.Word.Theme, x.Word.Source)).ToList());
+            x.Word.TrapUz, x.Word.Theme, x.Word.Source,
+            PronunciationService.Learner(x.Word.Word, x.Word.PronunciationKo, x.Word.PronunciationNoteUz, x.Word.PronunciationReviewed))).ToList(), pronunciationCount);
     }
 
     /// <summary>

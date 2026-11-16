@@ -142,6 +142,7 @@ else
         </div>
         @if (card.Direction == ReviewDirection.KoreanToUzbek)
         {
+            <PronunciationHint @key="card.CardId" Korean="@card.Prompt" Pronunciation="card.Pronunciation" />
             <SayIt Reference="@card.Prompt" />
         }
     </section>
@@ -168,6 +169,7 @@ else
                     </div>
                     <Speak Text="@card.Answer" />
                 </div>
+                <PronunciationHint @key="card.CardId" Korean="@card.Answer" Pronunciation="card.Pronunciation" />
                 <SayIt Reference="@card.Answer" />
             }
             else

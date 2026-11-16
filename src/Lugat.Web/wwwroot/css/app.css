@@ -1613,3 +1613,23 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .share-mini i { display: block; height: 5px; border-radius: 3px; background: var(--color-neutral-300); }
 .share-mini i + i { width: 70%; }
 .hint-link { margin-left: 8px; font-weight: 700; }
+
+/* Reviewed Hangul pronunciation: quiet, keyboard-accessible help alongside the word. */
+.pronunciation-summary { margin: 16px 0; border: 1px solid var(--color-divider); border-radius: 12px; background: var(--color-card); }
+.pronunciation-summary > summary { min-height: 56px; padding: 12px; display: flex; gap: 10px; align-items: center; cursor: pointer; list-style: none; }
+.pronunciation-summary > summary span { flex: 1; min-width: 0; }
+.pronunciation-summary small { display: block; margin-top: 3px; color: var(--color-muted); }
+.pronunciation-list { padding: 0 12px 12px; }
+.pronunciation-list-word { padding: 6px 0; border-top: 1px solid var(--color-divider); }
+.pronunciation-hint { display: inline-block; vertical-align: middle; font-family: inherit; }
+.pronunciation-hint.is-open { display: block; }
+.pronunciation-ear { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; cursor: pointer; list-style: none; color: var(--color-accent-600); border: 0; background: transparent; border-radius: 8px; }
+.pronunciation-ear::-webkit-details-marker, .pronunciation-summary > summary::-webkit-details-marker { display: none; }
+.pronunciation-ear:focus-visible, .pronunciation-summary > summary:focus-visible { outline: 2px solid var(--color-accent-600); outline-offset: 2px; }
+.pronunciation-body { padding: 10px; border-radius: 10px; background: var(--color-surface); font-size: 14px; font-weight: 400; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+.pronunciation-body p { margin: 0 0 8px; }
+.pronunciation-practice { display: flex; gap: 6px; align-items: center; min-height: 44px; font-size: 13px; }
+.pronunciation-editor { margin: 10px 0; padding: 10px; border: 1px solid var(--color-divider); border-radius: 10px; }
+.pronunciation-editor > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 14px; }
+.pronunciation-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pronunciation-editor-actions button { min-height: 44px; }
