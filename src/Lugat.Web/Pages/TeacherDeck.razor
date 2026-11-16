@@ -37,7 +37,7 @@
     </div>
 }
 
-<PronunciationReviewPanel Words="@PronunciationWords" Url="@($"api/teacher/decks/{Id}/pronunciations")" Group="true" Disabled="_busy" Changed="RefreshPronunciationsAsync" BusyChanged="v => _busy = v" />
+<PronunciationReviewPanel WordUrlPrefix="@($"api/teacher/decks/{Id}/words")" Words="@PronunciationWords" Url="@($"api/teacher/decks/{Id}/pronunciations")" Group="true" Disabled="_busy" Changed="RefreshPronunciationsAsync" BusyChanged="v => _busy = v" />
 
 <section class="card">
     @* L-71: the homework's due day; it can be set or moved after publishing too. *@

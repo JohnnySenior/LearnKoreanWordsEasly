@@ -913,3 +913,15 @@ Anthropic API past balansni HTTP 400 + `invalid_request_error` qilib ham qaytara
 yoki «insufficient credits» belgisi bo‘lsa, xato «hisobda API mablag‘i yetarli emas» deb ajratiladi. Javob matni, so‘rov va
 kalit log/UI’ga ko‘chirilmaydi. Ikkala provayder ham ishlamasa, avvalgi sabab so‘nggi timeout bilan yo‘qolmaydi.
 Bu tasnif avvalgi logning o‘zidan Claude balansi tugaganini isbotlamaydi; billing egasi tomonidan tekshiriladi.
+
+## L-79 · Noaniq talaffuz qolganlarini tasdiqlashni to‘xtatmaydi (2026-11-16)
+
+Johnny A-3’da `곳` talaffuzini bilmasligi va bo‘sh qator belgilanganida umumiy tasdiqlash rad etilishini bildirdi.
+UI bo‘sh/whitespace talaffuzni tasdiqlash tanlovidan chiqaradi, uning checkbox’i bo‘shligida o‘chiq bo‘ladi va so‘rovga
+kiritilmaydi. Qolgan tanlanganlar saqlanadi, nechta bo‘sh talaffuz ochiq qolgani aytiladi. Bo‘shni oddiy o‘qilish deb
+taxmin qilish yoki tasdiqlash yo‘q. Backend’ning qat’iy validatsiyasi va tanlanganlar uchun atomik tasdiq saqlanadi.
+
+Bo‘sh qatorning o‘zida «AI qayta tekshirsin» mavjud single-word suggestion endpoint’iga ulanadi (mavjud rol, sarf,
+versiya va AI limitlari bilan); qaytgan taklif yana muharrir tasdig‘ini kutadi. Shuningdek KRdict rasmiy lug‘atining
+qidiruv havolasi yangi tabda, `noopener noreferrer` bilan ochiladi. Bu avtomatik lug‘at API integratsiyasi emas.
+Stop tugmasi faqat batch tayyorlash paytida ko‘rsatiladi; saqlash yoki bitta so‘zni tekshirishda noto‘g‘ri stop yo‘q.

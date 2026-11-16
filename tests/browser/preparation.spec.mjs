@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // Seed pending proposals through real editor APIs, then review them together in the real UI.
 // Paid external AI is covered by provider fakes in PostgreSQL API tests, not called by this browser test.
-test('an editor reviews 25 pronunciation proposals together and only edits the exceptional row', async ({ page }) => {
+test('a blank pronunciation cannot block approval of the other proposals', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -35,14 +35,25 @@ test('an editor reviews 25 pronunciation proposals together and only edits the e
         const row = panel.locator('li').filter({ has: page.getByText('좋다', { exact: true }) });
         await row.getByRole('textbox', { name: 'Talaffuzi', exact: true }).fill('조타');
         await row.getByRole('textbox', { name: 'Izoh', exact: true }).fill('ㅎ va ㄷ birlashib ㅌ kabi aytiladi.');
-        await panel.getByRole('checkbox').last().uncheck();
+        const blank = panel.locator('.pronunciation-review-list > li').last();
+        await blank.getByRole('textbox', { name: 'Talaffuzi', exact: true }).fill('   ');
+        await expect(blank.getByRole('checkbox')).not.toBeChecked();
+        await expect(blank.getByRole('checkbox')).toBeDisabled();
+        await expect(blank.getByText('Bilmasangiz bo‘sh qoldiring.', { exact: false })).toBeVisible();
+        await expect(blank.getByRole('button', { name: 'AI qayta tekshirsin', exact: true })).toBeVisible();
+        await expect(blank.getByRole('link', { name: 'Rasmiy lug‘atdan tekshirish', exact: true })).toHaveAttribute('href', /^https:\/\/krdict\.korean\.go\.kr\/eng\/dicSearch\/search\?mainSearchWord=/);
         await panel.getByRole('heading', { name: 'Talaffuzlar', exact: true }).scrollIntoViewIfNeeded();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
         await page.screenshot({ path: `test-results/preparation-${test.info().project.name}.png` });
         const approved = page.waitForResponse(r => /\/pronunciations\/review$/.test(r.url()) && r.request().method() === 'PUT');
         await panel.getByRole('button', { name: 'Ko‘rib chiqdim — 24 tasini tasdiqlash', exact: true }).click();
-        expect((await approved).ok()).toBeTruthy();
+        const response = await approved;
+        expect(response.ok()).toBeTruthy();
+        const submitted = response.request().postDataJSON().words;
+        expect(submitted).toHaveLength(24);
+        expect(submitted.every(w => w.reading.trim().length > 0)).toBeTruthy();
         await expect(panel.locator('.pronunciation-review-list > li')).toHaveCount(1);
+        await expect(panel.getByRole('status')).toContainText('1 ta bo‘sh talaffuz ochiq qoldi');
         const unit = await api(`/api/units/${unitId}`);
         expect(unit.pronunciationCount).toBe(1);
         expect(unit.words.find(w => w.word === '좋다').pronunciation.reading).toBe('조타');

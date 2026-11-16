@@ -49,7 +49,7 @@
     }
 </div>
 <p class="muted small-text">Yetishmayotgan qoralama, tuzoq va talaffuzlar birgalikda tayyorlanadi. Tayyor ma’lumot qayta yozilmaydi.</p>
-<PronunciationReviewPanel ShowDraftButton="false" Words="@PronunciationWords" Url="@($"api/admin/units/{Id}/pronunciations")" Disabled="_busy" Changed="RefreshPronunciationsAsync" BusyChanged="v => _busy = v" />
+<PronunciationReviewPanel WordUrlPrefix="api/admin/catalog/words" ShowDraftButton="false" Words="@PronunciationWords" Url="@($"api/admin/units/{Id}/pronunciations")" Disabled="_busy" Changed="RefreshPronunciationsAsync" BusyChanged="v => _busy = v" />
 @if (_unit.HintsNeeded > 0)
 {
     @* L-74: shared meanings without a hint, so the editor looks only at these. *@

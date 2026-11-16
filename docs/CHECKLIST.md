@@ -690,3 +690,13 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Real PostgreSQL + boshqariladigan provayderlar: tez rad etilgan Claude’dan keyin sekinroq OpenAI yakunlaydi;
   umumiy deadline, user cancellation, ikki urinishning sarf yozuvi va ikki xatoning saqlanishi tekshirildi.
 - [ ] GitHub CI va production deploy tekshiriladi. Haqiqiy pulli API bu sinovlarda chaqirilmadi; balans hali tasdiqlanmagan.
+
+## Bo‘sh talaffuz bilan davom etish · L-79 · 2026-11-16
+
+- [x] Bo‘sh talaffuz checkbox’i tanlanmaydi, tozalangan qator avtomatik tanlovdan chiqadi; so‘rovdan bo‘shlar chiqariladi.
+- [x] Qolgan takliflar saqlanadi; bo‘sh qolganlar soni natijada ko‘rsatiladi va ular tasdiqlanmaydi.
+- [x] Bo‘sh qator yonida mavjud API orqali AI qayta tekshiruvi va KRdict qidiruv havolasi; katalog va ustoz lug‘atida.
+- [x] Release build 0 warning/error. Real Chromium → API → PostgreSQL: 6/6 oqim, 360px yorug‘/qorong‘i.
+  Tanlangan qatorni bo‘shatish → tanlovdan chiqadi → payload’da faqat 24 to‘liq talaffuz → 24 tasi saqlanadi, 1 tasi qoladi.
+- [ ] GitHub CI va production deploy tekshiriladi. Pulli AI chaqirilmadi. KRdict sahifasi avtomatik muhitda 403 berdi;
+  URL/target xavfsizligi tekshirildi, haqiqiy foydalanuvchi brauzerida tashqi sahifa alohida tekshiriladi.
