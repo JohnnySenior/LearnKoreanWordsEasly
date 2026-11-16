@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Lugat.Application.Reminders;
 
 /// <summary>A learner's devices that may get reminders by Web Push (L-63).</summary>
-public sealed class PushSubscriptionService(IAppDbContext db, IWebPushSender push, TimeProvider time)
+public sealed class PushSubscriptionService(IAppDbContext db, IWebPushSender push, TimeProvider time, IOperationLock operations)
 {
     public const int MaxDevices = 10;
 
@@ -22,15 +22,19 @@ public sealed class PushSubscriptionService(IAppDbContext db, IWebPushSender pus
         }
 
         var endpoint = (request.Endpoint ?? "").Trim();
-        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || endpoint.Length > 1000
+        if (!PushEndpointPolicy.IsAllowed(endpoint)
             || string.IsNullOrWhiteSpace(request.P256dh) || request.P256dh.Length > 200 || string.IsNullOrWhiteSpace(request.Auth) || request.Auth.Length > 100)
         {
             throw new ValidationException("Qurilma obunasi noto‘g‘ri. Sahifani yangilab qayta urinib ko‘ring.");
         }
 
+        // Serialize both endpoint transfers and the per-user device cap before reading tracked state.
+        // Every subscription takes locks in this order, so two users transferring a phone cannot deadlock.
+        await using var deviceLease = await operations.AcquireAsync("push-device:" + endpoint, ct);
+        await using var userLease = await operations.AcquireAsync("push-user:" + userId, ct);
         var now = time.GetUtcNow();
         var row = await db.PushSubscriptions.SingleOrDefaultAsync(s => s.Endpoint == endpoint, ct);
-        if (row is null)
+        if (row is null || row.UserId != userId)
         {
             if (await db.PushSubscriptions.CountAsync(s => s.UserId == userId, ct) >= MaxDevices)
             {
@@ -39,23 +43,18 @@ public sealed class PushSubscriptionService(IAppDbContext db, IWebPushSender pus
                 db.PushSubscriptions.Remove(oldest);
             }
 
-            row = new PushSubscription { Id = Guid.CreateVersion7(now), Endpoint = endpoint, CreatedAt = now };
-            db.PushSubscriptions.Add(row);
+            if (row is null)
+            {
+                row = new PushSubscription { Id = Guid.CreateVersion7(now), Endpoint = endpoint, CreatedAt = now };
+                db.PushSubscriptions.Add(row);
+            }
         }
 
         (row.UserId, row.P256dh, row.Auth, row.FailedAt) = (userId, request.P256dh.Trim(), request.Auth.Trim(), null);
         row.UserAgent = userAgent is { Length: > 300 } ? userAgent[..300] : userAgent;
         var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
         user.RemindersEnabled = true;
-        try
-        {
-            await db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException)
-        {
-            // The same device was saved by a second tap at the same moment; that row is this one.
-            db.DiscardChanges();
-        }
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>Forgets this device, only when it is the learner's own; another's endpoint changes nothing.</summary>

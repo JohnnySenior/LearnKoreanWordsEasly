@@ -74,7 +74,8 @@ public sealed record TestQuestion(
     string? BaseForm,
     string? Explanation,
     Guid? LearningItemId,
-    bool AiMade);
+    bool AiMade,
+    List<string>? AcceptedAnswers = null);
 
 /// <param name="Note">Why a typed answer was or was not accepted ("imlo xatosi", "so‘z to‘g‘ri, shakli: …").</param>
 /// <param name="Assisted">A hint (first syllable) was shown before answering (TEST03 "yordam bilan").</param>
@@ -186,6 +187,11 @@ public static class TestGrader
         if (!IsTyped(q.Kind))
         {
             return (answer == q.Correct, null);
+        }
+
+        if (q.Kind == TestQuestionKind.WordKoreanTyped && q.AcceptedAnswers?.Any(a => AnswerMatcher.MatchKorean(answer, a) == MatchResult.Exact) == true)
+        {
+            return (true, "Ma’nosi to‘g‘ri, boshqa so‘z.");
         }
 
         return AnswerMatcher.MatchKorean(answer, q.Correct) switch

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Lib.Net.Http.WebPush;
 using Lib.Net.Http.WebPush.Authentication;
 using Lugat.Application.Abstractions;
+using Lugat.Application.Reminders;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -36,7 +37,7 @@ public sealed class WebPushSender(HttpClient http, IOptions<PushOptions> options
 
     public async Task<PushOutcome> SendAsync(PushTarget target, PushNotification notification, CancellationToken ct)
     {
-        if (!IsConfigured)
+        if (!IsConfigured || !PushEndpointPolicy.IsAllowed(target.Endpoint))
         {
             return PushOutcome.Failed;
         }

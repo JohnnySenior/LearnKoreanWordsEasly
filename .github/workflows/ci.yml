@@ -45,6 +45,30 @@ jobs:
       - run: dotnet tool restore
       - run: dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project src/Lugat.Infrastructure
       - run: dotnet test --no-build -c Release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix tests/browser
+      - run: npx --prefix tests/browser playwright install --with-deps chromium
+      - run: npx --prefix tests/browser playwright test --config tests/browser/playwright.config.mjs
+      - name: Restore sample backup into a fresh database
+        env:
+          PGHOST: localhost
+          PGUSER: lugat
+          PGPASSWORD: lugat
+        run: |
+          pg_dump --format=custom --no-owner --no-privileges --file "$RUNNER_TEMP/lugat-browser.dump" lugat_browser
+          bash scripts/rehearse-restore.sh "$RUNNER_TEMP/lugat-browser.dump" lugat_rehearsal_ci
+      - name: Run the learning flow against the restored database
+        env:
+          LUGAT_BROWSER_POSTGRES: Host=localhost;Database=lugat_rehearsal_ci;Username=lugat;Password=lugat
+          Catalog__SeedSample: 'false'
+        run: npx --prefix tests/browser playwright test --config tests/browser/playwright.config.mjs --project phone-light
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failures
+          path: tests/browser/test-results
 
   # Railway builds this Dockerfile; building it here first means a broken image never reaches "Wait for CI".
   docker-image:
@@ -54,3 +78,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -t lugat:ci .
       - run: docker run --rm --entrypoint pg_dump lugat:ci --version
+      - name: Runtime drops root after preparing the volume
+        run: |
+          lugat_runtime_uid=$(docker run --rm --user 0 lugat:ci id -u)
+          test "$lugat_runtime_uid" = "1654"

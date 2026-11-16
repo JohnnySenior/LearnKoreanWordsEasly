@@ -62,6 +62,36 @@ public class UnitTestTests
         (await client.GetFromJsonAsync<LevelUnitsDto>("/api/levels/A/units", ApiFactory.Json))!;
 
     [Fact]
+    public async Task Unqualified_synonyms_are_saved_as_accepted_answers_but_never_exposed_before_finishing()
+    {
+        await using var factory = new ApiFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await factory.AddWordsAsync(ApiFactory.UserA, 1, [("아주", "juda"), ("매우", "juda"), ("너무", "juda"), ("무척", "juda")]);
+        var response = await StartAsync(client, 1, UnitTestKind.Final);
+        response.EnsureSuccessStatusCode();
+        Assert.DoesNotContain("acceptedAnswers", await response.Content.ReadAsStringAsync());
+        var run = (await response.Content.ReadFromJsonAsync<TestDto>(ApiFactory.Json))!;
+        Assert.All(run.Questions, q => Assert.Null(q.Correct));
+        List<TestQuestion> stored;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            stored = (await scope.ServiceProvider.GetRequiredService<AppDbContext>().TestRuns.SingleAsync(t => t.Id == run.Id)).Questions;
+        }
+
+        foreach (var question in stored)
+        {
+            Assert.Equal(TestQuestionKind.WordKoreanTyped, question.Kind);
+            Assert.NotEmpty(question.AcceptedAnswers!);
+            (await client.PostAsJsonAsync($"/api/unit-tests/{run.Id}/answers",
+                new TestAnswerRequest(question.Index, question.AcceptedAnswers![0]), ApiFactory.Json)).EnsureSuccessStatusCode();
+        }
+
+        var finished = await FinishAsync(client, run.Id);
+        Assert.Equal(4, finished.Score);
+        Assert.True(finished.Unit!.Passed);
+    }
+
+    [Fact]
     public async Task Twenty_of_twenty_five_passes_and_opens_the_next_unit()
     {
         var (factory, client) = await SetUpAsync();

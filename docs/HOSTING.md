@@ -19,7 +19,7 @@
 
 1. Yangi loyiha "Lugat" → **PostgreSQL** servisi (18).
 2. **app** servisi: GitHub `JohnnySenior/LearnKoreanWordsEasly`, branch `main`, Dockerfile bo‘yicha build. Settings → Source → "Wait for CI" yoqiladi.
-3. **Volume** `/data` ga ulanadi. Image root bo‘lmagan foydalanuvchi bilan ishlaydi, Railway volume’i esa root’niki: `RAILWAY_RUN_UID=0` o‘zgaruvchisi qo‘yiladi, aks holda ovoz keshi, sessiya kalitlari va zaxira yozilmaydi.
+3. **Volume** `/data` ga ulanadi. Railway root volume uchun `RAILWAY_RUN_UID=0` qoladi: `docker/entrypoint.sh` faqat `/data/files`, `/data/keys`, `/data/backups` egaligini `app` ga beradi, keyin `gosu app` orqali ilovani root bo‘lmagan foydalanuvchi bilan ishga tushiradi. Standart Docker ishga tushirish ham `app` bilan.
 4. Healthcheck path `/health`; Serverless (uxlash) o‘chiq.
 5. **Birinchi deploydan oldin shart bo‘lgan o‘zgaruvchilar:**
    - `ConnectionStrings__Default=Host=${{Postgres.PGHOST}};Port=${{Postgres.PGPORT}};Database=${{Postgres.PGDATABASE}};Username=${{Postgres.PGUSER}};Password=${{Postgres.PGPASSWORD}};Gss Encryption Mode=Disable`
@@ -60,15 +60,37 @@ Haftalik tekshirilgan nusxa bot orqali `Backup__TelegramChatId` ga yuboriladi (K
 
 Real nusxadan yangi Railway muhitiga tiklash mashqi hali bajarilmagan.
 
+### Ajratilgan muhitda tiklash mashqi (L-75)
+
+PostgreSQL 18 klientlari va xavfsiz, **production bo‘lmagan** tiklash serverini tayyorlang. `PGHOST`, `PGPORT`,
+`PGUSER` va `PGPASSWORD` yoki `.pgpass` shu serverga qarasin. Parolni buyruq satriga yozmang.
+
+```sh
+bash scripts/rehearse-restore.sh /secure/database.dump lugat_rehearsal_acceptance
+```
+
+Skript faqat `lugat_rehearsal_` prefiksli yangi bazaga tiklaydi; mavjud bazani o‘chirmaydi yoki ustiga yozmaydi.
+Tiklash xatosida jarayon to‘xtaydi. Shu commitdagi ilovani yangi bazaga ulang; `/health`, kirish, oldingi progress,
+bo‘limlar va ovozni tekshiring. Telegram/push workerlarini avval o‘chiq qoldiring, haqiqiy o‘quvchilarga xabar ketmasin.
+Faqat namunaviy kontentli Development nusxada `tests/browser/README.md` dagi smoke testni ishlating.
+Production nusxada test login yoki sample seed yoqmang; haqiqiy kirish bilan qo‘lda qabul tekshiruvi qiling.
+Tekshiruv sanasi, dump sanasi, tiklash davomiyligi, yo‘qolishi mumkin bo‘lgan vaqt (RPO), tiklash vaqti (RTO),
+progress va audio natijasini qayd eting. Lokal sample bazani tiklash production tiklash mashqi deb belgilanmaydi.
+
 ## AI va ovoz kalitlari
 
 - `Ai__Anthropic__ApiKey` va/yoki `Ai__OpenAi__ApiKey` (KAT D-21). Ilovada Sozlamalar → "AI xizmati" → "Ulanishni tekshirish".
 - Azure Speech: `Ai__Tts__Azure__Key`, `Ai__Tts__Azure__Region` (KAT D-31, D-32).
-- Oylik byudjet va tariflar: `Ai__Budget__*` (KAT D-50). `MonthlyLimitUsd` (standart $25) — qattiq chegara: oshsa AI va ovoz chaqiruvlari to‘xtaydi, tayyor kontent ishlayveradi. Tarif kiritilmagan model sarfi "noma’lum" deb ko‘rsatiladi va dollar chegarasiga qo‘shilmaydi; bunday chaqiruvlar oyiga `Ai__Budget__MonthlyUnpricedCalls` (standart 2000) ta bilan to‘xtatiladi (L-33). Aniq hisob uchun tariflarni kiriting. Ovoz (Azure, OpenAI TTS) ham shu hisobga kiradi: butun katalog ovozini oldindan yaratishdan oldin Azure uchun tarif yozing (Free F0 bo‘lsa narx `0`), aks holda 2000 ta chaqiruvdan keyin to‘xtaydi.
+- Oylik byudjet va tariflar: `Ai__Budget__*` (KAT D-50). Production’da `RequireKnownPrices=true` (L-75): aniq provider/model/unit uchun sanali tarif bo‘lmasa yangi AI/ovoz chaqiruvi yuborilmaydi; tayyor material va kesh ishlayveradi. **Deploydan oldin amaldagi tariflarni kiriting**; bepul tasdiqlangan tarif uchun narx `0` bo‘lishi mumkin. `MonthlyLimitUsd` (standart $25) rezervatsiyaga asoslangan chegara; provayderning haqiqiy billing limitini ham sozlang. Faqat ongli ravishda `RequireKnownPrices=false` qo‘yilganda eski `MonthlyUnpricedCalls` (standart 2000) fallback ishlaydi; bu dollar chegarasini kafolatlamaydi. Kelajak sanali yoki manfiy tarif ishlatilmaydi.
 
 ## Web Push eslatmalari (L-63)
 
 Kalitlar bo‘lmasa push o‘chiq: Profil → Eslatma’da «Shu qurilma» bo‘limi chiqmaydi, Telegram eslatmalari odatdagidek ishlaydi.
+
+Push faqat FCM, Mozilla, Apple va Windows browser push hostlariga, HTTPS 443 orqali yuboriladi. Redirect va
+environment proxy ishlatilmaydi; DNS’dagi private/local IP bloklanadi va ulanish tekshirilgan IP’ga qilinadi.
+Yangi browser push provayderi kerak bo‘lsa, uning rasmiy hostini `PushEndpointPolicy` va testlarga qo‘shing;
+istalgan URL’ni qabul qilishni yoqmang. Eski nomaqbul endpointlar ham yuborish vaqtida bloklanadi.
 
 1. Bir marta VAPID kalit juftligini yarating (o‘z kompyuteringizda, Node.js bilan): `npx web-push generate-vapid-keys`. U «Public Key» va «Private Key» chiqaradi.
 2. Railway → servis → Variables:

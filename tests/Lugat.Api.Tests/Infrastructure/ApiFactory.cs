@@ -102,6 +102,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Telegram:BotToken", BotToken);
         builder.UseSetting("Auth:DevLoginUserId", UserA.ToString(CultureInfo.InvariantCulture));
         builder.UseSetting("Backup:Enabled", "false");
+        // Most feature tests deliberately use unpriced fake providers. Budget tests override this explicitly.
+        builder.UseSetting("Ai:Budget:RequireKnownPrices", "false");
         for (var i = 0; i < AdminTelegramIds.Length; i++)
         {
             builder.UseSetting($"Auth:Admins:TelegramUserIds:{i}", AdminTelegramIds[i].ToString(CultureInfo.InvariantCulture));

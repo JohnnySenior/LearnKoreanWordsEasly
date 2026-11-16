@@ -13,6 +13,9 @@ public sealed class AiBudgetOptions
     public decimal WarningUsd { get; set; } = 20;
     public decimal HostingMonthlyUsd { get; set; }
 
+    /// <summary>Production refuses billable calls until a dated price for the exact model/unit is configured.</summary>
+    public bool RequireKnownPrices { get; set; }
+
     /// <summary>
     /// The hard stop for calls whose price is not configured (spec §13.9 "hard spend limit"): an unknown price cannot
     /// be added to the dollar budget, so such calls are capped by count per month instead. 0 = none allowed.
@@ -50,6 +53,11 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
             throw new TooManyRequestsException("Ulanish hozirgina tekshirildi. Bir daqiqadan keyin qayta urinib ko‘ring.");
 
         var rate = options.Value.Prices.FirstOrDefault(p => p.Provider == provider && p.Model == model && p.Unit == unit && p.AsOf != default);
+        if (rate is null && options.Value.RequireKnownPrices)
+            throw new ServiceUnavailableException("AI yoki ovoz xizmatining tarifi hali sozlanmagan. Tayyor materiallardan foydalanishingiz mumkin.");
+        if (rate is not null && (rate.InputPerMillionUsd < 0 || rate.OutputPerMillionUsd < 0
+            || options.Value.RequireKnownPrices && rate.AsOf > DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime)))
+            throw new ServiceUnavailableException("AI yoki ovoz xizmatining tarifi noto‘g‘ri sozlangan. Tayyor materiallardan foydalanishingiz mumkin.");
         var cost = rate is null ? (decimal?)null : (input * rate.InputPerMillionUsd + output * rate.OutputPerMillionUsd) / 1_000_000m;
         var status = await BudgetAsync(ct);
         if (status.EstimatedUsd + (cost ?? 0) > status.LimitUsd || (cost is null && status.UnknownPriceCalls >= options.Value.MonthlyUnpricedCalls))

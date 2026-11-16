@@ -618,5 +618,34 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Admin bo‘lim sahifasi: «Ishora kerak: N so‘z» ro‘yxati va so‘z belgisi.
 - [x] Testlar: ma’nolarni bo‘lish va ishorasiz ma’no (unit), qoralama so‘rovida oldingi ma’nolar va qoida, ishora yozilgach ogohlantirish yo‘qolishi (API).
 - [ ] Johnny: keyingi bo‘limni AI qoralama qilib, ishoralar sifatini ko‘rish.
-- [ ] Keyin: bo‘lim testidagi yozma savolda sinonimni xato demaslik (3-taklif).
+- [x] L-75: kontekstsiz va to‘liq bir xil ma’noli sinonimlar yozma testda snapshot orqali qabul qilinadi; kontekstli savol aniq so‘zni talab qiladi.
+
+## Audit tuzatishlari · L-75 · 2026-11-16
+
+- [x] Push endpoint: rasmiy browser hostlari, HTTPS 443, userinfo/fragment taqiqi; yuborish vaqtida ham tekshiruv.
+- [x] Push transport: redirect/proxy o‘chiq; DNS manzillari public bo‘lishi kerak; tekshirilgan IP’ga ulanish.
+- [x] Push obunasi endpoint → user lock tartibida; DB xatolari 204 sifatida yashirilmaydi; transfer device cap’ni saqlaydi.
+- [x] Real PostgreSQL regressiyalari: parallel obuna, yangi egaga mos kalitlar, write trigger xatosi → 500,
+  ichki/soxta host → 422. Push va strict-budget tanlangan 12 API testi o‘tdi.
+- [x] Kam distraktorli savol yozmaga o‘tadi; tinglash bo‘lsa tinglab yozish. Bir variantli savol berilmaydi.
+- [x] Kontekstsiz, bir xil so‘z turkumi va to‘liq bir xil ma’noli sinonimlar snapshot sifatida qabul qilinadi;
+  kontekstli/qisman ma’noli yoki tinglash javoblari avtomatik kengaytirilmaydi. Eski testlar o‘zgarmaydi.
+- [x] Production narxsiz AI/ovoz chaqiruvini bloklaydi; sample/fake testlar explicit opt-out. Tariflar repo’da uydirilmagan.
+- [x] Release build: 0 ogohlantirish, 0 xato. EF model: pending o‘zgarish yo‘q.
+- [x] Domain 106 va Application 119 test o‘tdi; web 50/50 o‘tdi.
+- [x] Real Chromium → API → PostgreSQL: 390px yorug‘/qorong‘i, dev kirish → jadval → karta javobi → 25/25 test →
+  natijani reload → keyingi bo‘lim. CI’ga kiritildi. OAuth/audio mock qilib real deb ko‘rsatilmagan.
+- [x] Sample bazaning pg_dump nusxasi yangi `lugat_rehearsal_audit_20261116` bazaga skript bilan tiklandi.
+- [x] Tiklangan sample bazada app `/health` ready; real Chromium o‘quv oqimi qayta o‘tdi (34.3 s, 25/25).
+- [x] Root volume entrypoint `gosu app` bilan huquqni tashlaydi; vaqtinchalik konteynerda `uid=1654(app)` tasdiqlandi.
+- [ ] Lokal Docker image build: muhit disk joyi yetmagani sabab tugamadi; yangi image CI’da tekshirilishi kerak.
+- [x] Barcha 341 API testi o‘tdi, 0 failed, 0 skipped; discovery ro‘yxatidagi 341 holat 17 ta alohida guruh bilan
+  to‘liq qamraldi. Bitta jarayon MapStaticAssets manifestlari bilan xotira chegarasiga yetgani uchun lokal suite
+  guruhlarga bo‘lindi; bu test natijasi yashirilmadi. Jami .NET: 566 passed.
+- [~] Johnny GitHub’ga yuklash va draft PR uchun aniq ruxsat berdi (2026-11-16). Branch va yangi CI natijalari
+  tekshirilmoqda. O‘zgarishlar `fix/audit-reliability` branch va patch’da saqlangan.
+- [ ] Deploydan oldin: amaldagi AI/ovoz tariflarini kiriting; strict default narxsiz yangi chaqiruvlarni to‘xtatadi.
+- [ ] Haqiqiy iPhone/Android’da audio, koreyscha IME, Instagram’dan kirish va PWA yangilanishi.
+- [ ] Haqiqiy production nusxasini alohida Railway muhitiga tiklash, RPO/RTO, audio va worker qabul sinovi.
+  Sample bazadagi tekshiruv bu bandni yopmaydi. Telegram nusxalari retention’i L-46 bo‘yicha egasi qo‘lda bajaradi.
 

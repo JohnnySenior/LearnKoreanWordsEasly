@@ -62,6 +62,45 @@ public class UnitTestGeneratorTests
     }
 
     [Fact]
+    public void A_small_synonymous_deck_never_offers_the_answer_alone()
+    {
+        var unit = new[] { W("아주", "juda", "부"), W("너무", "juda", "부"), W("매우", "juda", "부"), W("무척", "juda", "부") };
+        foreach (var listening in new[] { false, true })
+        {
+            var questions = UnitTestGenerator.Build(unit, unit, listening, new Random(7));
+            Assert.Equal(unit.Length, questions.Count);
+            Assert.All(questions, q => Assert.True(TestGrader.IsTyped(q.Kind)));
+            foreach (var q in questions.Where(q => q.Kind == TestQuestionKind.WordKoreanTyped))
+            {
+                Assert.Equal("juda", q.Prompt);
+                Assert.All(unit, w => Assert.True(TestGrader.Grade(q, w.Korean).IsCorrect));
+            }
+        }
+    }
+
+    [Fact]
+    public void A_usage_hint_still_requires_the_intended_word()
+    {
+        var unit = new[] { W("아주", "juda (ijobiy)", "부"), W("너무", "juda (ortiqcha)", "부") };
+        var questions = UnitTestGenerator.Build(unit, unit, false, new Random(7));
+        Assert.All(questions, q =>
+        {
+            Assert.Null(q.AcceptedAnswers);
+            Assert.False(TestGrader.Grade(q, unit.Single(w => w.Korean != q.Correct).Korean).IsCorrect);
+        });
+    }
+
+    [Fact]
+    public void Accepted_answers_survive_json_storage_and_do_not_apply_to_listening()
+    {
+        var q = new TestQuestion(0, TestQuestionKind.WordKoreanTyped, "juda", null, null, [], "아주", null, null, null, false, ["매우"]);
+        var stored = System.Text.Json.JsonSerializer.Deserialize<TestQuestion>(System.Text.Json.JsonSerializer.Serialize(q))!;
+        Assert.True(TestGrader.Grade(stored, "매우").IsCorrect);
+        Assert.False(TestGrader.Grade(stored with { Kind = TestQuestionKind.WordListeningTyped }, "매우").IsCorrect);
+        Assert.False(TestGrader.Grade(stored, "학교").IsCorrect);
+    }
+
+    [Fact]
     public void A_typed_question_says_which_word_is_meant_when_two_share_the_meaning()
     {
         // L-37: 안 and 아니다 are both "emas"; typing from Uzbek needs the hint.

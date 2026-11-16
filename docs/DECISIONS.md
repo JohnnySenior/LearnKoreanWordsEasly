@@ -826,3 +826,23 @@ Johnny (admin sifatida): AI qoralamasi deyarli xatosiz, lekin shakli boshqa, ma�
 - **Admin:** bo‘lim sahifasi tepasida «Ishora kerak: N so‘z» va so‘zlar ro‘yxati (havola bilan), so‘z kartasida «Ishora kerak» belgisi va qisqa yo‘riqnoma. `UnitAdminDto.HintsNeeded`.
 - Javob baholash (bo‘lim testida sinonimni xato demaslik) bu safar o‘zgarmadi — Johnny keyinroq hal qiladi.
 
+## L-75 · 2026-11-16 · Audit: push himoyasi, adolatli test va qabul tekshiruvlari
+
+Johnny auditda topilgan kamchiliklarni tuzatishni so‘radi. Ish `fix/audit-reliability` branch’da.
+
+- Push endpoint: faqat FCM/Mozilla/Apple/Windows push hostlari, HTTPS/443, userinfo va fragmentsiz. Qabul qilishda
+  ham, yuborishda ham tekshiriladi. Transport redirect/proxy’ni o‘chiradi, DNS manzillarini tekshiradi va aynan
+  tekshirilgan public IP’ga ulanadi. Bu foydalanuvchi bergan URL orqali server ichki tarmog‘iga chiqishni to‘sadi.
+- Obuna o‘zgarishi endpoint, so‘ng foydalanuvchi lock’i ostida o‘qiladi/yoziladi. Parallel transfer kalit/egani birga
+  saqlaydi. Barcha `DbUpdateException`larni yutish olib tashlandi: saqlash xatosi muvaffaqiyat emas.
+- Uchta yaroqli noto‘g‘ri variant yetishmasa savol yozmaga o‘tadi; tinglash savoli tinglab yozishga o‘tadi.
+  Bir xil so‘z turkumi, to‘liq teng ma’no to‘plami va qavssiz sinonimlar `AcceptedAnswers` snapshot’ida saqlanadi.
+  Kontekstli yoki qisman umumiy ma’noli so‘zlar avtomatik qabul qilinmaydi; tinglashda eshitilgan so‘z talab qilinadi.
+  Snapshot test JSON’ida, klient DTO’sida yo‘q; davom etayotgan eski testlar qayta yozilmaydi. Migratsiya kerak emas.
+- Production’da narxsiz yangi AI/ovoz chaqiruvi bloklanadi (`RequireKnownPrices=true`). Deploydan oldin amaldagi
+  sanali tariflar kiritilishi kerak. Eski count fallback faqat explicit `false` bilan; test feyklari alohida opt-out.
+- CI’da real Chromium/API/PostgreSQL smoke (390px, yorug‘/qorong‘i). Development login va sample kontent ishlatiladi;
+  bu haqiqiy OAuth, pulli ovoz yoki fizik telefon sinovi deb ko‘rsatilmaydi.
+- Root Railway volume tayyorlangach entrypoint `gosu app` bilan root huquqini tashlaydi. Restore rehearsal skripti
+  faqat yangi `lugat_rehearsal_*` bazaga tiklaydi. Production restore va haqiqiy telefon sinovlari alohida qoladi.
+
