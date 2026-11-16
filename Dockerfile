@@ -13,7 +13,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 # downloading it from www.postgresql.org failed builds when that site dropped the connection.
 COPY docker/apt.postgresql.org.asc /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
 RUN apt-get -o Acquire::Retries=5 update \
- && apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get install -y --no-install-recommends ca-certificates gosu \
  && . /etc/os-release \
  && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
  && apt-get -o Acquire::Retries=5 update \
@@ -22,7 +22,9 @@ RUN apt-get -o Acquire::Retries=5 update \
  && pg_dump --version
 WORKDIR /app
 COPY --from=build /app .
+COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/lugat-entrypoint
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 USER $APP_UID
-ENTRYPOINT ["dotnet", "Lugat.Api.dll"]
+ENTRYPOINT ["lugat-entrypoint"]
+CMD ["dotnet", "Lugat.Api.dll"]

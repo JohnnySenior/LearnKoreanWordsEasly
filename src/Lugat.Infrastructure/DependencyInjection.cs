@@ -84,6 +84,7 @@ public static class DependencyInjection
         services.AddScoped<ReminderService>();
         services.Configure<Push.PushOptions>(config.GetSection(Push.PushOptions.SectionName));
         services.AddHttpClient<IWebPushSender, Push.WebPushSender>(c => c.Timeout = TimeSpan.FromSeconds(15))
+            .ConfigurePrimaryHttpMessageHandler(() => Push.PushTransport.CreateHandler())
             .RemoveAllLoggers(); // request URLs are device addresses
         services.AddScoped<PushSubscriptionService>();
 

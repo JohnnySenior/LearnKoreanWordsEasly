@@ -37,7 +37,7 @@ public class WebPushSenderTests
     {
         using var key = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
         var p = key.ExportParameters(false);
-        return new PushTarget("https://push.example/send/abc", B64([4, .. p.Q.X!, .. p.Q.Y!]), B64(RandomNumberGenerator.GetBytes(16)));
+        return new PushTarget("https://fcm.googleapis.com/send/abc", B64([4, .. p.Q.X!, .. p.Q.Y!]), B64(RandomNumberGenerator.GetBytes(16)));
     }
 
     private static WebPushSender Sender(PushService service, string? publicKey, string? privateKey) =>
@@ -57,7 +57,7 @@ public class WebPushSenderTests
         Assert.Equal(PushOutcome.Sent, await sender.SendAsync(Device(), Note, CancellationToken.None));
 
         var request = service.Request!;
-        Assert.Equal("https://push.example/send/abc", request.RequestUri!.ToString());
+        Assert.Equal("https://fcm.googleapis.com/send/abc", request.RequestUri!.ToString());
         Assert.Equal("vapid", request.Headers.Authorization!.Scheme);
         Assert.Contains("k=" + pub, request.Headers.Authorization.Parameter);
         Assert.Equal("1800", request.Headers.GetValues("TTL").Single());
@@ -74,6 +74,16 @@ public class WebPushSenderTests
     {
         var (pub, priv) = Vapid();
         Assert.Equal(expected, await Sender(new PushService(status), pub, priv).SendAsync(Device(), Note, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task A_stored_untrusted_endpoint_never_reaches_the_transport()
+    {
+        var (pub, priv) = Vapid();
+        var service = new PushService(HttpStatusCode.Created);
+        var result = await Sender(service, pub, priv).SendAsync(Device() with { Endpoint = "https://127.0.0.1/private" }, Note, CancellationToken.None);
+        Assert.Equal(PushOutcome.Failed, result);
+        Assert.Null(service.Request);
     }
 
     [Fact]

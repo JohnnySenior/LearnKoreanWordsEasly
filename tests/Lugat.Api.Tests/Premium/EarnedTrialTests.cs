@@ -142,7 +142,7 @@ public class EarnedTrialTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<PushSubscriptionService>()
-                .SubscribeAsync(userId, new PushSubscribeRequest("https://push.example/phone", "p256dh", "auth"), "test", CancellationToken.None);
+                .SubscribeAsync(userId, new PushSubscribeRequest("https://fcm.googleapis.com/phone", "p256dh", "auth"), "test", CancellationToken.None);
         }
 
         factory.Time.Advance(TimeSpan.FromDays(1)); // two days left

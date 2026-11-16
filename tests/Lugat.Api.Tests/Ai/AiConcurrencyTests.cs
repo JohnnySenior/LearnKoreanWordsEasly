@@ -44,6 +44,21 @@ public class AiConcurrencyTests
     }
 
     [Fact]
+    public async Task Strict_budget_refuses_an_unpriced_model_before_contacting_it()
+    {
+        var ai = new FakeAiProvider(AiProviderKind.OpenAi) { Answer = _ => Answer };
+        await using var factory = new ApiFactory { AiProviders = [ai], AdminTelegramIds = [ApiFactory.UserA] };
+        factory.Settings["Ai:Budget:RequireKnownPrices"] = "true";
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var response = await client.PostAsync("/api/ai/ping/OpenAi", null);
+        response.EnsureSuccessStatusCode();
+        Assert.False((await response.Content.ReadFromJsonAsync<AiPingResult>(Json))!.Ok);
+        Assert.Empty(ai.Requests);
+        await using var scope = factory.Services.CreateAsyncScope();
+        Assert.Empty(await scope.ServiceProvider.GetRequiredService<AppDbContext>().AiUsages.ToListAsync());
+    }
+
+    [Fact]
     public async Task Parallel_checks_with_the_same_id_pay_once_and_return_the_same_result()
     {
         var ai = new BlockingProvider();

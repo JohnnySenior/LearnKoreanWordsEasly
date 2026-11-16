@@ -53,6 +53,15 @@ public static partial class UnitTestGenerator
         {
             // 안 / 아니다 "emas": the prompt says which one is meant (L-37).
             var twins = Vocabulary.MeaningTwins.Unhinted(w.ItemId, w.Korean, w.Uzbek, twinPool);
+            // Only interchangeable, unqualified entries with the same part of speech and complete meaning set.
+            // A context/usage hint or partially overlapping meanings still require the intended word.
+            var meanings = Meanings(w.Uzbek);
+            if (twins.Count > 0 && BareMeanings(w.Uzbek).SetEquals(meanings)
+                && twins.All(t => t.Pos == w.Pos && Meanings(t.Uzbek).SetEquals(meanings) && BareMeanings(t.Uzbek).SetEquals(meanings)))
+            {
+                return new TestQuestion(0, kind, w.Uzbek, null, null, [], w.Korean, null, null, w.ItemId, false,
+                    twins.Select(t => t.Korean).Distinct().ToList());
+            }
             var prompt = twins.Count == 0 ? w.Uzbek : $"{w.Uzbek} ({Vocabulary.MeaningTwins.Hint(w.Pos, twins)})";
             return new TestQuestion(0, kind, prompt, null, null, [], w.Korean, null, null, w.ItemId, false);
         }
@@ -63,6 +72,12 @@ public static partial class UnitTestGenerator
         }
 
         var wrong = Distractors(w, pool, random);
+        if (wrong.Count < Options - 1)
+        {
+            // A tiny or synonymous deck must not reveal the answer by offering it alone.
+            return Question(kind == TestQuestionKind.WordListening ? TestQuestionKind.WordListeningTyped : TestQuestionKind.WordKoreanTyped,
+                w, pool, twinPool, random);
+        }
         return kind switch
         {
             TestQuestionKind.WordMeaning => new TestQuestion(0, kind, w.Shown, null, null,

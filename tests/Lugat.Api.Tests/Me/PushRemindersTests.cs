@@ -51,7 +51,7 @@ public class PushRemindersTests
         return factory;
     }
 
-    private static PushSubscribeRequest Device(string name) => new($"https://push.example/{name}", "p256dh-" + name, "auth-" + name);
+    private static PushSubscribeRequest Device(string name) => new($"https://fcm.googleapis.com/{name}", "p256dh-" + name, "auth-" + name);
 
     /// <summary>A learner with an opened unit and <paramref name="due"/> cards due now.</summary>
     private static async Task<Guid> LearnerAsync(ApiFactory factory, VerifiedLogin login, int due)
@@ -81,6 +81,58 @@ public class PushRemindersTests
     private static VerifiedLogin Google(string id) => new(LoginProvider.Google, id, "G", null);
 
     [Fact]
+    public async Task Concurrent_subscriptions_keep_one_device_and_apply_the_winning_owners_keys()
+    {
+        await using var factory = NewFactory();
+        var a = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var b = await factory.SignedInClientAsync(ApiFactory.UserB);
+        var device = Device("shared");
+        var results = await Task.WhenAll(
+            a.PostAsJsonAsync("/api/me/push", device, ApiFactory.Json),
+            b.PostAsJsonAsync("/api/me/push", device with { Auth = "second-owner" }, ApiFactory.Json));
+        Assert.All(results, r => Assert.Equal(HttpStatusCode.NoContent, r.StatusCode));
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = await db.PushSubscriptions.SingleAsync();
+        var login = await db.UserLogins.SingleAsync(l => l.UserId == saved.UserId);
+        Assert.Equal(login.ProviderUserId == ApiFactory.UserA.ToString() ? device.Auth : "second-owner", saved.Auth);
+        Assert.True((await db.Users.SingleAsync(u => u.Id == saved.UserId)).RemindersEnabled);
+    }
+
+    [Fact]
+    public async Task A_database_write_failure_is_not_reported_as_a_saved_subscription()
+    {
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.ExecuteSqlRawAsync("""
+                CREATE FUNCTION reject_push_write() RETURNS trigger LANGUAGE plpgsql AS $$
+                BEGIN RAISE EXCEPTION 'test storage failure'; END $$;
+                CREATE TRIGGER reject_push_write BEFORE INSERT ON push_subscriptions
+                FOR EACH ROW EXECUTE FUNCTION reject_push_write();
+                """);
+        }
+
+        var response = await client.PostAsJsonAsync("/api/me/push", Device("failure"), ApiFactory.Json);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        await using var check = factory.Services.CreateAsyncScope();
+        Assert.Empty(await check.ServiceProvider.GetRequiredService<AppDbContext>().PushSubscriptions.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("https://127.0.0.1/private")]
+    [InlineData("https://fcm.googleapis.com.attacker.example/send")]
+    public async Task A_subscription_to_an_untrusted_host_is_rejected(string endpoint)
+    {
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        var response = await client.PostAsJsonAsync("/api/me/push", Device("bad") with { Endpoint = endpoint }, ApiFactory.Json);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
     public async Task A_google_learner_with_a_subscribed_phone_gets_the_reminder_by_push()
     {
         await using var factory = NewFactory();
@@ -92,7 +144,7 @@ public class PushRemindersTests
         Assert.Equal(0, await RemindersTests.RunAsync(factory)); // once per occurrence
 
         var (target, note) = Assert.Single(_push.Sent);
-        Assert.Equal(("https://push.example/phone", "p256dh-phone", "auth-phone"), (target.Endpoint, target.P256dh, target.Auth));
+        Assert.Equal(("https://fcm.googleapis.com/phone", "p256dh-phone", "auth-phone"), (target.Endpoint, target.P256dh, target.Auth));
         Assert.StartsWith("Bugun 2 ta so‘zni takrorlash vaqti. ~", note.Body);
         Assert.Equal(("/takrorlash", ReminderService.PushTag), (note.Url, note.Tag)); // tapping opens practice
         Assert.Empty(_telegram.Sent);
@@ -153,7 +205,7 @@ public class PushRemindersTests
         Assert.Equal(HttpStatusCode.UnprocessableEntity, (await a.PostAsJsonAsync("/api/me/push", new PushSubscribeRequest("http://insecure", "k", "a"), ApiFactory.Json)).StatusCode);
 
         // B cannot remove A's device, even knowing its endpoint.
-        using var other = new HttpRequestMessage(HttpMethod.Delete, "/api/me/push") { Content = JsonContent.Create(new PushUnsubscribeRequest("https://push.example/a-phone"), options: ApiFactory.Json) };
+        using var other = new HttpRequestMessage(HttpMethod.Delete, "/api/me/push") { Content = JsonContent.Create(new PushUnsubscribeRequest("https://fcm.googleapis.com/a-phone"), options: ApiFactory.Json) };
         Assert.Equal(HttpStatusCode.NoContent, (await b.SendAsync(other)).StatusCode);
         var prefs = await a.GetFromJsonAsync<PreferencesDto>("/api/me/preferences", ApiFactory.Json);
         Assert.Equal((true, true, 1), (prefs!.RemindersAvailable, prefs.PushAvailable, prefs.PushDevices));
@@ -164,7 +216,7 @@ public class PushRemindersTests
         Assert.StartsWith("Sinov xabari", Assert.Single(_push.Sent).Notification.Body);
         Assert.Empty(_telegram.Sent);
 
-        using var own = new HttpRequestMessage(HttpMethod.Delete, "/api/me/push") { Content = JsonContent.Create(new PushUnsubscribeRequest("https://push.example/a-phone"), options: ApiFactory.Json) };
+        using var own = new HttpRequestMessage(HttpMethod.Delete, "/api/me/push") { Content = JsonContent.Create(new PushUnsubscribeRequest("https://fcm.googleapis.com/a-phone"), options: ApiFactory.Json) };
         Assert.Equal(HttpStatusCode.NoContent, (await a.SendAsync(own)).StatusCode);
         Assert.Equal(0, (await a.GetFromJsonAsync<PreferencesDto>("/api/me/preferences", ApiFactory.Json))!.PushDevices);
     }
