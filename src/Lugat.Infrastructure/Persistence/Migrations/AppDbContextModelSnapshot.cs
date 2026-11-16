@@ -230,6 +230,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<DateTimeOffset?>("PronunciationAskedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PronunciationKo")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1418,6 +1421,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Order")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("PronunciationAskedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PronunciationKo")
                         .HasMaxLength(100)

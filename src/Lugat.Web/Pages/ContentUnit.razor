@@ -35,15 +35,21 @@
     {
         <a class="button" href="@($"kontent/{Id}/tanishuv")">Tanishtirish darsi</a>
     }
-    @if (_unit.Remaining > 0)
+    @if (NeedsPreparation)
     {
-        <button class="button primary" disabled="@_busy" @onclick="DraftAsync">AI qoralama (@_unit.Remaining so‘z)</button>
+        <button class="button primary" disabled="@_busy" @onclick="PrepareAsync">Bo‘limni tayyorlash</button>
+    }
+    @if (_preparing)
+    {
+        <button class="button" disabled="@_stopPreparation" @onclick="() => _stopPreparation = true">@(_stopPreparation ? "To‘xtatilmoqda…" : "To‘xtatish")</button>
     }
     @if (!Published)
     {
         <button class="button" disabled="@(_busy || _unit.Unit.Reviewed < _unit.Unit.Words)" @onclick="PublishAsync">Nashr qilish</button>
     }
 </div>
+<p class="muted small-text">Yetishmayotgan qoralama, tuzoq va talaffuzlar birgalikda tayyorlanadi. Tayyor ma’lumot qayta yozilmaydi.</p>
+<PronunciationReviewPanel ShowDraftButton="false" Words="@PronunciationWords" Url="@($"api/admin/units/{Id}/pronunciations")" Disabled="_busy" Changed="RefreshPronunciationsAsync" BusyChanged="v => _busy = v" />
 @if (_unit.HintsNeeded > 0)
 {
     @* L-74: shared meanings without a hint, so the editor looks only at these. *@
@@ -126,6 +132,7 @@
     }
 </section>
 
+<fieldset class="preparation-words" disabled="@_busy">
 @foreach (var w in _unit.Words)
 {
     var word = w;
@@ -211,6 +218,8 @@
     </section>
 }
 
+</fieldset>
+
 @code {
     [Parameter] public Guid Id { get; set; }
 
@@ -280,33 +289,46 @@
         Questions = w.Questions.ToList(),
     };
 
-    /// <summary>Calls the draft endpoint until every word has a draft; each call is one AI request for 10 words.</summary>
-    private async Task DraftAsync()
+    private bool _preparing, _stopPreparation;
+    private bool NeedsPreparation => _unit is not null && (_unit.Remaining > 0 || _unit.ScenesRemaining > 0 || _unit.Words.Any(w =>
+        w.PronunciationReview is null || w.PronunciationReview is { Reviewed: false, Reading: null, AskedAt: null }));
+    private IReadOnlyList<PronunciationReviewPanel.Word> PronunciationWords => _unit?.Words
+        .Select(w => new PronunciationReviewPanel.Word(w.Id, w.Word, w.TranslationUz, w.PronunciationReview)).ToList() ?? [];
+
+    private async Task PrepareAsync()
     {
-        _busy = true;
-        _error = null;
-        while (_unit is { Remaining: > 0 })
+        (_busy, _preparing, _stopPreparation, _error) = (true, true, false, null);
+        _status = "Bo‘lim tayyorlanmoqda…";
+        while (!_stopPreparation)
         {
-            _status = $"AI yozmoqda… qoldi: {_unit.Remaining} so‘z";
             StateHasChanged();
-            var before = _unit.Remaining;
-            var result = await Api.SendJsonAsync<UnitAdminDto>(HttpMethod.Post, $"api/admin/units/{Id}/draft", timeout: TimeSpan.FromMinutes(3));
-            if (result.Value is not { } unit)
-            {
-                _error = result.Error;
-                break;
-            }
-
-            Show(unit);
-            if (unit.Remaining >= before)
-            {
-                _error = "AI bu so‘zlar uchun yaroqli javob bermadi. Ularni qo‘lda to‘ldiring yoki keyinroq qayta urinib ko‘ring.";
-                break;
-            }
+            var result = await Api.SendJsonAsync<UnitPreparationDto>(HttpMethod.Post, $"api/admin/units/{Id}/prepare", timeout: TimeSpan.FromMinutes(3));
+            if (result.Value is not { } prepared) { _error = result.Error; break; }
+            Show(prepared.Unit);
+            _status = $"{prepared.Step} saqlandi. Davom etmoqda…";
+            if (prepared.Done) break;
         }
+        _status = _error is not null ? null : _stopPreparation ? "To‘xtatildi. Tayyor qoralamalar saqlangan; keyin davom ettirishingiz mumkin." : "Bo‘lim tayyor. Takliflarni tekshirib, tasdiqlang.";
+        (_busy, _preparing) = (false, false);
+    }
 
-        _status = _error is null ? "Qoralama tayyor. Endi har so‘zni tekshiring." : null;
-        _busy = false;
+    private async Task RefreshPronunciationsAsync()
+    {
+        var result = await Api.GetAsync<UnitAdminDto>($"api/admin/units/{Id}");
+        if (result.Value is { } unit)
+        {
+            // Preserve unsaved typing when only pronunciation metadata changed.
+            foreach (var w in unit.Words)
+            {
+                var old = _unit?.Words.FirstOrDefault(v => v.Id == w.Id);
+                if (old is null || old.TranslationUz != w.TranslationUz || old.Romanization != w.Romanization || old.ExampleKo != w.ExampleKo
+                    || old.ExampleUz != w.ExampleUz || old.TrapUz != w.TrapUz || old.TrapCue != w.TrapCue || old.TrapWrong != w.TrapWrong
+                    || old.TrapRight != w.TrapRight || old.Theme != w.Theme
+                    || System.Text.Json.JsonSerializer.Serialize(old.Questions) != System.Text.Json.JsonSerializer.Serialize(w.Questions)) Replace(w);
+            }
+            _unit = unit;
+        }
+        else _error = result.Error;
     }
 
     private void PronunciationChanged(Guid wordId, PronunciationReviewDto review)

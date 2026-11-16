@@ -1633,3 +1633,12 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .pronunciation-editor > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 14px; }
 .pronunciation-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .pronunciation-editor-actions button { min-height: 44px; }
+
+.pronunciation-review-list { list-style: none; padding: 0; margin: 12px 0; }
+.pronunciation-review-list > li { padding: 12px 0; border-top: 1px solid var(--color-divider); }
+.pronunciation-review-select { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.pronunciation-review-select input { flex: 0 0 22px; width: 22px; height: 22px; margin: 11px; accent-color: var(--color-accent-600); }
+.pronunciation-review-select span { min-width: 0; overflow-wrap: anywhere; }
+.pronunciation-review-list .field { margin: 6px 0; }
+.pronunciation-review-panel h2 { margin-top: 0; }
+.preparation-words { border: 0; padding: 0; margin: 0; min-width: 0; }

@@ -74,6 +74,9 @@ public sealed class CatalogWord
 
     public bool PronunciationReviewed { get; set; }
 
+    /// <summary>An uncertain AI answer is remembered so preparation does not keep billing for it.</summary>
+    public DateTimeOffset? PronunciationAskedAt { get; set; }
+
     public string? Romanization { get; set; }
 
     public string? ExampleKo { get; set; }

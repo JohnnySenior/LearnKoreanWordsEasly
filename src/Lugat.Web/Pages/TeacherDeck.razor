@@ -37,6 +37,8 @@
     </div>
 }
 
+<PronunciationReviewPanel Words="@PronunciationWords" Url="@($"api/teacher/decks/{Id}/pronunciations")" Group="true" Disabled="_busy" Changed="RefreshPronunciationsAsync" BusyChanged="v => _busy = v" />
+
 <section class="card">
     @* L-71: the homework's due day; it can be set or moved after publishing too. *@
     <h2>Muddat</h2>
@@ -391,6 +393,15 @@
         {
             (_newKorean, _newUzbek) = ("", "");
         }
+    }
+
+    private IReadOnlyList<PronunciationReviewPanel.Word> PronunciationWords => _deck?.Words
+        .Select(w => new PronunciationReviewPanel.Word(w.Id, w.Korean, w.Uzbek, w.PronunciationReview)).ToList() ?? [];
+    private async Task RefreshPronunciationsAsync()
+    {
+        var result = await Api.GetAsync<GroupDeckDto>($"api/teacher/decks/{Id}");
+        if (result.Value is { } deck) _deck = deck;
+        else _error = result.Error;
     }
 
     private void PronunciationChanged(Guid wordId, PronunciationReviewDto review)

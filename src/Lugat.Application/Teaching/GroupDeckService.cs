@@ -87,7 +87,7 @@ public sealed class GroupDeckService(
             words.Select(w => new GroupDeckWordDto(w.Id, w.Order, w.Korean, w.Uzbek, w.Source, w.SharedItemId != null,
                 w.CatalogWordId is { } c ? units.GetValueOrDefault(c) : null, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz,
                 w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapSceneDto(w.TrapCue, wrong, right) : null,
-                new PronunciationReviewDto(w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed, w.Version))).ToList(),
+                new PronunciationReviewDto(w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList(),
             await db.GroupMembers.CountAsync(m => m.GroupId == deck.GroupId && m.LeftAt == null, ct),
             await premium.CanUseAiAsync(teacherId, ct),
             words.Count(Pending),
@@ -328,7 +328,7 @@ public sealed class GroupDeckService(
         {
             var fresh = await NewWordAsync(deck, word.Order, korean, uzbek, ct);
             // The meaning can distinguish homonyms with different standard readings too.
-            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (null, null, false);
+            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed, word.PronunciationAskedAt) = (null, null, false, null);
             (word.Korean, word.Uzbek, word.Source, word.CatalogWordId, word.SharedItemId) = (korean, uzbek, fresh.Source, fresh.CatalogWordId, fresh.SharedItemId);
             (word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.TrapCue, word.TrapWrong, word.TrapRight) =
                 (fresh.Romanization, fresh.ExampleKo, fresh.ExampleUz, fresh.TrapUz, fresh.TrapCue, fresh.TrapWrong, fresh.TrapRight);
