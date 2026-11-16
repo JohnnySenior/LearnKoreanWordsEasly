@@ -42,6 +42,13 @@
 
 @if (_hasIntroduction) { <p class="small-text"><a href="@($"bolimlar/{Id}/tanishuv")">✧ Bo‘lim bilan tanishuv</a></p> }
 
+<PronunciationSummary Count="_unit.PronunciationCount">
+    @foreach (var w in _unit.Words.Where(w => w.Pronunciation is not null))
+    {
+        <div class="pronunciation-list-word"><strong lang="ko">@w.Word</strong><PronunciationHint Korean="@w.Word" Pronunciation="w.Pronunciation" /></div>
+    }
+</PronunciationSummary>
+
 <UnitStepper Current="_step" Compact="true" OnSelect="s => _step = s" Done="UnitStepper.DoneOf(_unit.Unit)" />
 
 @if (_error is not null)
@@ -116,6 +123,10 @@
                     else
                     {
                         <span>@w.Word</span>
+                        @if (w.Pronunciation is not null)
+                        {
+                            <button type="button" class="pronunciation-ear" aria-label="@($"{w.Word}: talaffuz farqini ko‘rish")" aria-expanded="@(_selected == w.Id ? "true" : "false")" aria-controls="@($"word-pronunciation-{w.Id}")" @onclick:stopPropagation="true" @onclick="() => _selected = _selected == word.Id ? null : word.Id"><Icon Name="ear" /></button>
+                        }
                         @if (ShowRomanization && w.Romanization is not null)
                         {
                             <small>@w.Romanization</small>
@@ -137,8 +148,15 @@
             {
                 <tr class="speak-row">
                     <td></td>
-                    <td colspan="2">
-                        <Speak Text="@w.Word" />
+                    <td colspan="2" id="@($"word-pronunciation-{w.Id}")">
+                        @if (w.Pronunciation is not null)
+                        {
+                            <PronunciationHint Korean="@w.Word" Pronunciation="w.Pronunciation" ShowTrigger="false" />
+                        }
+                        else
+                        {
+                            <Speak Text="@w.Word" />
+                        }
                         @if (!uzHidden)
                         {
                             <div class="usage-note">

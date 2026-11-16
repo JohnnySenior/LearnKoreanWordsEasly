@@ -1,3 +1,4 @@
+using Lugat.Application.Pronunciation;
 using Lugat.Application.Abstractions;
 using Lugat.Contracts;
 using Lugat.Domain.Learning;
@@ -454,6 +455,21 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             scene = new Catalog.TrapScene(own.TrapCue, own.TrapWrong!, own.TrapRight!);
         }
 
+        PronunciationDto? pronunciation = null;
+        var personal = await db.PersonalWords.AsNoTracking().FirstOrDefaultAsync(w => w.OwnerId == card.OwnerId && w.LearningItemId == sense.Id, ct);
+        if (personal?.GroupDeckWordId is { } groupWordId && await db.GroupDeckWords.AsNoTracking().SingleOrDefaultAsync(w => w.Id == groupWordId, ct) is { } groupWord)
+        {
+            pronunciation = PronunciationService.Learner(sense.Korean, groupWord.PronunciationKo, groupWord.PronunciationNoteUz, groupWord.PronunciationReviewed);
+        }
+        else if (sense.CatalogWordId is { } pronunciationId && await db.CatalogWords.AsNoTracking().SingleOrDefaultAsync(w => w.Id == pronunciationId, ct) is { } catalogWord)
+        {
+            pronunciation = PronunciationService.Learner(sense.Korean, catalogWord.PronunciationKo, catalogWord.PronunciationNoteUz, catalogWord.PronunciationReviewed);
+        }
+        else if (personal is not null)
+        {
+            pronunciation = PronunciationService.Learner(sense.Korean, personal.PronunciationKo, personal.PronunciationNoteUz, personal.PronunciationReviewed);
+        }
+
         var unit = sense.UnitId is { } unitRef ? (await LearnerItems.UnitLabelsAsync(db, [unitRef], ct)).GetValueOrDefault(unitRef) : null;
         return new CardPromptDto(
             position,
@@ -470,7 +486,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             previews,
             trap,
             koreanToUzbek ? null : await Vocabulary.MeaningTwins.HintAsync(db, card.OwnerId, sense, ct),
-            scene is null ? null : new TrapSceneDto(scene.Cue, scene.Wrong, scene.Right));
+            scene is null ? null : new TrapSceneDto(scene.Cue, scene.Wrong, scene.Right), pronunciation);
     }
 
     private IQueryable<ActiveCard> ActiveCards(Guid ownerId) =>

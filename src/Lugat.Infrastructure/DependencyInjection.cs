@@ -57,6 +57,7 @@ public static class DependencyInjection
         services.Configure<Application.Teaching.TeachingOptions>(config.GetSection(Application.Teaching.TeachingOptions.SectionName));
         services.AddScoped<Application.Teaching.TeacherInsightsService>();
         services.AddScoped<Application.Teaching.GroupDeckService>();
+        services.AddScoped<Application.Pronunciation.PronunciationService>();
         services.AddScoped<Application.Teaching.GroupDeckReport>();
         services.AddScoped<Application.Admin.AdminService>();
         services.Configure<Application.Catalog.CatalogOptions>(config.GetSection(Application.Catalog.CatalogOptions.SectionName));

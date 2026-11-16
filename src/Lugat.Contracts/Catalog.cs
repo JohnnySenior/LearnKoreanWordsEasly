@@ -55,10 +55,11 @@ public sealed record CatalogWordDto(
     string? ExampleUz,
     string? TrapUz,
     string? Theme,
-    string Source);
+    string Source,
+    PronunciationDto? Pronunciation = null);
 
 /// <param name="CardsReady">The learner started the unit: its cards exist (spec §5.3).</param>
-public sealed record UnitDto(UnitSummaryDto Unit, bool CardsReady, IReadOnlyList<CatalogWordDto> Words);
+public sealed record UnitDto(UnitSummaryDto Unit, bool CardsReady, IReadOnlyList<CatalogWordDto> Words, int PronunciationCount = 0);
 
 // Content work (spec §2.4, §10): editors and admins.
 
@@ -124,7 +125,8 @@ public sealed record CatalogWordAdminDto(
     string? TrapWrong = null,
     string? TrapRight = null,
     bool TrapScenePending = false,
-    bool TrapSceneAsked = false);
+    bool TrapSceneAsked = false,
+    PronunciationReviewDto? PronunciationReview = null);
 
 /// <param name="Remaining">Words still waiting for an AI draft.</param>
 /// <param name="ScenesRemaining">Words with a trap note the AI has not yet been asked to act out (L-52).</param>

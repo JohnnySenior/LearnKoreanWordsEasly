@@ -43,6 +43,11 @@ public static class TeachingEndpoints
             return Results.NoContent();
         });
         // The teacher's vocabulary lists for a group (L-67). Filling with the AI and publishing need the paid plan.
+        teacher.MapPut("/decks/{id:guid}/words/{wordId:guid}/pronunciation", (Guid id, Guid wordId, ReviewPronunciationRequest body, ClaimsPrincipal user, Lugat.Application.Pronunciation.PronunciationService s, CancellationToken ct) =>
+            s.GroupAsync(user.GetUserId(), id, wordId, body, false, ct));
+        teacher.MapPost("/decks/{id:guid}/words/{wordId:guid}/pronunciation/suggest", (Guid id, Guid wordId, PronunciationVersionRequest body, ClaimsPrincipal user, Lugat.Application.Pronunciation.PronunciationService s, CancellationToken ct) =>
+            s.GroupAsync(user.GetUserId(), id, wordId, new ReviewPronunciationRequest(null, null, false, body.Version), true, ct));
+
         teacher.MapGet("/groups/{id:guid}/decks", (Guid id, ClaimsPrincipal user, GroupDeckService s, CancellationToken ct) => s.ListAsync(user.GetUserId(), id, ct));
         teacher.MapPost("/groups/{id:guid}/decks", (Guid id, CreateGroupDeckRequest body, ClaimsPrincipal user, GroupDeckService s, CancellationToken ct) =>
             s.CreateAsync(user.GetUserId(), id, body, ct));

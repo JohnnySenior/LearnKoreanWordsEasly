@@ -278,6 +278,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Pos).HasMaxLength(32);
             e.Property(x => x.Gloss).HasMaxLength(200);
             e.Property(x => x.TranslationUz).HasMaxLength(300);
+            e.Property(x => x.PronunciationKo).HasMaxLength(100);
+            e.Property(x => x.PronunciationNoteUz).HasMaxLength(500);
             e.Property(x => x.Romanization).HasMaxLength(100);
             e.Property(x => x.ExampleKo).HasMaxLength(200);
             e.Property(x => x.ExampleUz).HasMaxLength(300);
@@ -395,6 +397,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Id).ValueGeneratedNever(); // chosen by the page once, so a double tap adds one word (API01)
             e.HasIndex(x => new { x.OwnerId, x.LearningItemId }).IsUnique();
             e.HasIndex(x => new { x.OwnerId, x.IntroduceOn });
+            e.Property(x => x.PronunciationKo).HasMaxLength(100);
+            e.Property(x => x.PronunciationNoteUz).HasMaxLength(500);
             e.Property(x => x.Romanization).HasMaxLength(100);
             e.Property(x => x.ExampleKo).HasMaxLength(200);
             e.Property(x => x.ExampleUz).HasMaxLength(300);
@@ -426,9 +430,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         b.Entity<Domain.Teaching.GroupDeckWord>(e =>
         {
             e.ToTable("group_deck_words");
+            e.Property(x => x.Version).IsRowVersion();
             e.Property(x => x.Korean).HasMaxLength(Domain.Teaching.GroupDeckWord.MaxKorean);
             e.Property(x => x.Uzbek).HasMaxLength(Domain.Teaching.GroupDeckWord.MaxUzbek);
             e.Property(x => x.Source).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.PronunciationKo).HasMaxLength(100);
+            e.Property(x => x.PronunciationNoteUz).HasMaxLength(500);
             e.Property(x => x.Romanization).HasMaxLength(100);
             e.Property(x => x.ExampleKo).HasMaxLength(200);
             e.Property(x => x.ExampleUz).HasMaxLength(300);

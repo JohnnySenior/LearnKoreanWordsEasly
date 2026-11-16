@@ -1,3 +1,4 @@
+using Lugat.Application.Pronunciation;
 using System.Text.Json;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
@@ -111,6 +112,7 @@ public sealed class PersonalWordService(
             item = shared ?? NewItem(ownerId, source.Word, source.TranslationUz!, now);
             word = NewWord(request, ownerId, item, now, source.Romanization, source.ExampleKo, source.ExampleUz, source.TrapUz, CatalogAdminService.LearnerScene(source));
             word.CatalogWordId = source.Id;
+            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (source.PronunciationKo, source.PronunciationNoteUz, source.PronunciationReviewed);
         }
         else
         {
@@ -269,7 +271,7 @@ public sealed class PersonalWordService(
         return new GroupDeckLearnerDto(deckId, option.Key, option.Name, option.GroupName, option.TeacherName, published, words,
             words.Count(w => w.State == MyWordState.Learned), words.Count(w => w.State == MyWordState.Learning), words.Count(w => w.State == MyWordState.New),
             test is null ? null : new GroupDeckTestDto(test.Id, test.Answers.Count(a => a.IsCorrect), test.Questions.Count - test.Answers.Count(a => a.Technical), test.FinishedAt!.Value),
-            deck.DueOn, done.Seen, done.Done);
+            deck.DueOn, done.Seen, done.Done, words.Count(w => w.Pronunciation is not null));
     }
 
     public async Task<WordDeckDto> CreateDeckAsync(Guid ownerId, DeckNameRequest request, CancellationToken ct)
@@ -489,6 +491,10 @@ public sealed class PersonalWordService(
         var items = await db.LearningItems.AsNoTracking().Where(i => ids.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
         var cards = (await db.Cards.AsNoTracking().Where(c => c.OwnerId == ownerId && ids.Contains(c.LearningItemId)).ToListAsync(ct))
             .ToLookup(c => c.LearningItemId);
+        var groupIds = words.Select(w => w.GroupDeckWordId).OfType<Guid>().ToList();
+        var groupReadings = await db.GroupDeckWords.AsNoTracking().Where(w => groupIds.Contains(w.Id)).ToDictionaryAsync(w => w.Id, ct);
+        var catalogIds = words.Select(w => w.CatalogWordId).OfType<Guid>().ToList();
+        var catalogReadings = await db.CatalogWords.AsNoTracking().Where(w => catalogIds.Contains(w.Id)).ToDictionaryAsync(w => w.Id, ct);
         var now = time.GetUtcNow();
         return words.Where(w => items.ContainsKey(w.LearningItemId)).Select(w =>
         {
@@ -497,8 +503,13 @@ public sealed class PersonalWordService(
             var state = own.Count == 2 && own.All(c => Mastery.IsMastered(c.ToState(), now)) ? MyWordState.Learned
                 : own.All(c => c.Phase == LearningPhase.New) ? MyWordState.New
                 : MyWordState.Learning;
+            var pronunciation = w.GroupDeckWordId is { } g && groupReadings.TryGetValue(g, out var gw)
+                ? PronunciationService.Learner(item.Korean, gw.PronunciationKo, gw.PronunciationNoteUz, gw.PronunciationReviewed)
+                : w.CatalogWordId is { } c && catalogReadings.TryGetValue(c, out var cw)
+                    ? PronunciationService.Learner(item.Korean, cw.PronunciationKo, cw.PronunciationNoteUz, cw.PronunciationReviewed)
+                    : PronunciationService.Learner(item.Korean, w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed);
             return new MyWordDto(w.Id, w.LearningItemId, item.Korean, item.Uzbek, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz, w.Source, w.DeckId,
-                state, w.CreatedAt, w.IntroduceOn, w.GroupDeckId, w.FromGroupDeck);
+                state, w.CreatedAt, w.IntroduceOn, w.GroupDeckId, w.FromGroupDeck, pronunciation);
         }).ToList();
     }
 

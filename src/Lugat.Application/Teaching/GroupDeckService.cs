@@ -1,3 +1,4 @@
+using Lugat.Application.Pronunciation;
 using System.Text.Json;
 using Lugat.Application.Abstractions;
 using Lugat.Application.Ai;
@@ -64,7 +65,7 @@ public sealed class GroupDeckService(
         db.GroupDecks.Add(new GroupDeck { Id = request.Id, GroupId = groupId, TeacherUserId = teacherId, Name = name, Status = GroupDeckStatus.Draft, CreatedAt = now });
         try
         {
-            await db.SaveChangesAsync(ct);
+            await SaveAsync(ct);
         }
         catch (DbUpdateException)
         {
@@ -85,7 +86,8 @@ public sealed class GroupDeckService(
         return new GroupDeckDto(deck.Id, deck.GroupId, group.Name, deck.Name, deck.Status, deck.PublishedAt,
             words.Select(w => new GroupDeckWordDto(w.Id, w.Order, w.Korean, w.Uzbek, w.Source, w.SharedItemId != null,
                 w.CatalogWordId is { } c ? units.GetValueOrDefault(c) : null, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz,
-                w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapSceneDto(w.TrapCue, wrong, right) : null)).ToList(),
+                w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapSceneDto(w.TrapCue, wrong, right) : null,
+                new PronunciationReviewDto(w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed, w.Version))).ToList(),
             await db.GroupMembers.CountAsync(m => m.GroupId == deck.GroupId && m.LeftAt == null, ct),
             await premium.CanUseAiAsync(teacherId, ct),
             words.Count(Pending),
@@ -122,7 +124,7 @@ public sealed class GroupDeckService(
             (deck.DueOn, deck.DueAt) = (null, null);
         }
 
-        await db.SaveChangesAsync(ct);
+        await SaveAsync(ct);
         return await GetAsync(teacherId, deckId, ct);
     }
 
@@ -132,7 +134,7 @@ public sealed class GroupDeckService(
     {
         var deck = await OwnDeckAsync(teacherId, deckId, ct);
         deck.Name = DeckName(request.Name);
-        await db.SaveChangesAsync(ct);
+        await SaveAsync(ct);
         return await GetAsync(teacherId, deckId, ct);
     }
 
@@ -282,7 +284,7 @@ public sealed class GroupDeckService(
             added++;
         }
 
-        await db.SaveChangesAsync(ct);
+        await SaveAsync(ct);
         return new GroupDeckImportDto(await GetAsync(teacherId, deckId, ct), added, skipped, problems);
     }
 
@@ -304,7 +306,7 @@ public sealed class GroupDeckService(
 
         var order = await db.GroupDeckWords.Where(w => w.GroupDeckId == deckId).Select(w => (int?)w.Order).MaxAsync(ct) ?? 0;
         db.GroupDeckWords.Add(await NewWordAsync(deck, order + 1, korean, uzbek, ct));
-        await db.SaveChangesAsync(ct);
+        await SaveAsync(ct);
         return await GetAsync(teacherId, deckId, ct);
     }
 
@@ -325,6 +327,8 @@ public sealed class GroupDeckService(
         if (korean != word.Korean || uzbek != word.Uzbek)
         {
             var fresh = await NewWordAsync(deck, word.Order, korean, uzbek, ct);
+            // The meaning can distinguish homonyms with different standard readings too.
+            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (null, null, false);
             (word.Korean, word.Uzbek, word.Source, word.CatalogWordId, word.SharedItemId) = (korean, uzbek, fresh.Source, fresh.CatalogWordId, fresh.SharedItemId);
             (word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.TrapCue, word.TrapWrong, word.TrapRight) =
                 (fresh.Romanization, fresh.ExampleKo, fresh.ExampleUz, fresh.TrapUz, fresh.TrapCue, fresh.TrapWrong, fresh.TrapRight);
@@ -342,7 +346,7 @@ public sealed class GroupDeckService(
             (word.TrapCue, word.TrapWrong, word.TrapRight) = (null, null, null); // the scene belongs to the trap
         }
 
-        await db.SaveChangesAsync(ct);
+        await SaveAsync(ct);
         return await GetAsync(teacherId, deckId, ct);
     }
 
@@ -394,7 +398,7 @@ public sealed class GroupDeckService(
                 word.Source = GroupWordSource.Ai;
             }
 
-            await db.SaveChangesAsync(ct);
+            await SaveAsync(ct);
         }
 
         return new GroupDeckFillDto(await GetAsync(teacherId, deckId, ct), filled, Math.Max(0, pending.Count - batch.Count));
@@ -437,7 +441,7 @@ public sealed class GroupDeckService(
             await GiveToLearnerAsync(db, deck, words, learner, now, ct);
         }
 
-        await db.SaveChangesAsync(ct);
+        await SaveAsync(ct);
         return await GetAsync(teacherId, deckId, ct);
     }
 
@@ -448,7 +452,7 @@ public sealed class GroupDeckService(
         var now = time.GetUtcNow();
         (deck.Status, deck.ArchivedAt) = (GroupDeckStatus.Archived, now);
         await WithdrawAsync(db, [deckId], null, now, ct);
-        await db.SaveChangesAsync(ct);
+        await SaveAsync(ct);
     }
 
     // ---- the learners' side: used by publishing, joining, leaving and closing a group ----
@@ -539,6 +543,7 @@ public sealed class GroupDeckService(
             {
                 Id = Guid.CreateVersion7(now), OwnerId = learnerId, LearningItemId = item.Id, GroupDeckId = deck.Id, GroupDeckWordId = word.Id, FromGroupDeck = true,
                 Source = word.CatalogWordId is null ? PersonalWordSource.Ai : PersonalWordSource.Catalog, CatalogWordId = word.CatalogWordId,
+                PronunciationKo = word.PronunciationKo, PronunciationNoteUz = word.PronunciationNoteUz, PronunciationReviewed = word.PronunciationReviewed,
                 Romanization = word.Romanization, ExampleKo = word.ExampleKo, ExampleUz = word.ExampleUz, TrapUz = word.TrapUz,
                 TrapCue = word.TrapCue, TrapWrong = word.TrapWrong, TrapRight = word.TrapRight, IntroduceOn = introduceOn, CreatedAt = now,
             };
@@ -601,6 +606,13 @@ public sealed class GroupDeckService(
         var keys = UnitTestGenerator.Meanings(uzbek);
         var match = candidates.FirstOrDefault(c => UnitTestGenerator.Meanings(c.TranslationUz!).Overlaps(keys));
         var source = match ?? candidates[0];
+        var pronunciationMatches = candidates.Where(c => UnitTestGenerator.Meanings(c.TranslationUz!).Overlaps(keys)).ToList();
+        var pronunciationSource = pronunciationMatches.Count == 1 ? pronunciationMatches[0] : candidates.Count == 1 ? candidates[0] : null;
+        if (pronunciationSource is { PronunciationReviewed: true })
+        {
+            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) =
+                (pronunciationSource.PronunciationKo, pronunciationSource.PronunciationNoteUz, true);
+        }
         var scene = CatalogAdminService.LearnerScene(source);
         (word.Source, word.CatalogWordId) = (GroupWordSource.Catalog, source.Id);
         (word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz) = (source.Romanization, source.ExampleKo, source.ExampleUz, source.TrapUz);
@@ -749,4 +761,16 @@ public sealed class GroupDeckService(
           }
         }
         """;
+
+    private async Task SaveAsync(CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("So‘z o‘zgargan. Sahifani yangilab qayta urinib ko‘ring.");
+        }
+    }
 }

@@ -43,7 +43,8 @@ public sealed record CardPromptDto(
     IReadOnlyList<RatingPreview> Previews,
     string? UsageTrap = null,
     string? MeaningHint = null,
-    TrapSceneDto? TrapScene = null);
+    TrapSceneDto? TrapScene = null,
+    PronunciationDto? Pronunciation = null);
 
 /// <summary>The trap acted out on the card (L-52): the Uzbek speaker's Korean is struck out, the right one follows.</summary>
 public sealed record TrapSceneDto(string? Cue, string Wrong, string Right);

@@ -846,3 +846,31 @@ Johnny auditda topilgan kamchiliklarni tuzatishni so‘radi. Ish `fix/audit-reli
 - Root Railway volume tayyorlangach entrypoint `gosu app` bilan root huquqini tashlaydi. Restore rehearsal skripti
   faqat yangi `lugat_rehearsal_*` bazaga tiklaydi. Production restore va haqiqiy telefon sinovlari alohida qoladi.
 
+
+## L-76 · Tekshirilgan Hangul talaffuzi (2026-11-16)
+
+Johnny tasdiqlagan: yozilishi va aytilishi farqli so‘zlar yonida quloq belgisi; bo‘lim va ustoz lug‘ati tepasida
+ularning soni va ochiladigan ro‘yxat. Talaffuz, izoh va mavjud TTS bepul. Premium havolasi mavjud
+`sinov/ogzaki` mashqiga ulanadi; shu bo‘lim so‘zlari bilan yangi maxsus ovozli mashq bu relizga kirmaydi.
+Alohida asosiy menyu yo‘q. Lotincha romanizatsiya sozlamasidan mustaqil; yozma javob hali asl imlo bilan.
+
+`CatalogWord`, `GroupDeckWord`, `PersonalWord`: `PronunciationKo` (100), `PronunciationNoteUz` (500),
+`PronunciationReviewed`. Bo‘sh qiymat «hali tekshirilmagan»; tekshirilgan o‘zgarmas o‘qilishda `PronunciationKo`
+so‘zning o‘zi bo‘ladi. Faqat tasdiqlangan va imlodan farqli o‘qilish o‘quvchi DTO’siga kiradi. Son serverda hisoblanadi.
+Eski yozuvlar avtomatik tasdiqlanmaydi; ommaviy kontentni ko‘rib chiqish alohida muharrir ishi.
+
+Katalogda muharrir/admin, guruhda faqat egasi AI taklifini oladi, tahrirlaydi va aniq tasdiqlaydi. AI bitta so‘zning
+lug‘aviy standart o‘qilishini taklif qiladi; xato/noaniq javob saqlanmaydi. AI mavjud gateway, narx va kunlik limitlardan
+foydalanadi (`catalog-draft` / `group-deck`); bepul qo‘lda tahrir mavjud. AI tasdiqlangan qiymatni bosib yozmaydi.
+Katalogdan guruhga talaffuz faqat tasdiqlangan, ma’nosi bo‘yicha yagona moslikda yoki yagona nomzodda olinadi.
+Noaniq omonimda talaffuz tanlanmaydi. Guruhdagi tasdiq umumiy katalogni o‘zgartirmaydi.
+
+L-67’dagi «berilgach tahrirlanmaydi» qoidasiga faqat talaffuz tuzatishi uchun istisno: berilgan lug‘atda ham ustoz
+izoh/talaffuzni tuzatishi yoki tasdig‘ini olib tashlashi mumkin; so‘z, tarjima, jadval va progress o‘zgarmaydi.
+Shaxsiy nusxalar yangilanadi; bog‘langan eski so‘zlar va kartalar guruh manbasini o‘qiydi. Guruhdagi imlo yoki ma’no
+tahriri eski talaffuz tasdig‘ini bekor qiladi. Katalog tuzatishi avval guruhga ko‘chirilgan nusxani ustozsiz almashtirmaydi.
+
+Talaffuz uchun alohida PUT `.../pronunciation` va POST `.../pronunciation/suggest`:
+`/api/admin/catalog/words/{id}` hamda `/api/teacher/decks/{id}/words/{wordId}`. Ikkalasi `Version` tekshiradi;
+`GroupDeckWord` ham xmin oladi. Kechikkan AI yoki parallel tahrir 409; qoralama o‘quvchiga tarqatilmaydi.
+Kartochkada UZ→KO talaffuz javob ochilgach ko‘rinadi. UI 44px nishon, nomlangan tugma va `aria-expanded` bilan.

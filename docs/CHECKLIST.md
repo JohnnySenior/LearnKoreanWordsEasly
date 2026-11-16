@@ -649,3 +649,23 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Haqiqiy production nusxasini alohida Railway muhitiga tiklash, RPO/RTO, audio va worker qabul sinovi.
   Sample bazadagi tekshiruv bu bandni yopmaydi. Telegram nusxalari retention’i L-46 bo‘yicha egasi qo‘lda bajaradi.
 
+
+## Hangul talaffuz farqlari · L-76 · 2026-11-16
+
+- [x] Katalog, guruh va shaxsiy so‘zga talaffuz, izoh va tasdiq holati; eski yozuvlar null/false bo‘lib qoladi.
+- [x] `PronunciationNotes` migratsiyasi; guruh so‘zida xmin, egasi/rol va eski versiya tekshiruvi.
+- [x] Bitta so‘zga AI qoralama, qo‘lda tahrir va aniq tasdiq; qoralama o‘quvchiga chiqmaydi.
+- [x] Noaniq katalog mosligida talaffuz olinmaydi; guruhdagi tasdiq umumiy katalogni o‘zgartirmaydi.
+- [x] Bo‘lim va guruhda server hisoblagichi, quloq tugmasi, Hangul o‘qilishi/izoh, mavjud TTS va Premium mashq havolasi.
+- [x] Ustozning berilgan lug‘atidagi talaffuz tuzatishi nusxa va kartalarda ko‘rinadi; imlo/ma’no tahriri tasdiqni bekor qiladi.
+- [x] Kartochka va yopiq jadvalda koreyscha javob yashirin paytda quloq tugmasi ham yashirin.
+- [x] Application: 15 yangi holat o‘tdi. Real PostgreSQL: dastlabki 3 yangi API testi o‘tdi; 32 ta bog‘liq API regressiyasi o‘tdi.
+- [x] Yakuniy yangi API: 6/6 (jumladan kechikkan AI + parallel tahrir 409, noto‘g‘ri AI qoralamani buzmaydi,
+  noaniq moslik olinmaydi, yozma javob imlosi saqlanadi). Application 134/134, Domain 106/106, web 50/50.
+- [x] Release build: 0 ogohlantirish, 0 xato; EF modelda pending o‘zgarish yo‘q.
+- [x] Real Chromium → API → PostgreSQL: 4/4 (o‘quv oqimi va talaffuz, yorug‘/qorong‘i). Talaffuz 360px,
+  klaviatura/44px, yopiq ustun va UZ→KO kartochka javobi, Premium havolasi, konsol/scroll tekshirildi.
+  `docs/screenshots/l76-pronunciation-{light,dark}.png`. Tashqi audio/AI mock’ni real deb ko‘rsatilmagan.
+- [~] Branch `feat/pronunciation-notes`: GitHub PR/CI tayyorlanmoqda.
+- [ ] Mavjud katalogdagi so‘zlarning talaffuzini muharrir ko‘rib chiqib tasdiqlashi kerak; migratsiya ularni tasdiqlamaydi.
+- [ ] Haqiqiy AI va telefon audio/mikrofon sinovi: lokal tekshiruvda tashqi pulli xizmatlar chaqirilmadi.

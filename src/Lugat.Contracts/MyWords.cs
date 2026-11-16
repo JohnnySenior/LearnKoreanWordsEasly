@@ -61,7 +61,8 @@ public sealed record MyWordDto(
     DateTimeOffset CreatedAt,
     DateOnly IntroduceOn,
     Guid? GroupDeckId = null,
-    bool FromGroupDeck = false);
+    bool FromGroupDeck = false,
+    PronunciationDto? Pronunciation = null);
 
 public sealed record WordDeckDto(Guid Id, string Name, int Words);
 
@@ -89,7 +90,8 @@ public sealed record GroupDeckLearnerDto(
     GroupDeckTestDto? LastTest,
     DateOnly? DueOn = null,
     int Seen = 0,
-    bool Done = false);
+    bool Done = false,
+    int PronunciationCount = 0);
 
 /// <param name="Correct">Right answers out of <paramref name="Questions"/> (technical errors not counted).</param>
 public sealed record GroupDeckTestDto(Guid TestId, int Correct, int Questions, DateTimeOffset FinishedAt);

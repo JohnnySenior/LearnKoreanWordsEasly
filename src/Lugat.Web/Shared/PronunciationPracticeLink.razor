@@ -1,0 +1,10 @@
+@using Lugat.Contracts
+@inject SessionService Api
+<a class="pronunciation-practice" href="@(_premium ? "sinov/ogzaki" : "premium?f=talaffuz")"><Icon Name="lock" Size="16" /> Talaffuzni mashq qilish · Premium</a>
+@code {
+    private bool _premium;
+    protected override async Task OnInitializedAsync()
+    {
+        _premium = (await Api.GetAsync<PremiumStatusDto>("api/me/premium")).Value?.IsPremium == true;
+    }
+}

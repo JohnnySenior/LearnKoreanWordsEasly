@@ -1,0 +1,32 @@
+@using Lugat.Contracts
+@if (Pronunciation is { } p)
+{
+    <div class="pronunciation-hint @(_open || !ShowTrigger ? "is-open" : "")" @onclick:stopPropagation="true">
+        @if (ShowTrigger)
+        {
+            <button type="button" class="pronunciation-ear" aria-expanded="@(_open ? "true" : "false")" aria-controls="@_panelId" aria-label="@($"{Korean}: talaffuz farqini ko‘rish")" title="Talaffuzga e’tibor" @onclick="() => _open = !_open"><Icon Name="ear" /></button>
+        }
+        @if (_open || !ShowTrigger)
+        {
+            <div id="@_panelId" class="pronunciation-body">
+                <p><strong>Talaffuzi: <span class="ko" lang="ko">[@p.Reading]</span></strong></p>
+                @if (p.ExplanationUz is not null) { <p>@p.ExplanationUz</p> }
+                <p class="muted small-text">Yozishda <span lang="ko">@Korean</span> yoziladi.</p>
+                <Speak Text="@Korean" />
+                <PronunciationPracticeLink />
+            </div>
+        }
+    </div>
+}
+@code {
+    [Parameter, EditorRequired] public string Korean { get; set; } = "";
+    [Parameter] public PronunciationDto? Pronunciation { get; set; }
+    [Parameter] public bool ShowTrigger { get; set; } = true;
+    private readonly string _panelId = "pronunciation-" + Guid.NewGuid().ToString("N");
+    private string? _lastKorean;
+    private bool _open;
+    protected override void OnParametersSet()
+    {
+        if (_lastKorean != Korean) { _open = false; _lastKorean = Korean; }
+    }
+}

@@ -28,6 +28,13 @@
     <div class="notice" role="alert">@_error</div>
 }
 
+<PronunciationSummary Count="_deck.PronunciationCount">
+    @foreach (var w in _deck.Words.Where(w => w.Pronunciation is not null))
+    {
+        <div class="pronunciation-list-word"><strong lang="ko">@w.Korean</strong><PronunciationHint Korean="@w.Korean" Pronunciation="w.Pronunciation" /></div>
+    }
+</PronunciationSummary>
+
 <section class="card">
     <div class="deck-progress" aria-label="Holat">
         <div><strong>@_deck.Learned</strong><span class="muted small-text">o‘rganilgan</span></div>
@@ -78,10 +85,17 @@
                 @foreach (var w in _deck.Words)
                 {
                     <tr>
-                        <td><strong class="ko" lang="ko">@w.Korean</strong>@if (w.Romanization is not null) {<span class="muted small-text" style="display:block">@w.Romanization</span>}</td>
+                        <td><strong class="ko" lang="ko">@w.Korean</strong>@if (w.Pronunciation is not null)
+                            {
+                                <button type="button" class="pronunciation-ear" aria-label="@($"{w.Korean}: talaffuz farqini ko‘rish")" aria-expanded="@(_pronunciationWordId == w.Id ? "true" : "false")" aria-controls="@($"word-pronunciation-{w.Id}")" @onclick="() => _pronunciationWordId = _pronunciationWordId == w.Id ? null : w.Id"><Icon Name="ear" /></button>
+                            }@if (w.Romanization is not null) {<span class="muted small-text" style="display:block">@w.Romanization</span>}</td>
                         <td class="wrap">@w.Uzbek</td>
                         <td><Tag Kind="@(w.State == MyWordState.Learned ? "accent" : "outline")">@StateLabel(w.State)</Tag></td>
                     </tr>
+                    @if (_pronunciationWordId == w.Id && w.Pronunciation is not null)
+                    {
+                        <tr><td colspan="3" id="@($"word-pronunciation-{w.Id}")"><PronunciationHint Korean="@w.Korean" Pronunciation="w.Pronunciation" ShowTrigger="false" /></td></tr>
+                    }
                 }
             </tbody>
         </table>
@@ -96,6 +110,7 @@
     private const int MinCrosswordWords = 6;
 
     private GroupDeckLearnerDto? _deck;
+    private Guid? _pronunciationWordId;
     private string? _error;
     private bool _busy;
 

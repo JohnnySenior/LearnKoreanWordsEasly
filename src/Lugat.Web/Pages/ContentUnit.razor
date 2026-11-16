@@ -152,6 +152,7 @@
             @* L-37, L-74: asked from Uzbek, both words are right; a hint in parentheses after the shared meaning tells them apart. *@
             <p class="notice small-text">⚠ Ishora kerak: bu ma’no <span lang="ko">@string.Join(", ", same)</span> so‘zida ham bor. Shu ma’nodan keyin qavsda farqini yozing, masalan «juda (ijobiy: juda yaxshi)». Ishora bo‘lmasa, ilova o‘zi «@string.Join(", ", same) emas» deb ko‘rsatadi.</p>
         }
+        <PronunciationEditor @key="word.Id" Url="@($"api/admin/catalog/words/{word.Id}/pronunciation")" Review="word.PronunciationReview" Changed="r => PronunciationChanged(word.Id, r)" />
         <label class="field">Lotincha o‘qilishi<input class="input" maxlength="100" @bind="edit.Romanization" /></label>
         <label class="field">Misol (koreyscha, ≤ 8 so‘z)<input class="input" lang="ko" maxlength="200" @bind="edit.ExampleKo" /></label>
         <label class="field">Misol tarjimasi<input class="input" maxlength="300" @bind="edit.ExampleUz" /></label>
@@ -306,6 +307,11 @@
 
         _status = _error is null ? "Qoralama tayyor. Endi har so‘zni tekshiring." : null;
         _busy = false;
+    }
+
+    private void PronunciationChanged(Guid wordId, PronunciationReviewDto review)
+    {
+        if (_unit is not null) _unit = _unit with { Words = _unit.Words.Select(w => w.Id == wordId ? w with { Version = review.Version, PronunciationReview = review } : w).ToList() };
     }
 
     private async Task SaveAsync(CatalogWordAdminDto word, bool review)
