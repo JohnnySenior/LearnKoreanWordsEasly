@@ -647,3 +647,10 @@ Har bosqich alohida PR(lar), `dotnet test` va JS testlari yashil, DECISIONS va C
 - O‘qituvchi guruhga berilgan lug‘atda ham talaffuzni tuzata oladi; lug‘at tarkibi, tarjima va progressga tegmaydi.
 - Premium tugmasi mavjud talaffuz mashqiga olib boradi; alohida bo‘limga mos yangi mashq hozircha yo‘q.
 - Kartochkaning yashirin koreyscha javobi talaffuz orqali ochilmaydi; yozma testda asl imlo talab qilinadi.
+
+### Qo‘shimcha · Muharrir ishini kamaytirish (L-77, 2026-11-16, KELISHILGAN)
+
+- «Bo‘limni tayyorlash» tugmasi yetishmayotgan qoralama, tuzoq va talaffuzlarni navbat bilan tayyorlaydi.
+- Eski nashr qilingan bo‘limdagi mavjud kontent va progress saqlanadi; tayyor ish qayta so‘ralmaydi.
+- Talaffuz takliflari bitta ochiq ro‘yxatda: faqat xato joyini tahrirlash, tanlamaganini qoldirish va tanlanganlarini birga tasdiqlash.
+- AI aniqlay olmagan so‘zlar alohida, avtomatik qayta so‘ralmaydi. Inson tasdig‘i va nashr avtomatlashtirilmaydi.

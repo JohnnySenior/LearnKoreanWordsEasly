@@ -1,7 +1,7 @@
 @using Lugat.Contracts
 @inject SessionService Api
 <details class="pronunciation-editor">
-    <summary>Talaffuz · @(Review?.Reviewed == true ? "tasdiqlangan" : Review?.Reading is not null ? "qoralama — tekshiring" : "hali tekshirilmagan")</summary>
+    <summary>Talaffuz · @(Review?.Reviewed == true ? "tasdiqlangan" : Review?.Reading is not null ? "qoralama — tekshiring" : Review?.AskedAt is not null ? "AI aniqlay olmadi" : "hali tekshirilmagan")</summary>
     <p class="muted small-text">O‘zgarmasa, so‘zning o‘zini yozing. Tasdiqlanmagan talaffuz o‘quvchiga ko‘rsatilmaydi.</p>
     <label class="field">Hangul bilan talaffuzi<input class="input" lang="ko" maxlength="100" @bind="_reading" disabled="@_busy" /></label>
     <label class="field">Qisqa o‘zbekcha izoh<textarea class="input" maxlength="500" rows="2" @bind="_explanation" disabled="@_busy"></textarea></label>

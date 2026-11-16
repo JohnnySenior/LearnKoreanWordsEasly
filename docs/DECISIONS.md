@@ -874,3 +874,26 @@ Talaffuz uchun alohida PUT `.../pronunciation` va POST `.../pronunciation/sugges
 `/api/admin/catalog/words/{id}` hamda `/api/teacher/decks/{id}/words/{wordId}`. Ikkalasi `Version` tekshiradi;
 `GroupDeckWord` ham xmin oladi. Kechikkan AI yoki parallel tahrir 409; qoralama o‘quvchiga tarqatilmaydi.
 Kartochkada UZ→KO talaffuz javob ochilgach ko‘rinadi. UI 44px nishon, nomlangan tugma va `aria-expanded` bilan.
+
+## L-77 · Bo‘limni bir tugma bilan tayyorlash, talaffuzni bir ro‘yxatda tekshirish (2026-11-16)
+
+Johnny L-76 dagi har so‘zga alohida kirib AI so‘rash ortiqcha ish bo‘layotganini bildirdi. Yangi asosiy oqim:
+«Bo‘limni tayyorlash» → yetishmayotgan so‘z qoralamasi, tuzoq sahnalari va talaffuzlar navbat bilan tayyorlanadi →
+muharrir natijalarni ko‘rib chiqadi. Har bir AI qadami chegaralangan, klient tayyor bo‘lguncha davom ettiradi;
+server keyingi bosqichni tanlaydi. To‘xtatish, xatodan keyin davom ettirish va qayta ochish saqlangan ishni takrorlamaydi.
+Nashr va inson tasdig‘i avtomatik bajarilmaydi. Eski nashr qilingan bo‘lim ham tayyorlanadi; progress va nashr holati saqlanadi.
+
+Talaffuz AI’si 10 so‘zgacha bitta so‘rov oladi (25 so‘z — odatda 3 so‘rov). Tayyor qoralama yoki tasdiqlangan talaffuz
+qayta yozilmaydi. `PronunciationAskedAt` katalog va guruh so‘zida: null o‘qilish bilan birga to‘ldirilsa, AI aniqlay olmadi;
+bu so‘z avtomatik navbatda qayta-qayta pulli so‘ralmaydi. Noaniq javob oddiy talaffuz deb hisoblanmaydi.
+Noto‘g‘ri, begona id’li yoki eskirgan javob qabul qilinmaydi; javobdagi id va koreyscha imlo aynan mos kelishi kerak.
+
+Kontent va ustoz lug‘ati tepasida ochiq «Talaffuzlar» paneli: farqli o‘qilishlar avval, yozilganidek o‘qiladiganlar keyin;
+noaniqlar alohida ko‘rsatiladi. Taklif shu yerda tahrirlanadi, keraksizi belgidan chiqariladi, tanlanganlari bir so‘rovda
+tasdiqlanadi. Barcha tanlangan yozuvlarning versiyasi va maydonlari tekshirilgach, bitta atomik Save bajariladi:
+bitta eskirgan yoki noto‘g‘ri yozuv bo‘lsa hech biri tasdiqlanmaydi. Guruh tasdig‘i shaxsiy nusxalarga ham o‘tadi.
+Har so‘zdagi eski muharrir alohida tuzatish uchun qoladi; bo‘lim bo‘yicha ishda uni ochish shart emas.
+
+Yangi API: POST `/api/admin/units/{id}/prepare`; POST `.../pronunciations/draft` va PUT `.../pronunciations/review`
+bo‘lim hamda `/api/teacher/decks/{id}` uchun. AI mavjud `catalog-draft` / `group-deck` budjeti orqali, tasdiqlash bepul.
+Talaffuzni guruhlab tasdiqlash ham muharrir/egasi tomonidan aniq «Ko‘rib chiqdim» amali; AI o‘zini tasdiqlamaydi.

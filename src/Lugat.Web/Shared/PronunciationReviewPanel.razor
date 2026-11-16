@@ -1,0 +1,122 @@
+@using Lugat.Contracts
+@inject SessionService Api
+<section class="card pronunciation-review-panel">
+    <h2>Talaffuzlar</h2>
+    <p class="muted small-text">@Words.Count(w => w.Review?.Reviewed == true) tasdiqlangan · @ToAsk so‘ralmagan · @Pending.Count tekshirish uchun</p>
+    <p class="small-text">Takliflarni shu yerda ko‘rib chiqing. Xato joyini tuzating yoki belgisini olib tashlang; qolganlarini birga tasdiqlang.</p>
+    @if (ToAsk > 0 && ShowDraftButton)
+    {
+        <button type="button" class="button block" disabled="@(_busy || Disabled)" @onclick="DraftAsync">Barcha yetishmagan talaffuzlarni tayyorlash (@ToAsk)</button>
+    }
+    @if (_busy)
+    {
+        <p role="status">@_status</p>
+        <button type="button" class="button small" @onclick="() => _stop = true" disabled="@_stop">@(_stop ? "To‘xtatilmoqda…" : "To‘xtatish")</button>
+    }
+    @if (Pending.Count > 0)
+    {
+        <p class="small-text"><strong>@Pending.Count(w => w.Review!.Reading is not null && w.Review.Reading != w.Korean) ta talaffuzi farqli</strong> · @Pending.Count(w => w.Review!.Reading == w.Korean) ta yozilganidek · @Pending.Count(w => w.Review!.Reading is null) ta noaniq</p>
+        <ul class="pronunciation-review-list">
+            @foreach (var word in Pending)
+            {
+                var edit = _edits[word.Id];
+                <li @key="word.Id" class="@(edit.Reading == word.Korean ? "unchanged" : "")">
+                    <label class="pronunciation-review-select"><input type="checkbox" @bind="edit.Selected" disabled="@(_busy || Disabled)" /><span><strong lang="ko">@word.Korean</strong> — @word.MeaningUz</span></label>
+                    <label class="field">Talaffuzi<input class="input" lang="ko" maxlength="100" @bind="edit.Reading" disabled="@(_busy || Disabled)" /></label>
+                    @if (word.Review?.AskedAt is not null && word.Review.Reading is null)
+                    {
+                        <p class="small-text warn">AI aniqlay olmadi. Bilgan talaffuzingizni kiriting yoki hozircha tanlamang.</p>
+                    }
+                    @if (edit.Reading != word.Korean || edit.Explanation is not null)
+                    {
+                        <label class="field">Izoh<textarea class="input" rows="2" maxlength="500" @bind="edit.Explanation" disabled="@(_busy || Disabled)"></textarea></label>
+                    }
+                    else { <span class="muted small-text">Yozilganidek o‘qiladi</span> }
+                </li>
+            }
+        </ul>
+        <button type="button" class="button primary block" disabled="@(_busy || Disabled || SelectedCount == 0)" @onclick="ReviewAsync">Ko‘rib chiqdim — @SelectedCount tasini tasdiqlash</button>
+    }
+    @if (_error is not null) { <p class="notice" role="alert">@_error</p> }
+    @if (!_busy && _status is not null) { <p class="small-text" role="status">@_status</p> }
+</section>
+@code {
+    public sealed record Word(Guid Id, string Korean, string? MeaningUz, PronunciationReviewDto? Review);
+    [Parameter, EditorRequired] public IReadOnlyList<Word> Words { get; set; } = [];
+    [Parameter, EditorRequired] public string Url { get; set; } = "";
+    [Parameter] public bool ShowDraftButton { get; set; } = true;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback Changed { get; set; }
+    [Parameter] public EventCallback<bool> BusyChanged { get; set; }
+    [Parameter] public bool Group { get; set; }
+    private sealed class Edit
+    {
+        public string? Reading, Explanation;
+        public bool Selected;
+        public uint Version;
+    }
+    private readonly Dictionary<Guid, Edit> _edits = [];
+    private bool _busy, _stop;
+    private string? _error, _status;
+    private int ToAsk => Words.Count(w => w.Review is null || w.Review is { Reviewed: false, Reading: null, AskedAt: null });
+    private List<Word> Pending => Words.Where(w => w.Review is { Reviewed: false } r && (r.Reading is not null || r.AskedAt is not null)).OrderBy(w => w.Review!.Reading is null ? 1 : w.Review.Reading == w.Korean ? 2 : 0).ToList();
+    private int SelectedCount => Pending.Count(w => _edits.TryGetValue(w.Id, out var e) && e.Selected);
+    protected override void OnParametersSet()
+    {
+        foreach (var word in Words)
+        {
+            var review = word.Review;
+            if (!_edits.TryGetValue(word.Id, out var edit) || edit.Version != review?.Version)
+                _edits[word.Id] = new Edit { Reading = review?.Reading, Explanation = review?.ExplanationUz, Selected = review?.Reading is not null && review.Reviewed == false, Version = review?.Version ?? 0 };
+        }
+    }
+    private async Task DraftAsync()
+    {
+        (_busy, _stop, _error, _status) = (true, false, null, "Talaffuzlar tayyorlanmoqda…");
+        await BusyChanged.InvokeAsync(true);
+        var remaining = ToAsk;
+        while (remaining > 0 && !_stop)
+        {
+            _status = $"Talaffuzlar tayyorlanmoqda… qoldi: {remaining}";
+            StateHasChanged();
+            int? next;
+            if (Group)
+            {
+                var response = await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Post, Url + "/draft", timeout: TimeSpan.FromMinutes(3));
+                _error = response.Error;
+                next = response.Value?.Words.Count(w => w.PronunciationReview is null || w.PronunciationReview is { Reviewed: false, Reading: null, AskedAt: null });
+            }
+            else
+            {
+                var response = await Api.SendJsonAsync<UnitAdminDto>(HttpMethod.Post, Url + "/draft", timeout: TimeSpan.FromMinutes(3));
+                _error = response.Error;
+                next = response.Value?.Words.Count(w => w.PronunciationReview is null || w.PronunciationReview is { Reviewed: false, Reading: null, AskedAt: null });
+            }
+            await Changed.InvokeAsync();
+            if (next is null || next >= remaining)
+            {
+                _error ??= "Tayyorlash to‘xtadi. Saqlangan takliflar qoladi; yangilab davom ettiring.";
+                break;
+            }
+            remaining = next.Value;
+        }
+        _status = _error is not null ? null : _stop ? "To‘xtatildi. Tayyor takliflar saqlangan." : "Talaffuz takliflari tayyor. Quyidagi ro‘yxatni tekshiring.";
+        _busy = false;
+        await BusyChanged.InvokeAsync(false);
+    }
+    private async Task ReviewAsync()
+    {
+        (_busy, _error, _status) = (true, null, null);
+        await BusyChanged.InvokeAsync(true);
+        var request = new ReviewPronunciationsRequest(Pending.Where(w => _edits[w.Id].Selected).Select(w => new PronunciationWordReviewInput(w.Id, _edits[w.Id].Reading, _edits[w.Id].Explanation, _edits[w.Id].Version)).ToList());
+        if (Group) _error = (await Api.SendJsonAsync<GroupDeckDto>(HttpMethod.Put, Url + "/review", request)).Error;
+        else _error = (await Api.SendJsonAsync<UnitAdminDto>(HttpMethod.Put, Url + "/review", request)).Error;
+        if (_error is null)
+        {
+            _status = $"{request.Words.Count} ta talaffuz tasdiqlandi.";
+            await Changed.InvokeAsync();
+        }
+        _busy = false;
+        await BusyChanged.InvokeAsync(false);
+    }
+}

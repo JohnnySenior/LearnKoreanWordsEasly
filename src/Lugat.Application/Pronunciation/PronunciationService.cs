@@ -52,6 +52,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
         var (reading, explanation) = suggest
             ? await SuggestAsync(userId, word.Word, word.TranslationUz, CatalogDraftService.Feature, word.PronunciationReviewed, ct)
             : Check(word.Word, request.Reading, request.ExplanationUz, request.Reviewed);
+        if (suggest) word.PronunciationAskedAt = time.GetUtcNow();
         word.PronunciationKo = reading;
         word.PronunciationNoteUz = explanation;
         word.PronunciationReviewed = !suggest && request.Reviewed;
@@ -67,7 +68,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
             await LearningItemSync.SyncUnitAsync(db, unit, word.UpdatedAt, ct);
         }
         await SaveAsync(ct);
-        return new(word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed, word.Version);
+        return new(word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed, word.Version, word.PronunciationAskedAt);
     }
 
     public async Task<PronunciationReviewDto> GroupAsync(Guid userId, Guid deckId, Guid wordId, ReviewPronunciationRequest request, bool suggest, CancellationToken ct)
@@ -91,6 +92,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
             if (fresh is null) throw new ConflictException("So‘z o‘zgargan. Sahifani yangilab qayta urinib ko‘ring.");
             Version(fresh.Value, request.Version);
         }
+        if (suggest) word.PronunciationAskedAt = time.GetUtcNow();
         word.PronunciationKo = reading;
         word.PronunciationNoteUz = explanation;
         word.PronunciationReviewed = !suggest && request.Reviewed;
@@ -103,7 +105,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
             copy.PronunciationReviewed = word.PronunciationReviewed;
         }
         await SaveAsync(ct);
-        return new(reading, explanation, word.PronunciationReviewed, word.Version);
+        return new(reading, explanation, word.PronunciationReviewed, word.Version, word.PronunciationAskedAt);
     }
 
     private static void Version(uint actual, uint expected)
@@ -131,7 +133,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
 
     private sealed record Draft(string? Korean, string? Reading, string? ExplanationUz);
 
-    private const string Instructions = """
+    internal const string Instructions = """
         Suggest the standard South Korean dictionary-form pronunciation of this Korean vocabulary item in its given
         meaning, using Hangul syllables only (no brackets, romanization, IPA or length marks). E.g. 국물 -> 궁물,
         같이 -> 가치, 학교 -> 학꾜. Keep korean exactly as supplied. If its reading is unchanged, copy korean into

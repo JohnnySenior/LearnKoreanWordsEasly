@@ -55,6 +55,19 @@ public static class CatalogEndpoints
         editor.MapPost("/catalog/words/{id:guid}/pronunciation/suggest", (Guid id, PronunciationVersionRequest body, ClaimsPrincipal user, Lugat.Application.Pronunciation.PronunciationService s, CancellationToken ct) =>
             s.CatalogAsync(user.GetUserId(), id, new ReviewPronunciationRequest(null, null, false, body.Version), true, ct));
 
+        editor.MapPost("/units/{id:guid}/prepare", (Guid id, ClaimsPrincipal user, UnitPreparationService s, CancellationToken ct) =>
+            s.NextAsync(user.GetUserId(), id, ct));
+        editor.MapPost("/units/{id:guid}/pronunciations/draft", async (Guid id, ClaimsPrincipal user, Lugat.Application.Pronunciation.PronunciationBatchService s, CatalogAdminService admin, CancellationToken ct) =>
+        {
+            await s.DraftAsync(user.GetUserId(), id, false, ct);
+            return await admin.UnitAsync(id, ct);
+        });
+        editor.MapPut("/units/{id:guid}/pronunciations/review", async (Guid id, ReviewPronunciationsRequest body, ClaimsPrincipal user, Lugat.Application.Pronunciation.PronunciationBatchService s, CatalogAdminService admin, CancellationToken ct) =>
+        {
+            await s.ReviewAsync(user.GetUserId(), id, false, body, ct);
+            return await admin.UnitAsync(id, ct);
+        });
+
         editor.MapPost("/units/{id:guid}/draft", (Guid id, ClaimsPrincipal user, CatalogDraftService drafts, CancellationToken ct) =>
             drafts.DraftNextAsync(user.GetUserId(), id, ct));
         editor.MapPost("/units/{id:guid}/publish", (Guid id, CatalogAdminService catalog, CancellationToken ct) => catalog.PublishAsync(id, ct));

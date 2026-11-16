@@ -669,3 +669,14 @@ Bosqichlar spec §13 bo‘yicha.
 - [~] Branch `feat/pronunciation-notes`: GitHub PR/CI tayyorlanmoqda.
 - [ ] Mavjud katalogdagi so‘zlarning talaffuzini muharrir ko‘rib chiqib tasdiqlashi kerak; migratsiya ularni tasdiqlamaydi.
 - [ ] Haqiqiy AI va telefon audio/mikrofon sinovi: lokal tekshiruvda tashqi pulli xizmatlar chaqirilmadi.
+
+## Muharrir oqimini soddalashtirish · L-77 · 2026-11-16
+
+- [x] «Bo‘limni tayyorlash»: server qoralama → tuzoq → talaffuz bosqichini tanlaydi; UI bir bosishda davom ettiradi.
+- [x] Talaffuz bo‘lim/guruh uchun 10 tadan AI; tayyor va tasdiqlangan yozuvga tegmaydi, xatodan keyin davom etadi.
+- [x] `PronunciationPreparation` migratsiyasi: ikkita nullable `PronunciationAskedAt`; noaniq AI javobi qayta-qayta so‘ralmaydi.
+- [x] Ochiq umumiy tekshirish paneli: farqlilar oldinda, shu yerda tahrir, tanlash va birga tasdiqlash; eski kartalarni ochish shart emas.
+- [x] Atomik tasdiqlash, id/egasi/versiya tekshiruvi; guruh nusxalari yangilanadi, progress va nashr saqlanadi.
+- [x] Release build 0 warning/error; Application 140/140, tegishli API 35/35 (6 yangi), barcha 6 browser oqimi o‘tdi.
+- [x] Yakuniy 360px yorug‘/qorong‘i tekshiruv 2/2: 25 taklifni kartalarni ochmasdan ko‘rish, bittasini tuzatib 24 tasini birga tasdiqlash.
+- [ ] GitHub CI va production deploy holati alohida tekshiriladi. Lokal AI javoblari test provayderidan; pulli xizmatlar chaqirilmadi.
