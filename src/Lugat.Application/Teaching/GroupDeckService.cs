@@ -87,7 +87,7 @@ public sealed class GroupDeckService(
             words.Select(w => new GroupDeckWordDto(w.Id, w.Order, w.Korean, w.Uzbek, w.Source, w.SharedItemId != null,
                 w.CatalogWordId is { } c ? units.GetValueOrDefault(c) : null, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz,
                 w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapSceneDto(w.TrapCue, wrong, right) : null,
-                new PronunciationReviewDto(w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList(),
+                new PronunciationReviewDto(w.PronunciationKo, PronunciationExplanation.Readable(w.PronunciationNoteUz), w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList(),
             await db.GroupMembers.CountAsync(m => m.GroupId == deck.GroupId && m.LeftAt == null, ct),
             await premium.CanUseAiAsync(teacherId, ct),
             words.Count(Pending),

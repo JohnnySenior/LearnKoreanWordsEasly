@@ -404,6 +404,6 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             // L-74: only a shared meaning without a hint in parentheses needs the editor.
             w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Unhinted(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [],
             w.TrapCue, w.TrapWrong, w.TrapRight, w.TrapScenePending, w.TrapSceneAskedAt is not null,
-            new PronunciationReviewDto(w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList();
+            new PronunciationReviewDto(w.PronunciationKo, Pronunciation.PronunciationExplanation.Readable(w.PronunciationNoteUz), w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList();
     }
 }
