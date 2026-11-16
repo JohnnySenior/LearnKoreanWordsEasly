@@ -59,6 +59,11 @@ jobs:
         run: |
           pg_dump --format=custom --no-owner --no-privileges --file "$RUNNER_TEMP/lugat-browser.dump" lugat_browser
           bash scripts/rehearse-restore.sh "$RUNNER_TEMP/lugat-browser.dump" lugat_rehearsal_ci
+      - name: Verify the restored application in Chromium
+        env:
+          LUGAT_BROWSER_POSTGRES: Host=localhost;Database=lugat_rehearsal_ci;Username=lugat;Password=lugat
+          Catalog__SeedSample: 'false'
+        run: npx --prefix tests/browser playwright test --config tests/browser/playwright.config.mjs --project phone-light
       - name: Run the learning flow against the restored database
         env:
           LUGAT_BROWSER_POSTGRES: Host=localhost;Database=lugat_rehearsal_ci;Username=lugat;Password=lugat
