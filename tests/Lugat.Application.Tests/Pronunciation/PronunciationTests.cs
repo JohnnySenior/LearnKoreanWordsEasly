@@ -6,6 +6,42 @@ namespace Lugat.Application.Tests.Pronunciation;
 public class PronunciationTests
 {
     [Theory]
+    [InlineData("들어가다", "드러가다")]
+    [InlineData("먹어요", "머거요")]
+    [InlineData("옷이", "오시")]
+    [InlineData("있어요", "이써요")]
+    public void Korean_prose_for_an_exact_simple_liaison_becomes_an_Uzbek_note(string korean, string reading)
+    {
+        const string legacy = "받침 ’ㄹ’ 다음 모음 ’ㅓ’가 이어지며 연음화: ㄹ이 다음 음절 초성으로 이동";
+        var note = PronunciationExplanation.ForWord(korean, reading, legacy);
+        Assert.Equal($"Bo‘g‘in oxiridagi undosh keyingi unliga ulanib o‘qiladi. «{korean}» so‘zi «{reading}» deb o‘qiladi.", note);
+        Assert.Equal(note, PronunciationExplanation.ForWord(korean, reading, note));
+        Assert.Equal(note, PronunciationService.Learner(korean, reading, legacy, true)!.ExplanationUz);
+        Assert.Null(PronunciationService.Learner(korean, reading, legacy, false));
+    }
+
+    [Theory]
+    [InlineData("국물", "궁물")]
+    [InlineData("같이", "가치")]
+    [InlineData("좋아요", "조아요")]
+    [InlineData("읽어요", "일거요")]
+    public void Other_changes_get_only_the_existing_reading_without_a_guessed_rule(string korean, string reading)
+    {
+        var note = PronunciationExplanation.ForWord(korean, reading, "한국어 설명입니다. 소리가 바뀝니다.");
+        Assert.Equal($"«{korean}» so‘zi «{reading}» deb o‘qiladi.", note);
+    }
+
+    [Fact]
+    public void Uzbek_notes_and_missing_readings_are_not_replaced_with_guesses()
+    {
+        const string note = "ㄱ tovushi ㅁ oldida ㅇ kabi aytiladi. Misol: 국물 → 궁물; 한국말 → 한궁말.";
+        Assert.Equal(note, PronunciationExplanation.ForWord("국물", "궁물", note));
+        Assert.Null(PronunciationExplanation.ForWord("국물", "궁물", null));
+        Assert.Null(PronunciationExplanation.ForWord("국물", null, "한국어 설명입니다."));
+        Assert.Equal("So‘z yozilganidek o‘qiladi.", PronunciationExplanation.ForWord("사람", "사람", "그대로 읽습니다."));
+    }
+
+    [Theory]
     [InlineData("거센소리되기", "undoshning kuchli nafas bilan aytilishi")]
     [InlineData("격음화", "undoshning kuchli nafas bilan aytilishi")]
     [InlineData("경음화", "undoshning tarangroq aytilishi")]

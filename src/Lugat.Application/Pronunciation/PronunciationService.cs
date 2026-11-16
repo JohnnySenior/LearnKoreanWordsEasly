@@ -15,7 +15,7 @@ namespace Lugat.Application.Pronunciation;
 public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperationLock operations, TimeProvider time)
 {
     public static PronunciationDto? Learner(string korean, string? reading, string? explanation, bool reviewed) =>
-        reviewed && !string.IsNullOrWhiteSpace(reading) && reading != korean ? new(reading, PronunciationExplanation.Readable(explanation)) : null;
+        reviewed && !string.IsNullOrWhiteSpace(reading) && reading != korean ? new(reading, PronunciationExplanation.ForWord(korean, reading, explanation)) : null;
 
     public static (string? Reading, string? Explanation) Check(string korean, string? reading, string? explanation, bool reviewed)
     {

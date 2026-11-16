@@ -939,3 +939,19 @@ aniq o‘zbekcha iboralarga almashtirib ko‘rsatiladi. Bu umumiy tarjimon emas:
 misoli taxminan tarjima qilinmaydi. Katalog/ustoz tahrir DTO va o‘quvchi talaffuz DTO bir xil o‘qish funksiyasidan
 foydalanadi. Read paytida baza, tasdiq, talaffuz, versiya yoki progress o‘zgarmaydi; muharrir keyingi saqlashida
 izohning o‘qiladigan shakli yoziladi. Pulli AI qayta chaqirilmaydi, eski kartalar uchun qo‘shimcha click yo‘q.
+
+## L-81 · Eski nashrdagi koreyscha talaffuz izohi (2026-11-16)
+
+L-80 faqat ma’lum qavsdagi atamalarni almashtirgan; Johnny ko‘rsatgan `들어가다 → 드러가다` izohi butunlay koreyscha
+bo‘lgani uchun qolgan. Eski izohda koreyscha nasr ustun bo‘lsa, katalog/ustoz muharriri va o‘quvchi DTO’lari shu
+yozuvning mavjud o‘qilishidan sodda o‘zbekcha eslatma ko‘rsatadi. Bu asl izohning umumiy tarjimasi emas.
+
+Oddiy ulanish faqat Hangul bo‘g‘inlaridagi bitta oxirgi undosh keyingi unli boshidagi ㅇ o‘rniga ko‘chirilganda hosil
+bo‘lgan to‘liq so‘z mavjud reading bilan aynan teng bo‘lsa izohlanadi. Qo‘sh undosh, ㅎ/ㅇ oxiri yoki boshqa tovush
+o‘zgarishiga ulanish qoidasini taxmin qilmaydi: faqat mavjud yozilishi → o‘qilishi juftligini o‘zbekcha aytadi.
+O‘zbekcha izoh va koreyscha misollar saqlanadi; nasrni aniqlash konservativ yozuv evristikasi. Reading bo‘lmasa
+yangi talaffuz yoki tasdiq yaratilmaydi. O‘quvchi faqat avval inson tasdiqlagan farqni ko‘rishda davom etadi.
+
+Read hech qanday baza yozuvi, xmin, tasdiq, nashr yoki progressni o‘zgartirmaydi. Eski bo‘limni qayta tayyorlash,
+alohida kartalarni ochish yoki pulli AI chaqirish shart emas. Yangi AI qoralamasining L-80 validatsiyasiga bu fallback
+qo‘llanmaydi: yaroqsiz AI izohi avvalgidek rad etiladi.
