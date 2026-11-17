@@ -44,6 +44,8 @@ public class SeoPageTests
         Assert.Contains("<title>사랑 (sarang) — o‘zbekcha tarjimasi va misol | Koreyscha</title>", html);
         Assert.Contains("<link rel=\"canonical\" href=\"https://koreyscha.com/soz/sarang\">", html);
         Assert.Contains("<meta property=\"og:url\" content=\"https://koreyscha.com/soz/sarang\">", html);
+        Assert.Contains("<meta property=\"og:image\" content=\"https://koreyscha.com/og-image.jpg\">", html); // L-85: the wide preview
+        Assert.Contains("<meta name=\"twitter:card\" content=\"summary_large_image\">", html);
         Assert.Contains("\"@type\":\"DefinedTerm\"", html);
         Assert.Contains("\"name\":\"Koreyscha lug‘ati\"", html);
         Assert.Contains($"href=\"/bolimlar/{ApiFactory.Unit(1)}?src=soz\"", html);

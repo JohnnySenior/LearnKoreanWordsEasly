@@ -743,4 +743,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Tor ekran: «Mavzu» va «Yopish» segmentlari kesilmaydi (360/320px tekshirildi); kichik havolalar 44px; menyu va sarlavha matni 12px.
 - [x] Bosh sahifadagi «ta karta qoldi» bitta ortiq edi — tuzatildi; Natijalar raqamining nomi va izohi.
 - [x] «Azure» o‘rniga «AI»; daraja tugmalarida o‘zbekcha nom.
-- [ ] Keyingi PR: bitta header va shrift (/sinab va ichki sahifalar), iPhone’da o‘rnatish tugmasi, haqiqiy 404 sahifa; Johnny: 1200×630 og:image rasmi.
+- [ ] Keyingi PR: bitta header va shrift (/sinab va ichki sahifalar), iPhone’da o‘rnatish tugmasi, haqiqiy 404 sahifa; og:image L-85 da qilindi.
+
+**Havola preview rasmi (L-85, 2026-11-17):**
+- [x] `og-image.jpg` 1200×630; bosh sahifa va ochiq sahifalarda `og:image` + `summary_large_image`; testlar.
+- [ ] Johnny: deploydan keyin havolani Telegram’da yuborib preview’ni ko‘rish (Telegram eski preview’ni keshlagan bo‘lsa, @WebpageBot orqali yangilash).

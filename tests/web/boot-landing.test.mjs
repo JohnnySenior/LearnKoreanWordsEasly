@@ -49,6 +49,8 @@ test('a returning user sees only the brand and "Yuklanmoqda…": the key is Sess
 test('the home page carries canonical and Open Graph tags', () => {
     assert.match(index, /<link rel="canonical" href="https:\/\/koreyscha\.com\/" \/>/);
     for (const p of ['og:title', 'og:description', 'og:url']) assert.match(index, new RegExp(`<meta property="${p}" content="[^"]+" />`));
+    assert.match(index, /<meta property="og:image" content="https:\/\/koreyscha\.com\/og-image\.jpg" \/>/); // L-85
+    assert.match(index, /<meta name="twitter:card" content="summary_large_image" \/>/);
 });
 
 test('the home page names the site for search results in one WebSite JSON-LD block (L-66)', () => {

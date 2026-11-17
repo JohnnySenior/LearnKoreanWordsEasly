@@ -439,7 +439,8 @@ public static class SeoEndpoints
             head.Append($"<link rel=\"canonical\" href=\"{E(canonical)}\">");
             head.Append("<meta property=\"og:type\" content=\"article\"><meta property=\"og:site_name\" content=\"Koreyscha\"><meta property=\"og:locale\" content=\"uz_UZ\">");
             head.Append($"<meta property=\"og:title\" content=\"{E(title)}\"><meta property=\"og:description\" content=\"{E(description)}\"><meta property=\"og:url\" content=\"{E(canonical)}\">");
-            head.Append($"<meta property=\"og:image\" content=\"{E(Origin(canonical))}/icons/icon-512.png\"><meta name=\"twitter:card\" content=\"summary\">");
+            // L-85: the site's wide preview picture (1200×630) instead of the square app icon.
+            head.Append($"<meta property=\"og:image\" content=\"{E(Origin(canonical))}/og-image.jpg\"><meta property=\"og:image:width\" content=\"1200\"><meta property=\"og:image:height\" content=\"630\"><meta name=\"twitter:card\" content=\"summary_large_image\">");
         }
 
         if (jsonLd is not null)

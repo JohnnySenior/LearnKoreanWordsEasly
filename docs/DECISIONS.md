@@ -996,3 +996,7 @@ Johnny do‘stining UI/UX auditini yubordi (20 band). Kelishuv: tez va ko‘rina
 - Takror soni (15): bosh sahifada qolgan kartalar `Total − Position + 1` deb hisoblanardi (`Position` — javob berilganlar soni), bitta ortiq chiqardi — tuzatildi; «Boshlangan mashg‘ulot: 46 tadan 0 tasi bajarildi». Natijalardagi raqam boshqa narsa (hozir muddati kelganlar) — nomi «Hozir muddati kelgan», izohda farqi yozildi.
 - «Azure baholaydi» (19) → «AI talaffuzingizni baholaydi».
 - Daraja tugmalari (20): «A 초급» ostida «Boshlang‘ich» / «O‘rta» / «Yuqori»; tugma matni sahifa shriftida.
+
+## L-85 · 2026-11-17 · Havola preview rasmi (og:image)
+
+Audit 12-band: ulashilgan havolada 512px ilova ikonkasi chiqardi, bosh sahifada esa og:image umuman yo‘q edi. Johnny ChatGPT’da 1200×630 rasm yasadi (logo, «Koreys tili so‘zlari — o‘zbek tilida», 하다/있다 kartalari, koreyscha.com); matni tekshirildi, 1200×630 JPG (53 KB) qilib `wwwroot/og-image.jpg` ga qo‘yildi. Bosh sahifa va barcha ochiq sahifalar (/soz, /soz/{slug}, /sinab) shu rasmni `og:image` (o‘lchami bilan) va `twitter:card=summary_large_image` bilan beradi.
