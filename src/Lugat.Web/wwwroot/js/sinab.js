@@ -169,7 +169,7 @@ function mountTaster() {
 
     playBtn.addEventListener('click', async () => {
         if (!started) {
-            started = true; replay.hidden = false;
+            started = true; replay.hidden = false; board.classList.add('started');
             audio.src = silence();
             try { await audio.play(); audio.pause(); } catch { }
             player.play(0);
@@ -200,6 +200,7 @@ function mountTraps() {
             if (!correct) button.classList.add('wrong');
             const verdict = q.querySelector('.verdict');
             verdict.textContent = correct ? '✓ To‘g‘ri topdingiz.' : '✗ Bu tuzoq edi: o‘zbekcha mantiq shu yerda adashtiradi.';
+            verdict.className = 'verdict ' + (correct ? 'ok' : 'bad');
             verdict.hidden = false;
             q.querySelector('.why').hidden = false;
             answered++; if (correct) found++;

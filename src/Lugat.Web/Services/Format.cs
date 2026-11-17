@@ -21,6 +21,9 @@ public static class Format
     /// <summary>The Korean name of a level, as learners meet it in Korea (초급 = beginner).</summary>
     public static string LevelKorean(CatalogLevel level) => level switch { CatalogLevel.A => "초급", CatalogLevel.B => "중급", _ => "고급" };
 
+    /// <summary>L-84: the level in Uzbek, for a beginner who cannot read 초급 yet.</summary>
+    public static string LevelUz(CatalogLevel level) => level switch { CatalogLevel.A => "Boshlang‘ich", CatalogLevel.B => "O‘rta", _ => "Yuqori" };
+
     /// <summary>"Seshanba, 6-oktabr, 23:00".</summary>
     public static string DayTime(DateTimeOffset value)
     {

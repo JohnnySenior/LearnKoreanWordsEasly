@@ -43,7 +43,7 @@
     <div id="app">
         <!-- L-60: shown until Blazor starts. Keep in step with Shared/BootScreen.razor, Shared/SigninIntro.razor and Shared/Landing.razor. -->
         <main class="content signin-page boot">
-            <header class="app-header"><span class="app-header-title">Koreyscha</span><span class="app-header-right boot-landing"><span class="tag tag-neutral">A · B · C</span></span></header>
+            <header class="app-header"><span class="app-header-title">Koreyscha</span></header>
             <p class="boot-loading" role="status" aria-live="polite"><span class="boot-dot" aria-hidden="true"></span>Yuklanmoqda…<span class="boot-percent" aria-hidden="true"></span></p>
             <div class="boot-bar" aria-hidden="true"><span></span></div>
             <div class="boot-landing">
@@ -57,7 +57,7 @@
                 </section>
                 <!-- L-72: sign-in works before the app has started (js/boot-signin.js). -->
                 <div id="boot-signin" class="boot-signin">
-                    <div class="signin-buttons">
+                    <div class="signin-buttons" id="kirish">
                         <button id="boot-telegram" class="btn btn-primary block big" type="button" disabled><span>Telegram orqali kirish</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
                         <div id="boot-google" class="signin-google"></div>
                     </div>
@@ -85,7 +85,7 @@
                         <p class="landing-example"><span lang="ko">우리 엄마는 우즈베키스탄에 계세요.</span><br /><span class="muted">Onam O‘zbekistonda.</span></p>
                         <p class="landing-trap"><b>Tuzoq:</b> 우리 엄마 — «mening onam», «bizning onam» emas. Koreyslar oila, uy, kompaniyani doim 우리 bilan aytadi.</p>
                     </div>
-                    <div class="section-label"><span>Nima bepul</span></div>
+                    <div class="section-label"><span>Bepul va Premium</span></div>
                     <div class="landing-plans">
                         <div>
                             <b>Bepul</b>
@@ -104,7 +104,7 @@
                                 <li>AI bilan gap tekshiruvi</li>
                                 <li>Xatolarim: xato so‘zlar, xato turlari, tuzoqlar</li>
                             </ul>
-                            <p class="muted small-text">Koreyada: ₩5,000 / oy · ₩12,000 / 3 oy<br />O‘zbekistonda: 29 000 so‘m / oy · 69 000 so‘m / 3 oy</p>
+                            <p class="landing-price"><span>O‘zbekistonda: <b class="nowrap">29 000 so‘m / oy</b> · <span class="nowrap">69 000 so‘m / 3 oy</span></span><span>Koreyada: <b class="nowrap">₩5,000 / oy</b> · <span class="nowrap">₩12,000 / 3 oy</span></span></p>
                         </div>
                     </div>
                 </div>

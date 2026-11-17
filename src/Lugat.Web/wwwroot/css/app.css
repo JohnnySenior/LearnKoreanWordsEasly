@@ -823,7 +823,7 @@ input.input[type="datetime-local"], input.input[type="date"], input.input[type="
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    font: 600 11px/1.2 var(--font-body);
+    font: 600 12px/1.2 var(--font-body);
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--color-muted);
@@ -1080,7 +1080,13 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .signin-page.content { padding-top: 12px; }
 .signin-buttons { display: grid; gap: 10px; padding: 16px 0; margin: 0; }
 .signin-buttons .signin-google { min-height: 44px; }
+/* L-84: Google draws its own button (at most 400px wide); centred, so it does not hang on the left on a wide screen. */
+.signin-google { display: flex; justify-content: center; }
+/* L-84: /sinab and the landing link to the sign-in buttons (#kirish); a little room above them. */
+#kirish { scroll-margin-top: 24px; }
 .signin-foot { padding: 14px var(--gutter) 0; font-size: 11px; color: var(--color-muted); }
+/* L-84: the privacy link is a finger-sized target (44px), not a 13px line. */
+.signin-foot a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 
 /* 2a/2b Profil. */
 .profile-head { display: flex; gap: 16px; }
@@ -1182,9 +1188,11 @@ a.unit-item:hover { background: color-mix(in srgb, var(--color-text) 5%, transpa
 .landing-word-ko { font: 900 40px/1 var(--font-ko); }
 .landing-example span[lang="ko"] { font-family: var(--font-ko); }
 .landing-trap { font-size: 14px; }
-.landing-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-.landing-plans > div { padding: 12px 12px 12px 0; min-width: 0; }
-.landing-plans > div + div { padding-left: 12px; border-left: 1px solid var(--color-divider); }
+.landing-plans { display: grid; grid-template-columns: 1fr; } /* L-84: one column, the price on its own lines */
+.landing-plans > div { padding: 12px 0; min-width: 0; }
+.landing-price { margin: 10px 0 0; display: grid; gap: 2px; font-size: 15px; }
+.landing-price b { font-weight: 700; }
+.nowrap { white-space: nowrap; }
 .landing-plans ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
 .landing-cta { margin-top: 8px; }
 
@@ -1406,7 +1414,7 @@ h1 { font-size: 30px; letter-spacing: -0.025em; }
     background: color-mix(in srgb, var(--color-card) 86%, transparent);
     border-top: 1px solid var(--color-rule-soft);
 }
-.tab { color: var(--color-muted); font-weight: 500; font-size: 10.5px; }
+.tab { color: var(--color-muted); font-weight: 500; font-size: 12px; } /* L-84: was 10.5px */
 .tab-icon { width: 52px; height: 30px; padding: 5px 16px; border-radius: var(--radius-pill); }
 .tab.active { color: var(--color-accent-700); font-weight: 700; box-shadow: none; }
 .tab.active .tab-icon { background: var(--color-accent-100); }
@@ -1648,3 +1656,24 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .pronunciation-rules-warn { color: var(--color-warn); margin: 4px 0; }
 /* L-83: the part of a trap scene that differs. */
 .scene-diff { background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: inherit; border-radius: 4px; padding: 0 2px; }
+
+/* L-84 (UI audit 13–14): a segmented choice sized by its words. "Mavzu" and "Yopish:" keep their width, the buttons
+   share what is left by their text, and on a narrow phone the buttons go under the label instead of being cut. */
+.list-row:has(.list-row-control .seg) { grid-template-columns: auto minmax(0, 1fr); }
+.list-row:has(.list-row-control .seg) .list-row-control { justify-content: flex-end; min-width: 0; }
+.list-row-control .seg, .cover-bar .seg { grid-auto-columns: auto; }
+.cover-bar { flex-wrap: wrap; row-gap: 8px; }
+.cover-bar > .muted { flex: none; }
+.cover-bar .seg { flex: 1 1 250px; }
+@media (max-width: 400px) {
+    .list-row:has(.list-row-control .seg) { grid-template-columns: 1fr; gap: 8px; }
+    .list-row:has(.list-row-control .seg) .list-row-control, .list-row-control .seg { width: 100%; }
+}
+
+/* L-84: a link standing alone (not in a sentence) is a finger-sized target. */
+.tap { display: inline-flex; align-items: center; min-height: 44px; }
+/* L-84: the level buttons in the page's own font, with the level named in Uzbek. */
+.level-pick button { font-family: var(--font-body); }
+.level-pick span { font-size: 12px; }
+.level-pick .level-uz { color: var(--color-text); font-weight: 600; }
+.level-pick button.selected .level-uz { color: inherit; }
