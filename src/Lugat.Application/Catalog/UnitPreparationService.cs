@@ -23,22 +23,35 @@ public sealed class UnitPreparationService(CatalogAdminService admin, CatalogDra
         {
             step = "So‘zlar qoralamasi";
             after = await cards.DraftNextAsync(userId, unitId, ct);
-            if (after.Remaining >= before.Remaining) throw new ServiceUnavailableException("AI so‘zlar qoralamasini tayyorlay olmadi. Saqlangan ish qoladi; qayta urinib ko‘ring.");
+            if (after.Remaining >= before.Remaining)
+            {
+                throw new ServiceUnavailableException("AI so‘zlar qoralamasini tayyorlay olmadi. Saqlangan ish qoladi; qayta urinib ko‘ring.");
+            }
         }
         else if (before.ScenesRemaining > 0)
         {
             step = "Tuzoq sahnalari";
             after = await traps.DraftNextAsync(userId, unitId, ct);
-            if (after.ScenesRemaining >= before.ScenesRemaining) throw new ServiceUnavailableException("Tuzoq sahnalarini tayyorlash to‘xtadi. Saqlangan ish qoladi; qayta urinib ko‘ring.");
+            if (after.ScenesRemaining >= before.ScenesRemaining)
+            {
+                throw new ServiceUnavailableException("Tuzoq sahnalarini tayyorlash to‘xtadi. Saqlangan ish qoladi; qayta urinib ko‘ring.");
+            }
         }
         else if (ReadingsRemaining(before) > 0)
         {
             step = "Talaffuzlar";
             await pronunciations.DraftAsync(userId, unitId, false, ct);
             after = await admin.UnitAsync(unitId, ct);
-            if (ReadingsRemaining(after) >= ReadingsRemaining(before)) throw new ConflictException("So‘zlar o‘zgargan yoki AI javobi eskirgan. Yangilab davom ettiring.");
+            if (ReadingsRemaining(after) >= ReadingsRemaining(before))
+            {
+                throw new ConflictException("So‘zlar o‘zgargan yoki AI javobi eskirgan. Yangilab davom ettiring.");
+            }
         }
-        else return new(before, "Tayyor", 0, true);
+        else
+        {
+            return new(before, "Tayyor", 0, true);
+        }
+
         return new(after, step, Remaining(after), Remaining(after) == 0);
     }
 }

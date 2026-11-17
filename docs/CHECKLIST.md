@@ -638,7 +638,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Sample bazaning pg_dump nusxasi yangi `lugat_rehearsal_audit_20261116` bazaga skript bilan tiklandi.
 - [x] Tiklangan sample bazada app `/health` ready; real Chromium o‘quv oqimi qayta o‘tdi (34.3 s, 25/25).
 - [x] Root volume entrypoint `gosu app` bilan huquqni tashlaydi; vaqtinchalik konteynerda `uid=1654(app)` tasdiqlandi.
-- [ ] Lokal Docker image build: muhit disk joyi yetmagani sabab tugamadi; yangi image CI’da tekshirilishi kerak.
+- [x] Lokal Docker image build: muhit disk joyi yetmagani sabab tugamadi; yangi image CI’da tekshirilishi kerak. — 2026-11-17: tekshirildi (L-82): CI `docker-image` va `build-test` yashil, Railway deploy SUCCESS, loglarda xato yo‘q.
 - [x] Barcha 341 API testi o‘tdi, 0 failed, 0 skipped; discovery ro‘yxatidagi 341 holat 17 ta alohida guruh bilan
   to‘liq qamraldi. Bitta jarayon MapStaticAssets manifestlari bilan xotira chegarasiga yetgani uchun lokal suite
   guruhlarga bo‘lindi; bu test natijasi yashirilmadi. Jami .NET: 566 passed.
@@ -679,7 +679,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Atomik tasdiqlash, id/egasi/versiya tekshiruvi; guruh nusxalari yangilanadi, progress va nashr saqlanadi.
 - [x] Release build 0 warning/error; Application 140/140, tegishli API 35/35 (6 yangi), barcha 6 browser oqimi o‘tdi.
 - [x] Yakuniy 360px yorug‘/qorong‘i tekshiruv 2/2: 25 taklifni kartalarni ochmasdan ko‘rish, bittasini tuzatib 24 tasini birga tasdiqlash.
-- [ ] GitHub CI va production deploy holati alohida tekshiriladi. Lokal AI javoblari test provayderidan; pulli xizmatlar chaqirilmadi.
+- [x] GitHub CI va production deploy holati alohida tekshiriladi. Lokal AI javoblari test provayderidan; pulli xizmatlar chaqirilmadi. — 2026-11-17: tekshirildi (L-82): CI `docker-image` va `build-test` yashil, Railway deploy SUCCESS, loglarda xato yo‘q.
 
 ## AI fallback timeout tuzatishi · L-78 · 2026-11-16
 
@@ -689,7 +689,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Release build: 0 warning/error. Application 146/146, tegishli AI API/provayder testlari 44/44.
 - [x] Real PostgreSQL + boshqariladigan provayderlar: tez rad etilgan Claude’dan keyin sekinroq OpenAI yakunlaydi;
   umumiy deadline, user cancellation, ikki urinishning sarf yozuvi va ikki xatoning saqlanishi tekshirildi.
-- [ ] GitHub CI va production deploy tekshiriladi. Haqiqiy pulli API bu sinovlarda chaqirilmadi; balans hali tasdiqlanmagan.
+- [x] GitHub CI va production deploy tekshiriladi. Haqiqiy pulli API bu sinovlarda chaqirilmadi; balans hali tasdiqlanmagan. — 2026-11-17: tekshirildi (L-82): CI `docker-image` va `build-test` yashil, Railway deploy SUCCESS, loglarda xato yo‘q.
 
 ## Bo‘sh talaffuz bilan davom etish · L-79 · 2026-11-16
 
@@ -698,7 +698,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Bo‘sh qator yonida mavjud API orqali AI qayta tekshiruvi va KRdict qidiruv havolasi; katalog va ustoz lug‘atida.
 - [x] Release build 0 warning/error. Real Chromium → API → PostgreSQL: 6/6 oqim, 360px yorug‘/qorong‘i.
   Tanlangan qatorni bo‘shatish → tanlovdan chiqadi → payload’da faqat 24 to‘liq talaffuz → 24 tasi saqlanadi, 1 tasi qoladi.
-- [ ] GitHub CI va production deploy tekshiriladi. Pulli AI chaqirilmadi. KRdict sahifasi avtomatik muhitda 403 berdi;
+- [x] GitHub CI va production deploy tekshiriladi. Pulli AI chaqirilmadi. KRdict sahifasi avtomatik muhitda 403 berdi; — 2026-11-17: CI va production deploy tekshirildi (L-82).
   URL/target xavfsizligi tekshirildi, haqiqiy foydalanuvchi brauzerida tashqi sahifa alohida tekshiriladi.
 
 ## O‘zbekcha talaffuz izohlari · L-80 · 2026-11-16
@@ -709,8 +709,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Release build: 0 warning/error. Talaffuz Application 30/30, real PostgreSQL/API 13/13 regressiya o‘tdi.
   Koreyscha nasr rad etilishi, misollarning saqlanishi, eski izohning admin/o‘quvchi API’da o‘zbekcha ko‘rinishi,
   bazadagi dastlabki izoh, talaffuz va tasdiqning read paytida o‘zgarmasligi tekshirildi.
-- [ ] To‘liq GitHub CI tekshiriladi.
-- [ ] Production nashri tekshiriladi. Haqiqiy pulli AI chaqirilmagan; noma’lum eski koreyscha nasr umumiy tarjima qilinmaydi.
+- [x] To‘liq GitHub CI tekshiriladi. — 2026-11-17: tekshirildi (L-82): CI `docker-image` va `build-test` yashil, Railway deploy SUCCESS, loglarda xato yo‘q.
+- [x] Production nashri tekshiriladi. Haqiqiy pulli AI chaqirilmagan; noma’lum eski koreyscha nasr umumiy tarjima qilinmaydi. — 2026-11-17: CI va production deploy tekshirildi (L-82).
 
 ## Eski nashrdagi koreyscha izoh · L-81 · 2026-11-16
 
@@ -720,4 +720,13 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Release build 0 warning/error; talaffuz Application 39/39, real PostgreSQL/API 14/14.
   Asl izoh, reading, tasdiq va xmin read paytida o‘zgarmasligi qo‘shimcha 2/2 regressiyada tasdiqlandi.
 - [x] Real Chromium/API/PostgreSQL 6/6, telefon yorug‘/qorong‘i: eski koreyscha nasr o‘rnida o‘zbekcha eslatma.
-- [ ] To‘liq CI va production nashri tekshiriladi; haqiqiy pulli AI ishlatilmagan.
+- [x] To‘liq CI va production nashri tekshiriladi; haqiqiy pulli AI ishlatilmagan. — 2026-11-17: tekshirildi (L-82): CI `docker-image` va `build-test` yashil, Railway deploy SUCCESS, loglarda xato yo‘q.
+
+**Codex o‘zgarishlari ko‘rib chiqildi, topilganlar tuzatildi (L-82, 2026-11-17):**
+- [x] #104–#110 ko‘rib chiqildi: barcha testlar o‘tdi (Domain 106, Application 164, Api 361, web 50), Railway deploy SUCCESS.
+- [x] Narxi yo‘q/noto‘g‘ri bo‘lgani uchun to‘xtatilgan AI/ovoz chaqiruvlari admin «Tizim» sahifasida (model, necha marta, oxirgi vaqt) va logda ko‘rinadi.
+- [x] Entrypoint faqat egasi noto‘g‘ri fayllarni `chown` qiladi (har deployda butun audio keshni emas).
+- [x] Codex yozgan fayllarda qavssiz `if` lar loyiha uslubiga keltirildi (mantiq o‘zgarmadi).
+- [ ] Johnny: Anthropic hisobidagi API balansini tekshirish (L-78 da «credit balance» xatosi bo‘lgan).
+- [ ] Keyin: talaffuz qoidalarini aniq yozish (har farqli so‘zda qaysi qoida — Johnny 2026-11-17); shundan so‘ng L-80/L-81 o‘qish paytidagi almashtirish kodini olib tashlash mumkin.
+

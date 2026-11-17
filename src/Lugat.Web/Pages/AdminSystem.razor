@@ -75,6 +75,20 @@ else
         <p class="spend-figure"><b>$@budget.EstimatedUsd.ToString("0.00")</b> <span>/ $@budget.LimitUsd.ToString("0.00")</span></p>
         <div class="progress spend-bar @(budget.Warning ? "" : "ink")"><span style="width:@percent%"></span></div>
         <p class="muted small-text">24 soatda @(_ai?.CallsToday ?? 0) AI so‘rov (sizniki) · taxminiy hisob</p>
+        @if (budget.BlockedPrices is { Count: > 0 } blocked)
+        {
+            @* L-82: a refused call leaves no usage row; this says why AI stopped. *@
+            <div class="notice" role="alert">
+                <strong>Narxi sozlanmagani uchun AI/ovoz chaqiruvlari to‘xtatildi:</strong>
+                <ul class="small-text">
+                    @foreach (var b in blocked)
+                    {
+                        <li>@b.Provider · @b.Model · @b.Unit — @b.Calls marta, oxirgisi @Format.DayTime(b.LastAt)</li>
+                    }
+                </ul>
+                <p class="small-text">Railway’da <code>Ai__Budget__Prices</code> ga shu model uchun sanali narxni qo‘shing (docs/HOSTING.md).</p>
+            </div>
+        }
         @if (budget.UnknownPriceCalls > 0)
         {
             <p class="warn-text small-text">@budget.UnknownPriceCalls ta so‘rov narxi noma’lum: summa to‘liq emas, provayder billingini tekshiring.</p>

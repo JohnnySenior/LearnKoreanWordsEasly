@@ -10,7 +10,9 @@ if [ "$(id -u)" = 0 ]; then
             exit 1
         fi
     done
-    chown -hR app:app /data/files /data/keys /data/backups
+    # Only what is not the app's yet (L-82): the audio cache grows, and a full recursive chown on every start
+    # would slow each deploy down with it.
+    find /data/files /data/keys /data/backups \( ! -user app -o ! -group app \) -exec chown -h app:app {} +
     exec gosu app "$@"
 fi
 exec "$@"

@@ -54,8 +54,18 @@ public class AiConcurrencyTests
         response.EnsureSuccessStatusCode();
         Assert.False((await response.Content.ReadFromJsonAsync<AiPingResult>(Json))!.Ok);
         Assert.Empty(ai.Requests);
-        await using var scope = factory.Services.CreateAsyncScope();
-        Assert.Empty(await scope.ServiceProvider.GetRequiredService<AppDbContext>().AiUsages.ToListAsync());
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            Assert.Empty(await scope.ServiceProvider.GetRequiredService<AppDbContext>().AiUsages.ToListAsync());
+        }
+
+        // L-82: the refusal leaves no usage row, so the admin's budget names the model that needs a price.
+        await client.PostAsync("/api/ai/ping/OpenAi", null);
+        var budget = (await client.GetFromJsonAsync<AiBudgetDto>("/api/ai/budget", Json))!;
+        var blocked = Assert.Single(budget.BlockedPrices!);
+        Assert.Equal(("OpenAi", "tokens"), (blocked.Provider, blocked.Unit));
+        Assert.True(blocked.Calls >= 1);
+        Assert.False(string.IsNullOrEmpty(blocked.Model));
     }
 
     [Fact]

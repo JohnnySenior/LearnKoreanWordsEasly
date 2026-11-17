@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddSingleton<IOperationLock, Persistence.PostgresOperationLock>();
         services.AddScoped<AiUsageService>();
+        services.AddSingleton<AiPriceAlerts>();
         services.AddOptions<AiBudgetOptions>().Bind(config.GetSection("Ai:Budget"))
             .Validate(o => o.MonthlyLimitUsd >= 0 && o.WarningUsd >= 0 && o.HostingMonthlyUsd >= 0
                 && o.Prices.All(p => p.InputPerMillionUsd >= 0 && p.OutputPerMillionUsd >= 0), "AI budget rates and limits must be nonnegative.")

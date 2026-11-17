@@ -156,6 +156,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 await app.SyncLearningItemsAsync();
 await app.SeedSampleAsync();
 
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 

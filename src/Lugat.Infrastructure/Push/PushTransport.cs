@@ -14,11 +14,15 @@ public static class PushTransport
         ConnectCallback = async (context, ct) =>
         {
             if (!PushEndpointPolicy.IsAllowedHost(context.DnsEndPoint.Host) || context.DnsEndPoint.Port != 443)
+            {
                 throw new HttpRequestException("Push service is not allowed.");
+            }
 
             var addresses = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host, ct);
             if (addresses.Length == 0 || addresses.Any(a => !IsPublicAddress(a)))
+            {
                 throw new HttpRequestException("Push service address is not public.");
+            }
 
             foreach (var address in addresses)
             {
@@ -45,7 +49,11 @@ public static class PushTransport
 
     public static bool IsPublicAddress(IPAddress address)
     {
-        if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
         var b = address.GetAddressBytes();
         if (address.AddressFamily == AddressFamily.InterNetworkV6)
         {

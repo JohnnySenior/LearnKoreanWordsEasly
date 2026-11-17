@@ -2,6 +2,7 @@ using Lugat.Application.Abstractions;
 using Lugat.Contracts;
 using Lugat.Domain.Ai;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Lugat.Application.Ai;
@@ -34,8 +35,25 @@ public sealed class AiPrice
     public DateOnly AsOf { get; set; }
 }
 
+/// <summary>
+/// L-82: calls refused for a missing or wrong price, kept in memory since the last start (one process), so the admin
+/// page can name them. A refused call writes no usage row, so without this nothing showed why AI had stopped.
+/// </summary>
+public sealed class AiPriceAlerts
+{
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(AiProviderKind, string, string), (int Calls, DateTimeOffset LastAt)> _blocked = new();
+
+    public void Blocked(AiProviderKind provider, string model, string unit, DateTimeOffset at) =>
+        _blocked.AddOrUpdate((provider, model, unit), (1, at), (_, old) => (old.Calls + 1, at));
+
+    public IReadOnlyList<BlockedPriceDto> Snapshot() => _blocked
+        .Select(x => new BlockedPriceDto(x.Key.Item1.ToString(), x.Key.Item2, x.Key.Item3, x.Value.Calls, x.Value.LastAt))
+        .OrderByDescending(x => x.LastAt).ToList();
+}
+
 /// <summary>Reservations count towards quotas and the shared monthly budget before a billable call begins.</summary>
-public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, IOptions<AiBudgetOptions> options, TimeProvider time)
+public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, IOptions<AiBudgetOptions> options, TimeProvider time,
+    AiPriceAlerts alerts, ILogger<AiUsageService> log)
 {
     /// <summary>The <see cref="AiUsage.Error"/> of a reservation whose call has not ended yet.</summary>
     public const string Pending = "pending";
@@ -48,20 +66,35 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
         var rows = db.AiUsages.Where(u => u.OwnerId == ownerId && u.OccurredAt >= since);
         rows = feature is "tts" or "stt" ? rows.Where(u => u.Feature == feature) : rows.Where(u => u.Feature != "tts" && u.Feature != "stt");
         if (await rows.CountAsync(ct) >= dailyLimit)
+        {
             throw new TooManyRequestsException($"Oxirgi 24 soatdagi so‘rovlar chegarasi tugadi ({dailyLimit} ta). Eski so‘rovlar 24 soatdan o‘tgach yana urinishingiz mumkin.");
+        }
+
         if (feature == "ping" && await db.AiUsages.AnyAsync(u => u.OwnerId == ownerId && u.Feature == "ping" && u.Provider == provider && u.OccurredAt >= time.GetUtcNow().AddMinutes(-1), ct))
+        {
             throw new TooManyRequestsException("Ulanish hozirgina tekshirildi. Bir daqiqadan keyin qayta urinib ko‘ring.");
+        }
 
         var rate = options.Value.Prices.FirstOrDefault(p => p.Provider == provider && p.Model == model && p.Unit == unit && p.AsOf != default);
         if (rate is null && options.Value.RequireKnownPrices)
+        {
+            Refuse(provider, model, unit, "missing");
             throw new ServiceUnavailableException("AI yoki ovoz xizmatining tarifi hali sozlanmagan. Tayyor materiallardan foydalanishingiz mumkin.");
+        }
+
         if (rate is not null && (rate.InputPerMillionUsd < 0 || rate.OutputPerMillionUsd < 0
             || options.Value.RequireKnownPrices && rate.AsOf > DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime)))
+        {
+            Refuse(provider, model, unit, "invalid");
             throw new ServiceUnavailableException("AI yoki ovoz xizmatining tarifi noto‘g‘ri sozlangan. Tayyor materiallardan foydalanishingiz mumkin.");
+        }
+
         var cost = rate is null ? (decimal?)null : (input * rate.InputPerMillionUsd + output * rate.OutputPerMillionUsd) / 1_000_000m;
         var status = await BudgetAsync(ct);
         if (status.EstimatedUsd + (cost ?? 0) > status.LimitUsd || (cost is null && status.UnknownPriceCalls >= options.Value.MonthlyUnpricedCalls))
+        {
             throw new TooManyRequestsException("Oylik xarajat chegarasiga yetildi. Tayyor materiallar ishlaydi; limitni server sozlamalarida ongli ravishda oshirish mumkin.");
+        }
 
         var row = new AiUsage
         {
@@ -81,6 +114,12 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
         db.AiUsages.Add(row);
         await db.SaveChangesAsync(ct);
         return row;
+    }
+
+    private void Refuse(AiProviderKind provider, string model, string unit, string why)
+    {
+        alerts.Blocked(provider, model, unit, time.GetUtcNow());
+        log.LogWarning("AI call refused: {Why} price for {Provider} {Model} ({Unit}). Set Ai__Budget__Prices for it.", why, provider, model, unit);
     }
 
     public async Task CompleteAsync(AiUsage row, string model, int input, int output, int duration, string? error)
@@ -123,6 +162,6 @@ public sealed class AiUsageService(IAppDbContext db, IOperationLock operations, 
         var total = (await rows.SumAsync(u => u.EstimatedUsd, ct) ?? 0) + options.Value.HostingMonthlyUsd;
         var unknown = await rows.CountAsync(u => u.EstimatedUsd == null, ct);
         return new AiBudgetDto(total, options.Value.MonthlyLimitUsd, total >= options.Value.WarningUsd,
-            unknown, await rows.CountAsync(u => u.Error == Pending, ct), month);
+            unknown, await rows.CountAsync(u => u.Error == Pending, ct), month, alerts.Snapshot());
     }
 }

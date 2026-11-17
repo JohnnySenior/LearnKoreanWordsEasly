@@ -31,9 +31,21 @@ public static class PronunciationExplanation
     public static string? ForWord(string korean, string? reading, string? explanation)
     {
         var note = Readable(explanation);
-        if (note is null || !HasKoreanProse(note)) return note;
-        if (string.IsNullOrWhiteSpace(reading)) return null;
-        if (reading == korean) return "So‘z yozilganidek o‘qiladi.";
+        if (note is null || !HasKoreanProse(note))
+        {
+            return note;
+        }
+
+        if (string.IsNullOrWhiteSpace(reading))
+        {
+            return null;
+        }
+
+        if (reading == korean)
+        {
+            return "So‘z yozilganidek o‘qiladi.";
+        }
+
         var rule = IsSimpleLiaison(korean, reading)
             ? "Bo‘g‘in oxiridagi undosh keyingi unliga ulanib o‘qiladi. " : "";
         return rule + $"«{korean}» so‘zi «{reading}» deb o‘qiladi.";
@@ -54,17 +66,29 @@ public static class PronunciationExplanation
         var changed = false;
         for (var i = 0; i < result.Length - 1; i++)
         {
-            if (result[i] is < '가' or > '힣' || result[i + 1] is < '가' or > '힣') continue;
+            if (result[i] is < '가' or > '힣' || result[i + 1] is < '가' or > '힣')
+            {
+                continue;
+            }
+
             var first = result[i] - '가';
             var next = result[i + 1] - '가';
-            if (next / 588 != 11) continue; // ㅇ before a vowel
+            if (next / 588 != 11)
+            {
+                continue; // ㅇ before a vowel
+            }
+
             var onset = (first % 28) switch
             {
                 1 => 0, 2 => 1, 4 => 2, 7 => 3, 8 => 5, 16 => 6, 17 => 7,
                 19 => 9, 20 => 10, 22 => 12, 23 => 14, 24 => 15, 25 => 16, 26 => 17,
                 _ => -1,
             };
-            if (onset < 0) continue;
+            if (onset < 0)
+            {
+                continue;
+            }
+
             result[i] = (char)(result[i] - first % 28);
             result[i + 1] = (char)(result[i + 1] + (onset - 11) * 588);
             changed = true;
