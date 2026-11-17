@@ -726,8 +726,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] #104–#110 ko‘rib chiqildi: barcha testlar o‘tdi (Domain 106, Application 164, Api 361, web 50), Railway deploy SUCCESS.
 - [x] Narxi yo‘q/noto‘g‘ri bo‘lgani uchun to‘xtatilgan AI/ovoz chaqiruvlari admin «Tizim» sahifasida (model, necha marta, oxirgi vaqt) va logda ko‘rinadi.
 - [x] Entrypoint faqat egasi noto‘g‘ri fayllarni `chown` qiladi (har deployda butun audio keshni emas).
-- [x] Eski talaffuz izohlari ishga tushishda bir marta bazada o‘qiladigan o‘zbekcha shaklga yoziladi; ikkinchi ishga tushishda o‘zgarish yo‘q; tasdiq va o‘qilish saqlanadi.
 - [x] Codex yozgan fayllarda qavssiz `if` lar loyiha uslubiga keltirildi (mantiq o‘zgarmadi).
 - [ ] Johnny: Anthropic hisobidagi API balansini tekshirish (L-78 da «credit balance» xatosi bo‘lgan).
-- [ ] Keyin: barcha eski izohlar bazada tozalangach, L-80/L-81 o‘qish paytidagi almashtirish kodini olib tashlash mumkin.
+- [ ] Keyin: talaffuz qoidalarini aniq yozish (har farqli so‘zda qaysi qoida — Johnny 2026-11-17); shundan so‘ng L-80/L-81 o‘qish paytidagi almashtirish kodini olib tashlash mumkin.
 

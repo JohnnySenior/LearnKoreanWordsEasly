@@ -35,35 +35,6 @@ public class PronunciationTests
     [Theory]
     [InlineData("좋다", "조타", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (거센소리되기).", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (undoshning kuchli nafas bilan aytilishi).")]
     [InlineData("들어가다", "드러가다", "받침 ’ㄹ’ 다음 모음 ’ㅓ’가 이어지며 연음화: ㄹ이 다음 음절 초성으로 이동", "Bo‘g‘in oxiridagi undosh keyingi unliga ulanib o‘qiladi. «들어가다» so‘zi «드러가다» deb o‘qiladi.")]
-    public async Task The_start_backfill_stores_the_readable_note_once_and_keeps_the_review(string korean, string reading, string oldNote, string readable)
-    {
-        // L-82: the readable form is written where it is stored, once; a second run changes nothing.
-        await using var f = new ApiFactory { Premium = false, TableWords = [(korean, "ma’no")] };
-        var learner = await f.SignedInClientAsync(ApiFactory.UserB);
-        await learner.PostAsync(ApiFactory.TestWordsPath, null);
-        await using (var scope = f.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var word = await db.CatalogWords.SingleAsync(w => w.Word == korean);
-            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (reading, oldNote, true);
-            await db.SaveChangesAsync();
-        }
-
-        await using (var scope = f.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            Assert.True(await Lugat.Application.Pronunciation.PronunciationNoteBackfill.RunAsync(db, CancellationToken.None) >= 1);
-            Assert.Equal(0, await Lugat.Application.Pronunciation.PronunciationNoteBackfill.RunAsync(db, CancellationToken.None));
-        }
-
-        await using var check = f.Services.CreateAsyncScope();
-        var stored = await check.ServiceProvider.GetRequiredService<AppDbContext>().CatalogWords.SingleAsync(w => w.Word == korean);
-        Assert.Equal((readable, reading, true), (stored.PronunciationNoteUz, stored.PronunciationKo, stored.PronunciationReviewed));
-    }
-
-    [Theory]
-    [InlineData("좋다", "조타", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (거센소리되기).", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (undoshning kuchli nafas bilan aytilishi).")]
-    [InlineData("들어가다", "드러가다", "받침 ’ㄹ’ 다음 모음 ’ㅓ’가 이어지며 연음화: ㄹ이 다음 음절 초성으로 이동", "Bo‘g‘in oxiridagi undosh keyingi unliga ulanib o‘qiladi. «들어가다» so‘zi «드러가다» deb o‘qiladi.")]
     public async Task Legacy_notes_are_readable_for_editor_and_learner_without_rewriting_the_database(string korean, string reading, string oldNote, string readable)
     {
         await using var f = new ApiFactory { Premium = false, AdminTelegramIds = [ApiFactory.UserA], TableWords = [(korean, "ma’no")] };
