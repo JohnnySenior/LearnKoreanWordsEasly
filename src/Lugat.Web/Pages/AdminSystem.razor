@@ -8,7 +8,9 @@
 
 @* UI handoff 2d: the system blocks that used to sit in the profile (AI service, the month's spend, backups) live here,
    for the owner only (spec §6.4, §10). The server checks the role on every call. *@
-<AppHeader Title="Tizim" Back="admin" />
+@* L-86 (UI audit 17): the same back link and title as every inner page. *@
+<a class="back" href="admin">← Admin panel</a>
+<h1>Tizim</h1>
 
 @if (!IsAdmin)
 {

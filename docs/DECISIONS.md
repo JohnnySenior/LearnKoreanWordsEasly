@@ -1000,3 +1000,10 @@ Johnny do‘stining UI/UX auditini yubordi (20 band). Kelishuv: tez va ko‘rina
 ## L-85 · 2026-11-17 · Havola preview rasmi (og:image)
 
 Audit 12-band: ulashilgan havolada 512px ilova ikonkasi chiqardi, bosh sahifada esa og:image umuman yo‘q edi. Johnny ChatGPT’da 1200×630 rasm yasadi (logo, «Koreys tili so‘zlari — o‘zbek tilida», 하다/있다 kartalari, koreyscha.com); matni tekshirildi, 1200×630 JPG (53 KB) qilib `wwwroot/og-image.jpg` ga qo‘yildi. Bosh sahifa va barcha ochiq sahifalar (/soz, /soz/{slug}, /sinab) shu rasmni `og:image` (o‘lchami bilan) va `twitter:card=summary_large_image` bilan beradi.
+
+## L-86 · 2026-11-18 · UI/UX auditi (2-qism): bitta brend, bir xil ichki sahifalar, o‘rnatish faqat telefonda, haqiqiy 404
+
+- Brend va shrift (7): ochiq sahifalar (/sinab, /soz, /soz/{slug}) ham ilovaning shriftida (Plus Jakarta Sans, Google Fonts, `display=swap`); ilovaning bosh header’ida ham ochiq sahifalardagi ㅋ belgisi («Koreyscha» yonida), statik `index.html` da ham.
+- Ichki sahifalar (17): hammasi bir xil — «← Ota sahifa» havolasi va katta sarlavha. AppHeader orqaga strelkasi bilan qolganlari (Hisob, Haqida, Eslatma, Premium, Admin panel, Tizim, Savollardagi xatolar) shu ko‘rinishga o‘tdi; «← Mashqlar» → «← Mashq» (sahifa nomi «Mashq»). Bo‘lim sahifasi (taymer bilan) va sinov (✕ bilan) o‘z header’ida qoladi — ular to‘liq ekranli mashg‘ulot.
+- O‘rnatish (5, 16): iPhone’da Safari, Android’da Chrome qadamlari avvaldan qurilmaga qarab chiqadi (`installState`); bosh sahifada «Telefonga o‘rnatish» bo‘limi endi faqat telefon/planshetda (`isPhone`), kompyuterda ko‘rsatilmaydi. Profil → «Ilovani o‘rnatish» sahifasi hamma qurilmada qoladi.
+- 404 (12): ilova sahifalarining birinchi segmentlari serverda ro‘yxat (`AppRoutes`); ular va «/» ilovani oladi, boshqa noma’lum manzil — 404 status, `noindex`, «Bosh sahifaga qaytish» tugmali sahifa. Test ro‘yxatni `@page` direktivalari bilan solishtiradi, yangi sahifa qo‘shilsa unutilmaydi.

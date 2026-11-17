@@ -60,6 +60,9 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
     /// <summary>"installed", "prompt", "ios" or "manual" — see installState in app.js.</summary>
     public async Task<string> InstallStateAsync() => await (await App()).InvokeAsync<string>("installState");
 
+    /// <summary>A phone or tablet (by the browser's user agent); the landing offers installing only there.</summary>
+    public async Task<bool> IsPhoneAsync() => await (await App()).InvokeAsync<bool>("isPhone");
+
     /// <summary>Opens Chrome's install dialog; true when the learner accepted.</summary>
     public async Task<bool> PromptInstallAsync() => await (await App()).InvokeAsync<bool>("promptInstall");
 

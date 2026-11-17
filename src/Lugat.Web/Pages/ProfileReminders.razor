@@ -6,7 +6,9 @@
 <PageTitle>Eslatma — Koreyscha</PageTitle>
 
 @* Reminders (spec §8): Web Push on this device (L-63) and the Telegram bot; one schedule for both. *@
-<AppHeader Title="Eslatma" Back="profil" />
+@* L-86 (UI audit 17): the same back link and title as every inner page. *@
+<a class="back" href="profil">← Profil</a>
+<h1>Eslatma</h1>
 
 @if (_prefs is null)
 {

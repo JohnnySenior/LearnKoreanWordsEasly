@@ -39,7 +39,7 @@ test('a returning user sees only the brand and "Yuklanmoqda…": the key is Sess
     assert.ok(script.includes(`try { if (localStorage.getItem('${key}')) document.documentElement.classList.add('returning'); } catch { }`));
     assert.match(css, /\.returning \.boot-landing \{ display: none; \}/);
     // The brand and the loading line stay outside .boot-landing; everything else is inside it.
-    assert.match(bootHtml, /<span class="app-header-title">Koreyscha<\/span>/);
+    assert.match(bootHtml, /<span class="brand-mark" lang="ko" aria-hidden="true">ㅋ<\/span><span class="app-header-title">Koreyscha<\/span>/);
     assert.match(bootHtml, /<p class="boot-loading" role="status" aria-live="polite">.*Yuklanmoqda…<span class="boot-percent" aria-hidden="true"><\/span><\/p>/);
     const before = bootHtml.slice(0, bootHtml.indexOf('<div class="boot-landing">'));
     assert.ok(!before.includes('signin-words') && !before.includes('/sinab'));

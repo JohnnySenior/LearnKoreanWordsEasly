@@ -10,6 +10,11 @@
     {
         <a class="app-header-back" href="@Close" aria-label="Yopish"><Icon Name="x" Size="22" /></a>
     }
+    else if (Title is null)
+    {
+        @* L-86 (UI audit 7): the brand with its mark, as on the public pages (/sinab, /soz). *@
+        <span class="brand-mark" lang="ko" aria-hidden="true">ㅋ</span>
+    }
     <span class="app-header-title">@(Title ?? "Koreyscha")</span>
     @if (Right is not null)
     {

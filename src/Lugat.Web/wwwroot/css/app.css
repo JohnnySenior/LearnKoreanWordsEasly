@@ -1677,3 +1677,6 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .level-pick span { font-size: 12px; }
 .level-pick .level-uz { color: var(--color-text); font-weight: 600; }
 .level-pick button.selected .level-uz { color: inherit; }
+
+/* L-86 (UI audit 7): the brand mark, the same as on the public pages and the link preview picture. */
+.brand-mark { display: grid; place-items: center; flex: none; width: 30px; height: 30px; margin-right: -3px; border-radius: 10px; background: var(--accent-fill); color: var(--color-on-accent); font: 700 17px/1 var(--font-body); }

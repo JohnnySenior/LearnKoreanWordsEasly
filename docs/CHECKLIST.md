@@ -748,3 +748,10 @@ Bosqichlar spec §13 bo‘yicha.
 **Havola preview rasmi (L-85, 2026-11-17):**
 - [x] `og-image.jpg` 1200×630; bosh sahifa va ochiq sahifalarda `og:image` + `summary_large_image`; testlar.
 - [ ] Johnny: deploydan keyin havolani Telegram’da yuborib preview’ni ko‘rish (Telegram eski preview’ni keshlagan bo‘lsa, @WebpageBot orqali yangilash).
+
+**UI/UX auditi, 2-qism (L-86, 2026-11-18):**
+- [x] Ochiq sahifalar ilova shriftida; bosh header’da ㅋ belgisi.
+- [x] Ichki sahifalarda bitta «← Ota sahifa» + sarlavha ko‘rinishi (7 sahifa o‘tkazildi, «← Mashq»).
+- [x] Bosh sahifadagi o‘rnatish bo‘limi faqat telefon/planshetda.
+- [x] Haqiqiy 404 sahifa (status 404, noindex); ilova sahifalari ro‘yxati testda `@page` bilan solishtiriladi.
+- [ ] Johnny: iPhone’da bosh sahifani ochib «Telefonga o‘rnatish» Safari qadamlarini ko‘rish; koreyscha.com/nimadir → 404 sahifa.

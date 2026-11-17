@@ -27,6 +27,19 @@ test('the install guide matches the device', () => {
     assert.equal(app.installState(), 'manual');
 });
 
+test('installing is offered on phones and tablets, not on a computer (L-84)', () => {
+    device();
+    assert.equal(app.isPhone(), true);
+    device({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Safari/604.1' });
+    assert.equal(app.isPhone(), true);
+    device({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15', platform: 'MacIntel', touch: 5 });
+    assert.equal(app.isPhone(), true, 'iPadOS reports itself as a Mac');
+    device({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15', platform: 'MacIntel', touch: 0 });
+    assert.equal(app.isPhone(), false);
+    device({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130', platform: 'Win32', touch: 0 });
+    assert.equal(app.isPhone(), false);
+});
+
 test("Chrome's install offer is used once", async () => {
     let shown = 0;
     device({ prompt: { prompt: async () => { shown++; }, userChoice: Promise.resolve({ outcome: 'accepted' }) } });

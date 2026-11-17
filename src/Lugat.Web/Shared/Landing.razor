@@ -46,9 +46,12 @@
 
     @if (!Boot)
     {
-        <SectionLabel Text="Telefonga o‘rnatish" />
-        <p class="small-text">App Store yoki Play Market kerak emas: ilova brauzerdan bosh ekranga qo‘shiladi va oddiy ilovadek ochiladi.</p>
-        <InstallGuide Intro="false" />
+        <InstallGuide Intro="false" PhoneOnly>
+            <Heading>
+                <SectionLabel Text="Telefonga o‘rnatish" />
+                <p class="small-text">App Store yoki Play Market kerak emas: ilova brauzerdan bosh ekranga qo‘shiladi va oddiy ilovadek ochiladi.</p>
+            </Heading>
+        </InstallGuide>
 
         <a class="btn btn-primary block landing-cta" href="#kirish"><span>Bepul boshlash</span><Icon Name="arrow-right" /></a>
     }

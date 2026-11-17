@@ -3,9 +3,14 @@
 
 @* Putting the app on the home screen (spec §4.1 step 3, §6.2): Chrome's own install dialog where the browser offers
    it, the three Safari steps on iPhone/iPad, the browser menu elsewhere. *@
+@if (Kind is not null and not "hidden" && Heading is not null)
+{
+    @Heading
+}
 @switch (Kind)
 {
     case null:
+    case "hidden":
         break;
     case "installed":
         <p role="status"><strong>Ilova o‘rnatilgan.</strong> Uni bosh ekrandagi «Koreyscha» belgisidan oching.</p>
@@ -127,6 +132,12 @@
     /// <summary>False where the page already says what installing gives (the landing), so it is not said twice.</summary>
     [Parameter] public bool Intro { get; set; } = true;
 
+    /// <summary>L-84: shown only on a phone or tablet (the landing); on a computer nothing, heading included.</summary>
+    [Parameter] public bool PhoneOnly { get; set; }
+
+    /// <summary>Shown above the guide when it is shown.</summary>
+    [Parameter] public RenderFragment? Heading { get; set; }
+
     private string? _state;
     private bool _copied;
 
@@ -144,7 +155,7 @@
     {
         if (firstRender)
         {
-            _state = await Browser.InstallStateAsync();
+            _state = PhoneOnly && !await Browser.IsPhoneAsync() ? "hidden" : await Browser.InstallStateAsync();
             StateHasChanged();
         }
     }
