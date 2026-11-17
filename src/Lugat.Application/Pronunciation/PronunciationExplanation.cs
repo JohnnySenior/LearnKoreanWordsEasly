@@ -28,12 +28,17 @@ public static class PronunciationExplanation
     public static bool HasLatinExplanation(string explanation) => Regex.IsMatch(explanation, "[A-Za-z]{2,}");
 
     /// <summary>Legacy Korean prose is replaced by a factual Uzbek note, not a guessed translation.</summary>
-    public static string? ForWord(string korean, string? reading, string? explanation)
+    public static string? ForWord(string korean, string? reading, string? explanation, bool hasRules = false)
     {
         var note = Readable(explanation);
         if (note is null || !HasKoreanProse(note))
         {
             return note;
+        }
+
+        if (hasRules)
+        {
+            return null; // L-83: the rules found from the spelling say it better than a bare "X is read Y"
         }
 
         if (string.IsNullOrWhiteSpace(reading))

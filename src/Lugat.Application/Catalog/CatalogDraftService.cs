@@ -185,8 +185,9 @@ public sealed class CatalogDraftService(IAppDbContext db, AiGateway ai, TimeProv
           8 words separated by spaces, using the word. Prefer words from <known> and this list.
         - exampleUz: its natural Uzbek translation.
         - trapUz: where an Uzbek speaker really goes wrong with this word (word-for-word translation, politeness
-          level, a homonym, a similar word), or a useful likeness to Uzbek, in 1-2 short Uzbek sentences with the
-          Korean in Hangul. null when there is nothing real; never invent one.
+          level, a homonym, a similar word), or a useful likeness to Uzbek, in one or two short, plain Uzbek
+          sentences (at most 30 words) with the Korean in Hangul: what is said wrong, what to say, and why. null when
+          there is nothing real; never invent one.
         - theme: a short Uzbek topic tag such as "Asosiy fe’l", "Olmosh", "Vaqt", "Joy", "Odamlar", "Ish", "Tana",
           "Muloqot", "Ovqat", "Uy", "Transport".
         - questions: 1-2 "which word is right?" questions. Each has: uzbek — a natural Uzbek sentence; sentence —

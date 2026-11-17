@@ -71,6 +71,9 @@ public sealed class PersonalWord
 
     public string? TrapRight { get; set; }
 
+    /// <summary>L-83: one short Uzbek sentence on the difference the scene shows ("에서 emas, 에: borish joyi.").</summary>
+    public string? TrapWhy { get; set; }
+
     /// <summary>
     /// The day its new cards may join the daily review: at most <see cref="NewPerDay"/> own words a day, so adding fifty
     /// at once does not bury the next days.

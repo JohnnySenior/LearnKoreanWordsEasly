@@ -94,6 +94,19 @@
         {
             <button class="button" disabled="@_busy" @onclick="RetryScenesAsync">Topilmaganlarni qayta so‘rash (@none)</button>
         }
+        @if (approved + pending.Count + none > 0)
+        {
+            @if (_confirmRedo)
+            {
+                <button class="button" disabled="@_busy" @onclick="RedoScenesAsync">Ha, hammasini qayta yozdirish</button>
+                <button class="link-btn muted" @onclick="() => _confirmRedo = false">Bekor</button>
+                <p class="muted small-text">AI har bir sahnani aniq juft gap va bitta gaplik izoh bilan qaytadan yozadi. Yangi sahnalar siz tasdiqlaguningizcha o‘quvchilar oddiy tuzoq izohini ko‘radi.</p>
+            }
+            else
+            {
+                <button class="button" disabled="@_busy" @onclick="() => _confirmRedo = true">Barcha sahnalarni qayta yozdirish</button>
+            }
+        }
         @if (pending.Count > 0)
         {
             <button class="button @(_reviewScenes ? "selected" : "")" aria-pressed="@_reviewScenes" @onclick="() => _reviewScenes = !_reviewScenes">Tekshirish (@pending.Count)</button>
@@ -114,6 +127,10 @@
                             <span class="small-text">@w.TrapCue</span>
                         }
                         <span lang="ko"><s>@w.TrapWrong</s> ✗ → <strong>@w.TrapRight</strong> ✓</span>
+                        @if (w.TrapWhy is not null)
+                        {
+                            <span class="small-text">@w.TrapWhy</span>
+                        }
                     </div>
                     <div class="actions">
                         <button class="button small primary" disabled="@_busy" @onclick="() => ApproveSceneAsync(word)">Tasdiqlash</button>
@@ -174,6 +191,7 @@
             <label class="field">Vaziyat (ixtiyoriy, masalan «Ishga boraman» deyishda:)<input class="input" maxlength="120" @bind="edit.TrapCue" /></label>
             <label class="field">Xato (o‘zbek odatda shunday deydi)<input class="input" lang="ko" maxlength="60" @bind="edit.TrapWrong" /></label>
             <label class="field">To‘g‘ri<input class="input" lang="ko" maxlength="60" @bind="edit.TrapRight" /></label>
+            <label class="field">Qisqa izoh (bitta gap: nimasi xato, nima deyiladi)<input class="input" maxlength="160" @bind="edit.TrapWhy" /></label>
             <p class="muted small-text">Ikkalasi bo‘sh bo‘lsa, kartochkada tuzoq oddiy matn bo‘lib chiqadi. Saqlash sahnani ham tasdiqlaydi.</p>
             @if (word.TrapScenePending)
             {
@@ -233,12 +251,14 @@
         public string? TrapCue { get; set; }
         public string? TrapWrong { get; set; }
         public string? TrapRight { get; set; }
+        public string? TrapWhy { get; set; }
         public string? Theme { get; set; }
         public List<CatalogQuestionDto> Questions { get; set; } = [];
     }
 
     private UnitAdminDto? _unit;
     private bool _reviewScenes;
+    private bool _confirmRedo;
 
     /// <summary>The trap scene's state on the word card (L-52); null when the word has no trap note.</summary>
     private static (string Text, string Css)? SceneLabel(CatalogWordAdminDto w) =>
@@ -285,6 +305,7 @@
         TrapCue = w.TrapCue,
         TrapWrong = w.TrapWrong,
         TrapRight = w.TrapRight,
+        TrapWhy = w.TrapWhy,
         Theme = w.Theme,
         Questions = w.Questions.ToList(),
     };
@@ -323,7 +344,7 @@
                 var old = _unit?.Words.FirstOrDefault(v => v.Id == w.Id);
                 if (old is null || old.TranslationUz != w.TranslationUz || old.Romanization != w.Romanization || old.ExampleKo != w.ExampleKo
                     || old.ExampleUz != w.ExampleUz || old.TrapUz != w.TrapUz || old.TrapCue != w.TrapCue || old.TrapWrong != w.TrapWrong
-                    || old.TrapRight != w.TrapRight || old.Theme != w.Theme
+                    || old.TrapRight != w.TrapRight || old.TrapWhy != w.TrapWhy || old.Theme != w.Theme
                     || System.Text.Json.JsonSerializer.Serialize(old.Questions) != System.Text.Json.JsonSerializer.Serialize(w.Questions)) Replace(w);
             }
             _unit = unit;
@@ -343,7 +364,7 @@
         var edit = _edits[word.Id];
         var saved = await Api.SendJsonAsync<CatalogWordAdminDto>(HttpMethod.Put, $"api/admin/catalog/words/{word.Id}", new UpdateCatalogWordRequest(
             edit.TranslationUz, edit.Romanization, edit.ExampleKo, edit.ExampleUz, edit.TrapUz, edit.Theme, edit.Questions, word.Version,
-            edit.TrapCue, edit.TrapWrong, edit.TrapRight));
+            edit.TrapCue, edit.TrapWrong, edit.TrapRight, edit.TrapWhy));
         var current = saved.Value;
         if (current is not null && review && current.Status != CatalogWordStatus.Reviewed)
         {
@@ -436,6 +457,21 @@
         }
 
         Apply(result.Value);
+        _busy = false;
+    }
+
+    /// <summary>L-83: every scene of the unit again under the clearer rules; the drafts then wait for review.</summary>
+    private async Task RedoScenesAsync()
+    {
+        (_busy, _confirmRedo) = (true, false);
+        var result = await Api.SendJsonAsync<UnitAdminDto>(HttpMethod.Post, $"api/admin/units/{Id}/trap-scenes/redo");
+        _error = result.Error;
+        if (result.Value is { } unit)
+        {
+            Show(unit);
+            await DraftScenesAsync();
+        }
+
         _busy = false;
     }
 

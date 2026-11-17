@@ -103,6 +103,60 @@ public class TrapSceneTests
     }
 
     [Fact]
+    public async Task A_scene_comes_as_a_minimal_pair_with_a_short_why_and_a_unit_can_have_all_its_scenes_written_again()
+    {
+        // L-83 (Johnny): the sentences must be clearly told apart and the explanation short.
+        var round = 0;
+        _ai.Answer = r =>
+        {
+            round++;
+            return r.UserContent.Contains("1. 가다")
+                ? $$"""{"words":[{"id":1,"cue":"Ishga ketayotib:","wrong":"회사에서 가요","right":"회사에 가요","why":"에서 — qayerda; borish joyi uchun 에 (round {{round}})."},{"id":2,"cue":null,"wrong":null,"right":null,"why":null}]}"""
+                : """{"words":[]}""";
+        };
+        await using var factory = NewFactory();
+        var (admin, learner) = await SetUpAsync(factory);
+        var url = $"/api/admin/units/{ApiFactory.Unit(1)}";
+
+        var drafted = await ReadAsync<UnitAdminDto>(await admin.PostAsync(url + "/trap-scenes", null));
+        var request = Assert.Single(_ai.Requests, r => r.Feature == TrapSceneService.Feature);
+        Assert.Contains("minimal pair", request.Instructions);
+        Assert.Contains("ONE short Uzbek Latin sentence", request.Instructions);
+        var go = drafted.Words.Single(w => w.Word == "가다");
+        Assert.Equal("에서 — qayerda; borish joyi uchun 에 (round 1).", go.TrapWhy);
+
+        await ReadAsync<CatalogWordAdminDto>(await admin.PostAsJsonAsync($"/api/admin/catalog/words/{go.Id}/trap-scene/approve", new ReviewCatalogWordRequest(go.Version), Json));
+        var card = await GoCardAsync(factory, learner);
+        Assert.Equal(new TrapSceneDto("Ishga ketayotib:", "회사에서 가요", "회사에 가요", "에서 — qayerda; borish joyi uchun 에 (round 1)."), card.TrapScene);
+
+        // All scenes again: the approved one is cleared (learners see the plain note), then drafted anew for review.
+        var cleared = await ReadAsync<UnitAdminDto>(await admin.PostAsync(url + "/trap-scenes/redo", null));
+        Assert.Equal(2, cleared.ScenesRemaining);
+        Assert.Null(cleared.Words.Single(w => w.Word == "가다").TrapWrong);
+        Assert.Null((await GoCardAsync(factory, learner)).TrapScene);
+        var redrafted = await ReadAsync<UnitAdminDto>(await admin.PostAsync(url + "/trap-scenes", null));
+        var again = redrafted.Words.Single(w => w.Word == "가다");
+        Assert.True(again.TrapScenePending);
+        Assert.Equal("에서 — qayerda; borish joyi uchun 에 (round 2).", again.TrapWhy);
+        Assert.Equal(HttpStatusCode.Forbidden, (await learner.PostAsync(url + "/trap-scenes/redo", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_why_that_is_not_short_uzbek_is_refused_by_hand()
+    {
+        await using var factory = NewFactory();
+        var (admin, _) = await SetUpAsync(factory);
+        var go = (await ReadAsync<UnitAdminDto>(await admin.GetAsync($"/api/admin/units/{ApiFactory.Unit(1)}"))).Words.Single(w => w.Word == "가다");
+        UpdateCatalogWordRequest With(string? why) => new(go.TranslationUz ?? "bormoq", go.Romanization ?? "gada", go.ExampleKo ?? "회사에 가요.", go.ExampleUz ?? "Ishga boraman.",
+            GoTrap, go.Theme, [], go.Version, "Ishga ketayotib:", "회사에서 가요", "회사에 가요", why);
+
+        var tooLong = await admin.PutAsJsonAsync($"/api/admin/catalog/words/{go.Id}", With(new string('a', 161)), Json);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, tooLong.StatusCode);
+        var saved = await ReadAsync<CatalogWordAdminDto>(await admin.PutAsJsonAsync($"/api/admin/catalog/words/{go.Id}", With("  에 — borish joyi.  "), Json));
+        Assert.Equal("에 — borish joyi.", saved.TrapWhy);
+    }
+
+    [Fact]
     public async Task The_review_list_confirms_all_drops_one_and_words_without_a_scene_can_be_asked_again()
     {
         _ai.Answer = r => Scenes(r.UserContent);

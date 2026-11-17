@@ -450,9 +450,9 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             : null;
         if (sense.CatalogWordId is null && await db.PersonalWords.AsNoTracking()
                 .Where(w => w.OwnerId == card.OwnerId && w.LearningItemId == sense.Id && w.TrapWrong != null && w.TrapRight != null)
-                .Select(w => new { w.TrapCue, w.TrapWrong, w.TrapRight }).FirstOrDefaultAsync(ct) is { } own)
+                .Select(w => new { w.TrapCue, w.TrapWrong, w.TrapRight, w.TrapWhy }).FirstOrDefaultAsync(ct) is { } own)
         {
-            scene = new Catalog.TrapScene(own.TrapCue, own.TrapWrong!, own.TrapRight!);
+            scene = new Catalog.TrapScene(own.TrapCue, own.TrapWrong!, own.TrapRight!, own.TrapWhy);
         }
 
         PronunciationDto? pronunciation = null;
@@ -486,7 +486,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             previews,
             trap,
             koreanToUzbek ? null : await Vocabulary.MeaningTwins.HintAsync(db, card.OwnerId, sense, ct),
-            scene is null ? null : new TrapSceneDto(scene.Cue, scene.Wrong, scene.Right), pronunciation);
+            scene is null ? null : new TrapSceneDto(scene.Cue, scene.Wrong, scene.Right, scene.Why), pronunciation);
     }
 
     private IQueryable<ActiveCard> ActiveCards(Guid ownerId) =>

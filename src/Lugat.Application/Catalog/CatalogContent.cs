@@ -18,7 +18,7 @@ public sealed record CatalogContentFields(
 }
 
 /// <summary>The trap acted out on the card (L-52): an optional Uzbek situation, the Uzbek speaker's Korean, the right Korean.</summary>
-public sealed record TrapScene(string? Cue, string Wrong, string Right);
+public sealed record TrapScene(string? Cue, string Wrong, string Right, string? Why = null);
 
 /// <summary>
 /// The rules of spec §2.3 in one place, for editors and for AI drafts alike: Uzbek in Latin script with one
@@ -89,12 +89,34 @@ public static partial class CatalogContent
     public const int MaxSceneCue = 120;
 
     /// <summary>
+    /// L-83 (Johnny: the scene sentences were vague and odd): the rules every AI prompt that writes a trap scene shares,
+    /// so the learner sees the difference at a glance.
+    /// </summary>
+    public const string SceneRules = """
+        A trap scene is a minimal pair the learner understands at a glance:
+        - wrong and right are the same short everyday sentence (2-6 words, polite 요 form when a verb ends it) that
+          differ ONLY in the trapped part — one word, particle or ending. Everything else is identical, so the
+          difference jumps out (회사에서 가요 / 회사에 가요; 저는 안 알아요 / 저는 몰라요).
+        - right is fully natural Korean a native speaker says in that situation; wrong is exactly what an Uzbek
+          speaker says there because of the trap. Never two sentences that could both be right, never odd, rare or
+          made-up words, never a correct sentence marked wrong.
+        - cue: the concrete situation in natural Uzbek Latin, at most 8 words, ending with ":" so only the right
+          sentence fits it ("Ishga ketayotib:", "Do‘kondagi sotuvchiga:").
+        - why: ONE short Uzbek Latin sentence, at most 15 words, naming the difference directly: what is wrong and
+          what to say ("에서 — qayerda; borish joyi uchun 에."). No repetition of the cue, no lecture.
+        """;
+
+    /// <summary>L-83: the scene's short "why" — one sentence the learner reads at a glance.</summary>
+    public const int MaxSceneWhy = 160;
+
+    /// <summary>
     /// Checks a trap scene (L-52): all blank is no scene; otherwise both Korean lines in Hangul, different, short,
     /// and a trap note to explain them. Returns the cleaned scene or the problem in Uzbek.
     /// </summary>
-    public static (TrapScene? Scene, string? Problem) CheckScene(string? cue, string? wrong, string? right, string? trapUz)
+    public static (TrapScene? Scene, string? Problem) CheckScene(string? cue, string? wrong, string? right, string? trapUz, string? why = null)
     {
         var (c, w, r) = (Blank(TextNormalizer.Uzbek(cue)), Blank(wrong), Blank(right));
+        var y = Blank(TextNormalizer.Uzbek(why));
         if (c is null && w is null && r is null)
         {
             return (null, null);
@@ -125,7 +147,12 @@ public static partial class CatalogContent
             return (null, $"Vaziyat o‘zbekcha lotin yozuvida bo‘lsin ({MaxSceneCue} belgigacha).");
         }
 
-        return (new TrapScene(c, w, r), null);
+        if (y is not null && (y.Length > MaxSceneWhy || !SentenceCheckService.IsUzbekLatin(y)))
+        {
+            return (null, $"Qisqa izoh o‘zbekcha lotin yozuvida, {MaxSceneWhy} belgigacha bo‘lsin.");
+        }
+
+        return (new TrapScene(c, w, r, y), null);
     }
 
     /// <summary>Word count (어절): Korean words are separated by spaces.</summary>

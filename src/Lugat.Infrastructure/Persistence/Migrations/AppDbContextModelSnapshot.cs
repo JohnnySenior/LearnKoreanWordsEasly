@@ -295,6 +295,10 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("TrapWhy")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<string>("TrapWrong")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
@@ -1460,6 +1464,10 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("TrapWhy")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<string>("TrapWrong")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
@@ -1952,6 +1960,10 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<string>("TrapUz")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("TrapWhy")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
 
                     b.Property<string>("TrapWrong")
                         .HasMaxLength(60)

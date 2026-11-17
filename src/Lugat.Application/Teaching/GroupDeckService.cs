@@ -86,8 +86,8 @@ public sealed class GroupDeckService(
         return new GroupDeckDto(deck.Id, deck.GroupId, group.Name, deck.Name, deck.Status, deck.PublishedAt,
             words.Select(w => new GroupDeckWordDto(w.Id, w.Order, w.Korean, w.Uzbek, w.Source, w.SharedItemId != null,
                 w.CatalogWordId is { } c ? units.GetValueOrDefault(c) : null, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz,
-                w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapSceneDto(w.TrapCue, wrong, right) : null,
-                new PronunciationReviewDto(w.PronunciationKo, PronunciationExplanation.ForWord(w.Korean, w.PronunciationKo, w.PronunciationNoteUz), w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList(),
+                w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapSceneDto(w.TrapCue, wrong, right, w.TrapWhy) : null,
+                PronunciationService.Review(w.Korean, w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList(),
             await db.GroupMembers.CountAsync(m => m.GroupId == deck.GroupId && m.LeftAt == null, ct),
             await premium.CanUseAiAsync(teacherId, ct),
             words.Count(Pending),
@@ -330,8 +330,8 @@ public sealed class GroupDeckService(
             // The meaning can distinguish homonyms with different standard readings too.
             (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed, word.PronunciationAskedAt) = (null, null, false, null);
             (word.Korean, word.Uzbek, word.Source, word.CatalogWordId, word.SharedItemId) = (korean, uzbek, fresh.Source, fresh.CatalogWordId, fresh.SharedItemId);
-            (word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.TrapCue, word.TrapWrong, word.TrapRight) =
-                (fresh.Romanization, fresh.ExampleKo, fresh.ExampleUz, fresh.TrapUz, fresh.TrapCue, fresh.TrapWrong, fresh.TrapRight);
+            (word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapWhy) =
+                (fresh.Romanization, fresh.ExampleKo, fresh.ExampleUz, fresh.TrapUz, fresh.TrapCue, fresh.TrapWrong, fresh.TrapRight, fresh.TrapWhy);
         }
 
         var (fields, problem) = CatalogContent.Check(new(uzbek, request.Romanization?.ToLowerInvariant(), request.ExampleKo, request.ExampleUz, request.TrapUz, null));
@@ -343,7 +343,7 @@ public sealed class GroupDeckService(
         (word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz) = (fields.Romanization, fields.ExampleKo, fields.ExampleUz, fields.TrapUz);
         if (word.TrapUz is null)
         {
-            (word.TrapCue, word.TrapWrong, word.TrapRight) = (null, null, null); // the scene belongs to the trap
+            (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapWhy) = (null, null, null, null); // the scene belongs to the trap
         }
 
         await SaveAsync(ct);
@@ -382,7 +382,7 @@ public sealed class GroupDeckService(
                 }
 
                 (word.Source, word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz) = (GroupWordSource.Ai, card.Fields.Romanization, card.Fields.ExampleKo, card.Fields.ExampleUz, card.Fields.TrapUz);
-                (word.TrapCue, word.TrapWrong, word.TrapRight) = (card.Scene?.Cue, card.Scene?.Wrong, card.Scene?.Right);
+                (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapWhy) = (card.Scene?.Cue, card.Scene?.Wrong, card.Scene?.Right, card.Scene?.Why);
                 filled++;
             }
 
@@ -545,7 +545,7 @@ public sealed class GroupDeckService(
                 Source = word.CatalogWordId is null ? PersonalWordSource.Ai : PersonalWordSource.Catalog, CatalogWordId = word.CatalogWordId,
                 PronunciationKo = word.PronunciationKo, PronunciationNoteUz = word.PronunciationNoteUz, PronunciationReviewed = word.PronunciationReviewed,
                 Romanization = word.Romanization, ExampleKo = word.ExampleKo, ExampleUz = word.ExampleUz, TrapUz = word.TrapUz,
-                TrapCue = word.TrapCue, TrapWrong = word.TrapWrong, TrapRight = word.TrapRight, IntroduceOn = introduceOn, CreatedAt = now,
+                TrapCue = word.TrapCue, TrapWrong = word.TrapWrong, TrapRight = word.TrapRight, TrapWhy = word.TrapWhy, IntroduceOn = introduceOn, CreatedAt = now,
             };
             db.PersonalWords.Add(personal);
             have.Add(personal);
@@ -616,7 +616,7 @@ public sealed class GroupDeckService(
         var scene = CatalogAdminService.LearnerScene(source);
         (word.Source, word.CatalogWordId) = (GroupWordSource.Catalog, source.Id);
         (word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz) = (source.Romanization, source.ExampleKo, source.ExampleUz, source.TrapUz);
-        (word.TrapCue, word.TrapWrong, word.TrapRight) = (scene?.Cue, scene?.Wrong, scene?.Right);
+        (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapWhy) = (scene?.Cue, scene?.Wrong, scene?.Right, scene?.Why);
         if (match is not null)
         {
             word.SharedItemId = await db.LearningItems.Where(i => i.CatalogWordId == match.Id && i.IsActive).Select(i => (Guid?)i.Id).SingleOrDefaultAsync(ct);
@@ -701,7 +701,7 @@ public sealed class GroupDeckService(
 
             var (withTrap, _) = CatalogContent.Check(fields with { TrapUz = c.TrapUz });
             var kept = (withTrap ?? fields) with { TranslationUz = null };
-            var (scene, _) = CatalogContent.CheckScene(c.TrapCue, c.TrapWrong, c.TrapRight, kept.TrapUz);
+            var (scene, _) = CatalogContent.CheckScene(c.TrapCue, c.TrapWrong, c.TrapRight, kept.TrapUz, c.TrapWhy);
             result[korean] = (kept, scene);
         }
 
@@ -710,9 +710,9 @@ public sealed class GroupDeckService(
 
     private sealed record CardsResult(List<CardItem>? Cards);
 
-    private sealed record CardItem(string? Korean, string? Romanization, string? ExampleKo, string? ExampleUz, string? TrapUz, string? TrapCue, string? TrapWrong, string? TrapRight);
+    private sealed record CardItem(string? Korean, string? Romanization, string? ExampleKo, string? ExampleUz, string? TrapUz, string? TrapCue, string? TrapWrong, string? TrapRight, string? TrapWhy = null);
 
-    private const string Instructions = """
+    private static readonly string Instructions = """
         You complete vocabulary cards for adult Uzbek speakers learning Korean. A teacher gives Korean words from
         their lesson with their own Uzbek translation. Keep the teacher's translation exactly as given: you never
         translate, correct or judge it; write the card for the word in that meaning. Answer only with the JSON object
@@ -725,14 +725,14 @@ public sealed class GroupDeckService(
           words separated by spaces, using the word in the teacher's meaning.
         - exampleUz: its natural Uzbek translation.
         - trapUz: where an Uzbek speaker really goes wrong with this word (word-for-word translation, politeness, a
-          similar word), in 1-2 short Uzbek sentences with the Korean in Hangul; null when there is nothing real.
-        - trapWrong, trapRight: when trapUz names a real mistake, the exact Korean an Uzbek speaker wrongly says and
-          the Korean to say instead (a word or a phrase of at most 5 words, in Hangul); trapCue: the situation in
-          Uzbek, at most 8 words, ending with ":" ("«Ishga boraman» deyishda:"). All three null when there is no
-          such pair; never invent one.
+          similar word), in one or two short, plain Uzbek sentences (at most 30 words) with the Korean in Hangul: what is said
+          wrong, what to say, and why; null when there is nothing real.
+        - trapWrong, trapRight, trapCue, trapWhy: when trapUz names a real mistake, a trap scene (wrong, right, cue,
+          why) following the scene rules below; all four null when there is no such pair; never invent one.
+        {{SCENE_RULES}}
         Write Uzbek in Latin script with o‘ g‘ and ’; never Cyrillic. Use only natural Korean you are sure of. Skip a
         word that is not real Korean.
-        """;
+        """.Replace("{{SCENE_RULES}}", Catalog.CatalogContent.SceneRules.TrimEnd());
 
     private const string Schema = """
         {
@@ -745,7 +745,7 @@ public sealed class GroupDeckService(
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["korean", "romanization", "exampleKo", "exampleUz", "trapUz", "trapCue", "trapWrong", "trapRight"],
+                "required": ["korean", "romanization", "exampleKo", "exampleUz", "trapUz", "trapCue", "trapWrong", "trapRight", "trapWhy"],
                 "properties": {
                   "korean": { "type": "string" },
                   "romanization": { "type": "string" },
@@ -754,7 +754,8 @@ public sealed class GroupDeckService(
                   "trapUz": { "type": ["string", "null"] },
                   "trapCue": { "type": ["string", "null"] },
                   "trapWrong": { "type": ["string", "null"] },
-                  "trapRight": { "type": ["string", "null"] }
+                  "trapRight": { "type": ["string", "null"] },
+                  "trapWhy": { "type": ["string", "null"] }
                 }
               }
             }

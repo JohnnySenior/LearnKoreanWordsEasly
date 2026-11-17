@@ -126,7 +126,8 @@ public sealed record CatalogWordAdminDto(
     string? TrapRight = null,
     bool TrapScenePending = false,
     bool TrapSceneAsked = false,
-    PronunciationReviewDto? PronunciationReview = null);
+    PronunciationReviewDto? PronunciationReview = null,
+    string? TrapWhy = null);
 
 /// <param name="Remaining">Words still waiting for an AI draft.</param>
 /// <param name="ScenesRemaining">Words with a trap note the AI has not yet been asked to act out (L-52).</param>
@@ -145,6 +146,7 @@ public sealed record UpdateCatalogWordRequest(
     uint Version,
     string? TrapCue = null,
     string? TrapWrong = null,
-    string? TrapRight = null);
+    string? TrapRight = null,
+    string? TrapWhy = null);
 
 public sealed record ReviewCatalogWordRequest(uint Version);

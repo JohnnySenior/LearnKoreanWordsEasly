@@ -8,11 +8,12 @@
         {
             <p class="scene-cue">@Scene.Cue</p>
         }
-        <p class="scene-line scene-wrong" lang="ko"><span class="scene-w">@Scene.Wrong<i class="scene-strike" aria-hidden="true"></i></span><span class="scene-mark x" aria-label="xato">✗</span></p>
-        <div class="scene-line scene-right"><span lang="ko">@Scene.Right</span><span class="scene-mark v" aria-label="to‘g‘ri">✓</span><Speak Text="@Scene.Right" /></div>
-        @if (Note is not null)
+        <p class="scene-line scene-wrong" lang="ko"><span class="scene-w">@Marked(Diff.Wrong)<i class="scene-strike" aria-hidden="true"></i></span><span class="scene-mark x" aria-label="xato">✗</span></p>
+        <div class="scene-line scene-right"><span lang="ko">@Marked(Diff.Right)</span><span class="scene-mark v" aria-label="to‘g‘ri">✓</span><Speak Text="@Scene.Right" /></div>
+        @* L-83: the scene's one-line why first; the longer trap note only when there is none. *@
+        @if ((Scene.Why ?? Note) is { } why)
         {
-            <p class="scene-why">@Note</p>
+            <p class="scene-why">@why</p>
         }
         <button type="button" class="scene-again" @onclick="() => _run++">Qayta ko‘rsatish</button>
     </div>
@@ -25,4 +26,53 @@
     [Parameter] public string? Note { get; set; }
 
     private int _run;
+
+    private (string[] Wrong, string[] Right) Diff => Split(Scene.Wrong, Scene.Right);
+
+    /// <summary>
+    /// The words the two sentences share at the start and the end stay plain; the rest (what differs) is marked, so
+    /// the eye goes straight to it. Returns [before, changed, after] for each sentence; a pair of single words is not
+    /// marked (the whole word is the difference).
+    /// </summary>
+    private static (string[], string[]) Split(string wrong, string right)
+    {
+        var w = wrong.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var r = right.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var start = 0;
+        while (start < w.Length && start < r.Length && w[start] == r[start])
+        {
+            start++;
+        }
+
+        var end = 0;
+        while (end < w.Length - start && end < r.Length - start && w[^(end + 1)] == r[^(end + 1)])
+        {
+            end++;
+        }
+
+        if (start + end == 0)
+        {
+            return ([wrong, "", ""], [right, "", ""]);
+        }
+
+        string Join(string[] a, int from, int to) => string.Join(' ', a[from..to]);
+        return ([Join(w, 0, start), Join(w, start, w.Length - end), Join(w, w.Length - end, w.Length)],
+                [Join(r, 0, start), Join(r, start, r.Length - end), Join(r, r.Length - end, r.Length)]);
+    }
+
+    private static RenderFragment Marked(string[] parts) => builder =>
+    {
+        if (parts[1].Length == 0 && parts[2].Length == 0)
+        {
+            builder.AddContent(0, parts[0]);
+            return;
+        }
+
+        builder.AddContent(0, parts[0].Length > 0 ? parts[0] + " " : "");
+        builder.OpenElement(1, "mark");
+        builder.AddAttribute(2, "class", "scene-diff");
+        builder.AddContent(3, parts[1]);
+        builder.CloseElement();
+        builder.AddContent(4, parts[2].Length > 0 ? " " + parts[2] : "");
+    };
 }

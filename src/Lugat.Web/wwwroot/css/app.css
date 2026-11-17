@@ -1642,3 +1642,9 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 .pronunciation-review-list .field { margin: 6px 0; }
 .pronunciation-review-panel h2 { margin-top: 0; }
 .preparation-words { border: 0; padding: 0; margin: 0; min-width: 0; }
+/* L-83: the standard pronunciation rules of a word. */
+.pronunciation-rules { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.pronunciation-rules strong span { font-weight: 600; color: var(--color-muted); }
+.pronunciation-rules-warn { color: var(--color-warn); margin: 4px 0; }
+/* L-83: the part of a trap scene that differs. */
+.scene-diff { background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: inherit; border-radius: 4px; padding: 0 2px; }

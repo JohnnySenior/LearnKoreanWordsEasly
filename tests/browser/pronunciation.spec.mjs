@@ -49,7 +49,10 @@ test('a reviewed pronunciation appears beside the word and remains hidden behind
         await expect(ear).toHaveAttribute('aria-expanded', 'true');
         const note = page.locator('.word-table .pronunciation-body');
         await expect(note).toContainText('[조타]');
-        await expect(note).toContainText('«좋다» so‘zi «조타» deb o‘qiladi.');
+        // L-83: the named rule (Uzbek with the Korean name) stands in for the old Korean-only note.
+        await expect(note.locator('.pronunciation-rules')).toContainText('Kuchli nafas (격음화):');
+        await expect(note.locator('.pronunciation-rules')).toContainText('좋다: ㅎ + ㄷ → ㅌ');
+        await expect(note).not.toContainText('deb o‘qiladi.');
         await expect(note).not.toContainText('발음됩니다');
         await expect(note).toContainText('Yozishda 좋다 yoziladi.');
         const premium = await api('/api/me/premium');

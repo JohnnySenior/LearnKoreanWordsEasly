@@ -14,8 +14,29 @@ namespace Lugat.Application.Pronunciation;
 /// <summary>Human reviewed standard readings. AI writes drafts only; group review never edits the catalog.</summary>
 public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperationLock operations, TimeProvider time)
 {
-    public static PronunciationDto? Learner(string korean, string? reading, string? explanation, bool reviewed) =>
-        reviewed && !string.IsNullOrWhiteSpace(reading) && reading != korean ? new(reading, PronunciationExplanation.ForWord(korean, reading, explanation)) : null;
+    public static PronunciationDto? Learner(string korean, string? reading, string? explanation, bool reviewed)
+    {
+        if (!reviewed || string.IsNullOrWhiteSpace(reading) || reading == korean)
+        {
+            return null;
+        }
+
+        // L-83: the rules come first; an old note that only said "X is read Y" is then left out.
+        var rules = Rules(korean, reading);
+        return new(reading, PronunciationExplanation.ForWord(korean, reading, explanation, rules.Count > 0), rules);
+    }
+
+    /// <summary>The editor's view of a word's reading, with the rules found and whether they explain all of it.</summary>
+    public static PronunciationReviewDto Review(string korean, string? reading, string? explanation, bool reviewed, uint version, DateTimeOffset? askedAt)
+    {
+        var result = HangulRules.Explain(korean, reading);
+        var differs = !string.IsNullOrWhiteSpace(reading) && reading.Replace(" ", "") != korean.Replace(" ", "");
+        return new(reading, PronunciationExplanation.ForWord(korean, reading, explanation, result.Rules.Count > 0), reviewed, version, askedAt,
+            result.Rules.Select(r => new PronunciationRuleDto(r.NameUz, r.NameKo, r.Detail)).ToList(), !differs || result.Complete);
+    }
+
+    public static IReadOnlyList<PronunciationRuleDto> Rules(string korean, string? reading) =>
+        HangulRules.Explain(korean, reading).Rules.Select(r => new PronunciationRuleDto(r.NameUz, r.NameKo, r.Detail)).ToList();
 
     public static (string? Reading, string? Explanation) Check(string korean, string? reading, string? explanation, bool reviewed)
     {
@@ -93,7 +114,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
             await LearningItemSync.SyncUnitAsync(db, unit, word.UpdatedAt, ct);
         }
         await SaveAsync(ct);
-        return new(word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed, word.Version, word.PronunciationAskedAt);
+        return Review(word.Word, word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed, word.Version, word.PronunciationAskedAt);
     }
 
     public async Task<PronunciationReviewDto> GroupAsync(Guid userId, Guid deckId, Guid wordId, ReviewPronunciationRequest request, bool suggest, CancellationToken ct)
@@ -138,7 +159,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
             copy.PronunciationReviewed = word.PronunciationReviewed;
         }
         await SaveAsync(ct);
-        return new(reading, explanation, word.PronunciationReviewed, word.Version, word.PronunciationAskedAt);
+        return Review(word.Korean, reading, explanation, word.PronunciationReviewed, word.Version, word.PronunciationAskedAt);
     }
 
     private static void Version(uint actual, uint expected)
@@ -182,7 +203,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
         meaning, using Hangul syllables only (no brackets, romanization, IPA or length marks). E.g. 국물 -> 궁물,
         같이 -> 가치, 학교 -> 학꾜. Keep korean exactly as supplied. If its reading is unchanged, copy korean into
         reading and set explanationUz to null. For a different reading give a brief accurate Uzbek Latin explanation
-        of the sound change. explanationUz is for a beginner who speaks Uzbek, not Korean: write the entire
+        of the sound change in at most two short sentences (the app lists the rule names itself). explanationUz is for a beginner who speaks Uzbek, not Korean: write the entire
         explanation in simple Uzbek Latin. Korean letters and short vocabulary examples may illustrate the sound
         change; wrap any multi-syllable Korean example in «...» quotes. Leave individual letters such as ㄱ unquoted.
         NEVER use Korean prose or Korean linguistic labels, even in parentheses (e.g. 거센소리되기,
