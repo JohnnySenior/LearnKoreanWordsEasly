@@ -103,12 +103,12 @@ public class SinabPageTests
         Assert.DoesNotContain("<b>\"shunday\"</b>", html);
         Assert.Contains("data-total=\"2\"", html);
         // The source the app keeps: sinab-<src>, and the start link carries it.
-        Assert.Contains("data-source=\"sinab-ig\" href=\"/?src=sinab-ig\"", html);
-        Assert.Contains("data-source=\"sinab\" href=\"/?src=sinab\"", await f.CreateClient().GetStringAsync("/sinab?src=%3Cx%3E"));
+        Assert.Contains("data-source=\"sinab-ig\" href=\"/?src=sinab-ig#kirish\"", html);
+        Assert.Contains("data-source=\"sinab\" href=\"/?src=sinab#kirish\"", await f.CreateClient().GetStringAsync("/sinab?src=%3Cx%3E"));
         // The share card's link (L-59) is counted as its own channel.
-        Assert.Contains("data-source=\"sinab-ulash\" href=\"/?src=sinab-ulash\"", await f.CreateClient().GetStringAsync("/sinab?src=ulash"));
+        Assert.Contains("data-source=\"sinab-ulash\" href=\"/?src=sinab-ulash#kirish\"", await f.CreateClient().GetStringAsync("/sinab?src=ulash"));
         // The home page's static landing (L-60) and its sign-in screen link here as "bosh".
-        Assert.Contains("data-source=\"sinab-bosh\" href=\"/?src=sinab-bosh\"", await f.CreateClient().GetStringAsync("/sinab?src=bosh"));
+        Assert.Contains("data-source=\"sinab-bosh\" href=\"/?src=sinab-bosh#kirish\"", await f.CreateClient().GetStringAsync("/sinab?src=bosh"));
     }
 
     [Fact]
@@ -120,8 +120,8 @@ public class SinabPageTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("public", response.Headers.CacheControl!.ToString());
         var html = await response.Content.ReadAsStringAsync();
-        Assert.Contains("1-bo‘limni bepul boshlang", html);
-        Assert.Contains("href=\"/?src=sinab\"", html);
+        Assert.Contains("1-bo‘limni bepul boshlash", html);
+        Assert.Contains("href=\"/?src=sinab#kirish\"", html); // L-84: straight to the sign-in buttons
         Assert.DoesNotContain("taster-data", html);
         Assert.DoesNotContain("id=\"traps\"", html);
         Assert.Contains("<link rel=\"canonical\" href=\"https://koreyscha.com/sinab\">", html);

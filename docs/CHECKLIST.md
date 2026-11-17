@@ -737,3 +737,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Testlar: 22 so‘zda qoidalar (unit), o‘quvchi/muharrir DTO (API), sahna `why` saqlanishi va kartada, qayta yozdirish, qo‘lda izoh tekshiruvi.
 - [ ] Johnny: bitta bo‘limda «Barcha sahnalarni qayta yozdirish» → yangi juftlar va izohlarni ko‘rib tasdiqlash; talaffuz oynasida qoidalarni ko‘rish; «⚠ Qoida aniqlanmadi» chiqqan so‘zlarni tekshirish.
 
+**UI/UX auditi, 1-qism (L-84, 2026-11-17):**
+- [x] Tariflar bitta ustunda, narx aniq; «Bepul va Premium»; «O‘rnatish» ikkinchi darajali; Google tugmasi markazda; «A · B · C» olib tashlandi.
+- [x] /sinab: to‘g‘ri/xato ranglari va belgilari; oxirgi tugma kirish tugmalariga; audio kartada bo‘sh joy yo‘q; header havolasi 44px.
+- [x] Tor ekran: «Mavzu» va «Yopish» segmentlari kesilmaydi (360/320px tekshirildi); kichik havolalar 44px; menyu va sarlavha matni 12px.
+- [x] Bosh sahifadagi «ta karta qoldi» bitta ortiq edi — tuzatildi; Natijalar raqamining nomi va izohi.
+- [x] «Azure» o‘rniga «AI»; daraja tugmalarida o‘zbekcha nom.
+- [ ] Keyingi PR: bitta header va shrift (/sinab va ichki sahifalar), iPhone’da o‘rnatish tugmasi, haqiqiy 404 sahifa; Johnny: 1200×630 og:image rasmi.

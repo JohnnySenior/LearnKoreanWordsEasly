@@ -11,8 +11,12 @@
         <p role="status"><strong>Ilova o‘rnatilgan.</strong> Uni bosh ekrandagi «Koreyscha» belgisidan oching.</p>
         break;
     case "prompt":
-        <p>Ilovani telefoningizga o‘rnating: u bosh ekrandan, brauzer panellarisiz ochiladi.</p>
-        <button class="button primary" @onclick="InstallAsync">O‘rnatish</button>
+        @if (Intro)
+        {
+            <p>Ilovani telefoningizga o‘rnating: u bosh ekrandan, brauzer panellarisiz ochiladi.</p>
+        }
+        @* L-84: a second-level button; the page's main action stays the one red button. *@
+        <button class="btn btn-secondary block" @onclick="InstallAsync"><span>O‘rnatish</span><Icon Name="arrow-right" /></button>
         break;
     case "inapp-ios":
     case "inapp-android":
@@ -120,6 +124,9 @@
 }
 
 @code {
+    /// <summary>False where the page already says what installing gives (the landing), so it is not said twice.</summary>
+    [Parameter] public bool Intro { get; set; } = true;
+
     private string? _state;
     private bool _copied;
 

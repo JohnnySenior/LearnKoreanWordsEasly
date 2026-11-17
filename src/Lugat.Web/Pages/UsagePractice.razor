@@ -59,7 +59,7 @@
                 {
                     <button class="button small" disabled="@(_preparing is not null)" @onclick="() => PrepareAsync(table)">Tayyorlash</button>
                 }
-                <a class="small-text" href="@(t.Deck is null ? $"bolimlar/{t.UnitId}" : "sozlarim")">Ko‘rish</a>
+                <a class="small-text tap" href="@(t.Deck is null ? $"bolimlar/{t.UnitId}" : "sozlarim")">Ko‘rish</a>
             </li>
         }
     </ul>

@@ -33,10 +33,11 @@ else if (_today is not null)
         @if (_today.ActiveSession is { Current: not null } active)
         {
             <div class="home-due-figure">
-                <b>@(active.Total - active.Position + 1)</b>
-                <span>ta karta qoldi<br />~@Minutes(active.Total - active.Position + 1) daqiqa</span>
+                @* L-84: Position counts the cards already answered (the session screen shows Position + 1 / Total). *@
+                <b>@(active.Total - active.Position)</b>
+                <span>ta karta qoldi<br />~@Minutes(active.Total - active.Position) daqiqa</span>
             </div>
-            <p class="muted small-text">Boshlangan mashg‘ulot: @active.Position / @active.Total.</p>
+            <p class="muted small-text">Boshlangan mashg‘ulot: @active.Total tadan @active.Position tasi bajarildi.</p>
             <a class="btn btn-primary block big" href="mashq/kartochka"><span>Davom etish</span><Icon Name="arrow-right" /></a>
             <button class="btn btn-ghost small" disabled="@_busy" @onclick="() => StartAsync(restart: true)">Yangidan boshlash</button>
         }

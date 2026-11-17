@@ -378,7 +378,9 @@ public static class SeoEndpoints
             body.Append($"<p class=\"score\" id=\"score\" data-total=\"{traps.Count}\" aria-live=\"polite\" hidden></p></section>");
         }
 
-        body.Append($"<a class=\"cta\" id=\"start\" data-source=\"{E(source)}\" href=\"/?src={E(source)}\">Har bir so‘zda shunday tushuntirish bor — 1-bo‘limni bepul boshlang →</a>");
+        body.Append("<p class=\"note\">Har bir so‘zda shunday tushuntirish bor.</p>");
+        // L-84: the button takes the visitor to the sign-in buttons (#kirish), not the top of the home page.
+        body.Append($"<a class=\"cta\" id=\"start\" data-source=\"{E(source)}\" href=\"/?src={E(source)}#kirish\"><span>1-bo‘limni bepul boshlash</span><span aria-hidden=\"true\">→</span></a>");
         body.Append("<p class=\"note\">Telegram yoki Google orqali bepul kirasiz. Kartochka, mashq va test ilovaning ichida.</p>");
         // The taster leads to the app: fetch it at once.
         return Page(title, description, $"{baseUrl}/sinab", body.ToString(), null, script: "/js/sinab.js", prefetchAfterMs: 1000);
@@ -470,13 +472,13 @@ public static class SeoEndpoints
     // The app's look (L-57): "Sokin" warm paper by day, "Tungi" deep ink by night, soft cards and the red accent.
     // System fonts, so the page opens at once from a search result.
     private const string Css = """
-        :root{--bg:#f6f2ed;--card:#fffdfa;--surface:#efe8df;--ink:#2b2420;--muted:#776a5f;--rule:rgba(43,36,32,.09);--accent:#e5533d;--accent-ink:#b8402c;--accent-soft:#fbeee8;--on-accent:#fff;--fill:#e5533d;--shadow:0 1px 2px rgba(80,50,30,.05),0 10px 26px -14px rgba(80,50,30,.2);--glow:0 8px 18px -8px rgba(229,83,61,.55);--page:none;color-scheme:light}
-        @media (prefers-color-scheme:dark){:root{--bg:#0f1117;--card:#161922;--surface:#1b1e27;--ink:#eef0f6;--muted:#8f94a7;--rule:rgba(255,255,255,.07);--accent:#ff5a3c;--accent-ink:#ff8a70;--accent-soft:#2a1b1d;--on-accent:#fff;--fill:linear-gradient(135deg,#ff6a45,#ec3013);--shadow:inset 0 0 0 1px rgba(255,255,255,.06);--glow:0 10px 28px -10px rgba(255,90,60,.7);--page:radial-gradient(120% 50% at 100% 0%,rgba(255,90,60,.13),transparent 60%);color-scheme:dark}}
+        :root{--bg:#f6f2ed;--card:#fffdfa;--surface:#efe8df;--ink:#2b2420;--muted:#776a5f;--rule:rgba(43,36,32,.09);--accent:#e5533d;--accent-ink:#b8402c;--accent-soft:#fbeee8;--on-accent:#fff;--fill:#e5533d;--ok:#2f7d4f;--ok-soft:#e5f3ea;--shadow:0 1px 2px rgba(80,50,30,.05),0 10px 26px -14px rgba(80,50,30,.2);--glow:0 8px 18px -8px rgba(229,83,61,.55);--page:none;color-scheme:light}
+        @media (prefers-color-scheme:dark){:root{--bg:#0f1117;--card:#161922;--surface:#1b1e27;--ink:#eef0f6;--muted:#8f94a7;--rule:rgba(255,255,255,.07);--accent:#ff5a3c;--accent-ink:#ff8a70;--accent-soft:#2a1b1d;--on-accent:#fff;--fill:linear-gradient(135deg,#ff6a45,#ec3013);--ok:#5cc78b;--ok-soft:#14261c;--shadow:inset 0 0 0 1px rgba(255,255,255,.06);--glow:0 10px 28px -10px rgba(255,90,60,.7);--page:radial-gradient(120% 50% at 100% 0%,rgba(255,90,60,.13),transparent 60%);color-scheme:dark}}
         *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
         body{margin:0;background:var(--page),var(--bg);background-attachment:fixed;color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
         a{color:inherit}
         .top{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:720px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right)) 6px max(16px,env(safe-area-inset-left))}
-        .top a{text-decoration:none;font-weight:600}.top a:hover{color:var(--accent-ink)}
+        .top a{text-decoration:none;font-weight:600;display:inline-flex;align-items:center;min-height:44px}.top a:hover{color:var(--accent-ink)}
         .brand{display:inline-flex;align-items:center;gap:9px;font-size:18px;font-weight:800!important;letter-spacing:-.01em}
         .mark{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--fill);color:var(--on-accent);font-size:17px;font-weight:700}
         main{max-width:720px;margin:0 auto;padding:10px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
@@ -508,7 +510,7 @@ public static class SeoEndpoints
         .try{display:inline-block;margin:0 0 6px;padding:6px 2px;color:var(--accent-ink);font-weight:600;text-decoration:none}.try:hover{text-decoration:underline}
         .taster-title{font-size:clamp(30px,8vw,44px)}
         .taster,.trap{background:var(--card);border-radius:22px;box-shadow:var(--shadow);padding:20px;margin:16px 0}
-        .board{min-height:180px}.board-lead{color:var(--muted);margin:8px 0 0}
+        .board.started{min-height:180px}/* L-84: no empty block before "Tinglash" */.board-lead{color:var(--muted);margin:8px 0 0}
         .board .hangul{font-size:48px;font-weight:700;line-height:1.1;margin:6px 0 0}
         .board .meaning{font-size:20px;font-weight:700;margin:4px 0 0}.board .meaning small{font-weight:400;color:var(--muted);margin-left:8px;font-size:15px}
         .board .title{color:var(--accent-ink);font-weight:600;margin:12px 0 6px}
@@ -527,8 +529,10 @@ public static class SeoEndpoints
         .options{display:grid;gap:8px}
         .opt{background:var(--surface);color:var(--ink);text-align:left;font-size:19px;font-weight:600;padding:10px 16px}
         .opt:hover:not(:disabled){filter:brightness(.97)}.opt:disabled{cursor:default}
-        .opt.right{box-shadow:inset 0 0 0 2px var(--ink)}.opt.wrong{text-decoration:line-through;opacity:.7}
-        .verdict{font-weight:700;margin:12px 0 0}.why{background:var(--accent-soft);border-radius:14px;padding:10px 12px;margin:10px 0 0}.why p{margin:4px 0}.why .right{font-size:19px;font-weight:700}
+        /* L-84: the right answer green with ✓, a wrong choice red with ✗ */
+        .opt.right{background:var(--ok-soft);box-shadow:inset 0 0 0 2px var(--ok)}.opt.right::after{content:" ✓";color:var(--ok)}
+        .opt.wrong{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent);text-decoration:line-through}.opt.wrong::after{content:" ✗";color:var(--accent-ink)}
+        .verdict{font-weight:700;margin:12px 0 0}.verdict.ok{color:var(--ok)}.verdict.bad{color:var(--accent-ink)}.why{background:var(--surface);border-radius:14px;padding:10px 12px;margin:10px 0 0}.why p{margin:4px 0}.why .right{font-size:19px;font-weight:700}
         .score{font-size:20px;font-weight:700;margin:4px 4px 0}
         .trap-note{margin:18px 0 0}.trap-note h2{margin:0 0 6px;font-size:17px;color:var(--accent-ink)}
         .trap-note .trap{background:var(--surface);box-shadow:none;border-radius:14px;padding:14px;margin:8px 0 0}

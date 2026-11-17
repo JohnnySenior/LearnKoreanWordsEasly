@@ -980,3 +980,19 @@ Johnny: (1) ba’zi so‘zlarda talaffuz qoidasi yozilgan, ba’zilarida faqat �
 - Tuzoq izohi (`trapUz`) ko‘rsatmasi ham: bir-ikki qisqa gap (≤30 so‘z): nima xato aytiladi, nima deyiladi va nega.
 - Bo‘lim sahifasida «Barcha sahnalarni qayta yozdirish»: bo‘limning hamma sahnalari tozalanadi va yangi qoidalar bilan qayta so‘raladi; yangi qoralamalar muharrir tasdig‘ini kutadi, shu orada o‘quvchi oddiy tuzoq izohini ko‘radi. `POST /api/admin/units/{id}/trap-scenes/redo`.
 
+
+## L-84 · 2026-11-17 · UI/UX auditi (1-qism): bosh sahifa, /sinab, tor ekranlar
+
+Johnny do‘stining UI/UX auditini yubordi (20 band). Kelishuv: tez va ko‘rinadigan tuzatishlar shu PR’da; bir xil header va shrift (7, 17), iPhone’da o‘rnatish (5, 16) va haqiqiy 404 sahifa (12) keyingi PR’da.
+- Tariflar (1, 9): sarlavha «Bepul va Premium»; kartalar bitta ustunda; narx alohida qatorlarda, qalin, raqam bo‘linmaydi. Statik `index.html` va `Landing.razor` birga o‘zgardi.
+- Pastdagi ikki qizil tugma (2): «O‘rnatish» ikkinchi darajali (`btn-secondary`), asosiy qizil tugma — «Bepul boshlash». O‘rnatish matni bosh sahifada bir marta (`InstallGuide Intro="false"`).
+- Google tugmasi (3): Google o‘z tugmasini chizadi (eni ≤400px, balandligi 40px — o‘zgartirib bo‘lmaydi); keng ekranda chapda osilib qolmasligi uchun markazda. O‘z tugmamiz + Google OAuth redirect — katta ish, kerak bo‘lsa alohida.
+- Header’dagi «A · B · C» (6): hech narsa qilmasdi — olib tashlandi.
+- /sinab tuzoq testi (4): to‘g‘ri javob yashil ramka/fon + ✓, xato tanlov qizil + ✗ (chizilgan), xulosa matni holat rangida, izoh bloki neytral.
+- /sinab oxiridagi tugma (10): «1-bo‘limni bepul boshlash», kirish tugmalariga (`/?src=…#kirish`) olib boradi; statik sahifada ham `#kirish` bor, shuning uchun to‘g‘ri havola ham pastga tushadi.
+- Audio karta (8): «Tinglash» bosilmaguncha bo‘sh joy yo‘q (`.board` 180px balandligi faqat boshlangandan keyin).
+- Bosish maydonlari va mayda matn (11, 18): «Maxfiylik siyosati», /sinab header havolasi, «Ko‘rish», «Tuzoqlar daftari →» — 44px; gap zinapoyasida matn ichidagi havola matnga aylandi (pastda tugmasi bor); pastki menyu yozuvi 12px, bo‘lim sarlavhalari 12px.
+- Segment tugmalar (13, 14): «Mavzu» va «Yopish:» o‘z enida qoladi, tugmalar matniga qarab bo‘linadi; 400px dan tor ekranda «Mavzu» tugmalari yozuv ostiga tushadi, «Yopish» tugmalari kerak bo‘lsa keyingi qatorga.
+- Takror soni (15): bosh sahifada qolgan kartalar `Total − Position + 1` deb hisoblanardi (`Position` — javob berilganlar soni), bitta ortiq chiqardi — tuzatildi; «Boshlangan mashg‘ulot: 46 tadan 0 tasi bajarildi». Natijalardagi raqam boshqa narsa (hozir muddati kelganlar) — nomi «Hozir muddati kelgan», izohda farqi yozildi.
+- «Azure baholaydi» (19) → «AI talaffuzingizni baholaydi».
+- Daraja tugmalari (20): «A 초급» ostida «Boshlang‘ich» / «O‘rta» / «Yuqori»; tugma matni sahifa shriftida.
