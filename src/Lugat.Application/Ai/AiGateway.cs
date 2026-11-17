@@ -94,7 +94,10 @@ public sealed class AiGateway(
         for (var index = 0; index < available.Count; index++)
         {
             var provider = available[index];
-            if (deadline.IsCancellationRequested) break;
+            if (deadline.IsCancellationRequested)
+            {
+                break;
+            }
             // The reservation is persisted under a DB lock before contacting a billable provider.
             var output = provider.Kind == AiProviderKind.OpenAi ? Math.Max(request.MaxOutputTokens * 4, 8000) : request.MaxOutputTokens;
             var input = request.Instructions.Length + request.UserContent.Length + (request.Attachments?.Sum(a => a.Content.Length) ?? 0);
@@ -153,7 +156,11 @@ public sealed class AiGateway(
     /// <summary>Reserve time for remaining providers, then return unused time to fallback attempts.</summary>
     public static TimeSpan AttemptTimeout(TimeSpan requested, TimeSpan remaining, int providersLeft)
     {
-        if (requested <= TimeSpan.Zero || remaining <= TimeSpan.Zero) return TimeSpan.Zero;
+        if (requested <= TimeSpan.Zero || remaining <= TimeSpan.Zero)
+        {
+            return TimeSpan.Zero;
+        }
+
         var share = TimeSpan.FromTicks(remaining.Ticks / Math.Max(1, providersLeft));
         return requested < share ? requested : share;
     }

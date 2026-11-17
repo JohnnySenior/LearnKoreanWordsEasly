@@ -52,9 +52,15 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
             // AI may cite short Korean examples, but may not supply unexplained Korean prose.
             var prose = Regex.Replace(note, "[«“‘’\"][가-힣ㄱ-ㅎㅏ-ㅣ]+[»”‘’\"]", "");
             prose = prose.Replace(korean, "", StringComparison.Ordinal);
-            if (value.Reading is { } actual) prose = prose.Replace(actual, "", StringComparison.Ordinal);
+            if (value.Reading is { } actual)
+            {
+                prose = prose.Replace(actual, "", StringComparison.Ordinal);
+            }
+
             if (!PronunciationExplanation.HasLatinExplanation(note) || Regex.IsMatch(prose, "[가-힣]{2,}"))
+            {
                 throw new ValidationException("AI izohi sodda o‘zbekcha bo‘lishi kerak.");
+            }
         }
         return value;
     }
@@ -67,7 +73,11 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
         var (reading, explanation) = suggest
             ? await SuggestAsync(userId, word.Word, word.TranslationUz, CatalogDraftService.Feature, word.PronunciationReviewed, ct)
             : Check(word.Word, request.Reading, request.ExplanationUz, request.Reviewed);
-        if (suggest) word.PronunciationAskedAt = time.GetUtcNow();
+        if (suggest)
+        {
+            word.PronunciationAskedAt = time.GetUtcNow();
+        }
+
         word.PronunciationKo = reading;
         word.PronunciationNoteUz = explanation;
         word.PronunciationReviewed = !suggest && request.Reviewed;
@@ -104,10 +114,18 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
         {
             // Even an identical AI draft must detect a spelling edit committed while the provider was running.
             var fresh = await db.GroupDeckWords.AsNoTracking().Where(w => w.Id == wordId).Select(w => (uint?)w.Version).SingleOrDefaultAsync(ct);
-            if (fresh is null) throw new ConflictException("So‘z o‘zgargan. Sahifani yangilab qayta urinib ko‘ring.");
+            if (fresh is null)
+            {
+                throw new ConflictException("So‘z o‘zgargan. Sahifani yangilab qayta urinib ko‘ring.");
+            }
+
             Version(fresh.Value, request.Version);
         }
-        if (suggest) word.PronunciationAskedAt = time.GetUtcNow();
+        if (suggest)
+        {
+            word.PronunciationAskedAt = time.GetUtcNow();
+        }
+
         word.PronunciationKo = reading;
         word.PronunciationNoteUz = explanation;
         word.PronunciationReviewed = !suggest && request.Reviewed;
@@ -125,18 +143,29 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
 
     private static void Version(uint actual, uint expected)
     {
-        if (actual != expected) throw new ConflictException("So‘z o‘zgargan. Sahifani yangilab qayta urinib ko‘ring.");
+        if (actual != expected)
+        {
+            throw new ConflictException("So‘z o‘zgargan. Sahifani yangilab qayta urinib ko‘ring.");
+        }
     }
 
     private async Task<(string? Reading, string? Explanation)> SuggestAsync(Guid userId, string korean, string? meaning, string feature, bool reviewed, CancellationToken ct)
     {
-        if (reviewed) throw new ConflictException("Talaffuz tasdiqlangan. Yangi AI taklifidan oldin tasdiqni olib saqlang.");
+        if (reviewed)
+        {
+            throw new ConflictException("Talaffuz tasdiqlangan. Yangi AI taklifidan oldin tasdiqni olib saqlang.");
+        }
+
         var result = await ai.CompleteJsonAsync(userId, new AiJsonRequest(feature, Instructions,
             JsonSerializer.Serialize(new { korean, meaning }), "pronunciation_draft", Schema, 800), ct);
         try
         {
             var draft = JsonSerializer.Deserialize<Draft>(result.Response.Json, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            if (draft?.Korean != korean || string.IsNullOrWhiteSpace(draft.Reading)) throw new JsonException();
+            if (draft?.Korean != korean || string.IsNullOrWhiteSpace(draft.Reading))
+            {
+                throw new JsonException();
+            }
+
             return CheckDraft(korean, draft.Reading, draft.ExplanationUz);
         }
         catch (Exception ex) when (ex is JsonException or ValidationException)

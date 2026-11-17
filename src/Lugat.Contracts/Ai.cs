@@ -88,4 +88,10 @@ public sealed record SpeakingResultDto(
 
 
 /// <summary>Shared UTC calendar-month estimate. Unknown-price calls are reported explicitly, never counted as free.</summary>
-public sealed record AiBudgetDto(decimal EstimatedUsd, decimal LimitUsd, bool Warning, int UnknownPriceCalls, int PendingCalls, DateTimeOffset MonthStart);
+/// <param name="BlockedPrices">L-82: calls refused since the last start because their price is missing or wrong, e.g.
+/// "Anthropic · claude-… · tokens"; empty when none. The admin sees why AI stopped instead of a silent block.</param>
+public sealed record AiBudgetDto(decimal EstimatedUsd, decimal LimitUsd, bool Warning, int UnknownPriceCalls, int PendingCalls, DateTimeOffset MonthStart,
+    IReadOnlyList<BlockedPriceDto>? BlockedPrices = null);
+
+/// <summary>A provider/model/unit whose calls were refused for want of a valid dated price (L-82).</summary>
+public sealed record BlockedPriceDto(string Provider, string Model, string Unit, int Calls, DateTimeOffset LastAt);

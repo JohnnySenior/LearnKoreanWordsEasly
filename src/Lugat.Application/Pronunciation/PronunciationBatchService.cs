@@ -27,7 +27,11 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
                 .OrderBy(w => w.Order).Take(WordsPerCall).Select(w => new Word(w.Id, w.Korean, w.Uzbek, w.Version)).ToListAsync(ct)
             : await db.CatalogWords.AsNoTracking().Where(w => w.UnitId == listId && !w.PronunciationReviewed && w.PronunciationKo == null && w.PronunciationAskedAt == null)
                 .OrderBy(w => w.OrderInUnit).Take(WordsPerCall).Select(w => new Word(w.Id, w.Word, w.TranslationUz, w.Version)).ToListAsync(ct);
-        if (words.Count == 0) return;
+        if (words.Count == 0)
+        {
+            return;
+        }
+
         var result = await ai.CompleteJsonAsync(userId, BuildRequest(words, group), ct);
         var drafts = Parse(result.Response.Json, words);
         if (drafts.Count == 0)
@@ -44,7 +48,11 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
         {
             foreach (var word in await db.GroupDeckWords.Where(w => w.GroupDeckId == listId && ids.Contains(w.Id)).ToListAsync(ct))
             {
-                if (word.Version != versions[word.Id]) continue;
+                if (word.Version != versions[word.Id])
+                {
+                    continue;
+                }
+
                 var draft = drafts[word.Id];
                 (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationAskedAt) = (draft.Reading, draft.ExplanationUz, now);
             }
@@ -54,7 +62,11 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
             await using var catalogLease = await operations.AcquireAsync(CatalogAdminService.LockKey, ct);
             foreach (var word in await db.CatalogWords.Where(w => w.UnitId == listId && ids.Contains(w.Id)).ToListAsync(ct))
             {
-                if (word.Version != versions[word.Id]) continue;
+                if (word.Version != versions[word.Id])
+                {
+                    continue;
+                }
+
                 var draft = drafts[word.Id];
                 (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationAskedAt, word.UpdatedAt) = (draft.Reading, draft.ExplanationUz, now, now);
                 word.ContentVersion++;
@@ -69,7 +81,10 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
     {
         await AccessAsync(userId, listId, group, ct);
         if (request.Words is not { Count: > 0 and <= 200 } || request.Words.Any(w => w is null) || request.Words.Select(w => w.Id).Distinct().Count() != request.Words.Count)
+        {
             throw new ValidationException("Tasdiqlash uchun takrorlanmagan so‘zlarni tanlang (1–200 ta).");
+        }
+
         await using var lease = await operations.AcquireAsync(group ? "group-deck:" + listId : CatalogAdminService.LockKey, ct);
         var inputs = request.Words.ToDictionary(w => w.Id);
         var ids = inputs.Keys.ToList();
@@ -77,18 +92,30 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
         if (group)
         {
             var words = await db.GroupDeckWords.Where(w => w.GroupDeckId == listId && ids.Contains(w.Id)).ToListAsync(ct);
-            if (words.Count != ids.Count) throw new NotFoundException("Lug‘atdagi so‘zlar topilmadi.");
+            if (words.Count != ids.Count)
+            {
+                throw new NotFoundException("Lug‘atdagi so‘zlar topilmadi.");
+            }
             // Validate the whole selection before changing anything; a stale row rejects the whole approval.
             var values = words.ToDictionary(w => w.Id, w => Checked(w.Korean, w.Version, inputs[w.Id]));
             foreach (var word in words)
+            {
                 (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (values[word.Id].Reading, values[word.Id].Explanation, true);
+            }
+
             foreach (var copy in await db.PersonalWords.Where(p => p.GroupDeckWordId != null && ids.Contains(p.GroupDeckWordId.Value) && p.FromGroupDeck).ToListAsync(ct))
+            {
                 (copy.PronunciationKo, copy.PronunciationNoteUz, copy.PronunciationReviewed) = (values[copy.GroupDeckWordId!.Value].Reading, values[copy.GroupDeckWordId.Value].Explanation, true);
+            }
         }
         else
         {
             var words = await db.CatalogWords.Where(w => w.UnitId == listId && ids.Contains(w.Id)).ToListAsync(ct);
-            if (words.Count != ids.Count) throw new NotFoundException("Bo‘limdagi so‘zlar topilmadi.");
+            if (words.Count != ids.Count)
+            {
+                throw new NotFoundException("Bo‘limdagi so‘zlar topilmadi.");
+            }
+
             var values = words.ToDictionary(w => w.Id, w => Checked(w.Word, w.Version, inputs[w.Id]));
             foreach (var word in words)
             {
@@ -102,7 +129,11 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
 
     private static (string? Reading, string? Explanation) Checked(string korean, uint version, PronunciationWordReviewInput input)
     {
-        if (input.Version != version) throw new ConflictException("Ro‘yxatdagi so‘z o‘zgargan. Sahifani yangilab qayta tekshiring; hech biri tasdiqlanmadi.");
+        if (input.Version != version)
+        {
+            throw new ConflictException("Ro‘yxatdagi so‘z o‘zgargan. Sahifani yangilab qayta tekshiring; hech biri tasdiqlanmadi.");
+        }
+
         return PronunciationService.Check(korean, input.Reading, input.ExplanationUz, true);
     }
 
@@ -111,9 +142,15 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
         if (group)
         {
             if (!await db.GroupDecks.AnyAsync(d => d.Id == listId && d.TeacherUserId == userId && d.Status != GroupDeckStatus.Archived
-                && db.Groups.Any(g => g.Id == d.GroupId && g.ClosedAt == null), ct)) throw new NotFoundException("Lug‘at topilmadi.");
+                && db.Groups.Any(g => g.Id == d.GroupId && g.ClosedAt == null), ct))
+            {
+                throw new NotFoundException("Lug‘at topilmadi.");
+            }
         }
-        else if (!await db.Units.AnyAsync(u => u.Id == listId, ct)) throw new NotFoundException("Bo‘lim topilmadi.");
+        else if (!await db.Units.AnyAsync(u => u.Id == listId, ct))
+        {
+            throw new NotFoundException("Bo‘lim topilmadi.");
+        }
     }
 
     public static Dictionary<Guid, Draft> Parse(string json, IReadOnlyList<Word> words)
@@ -127,7 +164,11 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
         var duplicates = rows.GroupBy(d => d.Id).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
         foreach (var draft in rows)
         {
-            if (duplicates.Contains(draft.Id) || !expected.TryGetValue(draft.Id, out var word) || draft.Korean != word.Korean) continue;
+            if (duplicates.Contains(draft.Id) || !expected.TryGetValue(draft.Id, out var word) || draft.Korean != word.Korean)
+            {
+                continue;
+            }
+
             try
             {
                 var value = PronunciationService.CheckDraft(word.Korean, draft.Reading, draft.ExplanationUz);

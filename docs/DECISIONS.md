@@ -955,3 +955,13 @@ yangi talaffuz yoki tasdiq yaratilmaydi. O‘quvchi faqat avval inson tasdiqlaga
 Read hech qanday baza yozuvi, xmin, tasdiq, nashr yoki progressni o‘zgartirmaydi. Eski bo‘limni qayta tayyorlash,
 alohida kartalarni ochish yoki pulli AI chaqirish shart emas. Yangi AI qoralamasining L-80 validatsiyasiga bu fallback
 qo‘llanmaydi: yaroqsiz AI izohi avvalgidek rad etiladi.
+
+## L-82 · 2026-11-17 · Codex o‘zgarishlarini ko‘rib chiqishdan keyingi tuzatishlar
+
+Johnny #104–#110 (L-75…L-81) ni ko‘rib chiqishni, keyin topilganlarni tuzatishni so‘radi. Xavfli xato topilmadi; to‘rtta kamchilik tuzatildi.
+- **Narx bloki ko‘rinadi.** `RequireKnownPrices=true` da narxi yo‘q yoki noto‘g‘ri chaqiruv rad etilganda usage yozuvi yaratilmaydi, shuning uchun AI nega to‘xtagani hech qayerda ko‘rinmasdi. Endi `AiPriceAlerts` (singleton, jarayon xotirasida, qayta ishga tushganda tozalanadi) provider/model/unit, son va oxirgi vaqtni saqlaydi; `AiBudgetDto.BlockedPrices` orqali admin «Tizim» sahifasida qizil ogohlantirish, logda `Warning`. Kunlik limitga ta’sir qilmaydi (usage yozuvi emas).
+- **Entrypoint:** har ishga tushishda `chown -R` butun `/data/files` (o‘sib boruvchi audio kesh) o‘rniga faqat `app:app` bo‘lmagan fayllar (`find ... -exec chown -h`). Symlink tekshiruvi va root huquqini tashlash o‘zgarmadi.
+- **Eski talaffuz izohlari bazada bir marta tozalanadi.** L-80/L-81 o‘qish paytida almashtirardi; endi ishga tushishda `PronunciationNoteBackfill` katalog, ustoz va shaxsiy so‘zlarda `PronunciationNoteUz` ni o‘sha o‘qiladigan shaklga yozadi. Bo‘sh natija yozilmaydi (asl izoh qoladi), tasdiq/o‘qilish/progress o‘zgarmaydi, ikkinchi ishga tushishda o‘zgarish yo‘q. O‘qish paytidagi almashtirish hozircha qoladi (xavfsizlik uchun); keyin olib tashlash mumkin.
+- **Uslub:** Codex fayllaridagi qavssiz `if` lar `dotnet format` (IDE0011) bilan qavsli qilindi; mantiq o‘zgarmadi.
+- Ochiq: Anthropic balansini Johnny tekshiradi (L-78).
+

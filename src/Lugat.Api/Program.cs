@@ -156,6 +156,16 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 await app.SyncLearningItemsAsync();
 await app.SeedSampleAsync();
 
+// L-82: old pronunciation notes are stored in their readable Uzbek form once; later starts change nothing.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var changed = await Lugat.Application.Pronunciation.PronunciationNoteBackfill.RunAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>(), CancellationToken.None);
+    if (changed > 0)
+    {
+        app.Logger.LogInformation("Pronunciation notes made readable: {Count}", changed);
+    }
+}
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
