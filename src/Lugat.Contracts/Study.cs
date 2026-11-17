@@ -47,7 +47,8 @@ public sealed record CardPromptDto(
     PronunciationDto? Pronunciation = null);
 
 /// <summary>The trap acted out on the card (L-52): the Uzbek speaker's Korean is struck out, the right one follows.</summary>
-public sealed record TrapSceneDto(string? Cue, string Wrong, string Right);
+/// <param name="Why">L-83: one short Uzbek sentence on the difference; the card shows it instead of the long trap note.</param>
+public sealed record TrapSceneDto(string? Cue, string Wrong, string Right, string? Why = null);
 
 public sealed record SessionSummaryDto(int Answered, int Forgot, int Hard, int Easy, int NewSeen);
 

@@ -965,3 +965,18 @@ Johnny #104–#110 (L-75…L-81) ni ko‘rib chiqishni, keyin topilganlarni tuza
 - **Uslub:** Codex fayllaridagi qavssiz `if` lar `dotnet format` (IDE0011) bilan qavsli qilindi; mantiq o‘zgarmadi.
 - Ochiq: Anthropic balansini Johnny tekshiradi (L-78).
 
+## L-83 · 2026-11-17 · Talaffuz qoidasi nomi bilan; tuzoq sahnasi aniq juft va qisqa izoh
+
+Johnny: (1) ba’zi so‘zlarda talaffuz qoidasi yozilgan, ba’zilarida faqat «X so‘zi Y deb o‘qiladi» — qoida bo‘lsa, qoidani yozish kerak; qoida nomi o‘zbekcha, qavsda koreyscha. (2) Tuzoq sahnasidagi gaplar aniq emas, g‘alati; ikki gapning farqi darhol tushunilsin, izoh aniq va qisqa bo‘lsin.
+
+**Talaffuz qoidalari (`HangulRules`).** O‘qilish inson tomonidan tasdiqlangan, shuning uchun server bashorat qilmaydi: yozilishi va o‘qilishini bo‘g‘in chegarasida (oxirgi undosh + keyingi bosh tovush) solishtiradi va har o‘zgarishni standart qoidaga moslaydi: Ulanish (연음), Bo‘g‘in oxiridagi undosh (음절의 끝소리 규칙), Ikki undoshdan biri (자음군 단순화), Burunlashish (비음화), ㄹ ning ㄴ ga aylanishi (ㄹ의 비음화), ㄹ ga aylanish (유음화), Taranglashish (경음화), Kuchli nafas (격음화), ㅎ ning tushib qolishi (ㅎ 탈락), ㅈ/ㅊ ga aylanish (구개음화), ㄴ qo‘shilishi (ㄴ 첨가), ㅢ/ㅖ unlilari. Har qoida: o‘zbekcha nom, koreyscha nom va qayerda nima o‘zgargani («국물: ㄱ ㅁ oldidan ㅇ bo‘ladi»). AI chaqirilmaydi, baza o‘zgarmaydi, eski va yangi so‘zlarning hammasida darhol ishlaydi.
+- O‘quvchi: `PronunciationDto.Rules` — talaffuz oynasida qoidalar ro‘yxati, keyin muharrir/AI izohi. Eski koreyscha nasr o‘rniga L-81 dagi qoidasiz «X → Y» eslatma endi qoida topilganda ko‘rsatilmaydi.
+- Muharrir/ustoz: `PronunciationReviewDto.Rules` va `RulesComplete` — o‘qilish birorta standart qoidaga to‘g‘ri kelmasa «⚠ Qoida aniqlanmadi — talaffuzni tekshiring» (noto‘g‘ri kiritilgan o‘qilishni ham ushlaydi).
+- L-80 dagi «koreyscha atama yo‘q» qoidasi AI izohi matni uchun qoladi; koreyscha nom endi ilovaning o‘z qoidalar ro‘yxatida, Johnny so‘raganidek qavsda. AI izohi ko‘pi bilan ikki qisqa gap.
+
+**Tuzoq sahnasi.** Uchala AI ko‘rsatmasi (katalog sahnasi, shaxsiy so‘z, ustoz lug‘ati) bitta umumiy qoidadan (`CatalogContent.SceneRules`) foydalanadi: xato va to‘g‘ri — bir xil qisqa kundalik gap (2–6 so‘z), faqat tuzoq qismi farq qiladi; to‘g‘risi tabiiy, xatosi o‘zbek aynan aytadigani; ikkalasi to‘g‘ri bo‘ladigan, g‘alati yoki kam ishlatiladigan so‘zli juft yo‘q; vaziyat aniq.
+- Yangi `TrapWhy` maydoni (katalog, shaxsiy, ustoz so‘zida; 160 belgigacha, o‘zbekcha lotin): bitta qisqa gap, farqni to‘g‘ridan-to‘g‘ri aytadi. Kartada sahnadan keyin shu izoh; bo‘lmasa avvalgidek uzun tuzoq izohi. Muharrir uni sahna maydonlarida tahrirlaydi. Migratsiya `TrapWhy`.
+- Kartada ikki gapdagi farqli so‘z(lar) belgilanadi (umumiy boshi va oxiri oddiy qoladi).
+- Tuzoq izohi (`trapUz`) ko‘rsatmasi ham: bir-ikki qisqa gap (≤30 so‘z): nima xato aytiladi, nima deyiladi va nega.
+- Bo‘lim sahifasida «Barcha sahnalarni qayta yozdirish»: bo‘limning hamma sahnalari tozalanadi va yangi qoidalar bilan qayta so‘raladi; yangi qoralamalar muharrir tasdig‘ini kutadi, shu orada o‘quvchi oddiy tuzoq izohini ko‘radi. `POST /api/admin/units/{id}/trap-scenes/redo`.
+

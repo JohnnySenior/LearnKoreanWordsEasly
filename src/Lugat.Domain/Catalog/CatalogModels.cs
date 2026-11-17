@@ -96,6 +96,9 @@ public sealed class CatalogWord
 
     public string? TrapRight { get; set; }
 
+    /// <summary>L-83: one short Uzbek sentence on the difference the scene shows ("에서 emas, 에: borish joyi.").</summary>
+    public string? TrapWhy { get; set; }
+
     /// <summary>An AI draft of the scene that no editor has confirmed yet: learners see the plain trap until then.</summary>
     public bool TrapScenePending { get; set; }
 

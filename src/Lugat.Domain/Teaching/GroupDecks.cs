@@ -112,6 +112,9 @@ public sealed class GroupDeckWord
 
     public string? TrapRight { get; set; }
 
+    /// <summary>L-83: one short Uzbek sentence on the difference the scene shows ("에서 emas, 에: borish joyi.").</summary>
+    public string? TrapWhy { get; set; }
+
     public uint Version { get; set; }
 
     public const int MaxKorean = 50;

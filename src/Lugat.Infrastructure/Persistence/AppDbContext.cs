@@ -287,6 +287,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.TrapCue).HasMaxLength(120);
             e.Property(x => x.TrapWrong).HasMaxLength(60);
             e.Property(x => x.TrapRight).HasMaxLength(60);
+            e.Property(x => x.TrapWhy).HasMaxLength(160);
             e.Property(x => x.Theme).HasMaxLength(40);
             e.Property(x => x.Source).HasMaxLength(200);
             e.Property(x => x.AiProvider).HasMaxLength(64);
@@ -406,6 +407,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.TrapCue).HasMaxLength(120);
             e.Property(x => x.TrapWrong).HasMaxLength(60);
             e.Property(x => x.TrapRight).HasMaxLength(60);
+            e.Property(x => x.TrapWhy).HasMaxLength(160);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<LearningItem>().WithMany().HasForeignKey(x => x.LearningItemId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<WordDeck>().WithMany().HasForeignKey(x => x.DeckId).OnDelete(DeleteBehavior.SetNull);
@@ -443,6 +445,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.TrapCue).HasMaxLength(120);
             e.Property(x => x.TrapWrong).HasMaxLength(60);
             e.Property(x => x.TrapRight).HasMaxLength(60);
+            e.Property(x => x.TrapWhy).HasMaxLength(160);
             e.HasIndex(x => new { x.GroupDeckId, x.Order });
             e.HasOne<Domain.Teaching.GroupDeck>().WithMany().HasForeignKey(x => x.GroupDeckId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Domain.Catalog.CatalogWord>().WithMany().HasForeignKey(x => x.CatalogWordId).OnDelete(DeleteBehavior.SetNull);

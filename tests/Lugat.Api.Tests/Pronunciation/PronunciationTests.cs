@@ -33,9 +33,45 @@ public class PronunciationTests
     };
 
     [Theory]
+    [InlineData("국물", "궁물", true)]
+    [InlineData("국물", "국무", false)]
+    public async Task The_learner_sees_the_named_rule_and_the_editor_is_warned_when_no_rule_explains_the_reading(string korean, string reading, bool explained)
+    {
+        // L-83: rules found from the spelling, Uzbek name with the Korean name; a reading no rule gives is flagged.
+        await using var f = new ApiFactory { Premium = false, AdminTelegramIds = [ApiFactory.UserA], TableWords = [(korean, "sho‘rva")] };
+        var admin = await f.SignedInClientAsync(ApiFactory.UserA);
+        var learner = await f.SignedInClientAsync(ApiFactory.UserB);
+        await learner.PostAsync(ApiFactory.TestWordsPath, null);
+        await using (var scope = f.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var word = await db.CatalogWords.SingleAsync(w => w.Word == korean);
+            (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (reading, "Izoh.", true);
+            await db.SaveChangesAsync();
+        }
+
+        var review = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{ApiFactory.Unit(1)}", ApiFactory.Json))!.Words.Single(w => w.Word == korean).PronunciationReview!;
+        Assert.Equal(explained, review.RulesComplete);
+        var page = (await learner.GetFromJsonAsync<UnitDto>($"/api/units/{ApiFactory.Unit(1)}", ApiFactory.Json))!;
+        var shown = page.Words.Single(w => w.Word == korean).Pronunciation!;
+        if (explained)
+        {
+            var rule = Assert.Single(shown.Rules!);
+            Assert.Equal(("Burunlashish", "비음화", "국물: ㄱ ㅁ oldidan ㅇ bo‘ladi"), (rule.NameUz, rule.NameKo, rule.Detail));
+        }
+        else
+        {
+            Assert.Empty(shown.Rules!);
+        }
+
+        Assert.Equal("Izoh.", shown.ExplanationUz); // the editor's own note stays
+    }
+
+    [Theory]
     [InlineData("좋다", "조타", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (거센소리되기).", "ㄷ tovushi ㅎ bilan ㅌ ga aylanadi (undoshning kuchli nafas bilan aytilishi).")]
-    [InlineData("들어가다", "드러가다", "받침 ’ㄹ’ 다음 모음 ’ㅓ’가 이어지며 연음화: ㄹ이 다음 음절 초성으로 이동", "Bo‘g‘in oxiridagi undosh keyingi unliga ulanib o‘qiladi. «들어가다» so‘zi «드러가다» deb o‘qiladi.")]
-    public async Task Legacy_notes_are_readable_for_editor_and_learner_without_rewriting_the_database(string korean, string reading, string oldNote, string readable)
+    // L-83: Korean prose with a rule the server names is left out; the rule list says it ("Ulanish (연음)").
+    [InlineData("들어가다", "드러가다", "받침 ’ㄹ’ 다음 모음 ’ㅓ’가 이어지며 연음화: ㄹ이 다음 음절 초성으로 이동", null)]
+    public async Task Legacy_notes_are_readable_for_editor_and_learner_without_rewriting_the_database(string korean, string reading, string oldNote, string? readable)
     {
         await using var f = new ApiFactory { Premium = false, AdminTelegramIds = [ApiFactory.UserA], TableWords = [(korean, "ma’no")] };
         var admin = await f.SignedInClientAsync(ApiFactory.UserA);
@@ -220,7 +256,9 @@ public class PronunciationTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, (await editor.PostAsJsonAsync(url + "/suggest", new PronunciationVersionRequest(draft.Version), ApiFactory.Json)).StatusCode);
         Assert.Equal(HttpStatusCode.UnprocessableEntity, (await editor.PutAsJsonAsync(url, new ReviewPronunciationRequest("gungmul", "Izoh.", true, draft.Version), ApiFactory.Json)).StatusCode);
         unit = (await editor.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{ApiFactory.Unit(1)}", ApiFactory.Json))!;
-        Assert.Equal(draft, unit.Words.Single(w => w.Id == word.Id).PronunciationReview);
+        var kept = unit.Words.Single(w => w.Id == word.Id).PronunciationReview!;
+        Assert.Equal(draft with { Rules = null }, kept with { Rules = null });
+        Assert.Equal(draft.Rules, kept.Rules); // L-83: the same rules (a list, compared item by item)
     }
 
     [Fact]

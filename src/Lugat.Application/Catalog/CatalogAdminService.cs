@@ -183,7 +183,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             throw new ValidationException(problem!);
         }
 
-        var (scene, sceneProblem) = CatalogContent.CheckScene(request.TrapCue, request.TrapWrong, request.TrapRight, fields.TrapUz);
+        var (scene, sceneProblem) = CatalogContent.CheckScene(request.TrapCue, request.TrapWrong, request.TrapRight, fields.TrapUz, request.TrapWhy);
         if (sceneProblem is not null)
         {
             throw new ValidationException(sceneProblem);
@@ -216,7 +216,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         {
             (word.TranslationUz, word.Romanization, word.ExampleKo, word.ExampleUz, word.TrapUz, word.Theme) =
                 (fields.TranslationUz, fields.Romanization, fields.ExampleKo, fields.ExampleUz, fields.TrapUz, fields.Theme);
-            (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapScenePending) = (scene?.Cue, scene?.Wrong, scene?.Right, false);
+            (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapWhy, word.TrapScenePending) = (scene?.Cue, scene?.Wrong, scene?.Right, scene?.Why, false);
             if (word.TrapUz != fields.TrapUz || scene is null)
             {
                 word.TrapSceneAskedAt = null; // a new note may name a mistake the AI can act out
@@ -301,7 +301,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             word.ContentVersion++; // learners saw it
         }
 
-        (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapScenePending, word.UpdatedAt) = (null, null, null, false, now);
+        (word.TrapCue, word.TrapWrong, word.TrapRight, word.TrapWhy, word.TrapScenePending, word.UpdatedAt) = (null, null, null, null, false, now);
         word.TrapSceneAskedAt ??= now;
         await SaveAsync(ct);
         return (await ToDtosAsync([word], ct))[0];
@@ -309,9 +309,9 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
 
     /// <summary>The scene learners may see: set and confirmed by an editor.</summary>
     public static TrapScene? LearnerScene(CatalogWord w) =>
-        !w.TrapScenePending && w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapScene(w.TrapCue, wrong, right) : null;
+        !w.TrapScenePending && w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapScene(w.TrapCue, wrong, right, w.TrapWhy) : null;
 
-    private static TrapScene? Scene(CatalogWord w) => w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapScene(w.TrapCue, wrong, right) : null;
+    private static TrapScene? Scene(CatalogWord w) => w.TrapWrong is { } wrong && w.TrapRight is { } right ? new TrapScene(w.TrapCue, wrong, right, w.TrapWhy) : null;
 
     /// <summary>"Tekshirildi": a person confirms the word (spec §2.4 step 4); the reviewer is kept.</summary>
     public async Task<CatalogWordAdminDto> ReviewAsync(Guid editorId, Guid wordId, uint version, CancellationToken ct)
@@ -404,6 +404,6 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             // L-74: only a shared meaning without a hint in parentheses needs the editor.
             w.TranslationUz is { } uz ? Vocabulary.MeaningTwins.Unhinted(w.Id, w.Word, uz, twins).Select(t => t.Korean).Distinct().ToList() : [],
             w.TrapCue, w.TrapWrong, w.TrapRight, w.TrapScenePending, w.TrapSceneAskedAt is not null,
-            new PronunciationReviewDto(w.PronunciationKo, Pronunciation.PronunciationExplanation.ForWord(w.Word, w.PronunciationKo, w.PronunciationNoteUz), w.PronunciationReviewed, w.Version, w.PronunciationAskedAt))).ToList();
+            Pronunciation.PronunciationService.Review(w.Word, w.PronunciationKo, w.PronunciationNoteUz, w.PronunciationReviewed, w.Version, w.PronunciationAskedAt), w.TrapWhy)).ToList();
     }
 }

@@ -16,7 +16,10 @@ public class PronunciationTests
         var note = PronunciationExplanation.ForWord(korean, reading, legacy);
         Assert.Equal($"Bo‘g‘in oxiridagi undosh keyingi unliga ulanib o‘qiladi. «{korean}» so‘zi «{reading}» deb o‘qiladi.", note);
         Assert.Equal(note, PronunciationExplanation.ForWord(korean, reading, note));
-        Assert.Equal(note, PronunciationService.Learner(korean, reading, legacy, true)!.ExplanationUz);
+        // L-83: the learner gets the named rule instead of the bare "X is read Y".
+        var learner = PronunciationService.Learner(korean, reading, legacy, true)!;
+        Assert.Null(learner.ExplanationUz);
+        Assert.Contains(learner.Rules!, r => r.NameUz == "Ulanish" && r.NameKo == "연음");
         Assert.Null(PronunciationService.Learner(korean, reading, legacy, false));
     }
 

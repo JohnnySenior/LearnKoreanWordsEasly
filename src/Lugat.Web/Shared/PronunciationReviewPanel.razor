@@ -23,6 +23,10 @@
                 <li @key="word.Id" class="@(edit.Reading == word.Korean ? "unchanged" : "")">
                     <label class="pronunciation-review-select"><input type="checkbox" @bind="edit.Selected" disabled="@(_busy || Disabled || string.IsNullOrWhiteSpace(edit.Reading))" /><span><strong lang="ko">@word.Korean</strong> — @word.MeaningUz</span></label>
                     <label class="field">Talaffuzi<input class="input" lang="ko" maxlength="100" @bind="edit.Reading" @bind:event="oninput" @bind:after="() => ReadingChanged(edit)" disabled="@(_busy || Disabled)" /></label>
+                    @if (word.Review is { Reading: not null } saved && edit.Reading == saved.Reading)
+                    {
+                        <PronunciationRules Rules="saved.Rules" Complete="saved.RulesComplete" />
+                    }
                     @if (string.IsNullOrWhiteSpace(edit.Reading))
                     {
                         <p class="small-text">Bilmasangiz bo‘sh qoldiring. Qolganlari saqlanadi; bu so‘z hozircha tasdiqlanmaydi.</p>

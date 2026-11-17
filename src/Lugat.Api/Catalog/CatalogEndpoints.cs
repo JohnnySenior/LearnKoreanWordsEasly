@@ -83,6 +83,9 @@ public static class CatalogEndpoints
             catalog.ApproveScenesAsync(id, ct));
         editor.MapPost("/units/{id:guid}/trap-scenes/retry", (Guid id, TrapSceneService scenes, CancellationToken ct) =>
             scenes.RetryAsync(id, ct));
+        // L-83: all the unit's scenes again, under the clearer rules; the new drafts wait for the editor.
+        editor.MapPost("/units/{id:guid}/trap-scenes/redo", (Guid id, TrapSceneService scenes, CancellationToken ct) =>
+            scenes.RedoAllAsync(id, ct));
         editor.MapPost("/catalog/words/{id:guid}/trap-scene/reject", (Guid id, ReviewCatalogWordRequest body, CatalogAdminService catalog, CancellationToken ct) =>
             catalog.RejectSceneAsync(id, body.Version, ct));
         editor.MapPost("/catalog/words/{id:guid}/trap-scene/approve", (Guid id, ReviewCatalogWordRequest body, ClaimsPrincipal user, CatalogAdminService catalog, CancellationToken ct) =>

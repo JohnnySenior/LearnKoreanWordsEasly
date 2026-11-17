@@ -1,0 +1,22 @@
+@using Lugat.Contracts
+@* L-83: the standard rules behind a reading, named in Uzbek with the Korean name in parentheses. *@
+@if (Rules is { Count: > 0 })
+{
+    <ul class="pronunciation-rules" aria-label="Talaffuz qoidalari">
+        @foreach (var r in Rules)
+        {
+            <li><strong>@r.NameUz <span lang="ko">(@r.NameKo)</span>:</strong> <span lang="ko">@r.Detail</span></li>
+        }
+    </ul>
+}
+@if (!Complete)
+{
+    <p class="pronunciation-rules-warn small-text" role="status">⚠ Qoida aniqlanmadi: o‘qilishi standart qoidalarga to‘g‘ri kelmadi. Talaffuzni tekshiring.</p>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<PronunciationRuleDto>? Rules { get; set; }
+
+    /// <summary>False shows the editor that no rule explains the reading.</summary>
+    [Parameter] public bool Complete { get; set; } = true;
+}

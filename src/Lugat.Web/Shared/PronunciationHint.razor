@@ -10,6 +10,7 @@
         {
             <div id="@_panelId" class="pronunciation-body">
                 <p><strong>Talaffuzi: <span class="ko" lang="ko">[@p.Reading]</span></strong></p>
+                <PronunciationRules Rules="p.Rules" />
                 @if (p.ExplanationUz is not null) { <p>@p.ExplanationUz</p> }
                 <p class="muted small-text">Yozishda <span lang="ko">@Korean</span> yoziladi.</p>
                 <Speak Text="@Korean" />

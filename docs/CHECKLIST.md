@@ -730,3 +730,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [ ] Johnny: Anthropic hisobidagi API balansini tekshirish (L-78 da «credit balance» xatosi bo‘lgan).
 - [ ] Keyin: talaffuz qoidalarini aniq yozish (har farqli so‘zda qaysi qoida — Johnny 2026-11-17); shundan so‘ng L-80/L-81 o‘qish paytidagi almashtirish kodini olib tashlash mumkin.
 
+**Talaffuz qoidalari va aniq tuzoq sahnalari (L-83, 2026-11-17):**
+- [x] Server standart talaffuz qoidalarini yozilish/o‘qilishdan aniqlaydi: o‘zbekcha nom (koreyscha), qayerda nima o‘zgargani; o‘quvchi oynasida va muharrir panelida; qoidaga to‘g‘ri kelmagan o‘qilish uchun ogohlantirish.
+- [x] Qoida topilganda eski qoidasiz «X → Y» eslatma o‘quvchiga ko‘rsatilmaydi.
+- [x] Tuzoq sahnasi: uchala AI ko‘rsatmasi umumiy aniq-juft qoidasi; yangi `TrapWhy` qisqa izoh (migratsiya); kartada farqli so‘z belgilanadi; muharrir maydoni; «Barcha sahnalarni qayta yozdirish».
+- [x] Testlar: 22 so‘zda qoidalar (unit), o‘quvchi/muharrir DTO (API), sahna `why` saqlanishi va kartada, qayta yozdirish, qo‘lda izoh tekshiruvi.
+- [ ] Johnny: bitta bo‘limda «Barcha sahnalarni qayta yozdirish» → yangi juftlar va izohlarni ko‘rib tasdiqlash; talaffuz oynasida qoidalarni ko‘rish; «⚠ Qoida aniqlanmadi» chiqqan so‘zlarni tekshirish.
+
