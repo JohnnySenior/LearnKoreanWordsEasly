@@ -7,7 +7,9 @@
 
 @* "Bu savolda xato bor" reports (L-37). Until a report is resolved, a stored question with its sentence is not asked
    again; fix the word's content first when the question came from it, then mark the report resolved. *@
-<AppHeader Title="Savollardagi xatolar" Back="admin" />
+@* L-86 (UI audit 17): the same back link and title as every inner page. *@
+<a class="back" href="admin">← Admin panel</a>
+<h1>Savollardagi xatolar</h1>
 
 @if (!IsAdmin)
 {

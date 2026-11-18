@@ -336,6 +336,17 @@ public static class SeoEndpoints
         return Page(title, description, url, body.ToString(), null);
     }
 
+    /// <summary>L-86: an address that is neither the app, a public page nor a file — a real 404 with a way home.</summary>
+    public static IResult PageNotFound(HttpContext http)
+    {
+        http.Response.Headers.CacheControl = "public, max-age=300";
+        var body = "<h1>Sahifa topilmadi</h1><p class=\"intro\">Bu manzilda sahifa yo‘q. Havola eskirgan yoki xato yozilgan bo‘lishi mumkin.</p>"
+            + "<a class=\"cta\" href=\"/\"><span>Bosh sahifaga qaytish</span><span aria-hidden=\"true\">→</span></a>"
+            + "<p class=\"note\"><a href=\"/soz\">Koreyscha so‘zlar ro‘yxati</a></p>";
+        return Results.Content(Page("Sahifa topilmadi | Koreyscha", "Sahifa topilmadi.", null, body, null, noIndex: true),
+            "text/html; charset=utf-8", statusCode: StatusCodes.Status404NotFound);
+    }
+
     private static IResult NotFound(HttpContext http)
     {
         http.Response.Headers.CacheControl = "public, max-age=300";
@@ -456,6 +467,8 @@ public static class SeoEndpoints
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta name="theme-color" content="#f6f2ed" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
             <link rel="icon" href="/favicon.ico?v=2" sizes="any"><link rel="icon" href="/icons/favicon.svg?v=2" type="image/svg+xml">
+            <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap">
             {{head}}
             <style>{{Css}}</style>
             </head>
@@ -476,11 +489,11 @@ public static class SeoEndpoints
         :root{--bg:#f6f2ed;--card:#fffdfa;--surface:#efe8df;--ink:#2b2420;--muted:#776a5f;--rule:rgba(43,36,32,.09);--accent:#e5533d;--accent-ink:#b8402c;--accent-soft:#fbeee8;--on-accent:#fff;--fill:#e5533d;--ok:#2f7d4f;--ok-soft:#e5f3ea;--shadow:0 1px 2px rgba(80,50,30,.05),0 10px 26px -14px rgba(80,50,30,.2);--glow:0 8px 18px -8px rgba(229,83,61,.55);--page:none;color-scheme:light}
         @media (prefers-color-scheme:dark){:root{--bg:#0f1117;--card:#161922;--surface:#1b1e27;--ink:#eef0f6;--muted:#8f94a7;--rule:rgba(255,255,255,.07);--accent:#ff5a3c;--accent-ink:#ff8a70;--accent-soft:#2a1b1d;--on-accent:#fff;--fill:linear-gradient(135deg,#ff6a45,#ec3013);--ok:#5cc78b;--ok-soft:#14261c;--shadow:inset 0 0 0 1px rgba(255,255,255,.06);--glow:0 10px 28px -10px rgba(255,90,60,.7);--page:radial-gradient(120% 50% at 100% 0%,rgba(255,90,60,.13),transparent 60%);color-scheme:dark}}
         *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-        body{margin:0;background:var(--page),var(--bg);background-attachment:fixed;color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+        body{margin:0;background:var(--page),var(--bg);background-attachment:fixed;color:var(--ink);font:16px/1.55 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}/* L-86: the app's font */
         a{color:inherit}
         .top{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:720px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right)) 6px max(16px,env(safe-area-inset-left))}
         .top a{text-decoration:none;font-weight:600;display:inline-flex;align-items:center;min-height:44px}.top a:hover{color:var(--accent-ink)}
-        .brand{display:inline-flex;align-items:center;gap:9px;font-size:18px;font-weight:800!important;letter-spacing:-.01em}
+        .brand{display:inline-flex;align-items:center;gap:9px;font-size:18px;font-weight:800!important;letter-spacing:-.02em}
         .mark{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--fill);color:var(--on-accent);font-size:17px;font-weight:700}
         main{max-width:720px;margin:0 auto;padding:10px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
         h1{font-size:clamp(40px,12vw,64px);line-height:1.05;margin:6px 0 4px;letter-spacing:-.02em;text-wrap:balance}

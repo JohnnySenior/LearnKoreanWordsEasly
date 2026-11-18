@@ -8,7 +8,9 @@
 
 @* Premium (spec §7): what it gives, the plans, how to pay by bank transfer, the learner's payment code. Whether the
    learner has Premium is decided by the server only. *@
-<AppHeader Title="Premium" Back="profil" />
+@* L-86 (UI audit 17): the same back link and title as every inner page. *@
+<a class="back" href="profil">← Profil</a>
+<h1>Premium</h1>
 
 @if (_status is null || _plans is null)
 {

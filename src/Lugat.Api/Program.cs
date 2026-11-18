@@ -204,7 +204,10 @@ app.Map("/api/{**rest}", () => TypedResults.Problem(statusCode: StatusCodes.Stat
 
 // Blazor WebAssembly client (src/Lugat.Web) is served from the same origin.
 app.MapStaticAssets();
-app.MapFallbackToFile("index.html");
+// L-86: the app's own pages get index.html; any other unknown address is a real 404 page (not the home page with 200).
+app.MapFallbackToFile("/", "index.html");
+app.MapFallbackToFile(Lugat.Api.Seo.AppRoutes.Pattern, "index.html");
+app.MapFallback(Lugat.Api.Seo.SeoEndpoints.PageNotFound);
 
 await app.RunAsync();
 

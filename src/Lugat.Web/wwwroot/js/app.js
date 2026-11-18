@@ -168,6 +168,13 @@ export function installState() {
     return 'manual';
 }
 
+// L-84 (UI audit 5): a phone or tablet, where putting the app on the home screen makes sense. The landing does not offer
+// installing on a computer.
+export function isPhone() {
+    const ua = navigator.userAgent;
+    return /Android|iPhone|iPad|iPod|Mobile/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
 // Shows Chrome's install dialog; true when the learner accepted. The offer can be used once.
 export async function promptInstall() {
     const prompt = window.__installPrompt;
