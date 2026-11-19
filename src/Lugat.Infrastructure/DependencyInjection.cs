@@ -61,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Pronunciation.PronunciationService>();
         services.AddScoped<Application.Pronunciation.PronunciationBatchService>();
         services.AddScoped<Application.Catalog.UnitPreparationService>();
+        services.AddScoped<Application.Catalog.ContentAutopilotService>();
         services.AddScoped<Application.Teaching.GroupDeckReport>();
         services.AddScoped<Application.Admin.AdminService>();
         services.Configure<Application.Catalog.CatalogOptions>(config.GetSection(Application.Catalog.CatalogOptions.SectionName));

@@ -225,7 +225,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             word.UpdatedAt = now;
             if (word.Status == CatalogWordStatus.Reviewed)
             {
-                (word.ReviewedByUserId, word.ReviewedAt) = (editorId, now);
+                (word.ReviewedByUserId, word.ReviewedAt, word.ReviewedByAi) = (editorId, now, false);
             }
         }
 
@@ -324,7 +324,7 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
         }
 
         var now = time.GetUtcNow();
-        (word.Status, word.ReviewedByUserId, word.ReviewedAt, word.UpdatedAt) = (CatalogWordStatus.Reviewed, editorId, now, now);
+        (word.Status, word.ReviewedByUserId, word.ReviewedAt, word.UpdatedAt, word.ReviewedByAi) = (CatalogWordStatus.Reviewed, editorId, now, now, false);
         await SaveAsync(ct);
         return (await ToDtosAsync([word], ct))[0];
     }
@@ -397,7 +397,8 @@ public sealed class CatalogAdminService(IAppDbContext db, TimeProvider time, IOp
             w.Id, w.OrderInUnit, w.Word, w.Homonym, w.Pos, CatalogPos.Uzbek(w.Pos), w.Gloss, w.FreqRank,
             w.TranslationUz, w.Romanization, w.ExampleKo, w.ExampleUz, w.TrapUz, w.Theme,
             w.Status, w.ContentVersion,
-            w.ReviewedByUserId is { } r ? names.GetValueOrDefault(r) ?? "—" : w.Status == CatalogWordStatus.Reviewed ? "Namuna fayl" : null,
+            w.ReviewedByAi ? $"AI ({w.AiModel ?? w.AiProvider ?? "model"})"
+                : w.ReviewedByUserId is { } r ? names.GetValueOrDefault(r) ?? "—" : w.Status == CatalogWordStatus.Reviewed ? "Namuna fayl" : null,
             w.ReviewedAt, w.AiProvider,
             (usages.GetValueOrDefault(w.Id)?.Questions ?? []).Select(q => new CatalogQuestionDto(q.Uzbek, q.Sentence, q.Answer, q.Wrong, q.ExplanationUz)).ToList(),
             w.Version,

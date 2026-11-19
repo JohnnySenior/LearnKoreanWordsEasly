@@ -25,6 +25,14 @@ public sealed class AiGateway(
 {
     private AiOptions Options => options.Value;
 
+    /// <summary>
+    /// L-87: set by the background content job, which has no browser or proxy waiting: one attempt may take this long
+    /// (a strong model writing ten cards), all providers together twice that. Null: the usual limits.
+    /// </summary>
+    public TimeSpan? Patience { get; set; }
+
+    private TimeSpan TotalTimeout => Patience is { } p ? p * 2 : Options.TotalTimeout;
+
     public async Task<AiStatusDto> StatusAsync(Guid ownerId, CancellationToken ct)
     {
         var chosen = await db.Users.Where(u => u.Id == ownerId).Select(u => u.AiProvider).SingleAsync(ct);
@@ -87,7 +95,7 @@ public sealed class AiGateway(
 
         var overall = Stopwatch.StartNew();
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        deadline.CancelAfter(Options.TotalTimeout);
+        deadline.CancelAfter(TotalTimeout);
         string? lastError = null;
         var failures = new List<string>();
         var available = candidates.Where(p => p.IsConfigured).ToList();
@@ -104,7 +112,7 @@ public sealed class AiGateway(
             AiUsage reservation;
             try
             {
-                reservation = await usage.ReserveAsync(ownerId, request.Feature, provider.Kind, provider.Model, input, output, limit, deadline.Token);
+                reservation = await usage.ReserveAsync(ownerId, request.Feature, provider.Kind, provider.ModelFor(request), input, output, limit, deadline.Token);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -113,7 +121,7 @@ public sealed class AiGateway(
             }
             var watch = Stopwatch.StartNew();
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
-            var budget = AttemptTimeout(request.Timeout ?? Options.Timeout, Options.TotalTimeout - overall.Elapsed, available.Count - index);
+            var budget = AttemptTimeout(Patience ?? request.Timeout ?? Options.Timeout, TotalTimeout - overall.Elapsed, available.Count - index);
             if (budget <= TimeSpan.Zero)
             {
                 lastError = "javob kechikdi";

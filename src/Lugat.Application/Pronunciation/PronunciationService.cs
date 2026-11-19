@@ -106,7 +106,7 @@ public sealed class PronunciationService(IAppDbContext db, AiGateway ai, IOperat
         word.UpdatedAt = time.GetUtcNow();
         if (word.PronunciationReviewed)
         {
-            word.ReviewedByUserId = userId;
+            (word.ReviewedByUserId, word.ReviewedByAi) = (userId, false);
             word.ReviewedAt = word.UpdatedAt;
         }
         if (word.UnitId is { } id && await db.Units.SingleOrDefaultAsync(u => u.Id == id && u.Status == UnitStatus.Published, ct) is { } unit)

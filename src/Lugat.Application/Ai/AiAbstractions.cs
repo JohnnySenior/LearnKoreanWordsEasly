@@ -43,6 +43,15 @@ public sealed class AiProviderOptions
 
     public string Model { get; set; } = "";
 
+    /// <summary>
+    /// L-87: a stronger model for the shared catalog content (cards, trap scenes, readings), written once per word and
+    /// published without a person reading it. Empty: <see cref="Model"/>.
+    /// </summary>
+    public string? ContentModel { get; set; }
+
+    /// <summary>The model a request goes to: <see cref="ContentModel"/> for catalog content when set.</summary>
+    public string ModelFor(AiJsonRequest request) => request.Content && !string.IsNullOrWhiteSpace(ContentModel) ? ContentModel.Trim() : Model;
+
     public string BaseUrl { get; set; } = "";
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(Model);
@@ -61,6 +70,7 @@ public sealed class AiProviderOptions
 /// </summary>
 /// <param name="Attachments">Files the model should read, e.g. one book page as PDF (sent before the text).</param>
 /// <param name="Timeout">Overrides <see cref="AiOptions.Timeout"/> for slow requests such as reading a scanned page.</param>
+/// <param name="Content">L-87: shared catalog content; goes to <see cref="AiProviderOptions.ContentModel"/> when set.</param>
 public sealed record AiJsonRequest(
     string Feature,
     string Instructions,
@@ -69,7 +79,8 @@ public sealed record AiJsonRequest(
     string JsonSchema,
     int MaxOutputTokens,
     IReadOnlyList<AiAttachment>? Attachments = null,
-    TimeSpan? Timeout = null);
+    TimeSpan? Timeout = null,
+    bool Content = false);
 
 public sealed record AiAttachment(string MediaType, string FileName, byte[] Content);
 
@@ -89,6 +100,9 @@ public interface IAiProvider
     bool IsConfigured { get; }
 
     string Model { get; }
+
+    /// <summary>The model this request goes to (L-87: the content model for catalog content).</summary>
+    string ModelFor(AiJsonRequest request) => Model;
 
     Task<AiJsonResponse> CompleteJsonAsync(AiJsonRequest request, CancellationToken ct);
 }

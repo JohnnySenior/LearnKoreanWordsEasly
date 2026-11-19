@@ -127,7 +127,7 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
             lines.AppendLine($"{i + 1}. {words[i].Word} — {words[i].TranslationUz} — {words[i].TrapUz}");
         }
 
-        return new AiJsonRequest(Feature, Instructions, $"<words>\n{lines}</words>", "trap_scenes", Schema, 3000);
+        return new AiJsonRequest(Feature, Instructions, $"<words>\n{lines}</words>", "trap_scenes", Schema, 3000, Content: true);
     }
 
     /// <summary>Checked scenes by word id; items that break the rules, or name no real mistake, are dropped.</summary>

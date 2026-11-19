@@ -3,6 +3,7 @@
 @using Lugat.Domain.Catalog
 @using Lugat.Domain.Users
 @inject SessionService Api
+@implements IDisposable
 
 <PageTitle>Kontent — Koreyscha</PageTitle>
 
@@ -58,6 +59,62 @@
 
 @if (IsAdmin)
 {
+    @* L-87: the AI prepares and publishes the level's units one after another in the background. *@
+    <section class="card autopilot">
+        <h2>AI bilan tayyorlash va nashr</h2>
+        <p class="muted small-text">AI bo‘limlarni birin-ketin tayyorlaydi (so‘z kartasi, tuzoq sahnasi, talaffuz), server qoidalaridan o‘tgan so‘zlarni tasdiqlaydi va bo‘limni nashr qiladi. Tanishuv darsi yozilmaydi. Har so‘zni keyin ham bo‘lim sahifasida tuzatish mumkin.</p>
+        @if (_auto is not null)
+        {
+            @if (_auto.ContentModel is { } model)
+            {
+                <p class="small-text">Model: <strong>@model</strong></p>
+            }
+            else
+            {
+                <p class="small-text">Kuchli model sozlanmagan (<code>Ai__Anthropic__ContentModel</code>): odatdagi model ishlatiladi.</p>
+            }
+
+            @if (_auto.Running)
+            {
+                <p role="status"><strong>@_auto.Level daraja:</strong> @_auto.Message</p>
+                <button class="btn btn-secondary block" disabled="@_busy" @onclick="StopAutoAsync"><span>To‘xtatish</span></button>
+            }
+            else
+            {
+                @if (_auto.Level is not null && _auto.Message is { } last)
+                {
+                    @if (_auto.Stopped)
+                    {
+                        <div class="notice" role="alert"><strong>@_auto.Level daraja:</strong> @last</div>
+                    }
+                    else
+                    {
+                        <p class="small-text" role="status"><strong>@_auto.Level daraja:</strong> @last</p>
+                    }
+                }
+                <button class="btn btn-primary block" disabled="@_busy" @onclick="StartAutoAsync"><span>@_level darajani AI bilan tayyorlab nashr qilish</span><Icon Name="arrow-right" /></button>
+            }
+
+            @if (_auto.PublishedUnits.Count > 0)
+            {
+                <p class="small-text">Shu safar nashr qilindi: @string.Join(", ", _auto.PublishedUnits)-bo‘lim.</p>
+            }
+
+            @if (_auto.Log.Count > 1)
+            {
+                <details>
+                    <summary class="small-text">Jarayon</summary>
+                    <ul class="plain-list small-text">
+                        @foreach (var line in _auto.Log)
+                        {
+                            <li>@line</li>
+                        }
+                    </ul>
+                </details>
+            }
+        }
+    </section>
+
     <section class="card">
         <h2>Rasmiy ro‘yxatni import qilish</h2>
         <p class="muted small-text">국립국어원 「한국어 학습용 어휘 목록」 fayli (.xls, .xlsx yoki .txt). Qayta yuklash dublikat yaratmaydi: mavjud so‘zlarning faqat chastota o‘rni va izohi yangilanadi.</p>
@@ -103,6 +160,8 @@ else
 
 @code {
     private CatalogLevel _level = CatalogLevel.A;
+    private ContentAutopilotDto? _auto;
+    private readonly CancellationTokenSource _closing = new();
     private IReadOnlyList<CatalogLevelAdminDto>? _levels;
     private List<UnitAdminSummaryDto>? _units;
     private CatalogImportResultDto? _import;
@@ -113,7 +172,74 @@ else
 
     private bool IsEditor => IsAdmin || Api.State.Me?.Roles.Contains(nameof(UserRoles.Editor)) == true;
 
-    protected override Task OnInitializedAsync() => IsEditor ? LoadAsync() : Task.CompletedTask;
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsEditor)
+        {
+            return;
+        }
+
+        await LoadAsync();
+        if (IsAdmin)
+        {
+            await LoadAutoAsync();
+            _ = WatchAutoAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        _closing.Cancel();
+        _closing.Dispose();
+    }
+
+    private async Task LoadAutoAsync() => _auto = (await Api.GetAsync<ContentAutopilotDto>("api/admin/catalog/autopilot")).Value ?? _auto;
+
+    /// <summary>While the job runs, its state and the unit list are refreshed every few seconds.</summary>
+    private async Task WatchAutoAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_closing.Token))
+            {
+                if (_auto is not { Running: true })
+                {
+                    continue;
+                }
+
+                var published = _auto.PublishedUnits.Count;
+                await LoadAutoAsync();
+                if (_auto is not { Running: true } || _auto.PublishedUnits.Count != published)
+                {
+                    await LoadAsync();
+                }
+
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task StartAutoAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<ContentAutopilotDto>(HttpMethod.Post, $"api/admin/catalog/levels/{_level}/autopilot");
+        _auto = result.Value ?? _auto;
+        _error = result.Error;
+        _busy = false;
+    }
+
+    private async Task StopAutoAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<ContentAutopilotDto>(HttpMethod.Post, "api/admin/catalog/autopilot/stop");
+        _auto = result.Value ?? _auto;
+        _error = result.Error;
+        _busy = false;
+    }
 
     private async Task SelectAsync(CatalogLevel level)
     {

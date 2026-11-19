@@ -18,7 +18,11 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
     private sealed record Answer(List<Draft>? Words);
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    public async Task DraftAsync(Guid userId, Guid listId, bool group, CancellationToken ct)
+    /// <param name="leaveRejected">
+    /// L-87, the content job: a word whose answer fails the checks counts as asked with no reading (as when the AI is
+    /// unsure), so it goes to the editor instead of being asked again and again.
+    /// </param>
+    public async Task DraftAsync(Guid userId, Guid listId, bool group, CancellationToken ct, bool leaveRejected = false)
     {
         await AccessAsync(userId, listId, group, ct);
         await using var lease = await operations.AcquireAsync(group ? "group-deck:" + listId : "pronunciation-unit:" + listId, ct);
@@ -37,12 +41,15 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
         if (drafts.Count == 0)
         {
             await ai.RejectContentAsync(result, "Talaffuz ro‘yxati tekshiruvdan o‘tmadi.");
-            throw new ServiceUnavailableException("AI yaroqli talaffuzlar ro‘yxatini qaytarmadi. Saqlangan takliflar saqlanib qoladi; qayta urinib ko‘ring.");
+            if (!leaveRejected)
+            {
+                throw new ServiceUnavailableException("AI yaroqli talaffuzlar ro‘yxatini qaytarmadi. Saqlangan takliflar saqlanib qoladi; qayta urinib ko‘ring.");
+            }
         }
         // Re-read after the provider returns: never overwrite an editor's concurrent work, even with null drafts.
         db.DiscardChanges();
         var versions = words.ToDictionary(w => w.Id, w => w.Version);
-        var ids = drafts.Keys.ToList();
+        var ids = (leaveRejected && !group ? words.Select(w => w.Id) : drafts.Keys).ToList();
         var now = time.GetUtcNow();
         if (group)
         {
@@ -67,8 +74,8 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
                     continue;
                 }
 
-                var draft = drafts[word.Id];
-                (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationAskedAt, word.UpdatedAt) = (draft.Reading, draft.ExplanationUz, now, now);
+                var draft = drafts.GetValueOrDefault(word.Id);
+                (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationAskedAt, word.UpdatedAt) = (draft?.Reading, draft?.ExplanationUz, now, now);
                 word.ContentVersion++;
             }
             await SaveAsync(ct);
@@ -121,7 +128,7 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
             {
                 (word.PronunciationKo, word.PronunciationNoteUz, word.PronunciationReviewed) = (values[word.Id].Reading, values[word.Id].Explanation, true);
                 word.ContentVersion++;
-                (word.ReviewedByUserId, word.ReviewedAt, word.UpdatedAt) = (userId, now, now);
+                (word.ReviewedByUserId, word.ReviewedAt, word.UpdatedAt, word.ReviewedByAi) = (userId, now, now, false);
             }
         }
         await SaveAsync(ct);
@@ -183,7 +190,7 @@ public sealed class PronunciationBatchService(IAppDbContext db, AiGateway ai, IO
         group ? GroupDeckService.Feature : CatalogDraftService.Feature,
         PronunciationService.Instructions + "\nReturn a words array, one entry per input. Copy each id and korean exactly. A null reading means you are unsure, not unchanged pronunciation.",
         JsonSerializer.Serialize(words.Select(w => new { id = w.Id, korean = w.Korean, meaning = w.Meaning })),
-        "pronunciation_list", Schema, 4000, Timeout: TimeSpan.FromSeconds(75));
+        "pronunciation_list", Schema, 4000, Timeout: TimeSpan.FromSeconds(75), Content: !group);
 
     private const string Schema = """
         {"type":"object","additionalProperties":false,"required":["words"],"properties":{"words":{"type":"array","maxItems":10,
