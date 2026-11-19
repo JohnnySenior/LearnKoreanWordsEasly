@@ -23,7 +23,11 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
     /// <summary>A trap note, no scene yet, and the AI not asked since the note last changed.</summary>
     public static bool NeedsScene(CatalogWord w) => w.TrapUz is not null && w.TrapWrong is null && w.TrapSceneAskedAt is null;
 
-    public async Task<UnitAdminDto> DraftNextAsync(Guid editorId, Guid unitId, CancellationToken ct)
+    /// <param name="leaveRejected">
+    /// L-89, the content job: a word whose scene fails the checks (or that the answer leaves out) counts as asked with
+    /// no scene, so the card keeps its plain trap note instead of the word being asked again and again.
+    /// </param>
+    public async Task<UnitAdminDto> DraftNextAsync(Guid editorId, Guid unitId, CancellationToken ct, bool leaveRejected = false)
     {
         await using var lease = await operations.AcquireAsync("trap-scene:" + unitId, ct);
         if (!await db.Units.AnyAsync(u => u.Id == unitId, ct))
@@ -40,7 +44,16 @@ public sealed class TrapSceneService(IAppDbContext db, AiGateway ai, TimeProvide
 
         var result = await ai.CompleteJsonAsync(editorId, BuildRequest(missing), ct);
         var (scenes, answered, shape) = ParseResponse(result.Response.Json, missing);
-        if (answered.Count == 0)
+        if (leaveRejected)
+        {
+            if (scenes.Count == 0)
+            {
+                await ai.RejectContentAsync(result, $"Tuzoq sahnalari javobi tekshiruvdan o‘tmadi ({shape}); sahnasiz qoldirildi.");
+            }
+
+            answered = missing.Select(w => w.Id).ToHashSet();
+        }
+        else if (answered.Count == 0)
         {
             // The shape (and the start of the answer, AI text only) is kept so the next failure can be diagnosed.
             var start = result.Response.Json.Length > 300 ? result.Response.Json[..300] : result.Response.Json;
