@@ -17,7 +17,7 @@ public sealed record AutopilotStep(string Message, bool Finished, bool Stopped =
 /// not explain, or one the AI was unsure of, waits for the editor and learners do not see it meanwhile.
 /// The introduction lesson (audio) is not part of it.
 /// </summary>
-public sealed class ContentAutopilotService(IAppDbContext db, CatalogAdminService admin, UnitPreparationService preparation, PronunciationBatchService pronunciations, IOperationLock operations, TimeProvider time)
+public sealed class ContentAutopilotService(IAppDbContext db, CatalogAdminService admin, UnitPreparationService preparation, TrapSceneService scenes, PronunciationBatchService pronunciations, IOperationLock operations, TimeProvider time)
 {
     public async Task<AutopilotStep> StepAsync(Guid userId, CatalogLevel level, CancellationToken ct)
     {
@@ -40,6 +40,13 @@ public sealed class ContentAutopilotService(IAppDbContext db, CatalogAdminServic
         var unit = await admin.UnitAsync(next.Id, ct);
         if (UnitPreparationService.Remaining(unit) > 0)
         {
+            if (unit.Remaining == 0 && unit.ScenesRemaining > 0)
+            {
+                // L-89: a scene that fails the checks is dropped (the card keeps its trap note), not asked forever.
+                var after = await scenes.DraftNextAsync(userId, next.Id, ct, leaveRejected: true);
+                return new($"{next.Number}-bo‘lim: tuzoq sahnalari, yana {after.ScenesRemaining} ta qoldi.", false);
+            }
+
             if (unit.Remaining == 0 && unit.ScenesRemaining == 0)
             {
                 // Readings last: a word whose answer fails the checks is left to the editor, not asked forever.

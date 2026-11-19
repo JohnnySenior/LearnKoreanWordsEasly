@@ -138,6 +138,35 @@ public class ContentAutopilotTests
     }
 
     [Fact]
+    public async Task A_scene_that_never_passes_the_checks_is_dropped_and_the_level_is_still_published()
+    {
+        // L-89: the two lines differ only by a space (집안에 / 집 안에) — the checks refuse it every time.
+        var ai = new FakeAiProvider(AiProviderKind.Anthropic);
+        ai.Answer = r => r.SchemaName == "trap_scenes"
+            ? """{"words":[{"id":1,"cue":"Bola qayerda:","wrong":"아이는 집안에 있어요","right":"아이는 집 안에 있어요","why":"Ajratib yoziladi."}]}"""
+            : Answer(r, null);
+        await using var f = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA], AiProviders = [ai] };
+        var admin = await f.SignedInClientAsync(ApiFactory.UserA);
+        await admin.PostAsync("/api/admin/catalog/import", CatalogFiles.Upload(CatalogFiles.Xlsx(Level()), "b.xlsx"));
+        var userId = await UserIdAsync(f, ApiFactory.UserA);
+
+        AutopilotStep? last = null;
+        for (var i = 0; i < 40 && last is not { Finished: true }; i++)
+        {
+            await using var scope = f.Services.CreateAsyncScope();
+            last = await scope.ServiceProvider.GetRequiredService<ContentAutopilotService>().StepAsync(userId, CatalogLevel.B, CancellationToken.None);
+        }
+
+        Assert.Equal((true, false), (last!.Finished, last.Stopped));
+        Assert.Single(ai.Requests, r => r.SchemaName == "trap_scenes"); // asked once, not again and again
+        var units = (await admin.GetFromJsonAsync<List<UnitAdminSummaryDto>>("/api/admin/units?level=B", ApiFactory.Json))!;
+        Assert.All(units, u => Assert.Equal(UnitStatus.Published, u.Status));
+        var trapped = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{units[0].Id}", ApiFactory.Json))!.Words.Single(w => w.Word == "각다");
+        Assert.Null(trapped.TrapWrong);
+        Assert.Equal(GoTrap, trapped.TrapUz); // the card keeps its trap note
+    }
+
+    [Fact]
     public void Catalog_content_goes_to_the_content_model_when_one_is_set()
     {
         var options = new AiProviderOptions { Model = "everyday", ContentModel = " strong " };

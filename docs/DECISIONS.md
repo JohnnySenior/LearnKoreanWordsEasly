@@ -1023,3 +1023,7 @@ Bu spec §2.4 4-qadamini («so‘zni odam tasdiqlaydi») o‘zgartiradi: endi ta
 
 Johnny o‘zgaruvchilarni sozlashni so‘radi. Kontent modeli `claude-opus-5-5` (eng kuchli Opus, $4 / $20 — 1 mln kirish/chiqish token, Anthropic narxi 2026-11-03 holatida). Bu model majburiy tool chaqiruvini rad etadi (400) va har doim o‘ylaydi, shuning uchun `AnthropicProvider` Opus 5.5, Sonnet 5.5, Fable 5.1/5.2 va Mythos 5 oilasi uchun javobni JSON chiqish (`output_config.format`, json_schema) orqali so‘raydi: sxemadan son/uzunlik/element soni cheklovlari olib tashlanadi (ilova ularni o‘zi tekshiradi), `max_tokens` o‘ylash uchun kamida 16 000, `refusal` — qayta urinilmaydigan xato, `max_tokens` — qayta urinish mumkin. Odatdagi model (o‘quvchilar) avvalgidek majburiy tool bilan ishlaydi.
 Railway: `Ai__Anthropic__ContentModel=claude-opus-5-5` va shu model narxi `Ai__Budget__Prices__*` da.
+
+## L-89 · 2026-11-19 · Fon ishi yaroqsiz tuzoq sahnasida to‘xtab qolmaydi
+
+B darajaning 5-bo‘limida ish to‘xtadi: 집안 uchun AI ikki gapni faqat bo‘sh joy bilan farqlab yozdi («집안에» / «집 안에»), tekshiruv uni har safar rad etdi va so‘z qayta-qayta so‘raldi. Fon ishida (L-87) sahna ham talaffuz kabi: tekshiruvdan o‘tmagan yoki javobda tushib qolgan so‘z «so‘raldi, sahnasiz» deb belgilanadi, kartada oddiy tuzoq izohi qoladi, ish davom etadi (`TrapSceneService.DraftNextAsync(leaveRejected: true)`). Qo‘lda tayyorlashda avvalgidek qayta so‘rash mumkin.
