@@ -26,22 +26,45 @@ public sealed class AnthropicProvider(HttpClient http, IOptions<AiOptions> optio
 
     public string ModelFor(AiJsonRequest request) => Options.ModelFor(request);
 
+    /// <summary>
+    /// L-88: from Claude Opus 5.5, Sonnet 5.5 and Fable 5.1 on, a forced tool call is refused (400) and thinking is
+    /// always on; these models get the schema as a JSON output (<c>output_config.format</c>) instead.
+    /// </summary>
+    private static readonly string[] JsonOutputModels = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1", "claude-fable-5-2", "claude-mythos-5"];
+
+    /// <summary>Room for the model's thinking on top of the answer, for the JSON-output models.</summary>
+    public const int MinThinkingOutputTokens = 16000;
+
+    public static bool UsesJsonOutput(string model) => JsonOutputModels.Any(p => model.StartsWith(p, StringComparison.Ordinal));
+
     public async Task<AiJsonResponse> CompleteJsonAsync(AiJsonRequest request, CancellationToken ct)
     {
+        var model = Options.ModelFor(request);
+        var json = UsesJsonOutput(model);
         var body = new JsonObject
         {
-            ["model"] = Options.ModelFor(request),
-            ["max_tokens"] = request.MaxOutputTokens,
+            ["model"] = model,
+            ["max_tokens"] = json ? Math.Max(request.MaxOutputTokens * 2, MinThinkingOutputTokens) : request.MaxOutputTokens,
             ["system"] = request.Instructions,
             ["messages"] = new JsonArray(new JsonObject { ["role"] = "user", ["content"] = Content(request) }),
-            ["tools"] = new JsonArray(new JsonObject
+        };
+        if (json)
+        {
+            body["output_config"] = new JsonObject
+            {
+                ["format"] = new JsonObject { ["type"] = "json_schema", ["schema"] = Supported(JsonNode.Parse(request.JsonSchema)) },
+            };
+        }
+        else
+        {
+            body["tools"] = new JsonArray(new JsonObject
             {
                 ["name"] = request.SchemaName,
                 ["description"] = "Return the result.",
                 ["input_schema"] = JsonNode.Parse(request.JsonSchema),
-            }),
-            ["tool_choice"] = new JsonObject { ["type"] = "tool", ["name"] = request.SchemaName },
-        };
+            });
+            body["tool_choice"] = new JsonObject { ["type"] = "tool", ["name"] = request.SchemaName };
+        }
 
         using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(Options.BaseUrl), "v1/messages"))
         {
@@ -59,19 +82,72 @@ public sealed class AnthropicProvider(HttpClient http, IOptions<AiOptions> optio
 
         using var doc = JsonDocument.Parse(text);
         var root = doc.RootElement;
-        var input = root.GetProperty("content").EnumerateArray()
-            .FirstOrDefault(c => c.GetProperty("type").GetString() == "tool_use");
-        if (input.ValueKind == JsonValueKind.Undefined)
+        string result;
+        if (json)
         {
-            throw new AiProviderException("Claude natija qaytarmadi", transient: true);
+            var stop = root.TryGetProperty("stop_reason", out var r) ? r.GetString() : null;
+            if (stop == "refusal")
+            {
+                throw new AiProviderException("Claude javob berishdan bosh tortdi", transient: false);
+            }
+
+            if (stop == "max_tokens")
+            {
+                throw new AiProviderException("Claude javobi token chegarasiga yetib, chala qoldi", transient: true);
+            }
+
+            // Thinking blocks come first; the answer is the text.
+            result = string.Concat(root.GetProperty("content").EnumerateArray()
+                .Where(c => c.GetProperty("type").GetString() == "text").Select(c => c.GetProperty("text").GetString()));
+            if (string.IsNullOrWhiteSpace(result))
+            {
+                throw new AiProviderException("Claude natija qaytarmadi", transient: true);
+            }
+        }
+        else
+        {
+            var input = root.GetProperty("content").EnumerateArray()
+                .FirstOrDefault(c => c.GetProperty("type").GetString() == "tool_use");
+            if (input.ValueKind == JsonValueKind.Undefined)
+            {
+                throw new AiProviderException("Claude natija qaytarmadi", transient: true);
+            }
+
+            result = input.GetProperty("input").GetRawText();
         }
 
         var usage = root.TryGetProperty("usage", out var u) ? u : default;
         return new AiJsonResponse(
-            input.GetProperty("input").GetRawText(),
-            root.TryGetProperty("model", out var m) ? m.GetString() ?? Options.ModelFor(request) : Options.ModelFor(request),
+            result,
+            root.TryGetProperty("model", out var m) ? m.GetString() ?? model : model,
             AiHttp.Int(usage, "input_tokens"),
             AiHttp.Int(usage, "output_tokens"));
+    }
+
+    /// <summary>JSON outputs accept no numeric, length or item-count limits: the schema without them (the app checks those itself).</summary>
+    private static JsonNode? Supported(JsonNode? node)
+    {
+        if (node is JsonObject obj)
+        {
+            foreach (var key in new[] { "maxItems", "minItems", "minLength", "maxLength", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "pattern" })
+            {
+                obj.Remove(key);
+            }
+
+            foreach (var (_, child) in obj.ToList())
+            {
+                Supported(child);
+            }
+        }
+        else if (node is JsonArray array)
+        {
+            foreach (var child in array)
+            {
+                Supported(child);
+            }
+        }
+
+        return node;
     }
 
     /// <summary>Plain text, or document blocks (PDF pages) and image blocks (photos, L-69) followed by the text.</summary>

@@ -762,3 +762,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Server qoidalari bo‘yicha avtomatik tasdiq; «AI (model)» tekshiruvchi; talaffuz faqat qoidalar tushuntirsa; yaroqsiz talaffuz muharrirga qoladi.
 - [x] Testlar: B daraja bo‘linadi, tayyorlanadi va tartib bilan nashr qilinadi; fon ishi faqat admin uchun, qayta urinishdan keyin to‘xtaydi; kontent modeli tanlovi.
 - [ ] Johnny: Railway’da `Ai__Anthropic__ContentModel` va shu model narxi (`Ai__Budget__Prices__*`); kerak bo‘lsa `Ai__Budget__MonthlyLimitUsd`; keyin B darajani ishga tushirish va 1-bo‘limni ko‘rib chiqish.
+
+**Kontent modeli Opus 5.5 (L-88, 2026-11-19):**
+- [x] Anthropic provider yangi modellar uchun JSON chiqish (majburiy tool o‘rniga); test.
+- [ ] Railway: `Ai__Anthropic__ContentModel` va narxi deploydan keyin o‘rnatiladi.
