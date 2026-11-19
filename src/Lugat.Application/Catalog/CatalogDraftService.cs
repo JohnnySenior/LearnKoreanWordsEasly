@@ -107,7 +107,7 @@ public sealed class CatalogDraftService(IAppDbContext db, AiGateway ai, TimeProv
         }
 
         var user = $"<level>{level}</level>\n<known>\n{string.Join("\n", known)}\n</known>\n<words>\n{lines}</words>";
-        return new AiJsonRequest(Feature, Instructions, user, "catalog_draft", Schema, 8000, Timeout: TimeSpan.FromSeconds(120));
+        return new AiJsonRequest(Feature, Instructions, user, "catalog_draft", Schema, 8000, Timeout: TimeSpan.FromSeconds(120), Content: true);
     }
 
     /// <summary>Checked drafts by word id. Anything that does not pass the content rules is dropped (spec §2.4 step 3).</summary>

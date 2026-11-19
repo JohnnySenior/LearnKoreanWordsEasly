@@ -150,3 +150,18 @@ public sealed record UpdateCatalogWordRequest(
     string? TrapWhy = null);
 
 public sealed record ReviewCatalogWordRequest(uint Version);
+
+/// <summary>
+/// L-87: the background job that prepares and publishes a level with AI. <paramref name="Log"/> holds the latest steps,
+/// newest first; <paramref name="Stopped"/> means it ended on a problem the editor has to look at.
+/// </summary>
+public sealed record ContentAutopilotDto(
+    bool Running,
+    CatalogLevel? Level,
+    string? Message,
+    IReadOnlyList<int> PublishedUnits,
+    IReadOnlyList<string> Log,
+    bool Stopped,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? FinishedAt,
+    string? ContentModel);

@@ -755,3 +755,10 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Bosh sahifadagi o‘rnatish bo‘limi faqat telefon/planshetda.
 - [x] Haqiqiy 404 sahifa (status 404, noindex); ilova sahifalari ro‘yxati testda `@page` bilan solishtiriladi.
 - [ ] Johnny: iPhone’da bosh sahifani ochib «Telefonga o‘rnatish» Safari qadamlarini ko‘rish; koreyscha.com/nimadir → 404 sahifa.
+
+**AI darajani o‘zi tayyorlab nashr qiladi (L-87, 2026-11-19):**
+- [x] Katalog kontenti uchun alohida kuchli model (`Ai__Anthropic__ContentModel`).
+- [x] Kontent sahifasida darajani AI bilan tayyorlash va nashr qilish (fon ishi, to‘xtatish, jarayon jurnali).
+- [x] Server qoidalari bo‘yicha avtomatik tasdiq; «AI (model)» tekshiruvchi; talaffuz faqat qoidalar tushuntirsa; yaroqsiz talaffuz muharrirga qoladi.
+- [x] Testlar: B daraja bo‘linadi, tayyorlanadi va tartib bilan nashr qilinadi; fon ishi faqat admin uchun, qayta urinishdan keyin to‘xtaydi; kontent modeli tanlovi.
+- [ ] Johnny: Railway’da `Ai__Anthropic__ContentModel` va shu model narxi (`Ai__Budget__Prices__*`); kerak bo‘lsa `Ai__Budget__MonthlyLimitUsd`; keyin B darajani ishga tushirish va 1-bo‘limni ko‘rib chiqish.

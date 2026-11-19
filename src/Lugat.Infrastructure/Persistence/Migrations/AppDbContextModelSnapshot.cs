@@ -247,6 +247,9 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("ReviewedByAi")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid?>("ReviewedByUserId")
                         .HasColumnType("uuid");
 

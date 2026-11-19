@@ -44,6 +44,7 @@ builder.Services.AddHttpClient<IGoogleSigningKeys, GoogleJwksSigningKeys>(c => c
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<ReminderWorker>();
 builder.Services.AddHostedService<BackupWorker>();
+builder.Services.AddSingleton<Lugat.Api.Catalog.ContentAutopilot>(); // L-87
 
 var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
 builder.Services

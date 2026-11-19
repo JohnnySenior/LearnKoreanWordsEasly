@@ -24,11 +24,13 @@ public sealed class AnthropicProvider(HttpClient http, IOptions<AiOptions> optio
 
     public string Model => Options.Model;
 
+    public string ModelFor(AiJsonRequest request) => Options.ModelFor(request);
+
     public async Task<AiJsonResponse> CompleteJsonAsync(AiJsonRequest request, CancellationToken ct)
     {
         var body = new JsonObject
         {
-            ["model"] = Options.Model,
+            ["model"] = Options.ModelFor(request),
             ["max_tokens"] = request.MaxOutputTokens,
             ["system"] = request.Instructions,
             ["messages"] = new JsonArray(new JsonObject { ["role"] = "user", ["content"] = Content(request) }),
@@ -67,7 +69,7 @@ public sealed class AnthropicProvider(HttpClient http, IOptions<AiOptions> optio
         var usage = root.TryGetProperty("usage", out var u) ? u : default;
         return new AiJsonResponse(
             input.GetProperty("input").GetRawText(),
-            root.TryGetProperty("model", out var m) ? m.GetString() ?? Options.Model : Options.Model,
+            root.TryGetProperty("model", out var m) ? m.GetString() ?? Options.ModelFor(request) : Options.ModelFor(request),
             AiHttp.Int(usage, "input_tokens"),
             AiHttp.Int(usage, "output_tokens"));
     }
@@ -108,11 +110,13 @@ public sealed class OpenAiProvider(HttpClient http, IOptions<AiOptions> options)
 
     public string Model => Options.Model;
 
+    public string ModelFor(AiJsonRequest request) => Options.ModelFor(request);
+
     public async Task<AiJsonResponse> CompleteJsonAsync(AiJsonRequest request, CancellationToken ct)
     {
         var body = new JsonObject
         {
-            ["model"] = Options.Model,
+            ["model"] = Options.ModelFor(request),
             // Reasoning models (gpt-5 family) spend part of this budget thinking before any visible text,
             // so a short answer still needs room; a too-small budget returns empty content.
             ["max_completion_tokens"] = Math.Max(request.MaxOutputTokens * 4, MinCompletionTokens),
@@ -164,7 +168,7 @@ public sealed class OpenAiProvider(HttpClient http, IOptions<AiOptions> options)
         var usage = root.TryGetProperty("usage", out var u) ? u : default;
         return new AiJsonResponse(
             content,
-            root.TryGetProperty("model", out var m) ? m.GetString() ?? Options.Model : Options.Model,
+            root.TryGetProperty("model", out var m) ? m.GetString() ?? Options.ModelFor(request) : Options.ModelFor(request),
             AiHttp.Int(usage, "prompt_tokens"),
             AiHttp.Int(usage, "completion_tokens"));
     }

@@ -118,6 +118,12 @@ public sealed class CatalogWord
 
     public DateTimeOffset? ReviewedAt { get; set; }
 
+    /// <summary>
+    /// L-87: checked and published by the content job (the AI wrote it, the server's rules passed it), not by a person.
+    /// A person's later check clears it.
+    /// </summary>
+    public bool ReviewedByAi { get; set; }
+
     /// <summary>Who wrote the draft, e.g. "Claude (Anthropic)"; null when no AI draft was made.</summary>
     public string? AiProvider { get; set; }
 
