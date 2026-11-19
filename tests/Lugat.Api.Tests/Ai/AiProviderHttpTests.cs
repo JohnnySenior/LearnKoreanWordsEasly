@@ -60,6 +60,56 @@ public class AiProviderHttpTests
     }
 
     [Fact]
+    public async Task Catalog_content_on_Claude_Opus_5_5_asks_for_a_json_output_not_a_forced_tool_and_reads_the_text()
+    {
+        // L-88: Opus 5.5 refuses a forced tool call and always thinks; the answer is the text after the thinking.
+        var handler = new Handler(HttpStatusCode.OK, """
+            {"id":"msg_2","type":"message","model":"claude-opus-5-5","stop_reason":"end_turn",
+             "content":[{"type":"thinking","thinking":"","signature":"s"},{"type":"text","text":"{\"ok\":true}"}],
+             "usage":{"input_tokens":50,"output_tokens":900}}
+            """);
+        var options = Options();
+        options.Value.Anthropic.ContentModel = "claude-opus-5-5";
+        var provider = new AnthropicProvider(new HttpClient(handler), options);
+        var content = Request with
+        {
+            Content = true,
+            JsonSchema = """{"type":"object","additionalProperties":false,"required":["items"],"properties":{"items":{"type":"array","maxItems":10,"items":{"type":"string"}}}}""",
+        };
+
+        var response = await provider.CompleteJsonAsync(content, CancellationToken.None);
+
+        Assert.Equal(("""{"ok":true}""", "claude-opus-5-5"), (response.Json, response.Model));
+        using var body = JsonDocument.Parse(handler.RequestBody!);
+        var root = body.RootElement;
+        Assert.Equal("claude-opus-5-5", root.GetProperty("model").GetString());
+        Assert.False(root.TryGetProperty("tool_choice", out _));
+        Assert.False(root.TryGetProperty("tools", out _));
+        var format = root.GetProperty("output_config").GetProperty("format");
+        Assert.Equal("json_schema", format.GetProperty("type").GetString());
+        Assert.False(format.GetProperty("schema").GetProperty("properties").GetProperty("items").TryGetProperty("maxItems", out _));
+        Assert.Equal(AnthropicProvider.MinThinkingOutputTokens, root.GetProperty("max_tokens").GetInt32());
+
+        // The learners' calls stay on the everyday model with the forced tool.
+        var learner = new Handler(HttpStatusCode.OK, """{"model":"claude-test","content":[{"type":"tool_use","id":"t","name":"sentence_check","input":{"ok":true}}],"usage":{}}""");
+        await new AnthropicProvider(new HttpClient(learner), options).CompleteJsonAsync(Request, CancellationToken.None);
+        using var learnerBody = JsonDocument.Parse(learner.RequestBody!);
+        Assert.Equal(("claude-test", "sentence_check"), (learnerBody.RootElement.GetProperty("model").GetString(), learnerBody.RootElement.GetProperty("tool_choice").GetProperty("name").GetString()));
+    }
+
+    [Fact]
+    public async Task A_refusal_or_a_cut_answer_from_a_json_output_model_is_a_provider_failure()
+    {
+        var options = Options();
+        options.Value.Anthropic.ContentModel = "claude-opus-5-5";
+        var content = Request with { Content = true };
+        var refused = new AnthropicProvider(new HttpClient(new Handler(HttpStatusCode.OK, """{"model":"claude-opus-5-5","stop_reason":"refusal","content":[],"usage":{}}""")), options);
+        Assert.False((await Assert.ThrowsAsync<AiProviderException>(() => refused.CompleteJsonAsync(content, CancellationToken.None))).Transient);
+        var cut = new AnthropicProvider(new HttpClient(new Handler(HttpStatusCode.OK, """{"model":"claude-opus-5-5","stop_reason":"max_tokens","content":[{"type":"text","text":"{\"ok\""}],"usage":{}}""")), options);
+        Assert.True((await Assert.ThrowsAsync<AiProviderException>(() => cut.CompleteJsonAsync(content, CancellationToken.None))).Transient);
+    }
+
+    [Fact]
     public async Task OpenAi_uses_a_strict_json_schema_and_reads_the_message()
     {
         var handler = new Handler(HttpStatusCode.OK, """
