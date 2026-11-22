@@ -35,7 +35,13 @@ public sealed record UnitSummaryDto(
     bool Practiced = false);
 
 /// <param name="ComingSoon">Units of the level that are still being prepared.</param>
-public sealed record LevelUnitsDto(CatalogLevel Level, string Title, IReadOnlyList<UnitSummaryDto> Units, int ComingSoon);
+public sealed record LevelUnitsDto(CatalogLevel Level, string Title, IReadOnlyList<UnitSummaryDto> Units, int ComingSoon, PlacementOfferDto? Placement = null);
+
+/// <summary>L-90: the exam that opens this level, offered while none of its units is open for the learner.</summary>
+public sealed record PlacementOfferDto(CatalogLevel From, int Questions, int PassPercent, int AttemptsPerDay);
+
+/// <summary>Starts the level exam; the client picks the id (a repeated request returns the same test).</summary>
+public sealed record StartPlacementRequest(Guid Id);
 
 /// <param name="PosUz">The part of speech in Uzbek, e.g. "fe’l".</param>
 /// <param name="LearningItemId">What the word's cards and practice refer to.</param>

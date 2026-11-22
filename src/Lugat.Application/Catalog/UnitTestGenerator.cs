@@ -46,7 +46,7 @@ public static partial class UnitTestGenerator
 
     public const string TypedListeningPrompt = "Eshiting va eshitgan so‘zingizni koreyscha yozing";
 
-    private static TestQuestion Question(TestQuestionKind kind, UnitTestWord w, IReadOnlyList<UnitTestWord> pool,
+    internal static TestQuestion Question(TestQuestionKind kind, UnitTestWord w, IReadOnlyList<UnitTestWord> pool,
         IReadOnlyList<Vocabulary.MeaningTwins.Twin> twinPool, Random random)
     {
         if (kind == TestQuestionKind.WordKoreanTyped)

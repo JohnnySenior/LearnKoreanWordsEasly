@@ -1,3 +1,4 @@
+using Lugat.Domain.Catalog;
 using Lugat.Domain.Testing;
 
 namespace Lugat.Contracts;
@@ -75,7 +76,15 @@ public sealed record UnitTestInfoDto(
     bool? Passed,
     Guid? NextUnitId,
     IReadOnlyList<Guid> WrongItemIds,
-    UnitShareDto? Share = null);
+    UnitShareDto? Share = null,
+    PlacementResultDto? Placement = null);
+
+/// <summary>
+/// L-90, the level exam: the level it opens (its words come from the level below). <paramref name="KnownUnits"/>: the
+/// first units of the level below the learner knows (after the end only); <paramref name="KnownOpened"/>: they were
+/// opened after a fail.
+/// </summary>
+public sealed record PlacementResultDto(CatalogLevel To, int? KnownUnits, bool KnownOpened);
 
 /// <summary>What the share card shows (L-59): the unit and up to three words answered right in this test.</summary>
 /// <param name="Level">"A".</param>

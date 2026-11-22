@@ -65,6 +65,13 @@ public static class TestEndpoints
             s.AnswerAsync(user.GetUserId(), id, body, ct));
         api.MapPost("/unit-tests/{id:guid}/finish", (Guid id, ClaimsPrincipal user, TestService s, CancellationToken ct) => s.FinishAsync(user.GetUserId(), id, ct));
 
+        // L-90: the exam that opens a level; answers and finishing as above. After a fail the known units can be opened.
+        api.MapPost("/levels/{level}/placement", (Domain.Catalog.CatalogLevel level, StartPlacementRequest body, ClaimsPrincipal user,
+                Application.Catalog.LevelPlacementService s, CancellationToken ct) => s.StartAsync(user.GetUserId(), level, body.Id, ct))
+            .RequireRateLimiting(StartRateLimitPolicy);
+        api.MapPost("/placement/{id:guid}/open-known", (Guid id, ClaimsPrincipal user, Application.Catalog.LevelPlacementService s, CancellationToken ct) =>
+            s.OpenKnownAsync(user.GetUserId(), id, ct));
+
         return app;
     }
 }

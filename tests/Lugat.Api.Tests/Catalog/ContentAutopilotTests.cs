@@ -24,7 +24,7 @@ public class ContentAutopilotTests
     private static List<ListRow> Level() => [.. Enumerable.Range(1, 40).Select(i => new ListRow(i * 2, $"{(char)('가' + i)}다", "동", null, "B"))];
 
     /// <summary>The fake AI: a card for every word (the first with a trap), a scene for the trap, the spelling as the reading.</summary>
-    private static string Answer(AiJsonRequest r, string? oddReading)
+    internal static string Answer(AiJsonRequest r, string? oddReading)
     {
         switch (r.SchemaName)
         {

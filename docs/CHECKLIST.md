@@ -766,3 +766,8 @@ Bosqichlar spec §13 bo‘yicha.
 **Kontent modeli Opus 5.5 (L-88, 2026-11-19):**
 - [x] Anthropic provider yangi modellar uchun JSON chiqish (majburiy tool o‘rniga); test.
 - [ ] Railway: `Ai__Anthropic__ContentModel` va narxi deploydan keyin o‘rnatiladi.
+
+**Darajani ochish imtihoni (L-90, 2026-11-22):**
+- [x] Bo‘limlar sahifasida taklif; 40 savol osondan qiyinga; 85% — keyingi daraja ochiladi, pastki daraja kartasiz o‘tilgan, xato so‘zlar kartaga; o‘tmasa «1–N-bo‘limni bilasiz» va ochish tugmasi; kuniga 2 marta.
+- [x] Testlar: o‘tish (B ochiladi, A o‘tilgan, faqat xato so‘zlarga karta), o‘tmaslik (N hisoblanadi, ochiladi), kunlik chegara, A uchun imtihon yo‘q, N hisoblash qoidasi.
+- [ ] Johnny: B ning bir nechta bo‘limi nashr qilingach, yangi akkaunt bilan imtihonni sinab ko‘rish.

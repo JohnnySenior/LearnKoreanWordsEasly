@@ -1614,6 +1614,13 @@ namespace Lugat.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("GroupDeckId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("KnownUnits")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Level")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
                     b.Property<Guid?>("OpenedUnitId")
                         .HasColumnType("uuid");
 

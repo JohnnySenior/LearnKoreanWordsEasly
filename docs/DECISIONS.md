@@ -1027,3 +1027,13 @@ Railway: `Ai__Anthropic__ContentModel=claude-opus-5-5` va shu model narxi `Ai__B
 ## L-89 · 2026-11-19 · Fon ishi yaroqsiz tuzoq sahnasida to‘xtab qolmaydi
 
 B darajaning 5-bo‘limida ish to‘xtadi: 집안 uchun AI ikki gapni faqat bo‘sh joy bilan farqlab yozdi («집안에» / «집 안에»), tekshiruv uni har safar rad etdi va so‘z qayta-qayta so‘raldi. Fon ishida (L-87) sahna ham talaffuz kabi: tekshiruvdan o‘tmagan yoki javobda tushib qolgan so‘z «so‘raldi, sahnasiz» deb belgilanadi, kartada oddiy tuzoq izohi qoladi, ish davom etadi (`TrapSceneService.DraftNextAsync(leaveRejected: true)`). Qo‘lda tayyorlashda avvalgidek qayta so‘rash mumkin.
+
+## L-90 · 2026-11-22 · Darajani ochish imtihoni
+
+Johnny: o‘rta darajadan boshlamoqchi bo‘lgan odam oldingi darajaning oson so‘zlaridan imtihon topshirib, o‘tsa keyingi darajani ochsin (bo‘limlar orasidagi «Bilaman» testi kabi). Taklif to‘liq qabul qilindi.
+- Qayerda: Bo‘limlar sahifasida B (keyinchalik C) darajada, uning hech bir bo‘limi ochiq bo‘lmaganda — «A darajani bilasizmi?» va «Imtihonni boshlash». Bepul. `PlacementOfferDto` (`LevelUnitsDto.Placement`).
+- Savollar (`LevelPlacementService.Build`): pastki darajaning nashr qilingan bo‘limlaridan 40 ta so‘z, har bo‘limdan 1–2 tadan (bo‘lim 40 tadan ko‘p bo‘lsa oralab), bo‘lim tartibida — osondan qiyinga. Turlar: koreyscha → o‘zbekcha, o‘zbekcha → koreyscha, chorak qismi tinglash (ovoz xizmati bo‘lmasa ma’no savoli); hammasi tanlash, noto‘g‘ri variantlar bo‘lim testidagi qoida bilan. `TestRun.Purpose = LevelPlacement`, `UnitId` — ochiladigan darajaning 1-bo‘limi, `Level` (migratsiya).
+- O‘tish: 85% (40 dan 34). O‘tsa pastki darajaning barcha bo‘limlari «o‘tilgan» (`UnitPassedBy.Placement`) — kartasiz, takrorlash to‘lib ketmasin; daraja 1-bo‘limi ochiladi; xato javob berilgan so‘zlar yangi karta bo‘lib qo‘shiladi.
+- O‘tmasa: boshidan nechta bo‘limni yaxshi bilgani hisoblanadi (`KnownUnits`: boshidan eng uzun ketma-ketlik, kamida 4 savol, ≥85% to‘g‘ri; migratsiya). Natijada «A darajaning 1–N-bo‘limlarini yaxshi bilasiz, N+1-bo‘limdan boshlang» va «1–N-bo‘limlarni ochish» tugmasi (`POST /api/placement/{id}/open-known`, bir marta; shu bo‘limlardagi xato so‘zlar yangi karta).
+- Urinish: bir daraja uchun kuniga 2 marta (foydalanuvchi vaqt zonasi), 3-chisi 429.
+- `POST /api/levels/{level}/placement` (klient tanlagan `Id`), javob va yakunlash — oddiy test kabi. C daraja uchun ham shu kod ishlaydi (B ning bo‘limlari nashr qilinganda).
