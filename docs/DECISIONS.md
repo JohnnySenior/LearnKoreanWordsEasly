@@ -1037,3 +1037,12 @@ Johnny: o‘rta darajadan boshlamoqchi bo‘lgan odam oldingi darajaning oson so
 - O‘tmasa: boshidan nechta bo‘limni yaxshi bilgani hisoblanadi (`KnownUnits`: boshidan eng uzun ketma-ketlik, kamida 4 savol, ≥85% to‘g‘ri; migratsiya). Natijada «A darajaning 1–N-bo‘limlarini yaxshi bilasiz, N+1-bo‘limdan boshlang» va «1–N-bo‘limlarni ochish» tugmasi (`POST /api/placement/{id}/open-known`, bir marta; shu bo‘limlardagi xato so‘zlar yangi karta).
 - Urinish: bir daraja uchun kuniga 2 marta (foydalanuvchi vaqt zonasi), 3-chisi 429.
 - `POST /api/levels/{level}/placement` (klient tanlagan `Id`), javob va yakunlash — oddiy test kabi. C daraja uchun ham shu kod ishlaydi (B ning bo‘limlari nashr qilinganda).
+
+## L-91 · 2026-11-22 · Bosh ekran yorliqlari va o‘rnatish skrinshotlari
+
+Johnny topshirig‘i (PWA yorliqlari, skrinshotlar, yorliq orqali ochilishni sanash), muhokamadan keyin kelishilgan o‘zgarishlar bilan.
+- Yorliqlar (`manifest.webmanifest` → `shortcuts`; ilova belgisini bosib turganda chiqadi): Takrorlash `/takrorlash`, Yozma mashq `/mashq/yozish`, Tinglash `/tinglash`, Bo‘limlar `/bolimlar`; har biri `?yorliq=<nom>` bilan. Topshiriqdagi «Xatolarim» va «Talaffuz» Premium bo‘lgani uchun bepul sahifalarga almashtirildi (Johnny rozi). Ikonlar 96x96, fon `#0047A0`, oq belgi; `scripts/make-shortcut-icons.py` chizadi, manzilda `?v=1`.
+- Skrinshotlar (Chrome’ning o‘rnatish oynasi): Bugun, Bo‘limlar, bo‘lim testi natijasi — 1080x1920 WebP, `form_factor: narrow`, o‘zbekcha `label`. `scripts/make-screenshots.mjs` lokal namuna baza va dev akkaunt bilan oladi (360x640, masshtab 3; Chromium o‘zi WebP qiladi). `screens/` service worker keshiga tushmaydi (`neverCached`).
+- Sanash: `app.js` `takeShortcut` — `yorliq` faqat ro‘yxatdagi to‘rt nomdan bo‘lsa nom qaytaradi; parametr har holda manzildan olinadi (`NavigateTo(..., replace: true)`), qayta yuklash sanalmaydi. `MainLayout.CaptureShortcutAsync` har ochilishda `api/visits` ga `yorliq-<nom>` yuboradi (kutmasdan). Reklama kanali (`koreyscha.src`, `src.sent`) ga tegmaydi. Backend o‘zgarmadi: admin «Manbalar» jadvalida `yorliq-*` qatorlari chiqadi; ularda ro‘yxatdan o‘tish va D7 doim 0 (bu ustunlar reklama kanallari uchun).
+- Kirmagan foydalanuvchi: kirish oynasi shu sahifaning o‘zida chiqadi, kirgach o‘sha sahifada qoladi.
+- Tekshiruv: Lighthouse 12+ da PWA bo‘limi yo‘q, shuning uchun CDP bilan: `Page.getAppManifest` xatolari va `Page.getInstallabilityErrors` — ikkalasi bo‘sh.

@@ -175,6 +175,19 @@ export function isPhone() {
     return /Android|iPhone|iPad|iPod|Mobile/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
+// L-91: a home-screen shortcut opens "/takrorlash?yorliq=takrorlash". Returns the shortcut's name when it is one of
+// ours (else null) and the same address without "yorliq", or null when there is nothing to remove. Every opening is
+// counted as the visit source "yorliq-<name>"; the ad channel ("koreyscha.src") is not touched.
+export const SHORTCUTS = ['takrorlash', 'yozish', 'tinglash', 'bolimlar'];
+
+export function takeShortcut(href) {
+    const url = new URL(href);
+    if (!url.searchParams.has('yorliq')) return { name: null, url: null };
+    const value = (url.searchParams.get('yorliq') || '').trim().toLowerCase();
+    url.searchParams.delete('yorliq');
+    return { name: SHORTCUTS.includes(value) ? value : null, url: url.pathname + url.search + url.hash };
+}
+
 // Shows Chrome's install dialog; true when the learner accepted. The offer can be used once.
 export async function promptInstall() {
     const prompt = window.__installPrompt;
