@@ -8,6 +8,9 @@ public sealed record DeviceInfo(bool Standalone, string? ColorScheme, string Use
 
 public sealed record AudioResult(bool Ok, string? Error);
 
+/// <summary>L-91: a home-screen shortcut's name (null when not ours) and the address without "?yorliq=".</summary>
+public sealed record ShortcutVisit(string? Name, string? Url);
+
 /// <summary>A finished speaking recording: 16 kHz mono WAV (D-32).</summary>
 public sealed record SpeakingResult(bool Ok, string? Error, string? Wav, int DurationMs)
 {
@@ -61,6 +64,9 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
     public async Task<string> InstallStateAsync() => await (await App()).InvokeAsync<string>("installState");
 
     /// <summary>A phone or tablet (by the browser's user agent); the landing offers installing only there.</summary>
+    /// <summary>L-91: the shortcut named in "?yorliq=" (only ours) and the address without it; both null when there is none.</summary>
+    public async Task<ShortcutVisit> TakeShortcutAsync(string href) => await (await App()).InvokeAsync<ShortcutVisit>("takeShortcut", href);
+
     public async Task<bool> IsPhoneAsync() => await (await App()).InvokeAsync<bool>("isPhone");
 
     /// <summary>Opens Chrome's install dialog; true when the learner accepted.</summary>

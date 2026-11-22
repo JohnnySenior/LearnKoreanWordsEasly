@@ -79,6 +79,7 @@
         Api.Changed += OnChanged;
         Api.PremiumRequired += OnPremiumRequired;
         await CaptureSourceAsync();
+        await CaptureShortcutAsync();
         _state = await Api.EnsureSignedInAsync();
         await ApplyThemeAsync();
         await CheckOnboardingAsync();
@@ -112,6 +113,23 @@
 
         await Browser.StorageSetAsync(SourceKey, source);
         await Api.PostAnonymousAsync("api/visits", new Lugat.Contracts.SourceRequest(source));
+    }
+
+    // L-91: "/takrorlash?yorliq=takrorlash" from a home-screen shortcut. Every opening is a visit "yorliq-<name>" (only
+    // our four names); the ad channel above is not touched. The parameter leaves the address so a reload is not counted.
+    private async Task CaptureShortcutAsync()
+    {
+        var shortcut = await Browser.TakeShortcutAsync(Nav.Uri);
+        if (shortcut.Url is { } url)
+        {
+            Nav.NavigateTo(url, replace: true);
+        }
+
+        if (shortcut.Name is { } name)
+        {
+            // Not awaited: counting the visit must not hold the app back on a slow network.
+            _ = Api.PostAnonymousAsync("api/visits", new Lugat.Contracts.SourceRequest($"yorliq-{name}"));
+        }
     }
 
     // After signing in, the channel goes to the account once; the server keeps it only on a new account.

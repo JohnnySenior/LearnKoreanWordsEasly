@@ -34,6 +34,7 @@ function load({ version = 'v2', stores = {}, network = url => new Response('net:
                     { url: '_framework/icudt_CJK.abc.dat', hash: 'sha256-c' },
                     { url: 'service-worker.js', hash: 'sha256-d' },
                     { url: 'css/app.css', hash: 'sha256-e' },
+                    { url: 'screens/bugun.webp', hash: 'sha256-f' },
                 ],
             };
         },
@@ -88,6 +89,14 @@ test('API calls are never answered by the worker', async () => {
     assert.equal(await sw.dispatch('fetch', { request: request('/api/me/backup', 'navigate') }), undefined);
     assert.equal(await sw.dispatch('fetch', { request: request('/api/study/answers', 'cors', 'POST') }), undefined);
     assert.equal(await sw.dispatch('fetch', { request: { url: 'https://fonts.googleapis.com/css2', mode: 'no-cors', method: 'GET' } }), undefined);
+});
+
+test('the install dialog screenshots (L-91) are neither cached on install nor kept when fetched', async () => {
+    const sw = load();
+    await sw.dispatch('install');
+    assert.equal(await sw.dispatch('fetch', { request: request('/screens/bugun.webp?v=1') }), undefined);
+    assert.equal(await sw.dispatch('fetch', { request: request('/screens/bugun.webp') }), undefined);
+    assert.ok(![...sw.storage.get('lugat-shell-v2').keys()].some(key => key.includes('/screens/')));
 });
 
 test('every page of the app opens from the cached index.html', async () => {
