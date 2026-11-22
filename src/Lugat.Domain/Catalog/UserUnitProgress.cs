@@ -15,6 +15,9 @@ public enum UnitPassedBy
 
     /// <summary>"Bilaman — testni topshirish" (spec §4.5).</summary>
     SkipTest,
+
+    /// <summary>L-90: the level exam (all units of the level below, or the first ones the learner knew).</summary>
+    Placement,
 }
 
 /// <summary>

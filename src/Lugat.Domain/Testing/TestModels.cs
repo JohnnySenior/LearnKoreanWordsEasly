@@ -52,6 +52,9 @@ public enum TestPurpose
 
     /// <summary>"Bilaman — testni topshirish" (spec §4.5) for the next locked unit.</summary>
     UnitSkip,
+
+    /// <summary>L-90: the exam that opens the next level (B, C) from words of the level before it.</summary>
+    LevelPlacement,
 }
 
 public enum TestRunStatus
@@ -135,6 +138,15 @@ public sealed class TestRun
 
     /// <summary>The unit the pass opened, if any (for "next unit" after the result).</summary>
     public Guid? OpenedUnitId { get; set; }
+
+    /// <summary>
+    /// L-90, the level exam: how many first units of the level below the learner knows (all of them when passed). After
+    /// a fail the learner may open these and start from the next one.
+    /// </summary>
+    public int? KnownUnits { get; set; }
+
+    /// <summary>L-90: the level the exam opens (its words come from the level below).</summary>
+    public Domain.Catalog.CatalogLevel? Level { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 

@@ -1680,3 +1680,8 @@ a.list-row:hover, button.list-row:hover { background: color-mix(in srgb, var(--c
 
 /* L-86 (UI audit 7): the brand mark, the same as on the public pages and the link preview picture. */
 .brand-mark { display: grid; place-items: center; flex: none; width: 30px; height: 30px; margin-right: -3px; border-radius: 10px; background: var(--accent-fill); color: var(--color-on-accent); font: 700 17px/1 var(--font-body); }
+
+/* L-90: the level exam offer above a locked level's units. */
+.placement-offer { margin: 12px 0; }
+.placement-offer h2 { margin: 0 0 6px; }
+.placement-offer .muted { margin: 8px 0 0; }

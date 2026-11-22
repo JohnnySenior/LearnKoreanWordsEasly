@@ -155,6 +155,7 @@
     private static string Status(StudentUnitDto u) => u.Status switch
     {
         UnitProgressStatus.Passed when u.PassedBy == UnitPassedBy.SkipTest => "O‘tdi («Bilaman»)",
+        UnitProgressStatus.Passed when u.PassedBy == UnitPassedBy.Placement => "O‘tdi (imtihon)",
         UnitProgressStatus.Passed => "O‘tdi",
         _ => "Ochiq",
     };

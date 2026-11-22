@@ -116,7 +116,7 @@
                     <tbody>
                         @foreach (var u in d.Units)
                         {
-                            <tr><td>@u.Unit</td><td>@(u.Status == UnitProgressStatus.Passed ? (u.PassedBy == UnitPassedBy.SkipTest ? "O‘tdi («Bilaman»)" : "O‘tdi") : "Ochiq")</td><td class="num">@(u.BestScorePercent is { } p ? $"{p}%" : "—")</td><td class="num">@u.Attempts</td></tr>
+                            <tr><td>@u.Unit</td><td>@(u.Status == UnitProgressStatus.Passed ? (u.PassedBy == UnitPassedBy.SkipTest ? "O‘tdi («Bilaman»)" : u.PassedBy == UnitPassedBy.Placement ? "O‘tdi (imtihon)" : "O‘tdi") : "Ochiq")</td><td class="num">@(u.BestScorePercent is { } p ? $"{p}%" : "—")</td><td class="num">@u.Attempts</td></tr>
                         }
                     </tbody>
                 </table>

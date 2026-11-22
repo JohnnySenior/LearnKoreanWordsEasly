@@ -29,7 +29,27 @@
         <div class="result-score"><span class="kicker">Ball</span><b>@percent%</b></div>
     </div>
     <section class="result-text">
-        @if (result.Passed == true)
+        @if (result.Placement is { } exam)
+        {
+            @* L-90: the level exam. Calm either way; a fail says where to start (spec §1.4). *@
+            var below = exam.To - 1;
+            @if (result.Passed == true)
+            {
+                <h4>@exam.To daraja ochildi</h4>
+                <p class="muted small-text">@_test.Score ta to‘g‘ri javob, o‘tish uchun @result.PassMark ta kerak edi. @below darajaning bo‘limlari o‘tilgan deb belgilandi, ularga istalgan vaqtda qaytishingiz mumkin.@(result.WrongItemIds.Count > 0 ? " Xato qilgan so‘zlaringiz takrorlashga qo‘shildi." : "")</p>
+            }
+            else if (exam.KnownUnits is > 0 and var known)
+            {
+                <h4>@below darajaning 1–@known-bo‘limlarini yaxshi bilasiz</h4>
+                <p class="muted small-text">@_test.Score ta to‘g‘ri javob, @exam.To darajani ochish uchun @result.PassMark ta kerak edi. @(known + 1)-bo‘limdan boshlashni tavsiya qilamiz.</p>
+            }
+            else
+            {
+                <h4>Hali emas — @result.PassMark ta kerak edi</h4>
+                <p class="muted small-text">@_test.Score ta to‘g‘ri javob. @below darajani 1-bo‘limdan boshlashni tavsiya qilamiz: so‘zlar bo‘limma-bo‘lim osondan qiyinga boradi.</p>
+            }
+        }
+        else if (result.Passed == true)
         {
             <h4>@(result.NextUnitId is null ? "Bo‘lim tugadi." : "Bo‘lim tugadi. Keyingi bo‘lim ochildi.")</h4>
             <p class="muted small-text">@_test.Score ta to‘g‘ri javob, o‘tish uchun @result.PassMark ta kerak edi.@(result.Purpose == TestPurpose.UnitSkip ? " Bu bo‘lim so‘zlari takrorlashga qo‘shildi." : "")</p>
@@ -77,7 +97,19 @@
     }
 
     <div class="result-actions">
-        @if (result.Passed == true)
+        @if (result.Placement is { } placement)
+        {
+            @if (result.NextUnitId is { } opened)
+            {
+                <a class="btn btn-primary block big" href="@($"bolimlar/{opened}")"><span>@(result.Passed == true ? $"{placement.To} darajani boshlash" : "Davom etish")</span><Icon Name="arrow-right" /></a>
+            }
+            else if (placement.KnownUnits is > 0 and var known)
+            {
+                <button class="btn btn-primary block big" disabled="@_busy" @onclick="OpenKnownAsync"><span>1–@known-bo‘limlarni ochish va @(known + 1)-bo‘limdan boshlash</span><Icon Name="arrow-right" /></button>
+            }
+            <a class="btn btn-secondary block" href="bolimlar"><span>Bo‘limlarga qaytish</span></a>
+        }
+        else if (result.Passed == true)
         {
             @if (result.NextUnitId is { } next)
             {
@@ -450,7 +482,22 @@ else
     [Parameter] public Guid Id { get; set; }
 
     /// <summary>A unit test goes back to its unit, a practice test to the tests page.</summary>
-    private string Back => _test?.Unit is { } unit ? $"bolimlar/{unit.UnitId}" : "mashq";
+    private string Back => _test?.Unit is { Placement: not null } ? "bolimlar" : _test?.Unit is { } unit ? $"bolimlar/{unit.UnitId}" : "mashq";
+
+    /// <summary>L-90: after a failed level exam, opens the units the learner showed they know.</summary>
+    private async Task OpenKnownAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, $"api/placement/{_test!.Id}/open-known");
+        _busy = false;
+        if (result.Value is { } test)
+        {
+            _test = test;
+            return;
+        }
+
+        _error = result.Error;
+    }
 
     private TestDto? _test;
     private int _position;

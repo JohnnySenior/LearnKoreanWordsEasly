@@ -31,7 +31,8 @@ public sealed class UnitTestService(
     IOperationLock operations,
     UnitProgressService units,
     ISpeechSynthesizer speech,
-    IOptionsMonitor<UnitOptions> options)
+    IOptionsMonitor<UnitOptions> options,
+    LevelPlacementService placement)
 {
     public static int PassMark(int questions, int percent) => (int)Math.Ceiling(questions * percent / 100.0);
 
@@ -103,6 +104,12 @@ public sealed class UnitTestService(
     {
         if (run.Purpose == TestPurpose.Practice || run.UnitId is not { } unitId || run.Passed is not null)
         {
+            return;
+        }
+
+        if (run.Purpose == TestPurpose.LevelPlacement)
+        {
+            await placement.ApplyAsync(run, ct); // L-90
             return;
         }
 

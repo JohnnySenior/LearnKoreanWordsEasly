@@ -539,7 +539,10 @@ public sealed class TestService(
             : [];
         var unit = run.UnitId is { } unitId && run.PassMark is { } mark
             ? new UnitTestInfoDto(run.Purpose, unitId, mark, finished ? run.Passed : null, finished ? run.OpenedUnitId : null,
-                finished ? run.Questions.Where(q => !(answers.GetValueOrDefault(q.Index)?.IsCorrect ?? false)).Select(q => q.LearningItemId).OfType<Guid>().ToList() : [])
+                finished ? run.Questions.Where(q => !(answers.GetValueOrDefault(q.Index)?.IsCorrect ?? false)).Select(q => q.LearningItemId).OfType<Guid>().ToList() : [],
+                Placement: run.Purpose == TestPurpose.LevelPlacement && run.Level is { } level
+                    ? new PlacementResultDto(level, finished ? run.KnownUnits : null, run.Passed == false && run.OpenedUnitId is not null)
+                    : null)
             : null;
         return new TestDto(run.Id, run.Title, run.Status, run.CreatedAt, run.FinishedAt, run.Warning, run.Provider, questions,
             run.Answers.Count, finished ? run.Answers.Count(a => a.IsCorrect) : null, byKind, unit);

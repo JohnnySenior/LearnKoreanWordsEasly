@@ -52,6 +52,16 @@ else if (_units.Units.Count == 0)
 }
 else
 {
+    @if (_units.Placement is { } exam)
+    {
+        @* L-90: the exam that opens this level for someone who already knows the level below. *@
+        <section class="card placement-offer">
+            <h2>@exam.From darajani bilasizmi?</h2>
+            <p class="small-text">@exam.From darajaning so‘zlaridan @exam.Questions ta savol, osondan qiyinga. @exam.PassPercent% to‘g‘ri bo‘lsa @_units.Level daraja ochiladi. O‘tmasangiz, @exam.From darajaning qaysi bo‘limidan boshlashni aytamiz.</p>
+            <button class="btn btn-primary block" disabled="@_busy" @onclick="PlacementAsync"><span>Imtihonni boshlash</span><Icon Name="arrow-right" /></button>
+            <p class="muted small-text">Kuniga @exam.AttemptsPerDay marta.</p>
+        </section>
+    }
     <div class="unit-rows">
         @foreach (var u in _units.Units)
         {
@@ -122,6 +132,20 @@ else
     {
         _busy = true;
         var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, $"api/units/{unit.Id}/tests", new StartUnitTestRequest(Guid.NewGuid(), UnitTestKind.Skip));
+        _busy = false;
+        if (result.Value is { } test)
+        {
+            Nav.NavigateTo($"sinov/{test.Id}");
+            return;
+        }
+
+        _error = result.Error;
+    }
+
+    private async Task PlacementAsync()
+    {
+        _busy = true;
+        var result = await Api.SendJsonAsync<TestDto>(HttpMethod.Post, $"api/levels/{_level}/placement", new StartPlacementRequest(Guid.NewGuid()));
         _busy = false;
         if (result.Value is { } test)
         {

@@ -26,7 +26,63 @@ public sealed class UnitProgressService(IAppDbContext db, TimeProvider time, IOp
         var units = await db.Units.Where(u => u.Level == level && u.Status == UnitStatus.Published).OrderBy(u => u.Number)
             .Select(u => new UnitRow(u.Id, u.Level, u.Number, u.Status, u.WordCount)).ToListAsync(ct);
         var comingSoon = await db.Units.CountAsync(u => u.Level == level && u.Status != UnitStatus.Published, ct);
-        return new LevelUnitsDto(level, CatalogService.Title(level), await SummariesAsync(userId, units, progress, ct), comingSoon);
+        // L-90: while none of this level is open, the exam on the level below can open it.
+        var ids = units.Select(u => u.Id).ToHashSet();
+        var offer = level > CatalogLevel.A && units.Any(u => u.Number == 1) && !progress.Any(p => ids.Contains(p.UnitId))
+            && await db.Units.AnyAsync(u => u.Level == level - 1 && u.Status == UnitStatus.Published, ct)
+                ? new PlacementOfferDto(level - 1, LevelPlacementService.Questions, LevelPlacementService.PassPercent, LevelPlacementService.AttemptsPerDay)
+                : null;
+        return new LevelUnitsDto(level, CatalogService.Title(level), await SummariesAsync(userId, units, progress, ct), comingSoon, offer);
+    }
+
+    /// <summary>
+    /// L-90, the level exam: marks these units passed (without cards: the learner knows their words) and opens
+    /// <paramref name="openUnitId"/>; words answered wrong get new cards to learn. Returns the furthest unit now open.
+    /// </summary>
+    public async Task<Guid?> PlaceAsync(Guid userId, IReadOnlyCollection<Guid> passUnitIds, Guid? openUnitId, IReadOnlyCollection<Guid> newCardItems, CancellationToken ct)
+    {
+        var now = time.GetUtcNow();
+        await using (await operations.AcquireAsync("units:" + userId, ct))
+        {
+            var progress = await db.UnitProgress.Where(p => p.UserId == userId).ToDictionaryAsync(p => p.UnitId, ct);
+            foreach (var unitId in passUnitIds)
+            {
+                if (!progress.TryGetValue(unitId, out var p))
+                {
+                    p = new UserUnitProgress { Id = Guid.CreateVersion7(now), UserId = userId, UnitId = unitId, Status = UnitProgressStatus.Open, OpenedAt = now };
+                    db.UnitProgress.Add(p);
+                    progress[unitId] = p;
+                }
+
+                if (p.Status != UnitProgressStatus.Passed)
+                {
+                    (p.Status, p.PassedAt, p.PassedBy) = (UnitProgressStatus.Passed, now, UnitPassedBy.Placement);
+                }
+            }
+
+            if (openUnitId is { } open && !progress.ContainsKey(open))
+            {
+                db.UnitProgress.Add(new UserUnitProgress { Id = Guid.CreateVersion7(now), UserId = userId, UnitId = open, Status = UnitProgressStatus.Open, OpenedAt = now });
+            }
+
+            var existing = (await db.Cards.Where(c => c.OwnerId == userId && newCardItems.Contains(c.LearningItemId))
+                    .Select(c => new { c.LearningItemId, c.Direction }).ToListAsync(ct))
+                .Select(c => (c.LearningItemId, c.Direction)).ToHashSet();
+            foreach (var item in newCardItems)
+            {
+                foreach (var direction in Directions.Where(d => !existing.Contains((item, d))))
+                {
+                    db.Cards.Add(new Card { Id = Guid.CreateVersion7(now), OwnerId = userId, LearningItemId = item, Direction = direction, Phase = LearningPhase.New });
+                }
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        var after = await SyncAsync(userId, ct);
+        var openIds = after.Where(p => p.Status == UnitProgressStatus.Open).Select(p => p.UnitId).ToList();
+        return await db.Units.Where(u => openIds.Contains(u.Id)).OrderByDescending(u => u.Level).ThenByDescending(u => u.Number)
+            .Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
     }
 
     /// <summary>The words of an open (or passed) unit, for the table and the unit page (spec §4.3).</summary>
