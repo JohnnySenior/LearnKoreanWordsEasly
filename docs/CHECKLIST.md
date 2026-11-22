@@ -771,3 +771,9 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Bo‘limlar sahifasida taklif; 40 savol osondan qiyinga; 85% — keyingi daraja ochiladi, pastki daraja kartasiz o‘tilgan, xato so‘zlar kartaga; o‘tmasa «1–N-bo‘limni bilasiz» va ochish tugmasi; kuniga 2 marta.
 - [x] Testlar: o‘tish (B ochiladi, A o‘tilgan, faqat xato so‘zlarga karta), o‘tmaslik (N hisoblanadi, ochiladi), kunlik chegara, A uchun imtihon yo‘q, N hisoblash qoidasi.
 - [ ] Johnny: B ning bir nechta bo‘limi nashr qilingach, yangi akkaunt bilan imtihonni sinab ko‘rish.
+
+**Bosh ekran yorliqlari va skrinshotlar (L-91, 2026-11-22):**
+- [x] Manifestda 4 yorliq (Takrorlash, Yozma mashq, Tinglash, Bo‘limlar) va 3 skrinshot; ikon va skrinshot skriptlari `scripts/` da.
+- [x] Yorliq orqali ochilish `yorliq-<nom>` tashrifi sifatida sanaladi (faqat 4 nom), parametr manzildan olinadi; reklama kanali o‘zgarmaydi. Brauzerda tekshirildi: `yorliq-takrorlash`, `yorliq-yozish` «Manbalar» da chiqdi, `reklama` sanalmadi.
+- [x] Testlar (`tests/web/shortcuts.test.mjs`, `service-worker.test.mjs`): manifest, fayllar va o‘lchamlari, yo‘llar `@page` da borligi, ro‘yxat, `screens/` keshlanmasligi. CDP: manifest va o‘rnatish xatolari yo‘q.
+- [ ] Johnny: Android telefonda ilovani qayta o‘rnatib (yoki yangilanishni kutib) yorliqlar va o‘rnatish oynasidagi skrinshotlarni ko‘rish.
