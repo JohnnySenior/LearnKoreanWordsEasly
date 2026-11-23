@@ -34,7 +34,7 @@ public sealed class ContentAutopilotService(IAppDbContext db, CatalogAdminServic
         var next = units.FirstOrDefault(u => u.Status != UnitStatus.Published);
         if (next is null)
         {
-            return new($"{level} darajaning hamma {units.Count} ta bo‘limi nashrda.", true);
+            return await PublishedReadingsAsync(userId, level, units.Select(u => (u.Id, u.Number)).ToList(), ct);
         }
 
         var unit = await admin.UnitAsync(next.Id, ct);
@@ -67,6 +67,45 @@ public sealed class ContentAutopilotService(IAppDbContext db, CatalogAdminServic
 
         await admin.PublishAsync(next.Id, ct);
         return new($"{next.Number}-bo‘lim nashr qilindi.{(unsure > 0 ? $" {unsure} ta so‘zning talaffuzi sizning tekshiruvingizni kutadi." : "")}", false, PublishedUnit: next.Number);
+    }
+
+    /// <summary>
+    /// L-92: a level the editor published by hand can still miss readings. Once every unit is published, each step
+    /// drafts the readings of one unit (in order) for the words that have none and were not asked yet; at the end a
+    /// reading the standard rules explain is confirmed and the rest waits for the editor. Cards, trap scenes and the
+    /// units' status are not touched.
+    /// </summary>
+    private async Task<AutopilotStep> PublishedReadingsAsync(Guid userId, CatalogLevel level, List<(Guid Id, int Number)> units, CancellationToken ct)
+    {
+        var ids = units.Select(u => u.Id).ToList();
+        var missing = await db.CatalogWords.AsNoTracking()
+            .Where(w => w.UnitId != null && ids.Contains(w.UnitId.Value) && !w.PronunciationReviewed && w.PronunciationKo == null && w.PronunciationAskedAt == null)
+            .GroupBy(w => w.UnitId!.Value).Select(g => g.Key).ToListAsync(ct);
+        var pending = units.Where(u => missing.Contains(u.Id)).ToList();
+        if (pending.Count > 0)
+        {
+            var unit = pending[0];
+            await pronunciations.DraftAsync(userId, unit.Id, false, ct, leaveRejected: true);
+            var left = await db.CatalogWords.CountAsync(w => w.UnitId == unit.Id && !w.PronunciationReviewed && w.PronunciationKo == null && w.PronunciationAskedAt == null, ct);
+            return new($"{unit.Number}-bo‘lim (nashrda): talaffuzlar, yana {left} ta qoldi.", false);
+        }
+
+        await using var lease = await operations.AcquireAsync(CatalogAdminService.LockKey, ct);
+        var waiting = await db.CatalogWords.Where(w => w.UnitId != null && ids.Contains(w.UnitId.Value) && !w.PronunciationReviewed).ToListAsync(ct);
+        var now = time.GetUtcNow();
+        var confirmed = 0;
+        foreach (var word in waiting.Where(w => w.PronunciationKo is { } reading && HangulRules.Explain(w.Word, reading).Complete))
+        {
+            (word.PronunciationReviewed, word.UpdatedAt) = (true, now);
+            word.ContentVersion++;
+            confirmed++;
+        }
+
+        await db.SaveChangesAsync(ct);
+        var unsure = waiting.Count - confirmed;
+        return new($"{level} darajaning hamma {units.Count} ta bo‘limi nashrda."
+            + (confirmed > 0 ? $" {confirmed} ta talaffuz tasdiqlandi." : "")
+            + (unsure > 0 ? $" {unsure} ta so‘zning talaffuzi sizning tekshiruvingizni kutadi." : ""), true);
     }
 
     /// <summary>Confirms what the server's rules pass; returns the words whose card is incomplete and the number of readings left to the editor.</summary>

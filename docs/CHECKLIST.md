@@ -777,3 +777,7 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Yorliq orqali ochilish `yorliq-<nom>` tashrifi sifatida sanaladi (faqat 4 nom), parametr manzildan olinadi; reklama kanali o‘zgarmaydi. Brauzerda tekshirildi: `yorliq-takrorlash`, `yorliq-yozish` «Manbalar» da chiqdi, `reklama` sanalmadi.
 - [x] Testlar (`tests/web/shortcuts.test.mjs`, `service-worker.test.mjs`): manifest, fayllar va o‘lchamlari, yo‘llar `@page` da borligi, ro‘yxat, `screens/` keshlanmasligi. CDP: manifest va o‘rnatish xatolari yo‘q.
 - [ ] Johnny: Android telefonda ilovani qayta o‘rnatib (yoki yangilanishni kutib) yorliqlar va o‘rnatish oynasidagi skrinshotlarni ko‘rish.
+
+**Nashr qilingan darajada talaffuzlar (L-92, 2026-11-23):**
+- [x] Hamma bo‘lim nashrda bo‘lsa, AI faqat talaffuzi yo‘q so‘zlarga yozadi, qoidaga mos talaffuzlarni tasdiqlaydi; kartalar va sahnalar qayta yozilmaydi. Test: `ContentAutopilotTests`.
+- [ ] Johnny: A daraja uchun tugmani bosib, oxirgi xabardagi «tekshiruvingizni kutadi» so‘zlarini ko‘rib chiqish.
