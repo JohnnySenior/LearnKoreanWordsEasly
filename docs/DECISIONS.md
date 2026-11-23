@@ -1046,3 +1046,10 @@ Johnny topshirig‘i (PWA yorliqlari, skrinshotlar, yorliq orqali ochilishni san
 - Sanash: `app.js` `takeShortcut` — `yorliq` faqat ro‘yxatdagi to‘rt nomdan bo‘lsa nom qaytaradi; parametr har holda manzildan olinadi (`NavigateTo(..., replace: true)`), qayta yuklash sanalmaydi. `MainLayout.CaptureShortcutAsync` har ochilishda `api/visits` ga `yorliq-<nom>` yuboradi (kutmasdan). Reklama kanali (`koreyscha.src`, `src.sent`) ga tegmaydi. Backend o‘zgarmadi: admin «Manbalar» jadvalida `yorliq-*` qatorlari chiqadi; ularda ro‘yxatdan o‘tish va D7 doim 0 (bu ustunlar reklama kanallari uchun).
 - Kirmagan foydalanuvchi: kirish oynasi shu sahifaning o‘zida chiqadi, kirgach o‘sha sahifada qoladi.
 - Tekshiruv: Lighthouse 12+ da PWA bo‘limi yo‘q, shuning uchun CDP bilan: `Page.getAppManifest` xatolari va `Page.getInstallabilityErrors` — ikkalasi bo‘sh.
+
+## L-92 · 2026-11-23 · Nashr qilingan darajada faqat talaffuzlar
+
+Johnny A darajani qo‘lda nashr qilgan, talaffuzlari oxirigacha yetmagan. Endi «AI bilan tayyorlash» tugmasi darajaning hamma bo‘limi nashrda bo‘lsa to‘xtab qolmaydi:
+- Har qadamda bitta bo‘limning (tartib bilan) talaffuzi yo‘q va hali so‘ralmagan so‘zlariga AI talaffuz yozadi (10 tadan; AI rad etgani qayta so‘ralmaydi).
+- Oxirida standart qoidalar tushuntiradigan talaffuzlar tasdiqlanadi, qolgani muharrir tekshiruvini kutadi (L-87 qoidasi).
+- Kartalar, tuzoq sahnalari va bo‘lim holati o‘zgarmaydi; hammasi to‘liq bo‘lsa ish AI’ni chaqirmay darhol tugaydi.

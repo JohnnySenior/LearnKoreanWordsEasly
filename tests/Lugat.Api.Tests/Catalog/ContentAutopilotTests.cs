@@ -167,6 +167,68 @@ public class ContentAutopilotTests
     }
 
     [Fact]
+    public async Task On_a_published_level_only_the_missing_readings_are_drafted_and_confirmed()
+    {
+        // L-92: level published by hand, readings unfinished. Cards, scenes and status are not redone.
+        var ai = new FakeAiProvider(AiProviderKind.Anthropic);
+        ai.Answer = r => Answer(r, oddReading: "갇따따");
+        await using var f = new ApiFactory { AdminTelegramIds = [ApiFactory.UserA], AiProviders = [ai] };
+        var admin = await f.SignedInClientAsync(ApiFactory.UserA);
+        await admin.PostAsync("/api/admin/catalog/import", CatalogFiles.Upload(CatalogFiles.Xlsx(Level()), "b.xlsx"));
+        var userId = await UserIdAsync(f, ApiFactory.UserA);
+        async Task<List<AutopilotStep>> RunAsync()
+        {
+            var steps = new List<AutopilotStep>();
+            for (var i = 0; i < 40 && steps.LastOrDefault() is not { Finished: true }; i++)
+            {
+                await using var scope = f.Services.CreateAsyncScope();
+                steps.Add(await scope.ServiceProvider.GetRequiredService<ContentAutopilotService>().StepAsync(userId, CatalogLevel.B, CancellationToken.None));
+            }
+
+            return steps;
+        }
+
+        await RunAsync();
+        var units = (await admin.GetFromJsonAsync<List<UnitAdminSummaryDto>>("/api/admin/units?level=B", ApiFactory.Json))!;
+        await using (var scope = f.Services.CreateAsyncScope())
+        {
+            // Unit 2 lost its readings; one word of unit 1 has a drafted reading nobody confirmed.
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreach (var w in await db.CatalogWords.Where(w => w.UnitId == units[1].Id).ToListAsync())
+            {
+                (w.PronunciationKo, w.PronunciationReviewed, w.PronunciationAskedAt) = (null, false, null);
+            }
+
+            (await db.CatalogWords.SingleAsync(w => w.Word == "간다")).PronunciationReviewed = false;
+            await db.SaveChangesAsync();
+        }
+
+        var cards = await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{units[1].Id}", ApiFactory.Json);
+        var before = ai.Requests.Count;
+        var steps = await RunAsync();
+
+        Assert.Equal(["2-bo‘lim (nashrda): talaffuzlar, yana 5 ta qoldi.", "2-bo‘lim (nashrda): talaffuzlar, yana 0 ta qoldi."], steps.Take(2).Select(s => s.Message));
+        Assert.Equal((true, false), (steps[^1].Finished, steps[^1].Stopped));
+        Assert.Equal("B darajaning hamma 2 ta bo‘limi nashrda. 16 ta talaffuz tasdiqlandi. 1 ta so‘zning talaffuzi sizning tekshiruvingizni kutadi.", steps[^1].Message);
+        var asked = ai.Requests.Skip(before).ToList();
+        Assert.Equal(2, asked.Count); // 15 words, 10 a call
+        Assert.DoesNotContain(asked, r => r.SchemaName is "catalog_draft" or "trap_scenes");
+
+        var after = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{units[1].Id}", ApiFactory.Json))!;
+        Assert.All(after.Words, w => Assert.True(w.PronunciationReview!.Reviewed));
+        Assert.Equal(cards!.Words.Select(w => (w.TranslationUz, w.ExampleKo)), after.Words.Select(w => (w.TranslationUz, w.ExampleKo)));
+        var first = (await admin.GetFromJsonAsync<UnitAdminDto>($"/api/admin/units/{units[0].Id}", ApiFactory.Json))!;
+        Assert.True(first.Words.Single(w => w.Word == "간다").PronunciationReview!.Reviewed);
+        Assert.False(first.Words.Single(w => w.Word == "갇다").PronunciationReview!.Reviewed);
+        Assert.All((await admin.GetFromJsonAsync<List<UnitAdminSummaryDto>>("/api/admin/units?level=B", ApiFactory.Json))!, u => Assert.Equal(UnitStatus.Published, u.Status));
+
+        // Nothing left: the next run asks the AI nothing.
+        before = ai.Requests.Count;
+        Assert.Single(await RunAsync());
+        Assert.Equal(before, ai.Requests.Count);
+    }
+
+    [Fact]
     public void Catalog_content_goes_to_the_content_model_when_one_is_set()
     {
         var options = new AiProviderOptions { Model = "everyday", ContentModel = " strong " };
