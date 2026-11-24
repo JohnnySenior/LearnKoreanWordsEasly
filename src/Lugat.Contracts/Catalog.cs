@@ -171,3 +171,6 @@ public sealed record ContentAutopilotDto(
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
     string? ContentModel);
+
+/// <summary>L-93: the /alifbo recordings kept in the file store; <paramref name="Failed"/> are the texts the voice did not record this time.</summary>
+public sealed record AlphabetAudioDto(int Ready, int Total, IReadOnlyList<string> Failed);

@@ -17,7 +17,7 @@ namespace Lugat.Api.Seo;
 /// them, the sitemap and robots.txt. Plain HTML without Blazor or scripts; every text is HTML-encoded. The way in from
 /// Google; the app itself stays the Blazor client.
 /// </summary>
-public static class SeoEndpoints
+public static partial class SeoEndpoints
 {
     private const string CacheControl = "public, max-age=21600";
 
@@ -96,6 +96,8 @@ public static class SeoEndpoints
             http.Response.Headers.CacheControl = CacheControl;
             return Results.Content(ListPage(list, baseUrl), "text/html; charset=utf-8");
         }).AllowAnonymous();
+
+        MapAlphabet(app, baseUrl);
 
         app.MapGet("/sitemap.xml", async (HttpContext http, SeoService seo, CancellationToken ct) =>
         {
@@ -552,6 +554,19 @@ public static class SeoEndpoints
         .trap-note .trap{background:var(--surface);box-shadow:none;border-radius:14px;padding:14px;margin:8px 0 0}
         .trap-note .opt{background:var(--card);min-height:48px}
         .trap-text{background:var(--accent-soft);border-radius:14px;padding:10px 12px;margin:10px 0 0}
+        /* L-93: /alifbo */
+        .toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}.toc a{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);text-decoration:none;font-weight:600;font-size:14px}
+        .letters{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+        .letter,.syllable,.quiz-q{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;min-width:0}
+        .letter p,.syllable p{margin:0}.glyph{font-size:44px;font-weight:700;line-height:1.1}
+        .letter .name{font-size:15px;margin-top:4px}.sound{color:var(--muted);font-size:14px;margin-top:6px!important}
+        .plays{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+        .say{min-height:44px;min-width:44px;border:0;border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-weight:700;cursor:pointer;padding:0 12px}
+        .say.playing{box-shadow:inset 0 0 0 2px var(--accent)}
+        .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+        .syllables{display:grid;gap:10px}.syllable .sum{font-size:28px}.syllable .reading{font-size:17px}
+        .final-note{background:var(--surface);border-radius:14px;padding:12px 14px;margin:10px 0 0}
+        .quiz-q{margin:10px 0}.quiz-word{font-size:36px;font-weight:700;margin:0 0 8px}
         button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
         @media (prefers-reduced-motion:reduce){.cta,.related li a,.words li a,.controls button,.opt{transition:none}.frag{animation:none}}
         """;
@@ -581,6 +596,7 @@ public static class SeoEndpoints
             Url($"{baseUrl}/", null);
             Url($"{baseUrl}/soz", latest);
             Url($"{baseUrl}/sinab", null);
+            Url($"{baseUrl}/alifbo", null);
             for (var p = 2; p <= pages; p++)
             {
                 Url($"{baseUrl}/soz?sahifa={p}", latest);

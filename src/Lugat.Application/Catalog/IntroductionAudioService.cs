@@ -60,10 +60,6 @@ public sealed class IntroductionAudioService(IIntroductionNarrator narrator, Spe
         return key;
     }
 
-    private static readonly string[] ConsonantNames =
-        ["기역", "쌍기역", "기역시옷", "니은", "니은지읒", "니은히읗", "디귿", "쌍디귿", "리을", "리을기역", "리을미음", "리을비읍", "리을시옷", "리을티읕",
-         "리을피읖", "리을히읗", "미음", "비읍", "쌍비읍", "비읍시옷", "시옷", "쌍시옷", "이응", "지읒", "쌍지읒", "치읓", "키읔", "티읕", "피읖", "히읗"];
-
     /// <summary>
     /// What the Korean voice is given (L-62). A lone letter such as «-ㄹ» (a 받침 or an ending, common when a verb's
     /// stem is explained) is not text a voice can read: Azure answers it with empty audio every time. Each jamo is
@@ -74,8 +70,8 @@ public sealed class IntroductionAudioService(IIntroductionNarrator narrator, Spe
         var sb = new StringBuilder();
         foreach (var c in text)
         {
-            if (c is >= '\u3131' and <= '\u314E') sb.Append(ConsonantNames[c - '\u3131']);
-            else if (c is >= '\u314F' and <= '\u3163') sb.Append((char)(0xAC00 + 11 * 28 * 21 + (c - 0x314F) * 28)); // ㅏ → 아 (ㅇ + vowel)
+            // L-93: the names live with the alphabet page's table (HangulAlphabet).
+            if (Seo.HangulAlphabet.SpokenName(c) is { } name) sb.Append(name);
             else sb.Append(c);
         }
         var spoken = sb.ToString().Trim().Trim('-', '~', '–', '—').Trim();

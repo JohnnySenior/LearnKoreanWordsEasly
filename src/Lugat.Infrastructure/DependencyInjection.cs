@@ -128,6 +128,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Listening.ListeningService>();
         services.AddScoped<Application.Games.CrosswordService>();
         services.AddScoped<Application.Seo.SeoService>();
+        services.AddScoped<Application.Seo.AlphabetAudioService>();
         services.AddScoped<Application.Testing.TestService>();
         services.AddScoped<Application.Testing.QuestionReportService>();
         services.AddScoped<Application.Users.SourceService>();
