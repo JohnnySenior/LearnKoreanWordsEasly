@@ -1064,3 +1064,4 @@ Johnny: ilovada Hangulni o‘rgatadigan joy yo‘q, yangi boshlovchi 1-bo‘limd
 - CTA `/sinab?src=alifbo` → manba «sinab-alifbo» (mavjud qoida: qurilmada birinchi manba saqlanadi).
 - SEO: title, description, canonical, og:image (L-85), JSON-LD `LearningResource`, sitemap’da `/alifbo`.
 - Havolalar: «Hangulni o‘qiy olmayman → Koreys alifbosi» — statik landing (`index.html`), `BootScreen`, kirish ekrani (`MainLayout`) va `/sinab`.
+- Ilova ichida (Johnny, 2026-11-24): Mashq sahifasida birinchi bo‘lim «Harflar» → «Koreys alifbosi» (`target="_top"`, Blazor o‘zi yo‘naltirmasin). PWA’da sahifa ilova oynasida ochiladi, ilovaga brend yozuvi yoki «orqaga» bilan qaytiladi.
