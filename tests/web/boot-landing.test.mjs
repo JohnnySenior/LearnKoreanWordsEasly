@@ -29,6 +29,9 @@ test('the main link goes to the taster as "bosh", the same link the Blazor scree
     assert.match(bootHtml, /<a class="btn btn-secondary block" href="\/sinab\?src=bosh" target="_top">/); // L-72: sign-in comes first
     assert.match(bootHtml, /<a class="btn btn-ghost" href="\/soz" target="_top">Koreyscha so‘zlar ro‘yxati<\/a>/);
     assert.match(boot, /TasterLink = "\/sinab\?src=bosh"/);
+    // L-93: the alphabet page, for someone who cannot read Hangul yet.
+    const alphabet = '<a class="btn btn-ghost" href="/alifbo" target="_top">Hangulni o‘qiy olmayman → Koreys alifbosi</a>';
+    assert.ok(bootHtml.includes(alphabet) && boot.includes(alphabet) && layout.includes(alphabet));
     assert.match(layout, /href="@BootScreen\.TasterLink" target="_top"/); // target: Blazor must not route /sinab itself
     assert.match(layout, /<BootScreen \/>/);
 });

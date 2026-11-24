@@ -364,6 +364,8 @@ public static partial class SeoEndpoints
         var body = new StringBuilder();
         body.Append("<h1 class=\"taster-title\">Koreyschani o‘zbekcha tushuntiramiz</h1>");
         body.Append("<p class=\"intro\">1 daqiqada sinab ko‘ring — kirish shart emas. Avval so‘z bilan tanishasiz, keyin o‘zbeklar ko‘p adashadigan joylarni o‘zingiz topasiz.</p>");
+        // L-93: someone who cannot read Hangul yet starts with the alphabet.
+        body.Append("<p class=\"intro\"><a href=\"/alifbo\">Hangulni o‘qiy olmayman → Koreys alifbosi</a></p>");
         var words = taster?.Words.Where(w => w.KoreanAudioUrl is not null || w.Beats.Any(b => b.AudioUrl is not null)).ToList() ?? [];
         if (taster is not null && words.Count > 0)
         {

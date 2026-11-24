@@ -10,7 +10,13 @@ namespace Lugat.Application.Seo;
 /// in the file store (the Railway volume, like the /sinab audio) and visitors only read them, so a visit never costs a
 /// recording. A lone jamo gets empty audio from Azure (L-62), so each letter is said by a syllable and by its name.
 /// </summary>
-public sealed class AlphabetAudioService(SpeechService speech, IFileStore files, IOperationLock operations, TimeProvider time)
+/// <summary>The ready list, kept for a minute (a singleton): the page asks on every visit, the list changes only when the admin records.</summary>
+public sealed class AlphabetAudioCache
+{
+    internal (HashSet<string> Keys, DateTimeOffset At)? Value { get; set; }
+}
+
+public sealed class AlphabetAudioService(SpeechService speech, IFileStore files, IOperationLock operations, TimeProvider time, AlphabetAudioCache cache)
 {
     public const int Batch = 15;
 
@@ -18,16 +24,13 @@ public sealed class AlphabetAudioService(SpeechService speech, IFileStore files,
 
     private static readonly HashSet<string> Keys = [.. HangulAlphabet.Recordings.Select(r => r.Key)];
 
-    // The page asks on every visit; the list changes only when the admin records, so it is read at most once a minute.
-    private static (HashSet<string> Keys, DateTimeOffset At)? cached;
-
     private static string FileKey(string key) => $"alifbo/{key}.mp3";
 
     /// <summary>The recordings the page may offer (an empty set before the admin records them).</summary>
     public async Task<IReadOnlySet<string>> ReadyAsync(CancellationToken ct)
     {
         var now = time.GetUtcNow();
-        if (cached is { } c && now - c.At < TimeSpan.FromMinutes(1))
+        if (cache.Value is { } c && now - c.At < TimeSpan.FromMinutes(1))
         {
             return c.Keys;
         }
@@ -42,7 +45,7 @@ public sealed class AlphabetAudioService(SpeechService speech, IFileStore files,
             }
         }
 
-        cached = (ready, now);
+        cache.Value = (ready, now);
         return ready;
     }
 
@@ -87,7 +90,7 @@ public sealed class AlphabetAudioService(SpeechService speech, IFileStore files,
         }
 
         await files.SaveAsync(ReadyKey, new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(ready), writable: false), ct);
-        cached = null;
+        cache.Value = null;
         return new(ready.Count, HangulAlphabet.Recordings.Count, failed);
     }
 }
