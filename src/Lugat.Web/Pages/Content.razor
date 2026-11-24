@@ -115,6 +115,17 @@
         }
     </section>
 
+    @* L-93: the public /alifbo page plays sounds recorded once here and kept in the file store. *@
+    <section class="card">
+        <h2>Alifbo sahifasi ovozlari</h2>
+        <p class="muted small-text"><a href="/alifbo" target="_blank">/alifbo</a> sahifasidagi harf va bo‘g‘in ovozlari (Azure, bir marta). Ovoz yo‘q harfda tugma ko‘rinmaydi. Qayta bossangiz, faqat yetishmaganlari yoziladi.</p>
+        @if (_alphabet is { } a)
+        {
+            <p class="small-text" role="status">@a.Ready / @a.Total ta ovoz tayyor.@(a.Failed.Count > 0 ? $" Yozilmadi: {string.Join(", ", a.Failed)}." : "")</p>
+        }
+        <button class="btn btn-secondary block" disabled="@_busy" @onclick="RecordAlphabetAsync"><span>Alifbo ovozlarini yaratish</span></button>
+    </section>
+
     <section class="card">
         <h2>Rasmiy ro‘yxatni import qilish</h2>
         <p class="muted small-text">국립국어원 「한국어 학습용 어휘 목록」 fayli (.xls, .xlsx yoki .txt). Qayta yuklash dublikat yaratmaydi: mavjud so‘zlarning faqat chastota o‘rni va izohi yangilanadi.</p>
@@ -238,6 +249,29 @@ else
         var result = await Api.SendJsonAsync<ContentAutopilotDto>(HttpMethod.Post, "api/admin/catalog/autopilot/stop");
         _auto = result.Value ?? _auto;
         _error = result.Error;
+        _busy = false;
+    }
+
+    private AlphabetAudioDto? _alphabet;
+
+    /// <summary>Records the alphabet sounds batch by batch while each call makes progress.</summary>
+    private async Task RecordAlphabetAsync()
+    {
+        _busy = true;
+        _error = null;
+        while (true)
+        {
+            var before = _alphabet?.Ready ?? -1;
+            var result = await Api.SendJsonAsync<AlphabetAudioDto>(HttpMethod.Post, "api/admin/alifbo/audio");
+            _alphabet = result.Value ?? _alphabet;
+            _error = result.Error;
+            StateHasChanged();
+            if (result.Value is not { } done || done.Ready >= done.Total || done.Ready <= before)
+            {
+                break;
+            }
+        }
+
         _busy = false;
     }
 

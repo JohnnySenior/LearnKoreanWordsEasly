@@ -781,3 +781,11 @@ Bosqichlar spec §13 bo‘yicha.
 **Nashr qilingan darajada talaffuzlar (L-92, 2026-11-23):**
 - [x] Hamma bo‘lim nashrda bo‘lsa, AI faqat talaffuzi yo‘q so‘zlarga yozadi, qoidaga mos talaffuzlarni tasdiqlaydi; kartalar va sahnalar qayta yozilmaydi. Test: `ContentAutopilotTests`.
 - [ ] Johnny: A daraja uchun tugmani bosib, oxirgi xabardagi «tekshiruvingizni kutadi» so‘zlarini ko‘rib chiqish.
+
+**Koreys alifbosi sahifasi /alifbo (L-93, 2026-11-24):**
+- [x] Server render sahifa: 40 harf (nomi, o‘qilishi, o‘zbekcha izoh), bo‘g‘in va 받침, «O‘qib ko‘ring» (A-1 dan 5 so‘z), CTA `/sinab?src=alifbo`, SEO teglari, sitemap; landing, kirish ekrani va /sinab’dan havola. 360px’da yonlama scroll yo‘q, matn ≥14px, tugmalar ≥44px (Playwright bilan tekshirildi, yorug‘ va tungi rejim).
+- [x] Ovoz fayl omborida, admin tugmasi bilan bir marta yoziladi; tashrif ovoz yozdirmaydi; fayl yo‘q bo‘lsa tugma chiqmaydi.
+- [x] Testlar: `AlphabetPageTests` (sahifa, sitemap, mini-test, ovoz yozish va o‘qish, harf nomlari), `alifbo.test.mjs`, service worker va landing havolasi.
+- [ ] Johnny: ovoz fayllarini production’da yaratish (Kontent → «Alifbo ovozlarini yaratish») va telefonda eshitib tekshirish.
+- [ ] Johnny: harflarning o‘zbekcha izohlarini o‘qib chiqish.
+- [ ] Johnny: Admin → Ko‘rsatkichlar → Manbalar’da «sinab-alifbo» chiqishini kuzatish.

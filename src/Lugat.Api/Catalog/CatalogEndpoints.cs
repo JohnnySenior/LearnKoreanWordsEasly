@@ -51,6 +51,9 @@ public static class CatalogEndpoints
         admin.MapGet("/catalog/autopilot", (ContentAutopilot job) => job.Status);
         admin.MapPost("/catalog/levels/{level}/autopilot", (CatalogLevel level, ClaimsPrincipal user, ContentAutopilot job) => job.Start(user.GetUserId(), level));
         admin.MapPost("/catalog/autopilot/stop", (ContentAutopilot job) => job.Stop());
+        // L-93: the /alifbo sounds, recorded once into the file store, a batch per call.
+        admin.MapPost("/alifbo/audio", (ClaimsPrincipal user, Application.Seo.AlphabetAudioService audio, CancellationToken ct) =>
+            audio.NextAsync(user.GetUserId(), ct));
 
         editor.MapGet("/units", (CatalogLevel level, CatalogAdminService catalog, CancellationToken ct) => catalog.UnitsAsync(level, ct));
         editor.MapGet("/units/{id:guid}", (Guid id, CatalogAdminService catalog, CancellationToken ct) => catalog.UnitAsync(id, ct));

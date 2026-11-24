@@ -1053,3 +1053,14 @@ Johnny A darajani qo‘lda nashr qilgan, talaffuzlari oxirigacha yetmagan. Endi 
 - Har qadamda bitta bo‘limning (tartib bilan) talaffuzi yo‘q va hali so‘ralmagan so‘zlariga AI talaffuz yozadi (10 tadan; AI rad etgani qayta so‘ralmaydi).
 - Oxirida standart qoidalar tushuntiradigan talaffuzlar tasdiqlanadi, qolgani muharrir tekshiruvini kutadi (L-87 qoidasi).
 - Kartalar, tuzoq sahnalari va bo‘lim holati o‘zgarmaydi; hammasi to‘liq bo‘lsa ish AI’ni chaqirmay darhol tugaydi.
+
+## L-93 · 2026-11-24 · Ochiq «Koreys alifbosi» sahifasi — /alifbo
+
+Johnny: ilovada Hangulni o‘rgatadigan joy yo‘q, yangi boshlovchi 1-bo‘limda qotib qoladi; Google’da o‘zbekcha interaktiv alifbo sahifasi ham yo‘q. Kelishilgan o‘zgarishlar bilan:
+- `/alifbo` serverda tayyorlanadi (`SeoEndpoints.Alphabet.cs`, /soz va /sinab uslubi, L-86 header): 14 undosh, 10 unli, 5 qo‘sh undosh, 11 murakkab unli, bo‘g‘in yig‘ilishi (가, 노, 밥) va 받침. JS’siz to‘liq o‘qiladi; `alifbo.js` faqat ovozni chaladi va mini-testni tekshiradi. Service worker uni ilova qobig‘i bilan javob bermaydi (`neverCached`).
+- Ma’lumot bitta joyda: `Lugat.Application/Seo/HangulAlphabet.cs` (harf, nomi, lotincha o‘qilishi — kartalardagi Revised Romanization uslubida, ikki xil o‘qiladiganida «g / k» — namuna bo‘g‘in va o‘zbekcha izoh). L-62 dagi harf nomlari jadvali ham shu yerga ko‘chdi; tanishtiruv ovozi (`Speakable`) undan oladi. O‘zbekcha izohlarni kontent modeli (Claude Opus 5.5) yozdi; Johnny tekshiradi.
+- Ovoz: yolg‘iz jamo Azure’da bo‘sh qaytadi (L-62), shuning uchun har harf namuna bo‘g‘in va nomi bilan aytiladi (unli nomi bo‘g‘inning o‘zi). `wwwroot` har deployda yangidan quriladi, shuning uchun fayllar u yerga emas, fayl omboriga (Railway volume, /sinab ovozlari kabi) yoziladi: Kontent sahifasi → «Alifbo ovozlarini yaratish» (admin, `POST /api/admin/alifbo/audio`, har chaqiruvda 15 tadan, borlari qayta yozilmaydi). Sahifa `/alifbo/ovoz/{key}.mp3` dan 30 kunlik cache bilan beradi; tashrif hech qachon ovoz yozdirmaydi. Fayl yo‘q harfda tugma chiqmaydi.
+- «O‘qib ko‘ring»: nashr qilingan A-1 dan lotincha o‘qilishi bor dastlabki 5 so‘z, har biriga shu bo‘limdan 2 ta boshqa o‘qilish (`SeoService.ReadingQuestionsAsync`). 5 tadan kam bo‘lsa test chiqmaydi. Kirish, AI va reyting yo‘q (§1.4).
+- CTA `/sinab?src=alifbo` → manba «sinab-alifbo» (mavjud qoida: qurilmada birinchi manba saqlanadi).
+- SEO: title, description, canonical, og:image (L-85), JSON-LD `LearningResource`, sitemap’da `/alifbo`.
+- Havolalar: «Hangulni o‘qiy olmayman → Koreys alifbosi» — statik landing (`index.html`), `BootScreen`, kirish ekrani (`MainLayout`) va `/sinab`.

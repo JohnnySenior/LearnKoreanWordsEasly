@@ -44,9 +44,9 @@ const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 const offlineAssetsInclude = [/\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.svg$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.webmanifest$/];
 // The runtime loads one of the three ICU files (by browser language); it is cached when first fetched.
 const offlineAssetsExclude = [/^service-worker\.js$/, /icudt.*\.dat$/];
-// Server-rendered word pages, the sitemap and robots.txt (L-56) come from the server, never the app shell. The
+// Server-rendered word pages, /sinab, /alifbo (L-93), the sitemap and robots.txt (L-56) come from the server, never the app shell. The
 // install dialog's screenshots (L-91) are only shown by the browser, so they are never kept either.
-const neverCached = [/^\/screens\//, /^\/api\//, /^\/health/, /^\/soz(\/|$)/, /^\/sinab(\/|$)/, /^\/sitemap\.xml$/, /^\/robots\.txt$/];
+const neverCached = [/^\/screens\//, /^\/api\//, /^\/health/, /^\/soz(\/|$)/, /^\/sinab(\/|$)/, /^\/alifbo(\/|$)/, /^\/sitemap\.xml$/, /^\/robots\.txt$/];
 
 const baseUrl = new URL('/', self.origin);
 const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.url, baseUrl).href);

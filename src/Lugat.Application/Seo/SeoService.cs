@@ -35,6 +35,9 @@ public sealed record SeoListPage(int Page, int Pages, int Total, IReadOnlyList<S
 public sealed record SeoSitemapEntry(string Slug, DateTimeOffset LastModified);
 
 /// <summary>A trap question for /sinab (L-58): the Uzbek cue, the Korean an Uzbek speaker would say, the right one.</summary>
+/// <summary>L-93: one "read it" question of /alifbo: a Hangul word and three Latin readings, one of them right.</summary>
+public sealed record SeoReadingQuestion(string Word, IReadOnlyList<string> Options, int Right);
+
 public sealed record SeoTrapQuestion(string Word, string Translation, string? Cue, string Wrong, string Right, string Why);
 
 /// <summary>
@@ -146,6 +149,34 @@ public sealed class SeoService(IAppDbContext db, IOperationLock operations, Time
                orderby w.OrderInUnit
                select new SeoTrapQuestion(w.Word, w.TranslationUz!, w.TrapCue, w.TrapWrong!, w.TrapRight!, w.TrapUz!))
             .Take(TrapQuestionCount).AsNoTracking().ToListAsync(ct);
+
+    public const int ReadingQuestionCount = 5;
+
+    /// <summary>
+    /// L-93: the "O‘qib ko‘ring" questions of /alifbo: the first words of the published unit A-1 that have a Latin
+    /// reading, each with two other readings of the same unit. Empty when there are not enough of them.
+    /// </summary>
+    public async Task<IReadOnlyList<SeoReadingQuestion>> ReadingQuestionsAsync(CancellationToken ct)
+    {
+        var words = await (from w in db.CatalogWords
+                           join u in db.Units on w.UnitId equals u.Id
+                           where u.Level == CatalogLevel.A && u.Number == 1 && u.Status == UnitStatus.Published
+                               && w.Status == CatalogWordStatus.Reviewed && w.Romanization != null && w.Romanization != ""
+                           orderby w.OrderInUnit
+                           select new { w.Word, w.Romanization }).AsNoTracking().ToListAsync(ct);
+        var unique = words.Select(w => (w.Word, Reading: w.Romanization!.Trim())).DistinctBy(w => w.Reading).ToList();
+        if (unique.Count < ReadingQuestionCount)
+        {
+            return [];
+        }
+
+        return [.. unique.Take(ReadingQuestionCount).Select(w =>
+        {
+            var options = unique.Where(o => o.Reading != w.Reading).OrderBy(_ => Random.Shared.Next()).Take(2).Select(o => o.Reading)
+                .Append(w.Reading).OrderBy(_ => Random.Shared.Next()).ToList();
+            return new SeoReadingQuestion(w.Word, options, options.IndexOf(w.Reading));
+        })];
+    }
 
     public async Task<IReadOnlyList<SeoSitemapEntry>> SitemapAsync(CancellationToken ct)
     {
