@@ -67,6 +67,43 @@ public class StudyEndpointsTests
 
 
 
+    /// <summary>L-94: user A gets <paramref name="words"/> words; the first <paramref name="due"/> cards are due reviews.</summary>
+    private static async Task DueCardsAsync(ApiFactory factory, int words, int due)
+    {
+        await factory.AddWordsAsync(ApiFactory.UserA, 1, ApiFactory.Words("가", words));
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<Lugat.Infrastructure.Persistence.AppDbContext>();
+        var now = factory.Time.GetUtcNow();
+        foreach (var card in (await db.Cards.ToListAsync()).OrderBy(c => c.Id).Take(due))
+        {
+            (card.Phase, card.DueAt) = (LearningPhase.Review, now.AddDays(-2));
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    [Theory]
+    [InlineData(0, 0)] // nothing due: no share
+    [InlineData(10, 10)] // fewer than one review holds: the share is all of it
+    [InlineData(100, 100)] // exactly one review (20 min × 60 / 12 s)
+    [InlineData(120, 100)] // a backlog: one review's worth, 20 wait
+    public async Task Today_shows_the_share_one_review_takes(int due, int share)
+    {
+        await using var factory = NewFactory();
+        var client = await factory.SignedInClientAsync(ApiFactory.UserA);
+        await DueCardsAsync(factory, 60, due);
+
+        var today = (await client.GetFromJsonAsync<TodayDto>("/api/today", Json))!;
+
+        Assert.Equal((due, share, 12), (today.DueNow, today.TodayShare, today.SecondsPerCard));
+        if (due >= StudyDefaults.Capacity(today.SecondsPerCard))
+        {
+            // "Boshlash" takes exactly the share: due cards come before new words, so none fit in beside them.
+            var session = await StartAsync(client, StudyDefaults.SessionMinutes);
+            Assert.Equal(share, session.Total);
+        }
+    }
+
     [Fact]
     public async Task Session_teaches_new_words_in_both_directions_in_list_order()
     {

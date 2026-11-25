@@ -1065,3 +1065,13 @@ Johnny: ilovada Hangulni o‘rgatadigan joy yo‘q, yangi boshlovchi 1-bo‘limd
 - SEO: title, description, canonical, og:image (L-85), JSON-LD `LearningResource`, sitemap’da `/alifbo`.
 - Havolalar: «Hangulni o‘qiy olmayman → Koreys alifbosi» — statik landing (`index.html`), `BootScreen`, kirish ekrani (`MainLayout`) va `/sinab`.
 - Ilova ichida (Johnny, 2026-11-24): Mashq sahifasida birinchi bo‘lim «Harflar» → «Koreys alifbosi» (`target="_top"`, Blazor o‘zi yo‘naltirmasin). PWA’da sahifa ilova oynasida ochiladi, ilovaga brend yozuvi yoki «orqaga» bilan qaytiladi.
+
+## L-94 · 2026-11-25 · Katta qoldiqda «Bugungi ulush»
+
+Muammo: tanaffusdan keyin bosh sahifa va Takrorlash sahifasi muddati kelgan barcha kartalarni ko‘rsatardi («212 ta karta, ~42 daqiqa»), «Boshlash» esa doim 20 daqiqalik mashg‘ulot ochadi (~100 karta). Mashg‘ulotdan keyin katta qoldiq turar va qaytgan o‘quvchida «tugatolmadim» hissi qolardi; Telegram eslatmasi ham ~40 daqiqa derdi. Bu spec §1.4 (sokin ohang, jazo yo‘q) ruhiga zid.
+- `StudyDefaults` (Contracts): mashg‘ulot 20 daqiqa (`SessionMinutes`), «Yana 10 daqiqa» (`ExtraMinutes`), sig‘im `Capacity(soniya)` = daqiqa × 60 / karta soniyasi. Server rejasi, bosh sahifa va eslatma shuni ishlatadi.
+- `TodayDto.TodayShare` = min(DueNow, sig‘im): «Boshlash» oladigan kartalar (`SessionPlanner` avval muddati kelganlarni oladi).
+- Bosh sahifa va Takrorlash sahifasi: DueNow ≤ ulush bo‘lsa avvalgidek. Ko‘p bo‘lsa — «Bugungi ulush», «{ulush} ta karta / ~N daqiqa» va «Yana X tasi navbatda — keyingi kunlarga o‘tadi, hech narsa yo‘qolmaydi.» Bu spec §4.6 dagi «Bugun takrorlash: N ta karta» ni aniqlashtiradi (Johnny rozi): to‘liq son yo‘qolmaydi, navbat qatorida turadi. Faol mashg‘ulot bloki o‘zgarmadi.
+- Kunlik mashg‘ulot tugaganda yana muddati kelgan karta bo‘lsa: «Bugungi ulush bajarildi», qolgani navbatda ekani va ixtiyoriy «Yana 10 daqiqa» (asosiy tugma — bosh sahifa). Bo‘lim mashqidan keyin chiqmaydi. Ma’lumot tugash ekranida `api/today` dan bir marta olinadi.
+- Eslatma: daqiqa min(kartalar, sig‘im) bo‘yicha; matn o‘zgarmadi.
+- Tegilmadi: `SessionPlanner` (navbat, OverdueShare), FSRS/jadval, DueAt. Kartalar kunlarga qayta taqsimlanmaydi.

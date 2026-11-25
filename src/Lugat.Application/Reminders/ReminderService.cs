@@ -364,7 +364,8 @@ public sealed class ReminderService(
             return null;
         }
 
-        var minutes = Math.Max(1, (int)Math.Ceiling(Math.Min(dueCards, 200) * secondsPerCard / 60.0));
+        // L-94: the time of today's share (one review), not of the whole backlog.
+        var minutes = Math.Max(1, (int)Math.Ceiling(Math.Min(dueCards, StudyDefaults.Capacity(secondsPerCard)) * secondsPerCard / 60.0));
         return $"Bugun {dueWords} ta so‘zni takrorlash vaqti. ~{minutes} daqiqa.";
     }
 }

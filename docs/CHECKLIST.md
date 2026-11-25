@@ -790,3 +790,8 @@ Bosqichlar spec §13 bo‘yicha.
 - [x] Ilova ichida havola: Mashq → «Harflar» → «Koreys alifbosi» (brauzerda bosib tekshirildi).
 - [ ] Johnny: harflarning o‘zbekcha izohlarini o‘qib chiqish.
 - [ ] Johnny: Admin → Ko‘rsatkichlar → Manbalar’da «sinab-alifbo» chiqishini kuzatish.
+
+**Bugungi ulush (L-94, 2026-11-25):**
+- [x] `TodayShare` va `StudyDefaults`; bosh sahifa va Takrorlash sahifasida katta qoldiqda «Bugungi ulush» va «navbatda» qatori; mashg‘ulot oxirida «Bugungi ulush bajarildi» va «Yana 10 daqiqa»; eslatma daqiqasi sig‘im bo‘yicha.
+- [x] Testlar: `ReminderComposeTests` (kichik son, sig‘imdan ko‘p, 200 dan ko‘p), `Today_shows_the_share_one_review_takes` (0, kam, sig‘imga teng, qoldiq; «Boshlash» aynan ulushni oladi).
+- [ ] Johnny: 150+ karta kutayotgan akkauntda telefonda bosh sahifa va Takrorlash sahifasini ko‘rish; mashg‘ulot oxirida «Yana 10 daqiqa»; Telegram eslatmasidagi daqiqa.
