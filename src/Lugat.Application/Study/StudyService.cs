@@ -43,15 +43,18 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
             ? await cards.CountAsync(c => c.Card.Phase != LearningPhase.New && c.Card.DueAt > now && c.Card.DueAt <= at.AddHours(1), ct)
             : 0;
 
+        var secondsPerCard = await SecondsPerCardAsync(ownerId, ct);
         return new TodayDto(
             dueNow,
             newAvailable,
             active is null ? null : await ToDtoAsync(active, ct),
-            await SecondsPerCardAsync(ownerId, ct),
+            secondsPerCard,
             current,
             await db.UnitProgress.CountAsync(p => p.UserId == ownerId && p.Status == Domain.Catalog.UnitProgressStatus.Passed, ct),
             nextDue,
-            nextCount);
+            nextCount,
+            // L-94: what "Boshlash" will take of a large backlog; SessionPlanner takes due cards before new ones.
+            Math.Min(dueNow, StudyDefaults.Capacity(secondsPerCard)));
     }
 
     /// <summary>Words with at least one card due now, counted as on the home page (the reminder's "N ta so‘z", spec §8).</summary>
@@ -143,7 +146,7 @@ public sealed class StudyService(IAppDbContext db, ISpacedRepetitionScheduler sc
                 drill || (r.Card.Phase == LearningPhase.New && focus!(r.Sense)), r.Sense.Order))
             .ToList();
 
-        int? capacity = request.Minutes is { } minutes && !drill ? Math.Max(1, minutes * 60 / await SecondsPerCardAsync(ownerId, ct)) : null;
+        int? capacity = request.Minutes is { } minutes && !drill ? StudyDefaults.Capacity(await SecondsPerCardAsync(ownerId, ct), minutes) : null;
         var items = SessionPlanner.Plan(candidates, new PlanRequest(now, capacity, NewOnlyFromFocus: true, Drill: drill));
         if (items.Count == 0)
         {

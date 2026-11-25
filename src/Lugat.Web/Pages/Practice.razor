@@ -30,12 +30,15 @@ else if (_session is null)
         <section class="home-due">
             @if (today.DueNow > 0)
             {
-                <span class="kicker accent">Bugun takrorlash</span>
+                @* L-94: a large backlog shows one review's share; the rest waits, nothing is lost (spec §1.4). *@
+                <span class="kicker accent">@(Backlog(today) > 0 ? "Bugungi ulush" : "Bugun takrorlash")</span>
                 <div class="home-due-figure">
-                    <b>@today.DueNow</b>
-                    <span>ta karta<br />~@Minutes(today.DueNow, today) daqiqa</span>
+                    <b>@Share(today)</b>
+                    <span>ta karta<br />~@Minutes(Share(today), today) daqiqa</span>
                 </div>
-                <p class="muted small-text">Ochilgan bo‘limlardan muddati kelgan so‘zlar.</p>
+                <p class="muted small-text">@(Backlog(today) > 0
+                    ? $"Yana {Backlog(today)} tasi navbatda — keyingi kunlarga o‘tadi, hech narsa yo‘qolmaydi."
+                    : "Ochilgan bo‘limlardan muddati kelgan so‘zlar.")</p>
                 <button class="btn btn-primary block big" disabled="@_busy" @onclick="StartReviewAsync"><span>Boshlash</span><Icon Name="arrow-right" /></button>
             }
             else
@@ -83,7 +86,16 @@ else if (_session.Current is not { } card)
     </div>
     <section class="card" style="border-top:0">
         <span class="kicker accent">Mashg‘ulot tugadi</span>
-        <h1>@_session.Summary.Answered ta karta ko‘rildi</h1>
+        @if (MoreDue is { } more)
+        {
+            @* L-94: today's share is done; the rest waits calmly (spec §1.4). *@
+            <h1>Bugungi ulush bajarildi</h1>
+            <p>@_session.Summary.Answered ta karta ko‘rildi. Yana @more tasi navbatda — keyingi kunlarga o‘tadi, hech narsa yo‘qolmaydi.</p>
+        }
+        else
+        {
+            <h1>@_session.Summary.Answered ta karta ko‘rildi</h1>
+        }
         <dl class="facts stats">
             <dt>@Format.Rating(ReviewAnswer.Easy)</dt><dd>@_session.Summary.Easy</dd>
             <dt>@Format.Rating(ReviewAnswer.Hard)</dt><dd>@_session.Summary.Hard</dd>
@@ -94,6 +106,10 @@ else if (_session.Current is not { } card)
     </section>
     <div class="actions">
         <a class="button primary big" href="">Bugunga qaytish</a>
+        @if (MoreDue is not null)
+        {
+            <button class="button big" disabled="@_busy" @onclick="() => StartReviewAsync(StudyDefaults.ExtraMinutes)">Yana 10 daqiqa</button>
+        }
         @if (_session.UndoableEventId is { } lastEvent)
         {
             <button class="button big" disabled="@_busy" @onclick="() => UndoAsync(lastEvent)">Oxirgi javobni bekor qilish</button>
@@ -249,13 +265,40 @@ else
     private string? _startMessage;
     private TodayDto? _today;
 
+    /// <summary>L-94: after a daily review, what is still due (loaded once the summary shows); null for a unit's drill.</summary>
+    private TodayDto? _after;
+
+    private bool _afterChecked;
+
+    private int? MoreDue => _session is { Minutes: not null, Current: null } && _after is { DueNow: > 0 } after ? after.DueNow : null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_session is { Minutes: not null, Current: null } && !_afterChecked)
+        {
+            _afterChecked = true; // once per summary, even when the request fails
+            _after = (await Api.GetAsync<TodayDto>("api/today")).Value;
+            if (_after is { DueNow: > 0 })
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    private static int Share(TodayDto today) => today.TodayShare > 0 ? Math.Min(today.TodayShare, today.DueNow) : today.DueNow;
+
+    private static int Backlog(TodayDto today) => today.DueNow - Share(today);
+
     private static int Minutes(int cards, TodayDto today) => Math.Max(1, (int)Math.Round(cards * today.SecondsPerCard / 60.0));
 
-    /// <summary>"Takrorlash" (spec §4.6): plans a 20-minute review, or says there is nothing due yet.</summary>
-    private async Task StartReviewAsync()
+    /// <summary>"Takrorlash" (spec §4.6): plans a 20-minute review (10 for "Yana 10 daqiqa"), or says there is nothing due yet.</summary>
+    private async Task StartReviewAsync() => await StartReviewAsync(StudyDefaults.SessionMinutes);
+
+    private async Task StartReviewAsync(int minutes)
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(20, false));
+        (_after, _afterChecked) = (null, false);
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(minutes, false));
         _busy = false;
         _startMessage = result.Value?.Session is null ? result.Value?.Message ?? result.Error : null;
         if (result.Value?.Session is { } session)

@@ -29,7 +29,7 @@ else if (_error is not null)
 else if (_today is not null)
 {
     <section class="home-due">
-        <span class="kicker accent">Bugun takrorlash</span>
+        <span class="kicker accent">@(_today.ActiveSession is not { Current: not null } && Backlog(_today) > 0 ? "Bugungi ulush" : "Bugun takrorlash")</span>
         @if (_today.ActiveSession is { Current: not null } active)
         {
             <div class="home-due-figure">
@@ -43,11 +43,14 @@ else if (_today is not null)
         }
         else if (_today.DueNow > 0)
         {
+            @* L-94: a large backlog shows one review's share; the rest waits, nothing is lost (spec §1.4). *@
             <div class="home-due-figure">
-                <b>@_today.DueNow</b>
-                <span>ta karta<br />~@Minutes(_today.DueNow) daqiqa</span>
+                <b>@Share(_today)</b>
+                <span>ta karta<br />~@Minutes(Share(_today)) daqiqa</span>
             </div>
-            <p class="muted small-text">Ochilgan bo‘limlardan muddati kelgan so‘zlar.</p>
+            <p class="muted small-text">@(Backlog(_today) > 0
+                ? $"Yana {Backlog(_today)} tasi navbatda — keyingi kunlarga o‘tadi, hech narsa yo‘qolmaydi."
+                : "Ochilgan bo‘limlardan muddati kelgan so‘zlar.")</p>
             <button class="btn btn-primary block big" disabled="@_busy" @onclick="() => StartAsync(restart: false)"><span>Boshlash</span><Icon Name="arrow-right" /></button>
         }
         else
@@ -111,7 +114,6 @@ else if (_today is not null)
     private SessionState? _signIn;
     private TodayDto? _today;
     // The home page has no time choice (UI handoff 1b): a review session of up to 20 minutes, as before by default.
-    private const int SessionMinutes = 20;
     private string? _error;
     private string? _startMessage;
     private bool _busy;
@@ -132,6 +134,11 @@ else if (_today is not null)
         _today = today.Value;
     }
 
+    /// <summary>L-94: the cards "Boshlash" takes now, and the due ones left for the next days.</summary>
+    private static int Share(TodayDto today) => today.TodayShare > 0 ? Math.Min(today.TodayShare, today.DueNow) : today.DueNow;
+
+    private static int Backlog(TodayDto today) => today.DueNow - Share(today);
+
     private int Minutes(int cards) => Math.Max(1, (int)Math.Round(cards * (_today?.SecondsPerCard ?? 10) / 60.0));
 
     // Where the learner is in the unit (spec §4.3): nothing started → the table, some cards → the cards, all → the test.
@@ -150,7 +157,7 @@ else if (_today is not null)
     private async Task StartAsync(bool restart)
     {
         _busy = true;
-        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(SessionMinutes, restart));
+        var result = await Api.SendJsonAsync<StartSessionResponse>(HttpMethod.Post, "api/sessions", new StartSessionRequest(StudyDefaults.SessionMinutes, restart));
         _busy = false;
         if (!result.Ok)
         {

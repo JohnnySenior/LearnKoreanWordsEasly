@@ -4,6 +4,8 @@ using Lugat.Domain.Vocabulary;
 
 namespace Lugat.Contracts;
 
+/// <param name="TodayShare">L-94: the due cards one daily review takes (<see cref="StudyDefaults.Capacity"/>), at most
+/// <paramref name="DueNow"/>; the rest waits for the next days.</param>
 /// <param name="NewAvailable">New cards of the current unit(s), the only place new words come from (spec §4.6).</param>
 /// <param name="CurrentUnit">The open unit to continue (the newest one), or null when there is none.</param>
 /// <param name="PassedUnits">Units the learner has passed: with no open unit left, all published ones are done.</param>
@@ -15,7 +17,21 @@ public sealed record TodayDto(
     UnitSummaryDto? CurrentUnit = null,
     int PassedUnits = 0,
     DateTimeOffset? NextDueAt = null,
-    int NextDueCount = 0);
+    int NextDueCount = 0,
+    int TodayShare = 0);
+
+/// <summary>L-94: the daily review's length, shared by the server's plan, the home page and the reminder.</summary>
+public static class StudyDefaults
+{
+    /// <summary>"Boshlash" plans a review of this many minutes (spec PLAN06).</summary>
+    public const int SessionMinutes = 20;
+
+    /// <summary>"Yana 10 daqiqa" after today's share is done.</summary>
+    public const int ExtraMinutes = 10;
+
+    /// <summary>The cards a review of <paramref name="minutes"/> holds at the learner's pace.</summary>
+    public static int Capacity(int secondsPerCard, int minutes = SessionMinutes) => Math.Max(1, minutes * 60 / Math.Max(1, secondsPerCard));
+}
 
 /// <param name="Minutes">10, 20, 30 or null for no limit (spec PLAN06).</param>
 /// <param name="Restart">Abandon an unfinished session and plan a new one.</param>
